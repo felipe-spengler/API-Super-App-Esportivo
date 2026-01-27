@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Schema;
 
 class ImportOldData extends Command
 {
-    protected $signature = 'import:old-data';
+    protected $signature = 'import:old-data {--fresh : Truncate tables before importing}';
     protected $description = 'Import matches and stats from old system CSVs (with headers)';
 
     protected $oldChampionshipIds = [];
@@ -24,6 +24,19 @@ class ImportOldData extends Command
     public function handle()
     {
         Schema::disableForeignKeyConstraints();
+
+        if ($this->option('fresh')) {
+            $this->warn("🔥 FRESH MODE: Truncating tables before import...");
+            DB::table('match_events')->truncate();
+            DB::table('match_sets')->truncate();
+            DB::table('game_matches')->truncate();
+            DB::table('categories')->truncate();
+            DB::table('championships')->truncate();
+            DB::table('teams')->truncate();
+            // Don't truncate users if you want to preserve system users
+            // DB::table('users')->whereNotIn('id', [1])->delete(); // Keep admin
+            $this->info("✅ Tables truncated.");
+        }
 
         $this->info("Importing Users (System)...");
         $this->importUsers();
@@ -63,13 +76,39 @@ class ImportOldData extends Command
             if (!isset($row[0]) || !is_numeric($row[0]))
                 continue;
 
-            User::updateOrCreate(['id' => $row[0]], [
-                'name' => $row[1],
-                'email' => $row[2],
-                'password' => $row[3],
-                'club_id' => 1,
-                'is_admin' => (isset($row[4]) && $row[4] === 'admin'),
-            ]);
+            $email = $row[2];
+            // Check for conflict - use DB to avoid Eloquent caching issues
+            $existingUser = DB::table('users')->where('id', $row[0])->first();
+            $conflictByEmail = DB::table('users')->where('email', $email)->where('id', '!=', $row[0])->first();
+
+            if ($conflictByEmail) {
+                $this->warn("⚠️  Deleting conflicting user (email: $email) ID: {$conflictByEmail->id} to import ID: {$row[0]}");
+                DB::table('users')->where('id', $conflictByEmail->id)->delete();
+            }
+
+            if ($existingUser) {
+                // Update existing
+                DB::table('users')->where('id', $row[0])->update([
+                    'name' => $row[1],
+                    'email' => $email,
+                    'password' => $row[3],
+                    'club_id' => 1,
+                    'is_admin' => (isset($row[4]) && $row[4] === 'admin') ? 1 : 0,
+                    'updated_at' => now(),
+                ]);
+            } else {
+                // Insert new
+                DB::table('users')->insert([
+                    'id' => $row[0],
+                    'name' => $row[1],
+                    'email' => $email,
+                    'password' => $row[3],
+                    'club_id' => 1,
+                    'is_admin' => (isset($row[4]) && $row[4] === 'admin') ? 1 : 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
         }
         fclose($handle);
         User::reguard();
@@ -91,6 +130,12 @@ class ImportOldData extends Command
             if (!empty($row[2]))
                 $name .= " (" . $row[2] . ")";
             $email = "player{$id}@simulador.local";
+
+            // Check for conflict
+            $conflict = User::where('email', $email)->where('id', '!=', $id)->first();
+            if ($conflict) {
+                $conflict->delete();
+            }
 
             User::updateOrCreate(['id' => $id], [
                 'name' => $name,

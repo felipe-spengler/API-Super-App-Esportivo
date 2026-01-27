@@ -78,9 +78,17 @@ export function Explore() {
                                 <div className="p-4">
                                     <div className="flex justify-between items-start mb-2">
                                         <h3 className="text-lg font-bold text-gray-900 flex-1 pr-2 leading-tight">{item.name}</h3>
-                                        <div className={`px-2 py-1 rounded-md shrink-0 ${item.status === 'registrations_open' ? 'bg-green-100' : 'bg-gray-100'}`}>
-                                            <span className={`text-[10px] font-bold uppercase tracking-wide ${item.status === 'registrations_open' ? 'text-green-700' : 'text-gray-600'}`}>
-                                                {item.status === 'registrations_open' ? 'Inscrições Abertas' : 'Em Andamento'}
+                                        <div className={`px-2 py-1 rounded-md shrink-0 ${item.status === 'registrations_open' ? 'bg-green-100' :
+                                                item.status === 'finished' ? 'bg-gray-200' :
+                                                    item.status === 'upcoming' ? 'bg-blue-100' : 'bg-yellow-100'
+                                            }`}>
+                                            <span className={`text-[10px] font-bold uppercase tracking-wide ${item.status === 'registrations_open' ? 'text-green-700' :
+                                                    item.status === 'finished' ? 'text-gray-600' :
+                                                        item.status === 'upcoming' ? 'text-blue-700' : 'text-yellow-700'
+                                                }`}>
+                                                {item.status === 'registrations_open' ? 'Inscrições Abertas' :
+                                                    item.status === 'finished' ? 'Finalizado' :
+                                                        item.status === 'upcoming' ? 'Em Breve' : 'Em Andamento'}
                                             </span>
                                         </div>
                                     </div>
