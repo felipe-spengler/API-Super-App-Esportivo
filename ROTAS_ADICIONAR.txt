@@ -1,0 +1,6 @@
+// ADICIONAR ESTAS ROTAS NO ARQUIVO backend/routes/api.php
+// DENTRO DO GRUPO Route::prefix('admin')->middleware('admin')->group(function () {
+
+// QR Code Validation
+Route::post('/validate-qr', [\\App\\Http\\Controllers\\Admin\\QRValidationController::class, 'validateQR']);
+Route::post('/check-in', [\\App\\Http\\Controllers\\Admin\\QRValidationController::class, 'checkInPlayer']);
