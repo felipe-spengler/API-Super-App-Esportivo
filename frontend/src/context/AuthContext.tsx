@@ -43,11 +43,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async function signIn(email: string, pass: string) {
         // Ajuste a rota '/login' conforme sua rota real de login no backend
         const response = await api.post('/login', {
-            email,
-            password: pass // backend espera 'password', ajustado
+            login: email, // Backend espera 'login'
+            password: pass
         });
 
-        const { token, user } = response.data;
+        // Backend retorna access_token
+        const { access_token, user } = response.data;
+        const token = access_token;
 
         localStorage.setItem('@AppEsportivo:user', JSON.stringify(user));
         localStorage.setItem('@AppEsportivo:token', token);
