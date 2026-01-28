@@ -1,34 +1,31 @@
 import { useEffect, useState } from 'react';
 import { Calendar, MapPin, ArrowRight, Trophy, Users, Timer } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import api from '../../services/api';
 
 export function PublicHome() {
     const [events, setEvents] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Fetch de eventos públicos (sem auth)
-        // Como o backend ainda não tem rota pública explícita para listar tudo sem token, 
-        // idealmente usaríamos algo como /public/events. Por hora, vamos simular ou tentar usar a rota existente se ela estiver aberta.
-        // Vou usar um mock temporário para mostrar o visual, já que ajustamos o backend apenas para admin por enquanto.
-
         async function loadPublicEvents() {
             setLoading(true);
             try {
-                // Em produção: const res = await api.get('/public/events');
-                // setEvents(res.data);
-
-                // Mock Data para visualização imediata
-                setTimeout(() => {
-                    setEvents([
-                        { id: 1, name: 'Copa Verão de Futsal 2026', sport: 'Futsal', date: '2026-02-15', location: 'Ginásio Municipal', teams: 12, type: 'team' },
-                        { id: 2, name: 'Maratona da Cidade', sport: 'Corrida', date: '2026-03-10', location: 'Praça Central', teams: 1500, type: 'race' },
-                        { id: 3, name: 'Torneio de Vôlei de Areia', sport: 'Vôlei', date: '2026-02-28', location: 'Arena Beach', teams: 8, type: 'team' },
-                    ]);
-                    setLoading(false);
-                }, 800);
+                const res = await api.get('/public/events');
+                // Adapter: mapeia formato do banco para formato da Home
+                const mapped = res.data.map((c: any) => ({
+                    id: c.id,
+                    name: c.name,
+                    sport: c.sport,
+                    date: c.start_date,
+                    location: c.location || 'Local a definir',
+                    teams: 0, // Backend ainda não traz count de inscritos na listagem simples
+                    type: ['Corrida de Rua', 'Ciclismo', 'MTB', 'Natação'].includes(c.sport) ? 'race' : 'team'
+                }));
+                setEvents(mapped);
             } catch (error) {
-                console.error(error);
+                console.error("Erro ao carregar eventos públicos", error);
+            } finally {
                 setLoading(false);
             }
         }
@@ -77,7 +74,7 @@ export function PublicHome() {
                 ) : (
                     <div className="grid md:grid-cols-3 gap-8">
                         {events.map(event => (
-                            <Link key={event.id} to={`/events/${event.id}`} className="group bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                            <Link key={event.id} to={`/ events / ${event.id} `} className="group bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
                                 <div className="h-48 bg-gray-200 relative">
                                     {/* Placeholder de Imagem */}
                                     <div className="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-100">
