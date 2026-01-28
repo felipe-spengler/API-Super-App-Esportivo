@@ -180,7 +180,7 @@ class ImportOldData extends Command
 
             $parentId = $row[3];
             if (empty($parentId) || $parentId === 'NULL') {
-                $status = 'scheduled';
+                $status = 'upcoming';
                 $oldStatus = strtolower($row[7] ?? '');
                 if (strpos($oldStatus, 'andamento') !== false)
                     $status = 'ongoing';
