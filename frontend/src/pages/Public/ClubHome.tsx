@@ -1,19 +1,56 @@
 import { useNavigate, useParams } from 'react-router-dom';
-import { Trophy, Calendar, ShoppingBag, QrCode, Medal, X } from 'lucide-react';
+import { Trophy, Calendar, ShoppingBag, QrCode, Medal, X, MapPin } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import api from '../../services/api';
 
-const MOCK_MENU = [
-    { id: 1, name: 'Futebol', icon: 'futbol', color: 'bg-green-600' },
-    { id: 2, name: 'Vôlei', icon: 'volleyball', color: 'bg-yellow-500' },
-    { id: 3, name: 'Corrida', icon: 'person-running', color: 'bg-blue-500' },
-    { id: 4, name: 'Tênis', icon: 'table-tennis', color: 'bg-orange-500' },
-    { id: 5, name: 'Lutas', icon: 'hand-fist', color: 'bg-red-600' },
-    { id: 6, name: 'Natação', icon: 'waves', color: 'bg-cyan-500' },
+const ALL_SPORTS = [
+    { id: 'futebol', name: 'Futebol', icon: 'futbol', color: 'bg-green-600' },
+    { id: 'volei', name: 'Vôlei', icon: 'volleyball', color: 'bg-yellow-500' },
+    { id: 'corrida', name: 'Corrida', icon: 'person-running', color: 'bg-blue-500' },
+    { id: 'tenis', name: 'Tênis', icon: 'table-tennis', color: 'bg-orange-500' },
+    { id: 'lutas', name: 'Lutas', icon: 'hand-fist', color: 'bg-red-600' },
+    { id: 'natacao', name: 'Natação', icon: 'waves', color: 'bg-cyan-500' },
+    { id: 'padel', name: 'Padel', icon: 'table-tennis', color: 'bg-blue-400' }, // Added Padel
 ];
 
 export function ClubHome() {
     const navigate = useNavigate();
-    const { slug } = useParams(); // To support future slug usage
-    const clubName = slug === 'yara' ? 'Yara Country Clube' : 'Clube Toledão'; // Simple mock logic
+    const { slug } = useParams();
+    const clubSlug = slug || 'toledao'; // Default to Toledão if no slug provided
+
+    const [club, setClub] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        async function loadClub() {
+            try {
+                // If slug is 'club-home' directly without param (via route /club-home), 
+                // we might need a way to know which club. For now default to Toledão as per request context or user 'toledao'
+                // In a real app we might persist the selected club in Context/LocalStorage.
+                // Assuming route is /clubs/:slug or we treat /club-home as Toledão for now.
+                // But wait, the route in App.tsx is /club-home without param. 
+                // Let's assume for this specific request we default to Toledão but logic supports slug.
+
+                const res = await api.get(`/clubs/${clubSlug}`);
+                setClub(res.data);
+            } catch (error) {
+                console.error("Error loading club", error);
+            } finally {
+                setLoading(false);
+            }
+        }
+        loadClub();
+    }, [clubSlug]);
+
+    if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div></div>;
+
+    if (!club) return <div className="min-h-screen flex items-center justify-center">Clube não encontrado</div>;
+
+    // Filter sports based on active_modalities from backend
+    // Backend returns active_modalities as array of strings like ['futebol', 'volei']
+    const activeSports = ALL_SPORTS.filter(sport =>
+        club.active_modalities?.includes(sport.id)
+    );
 
     return (
         <div className="min-h-screen bg-gray-50 pb-24">
@@ -21,8 +58,11 @@ export function ClubHome() {
             <div className="bg-white p-6 pt-8 pb-4 shadow-sm border-b border-gray-200 sticky top-0 z-10">
                 <div className="flex justify-between items-center max-w-lg mx-auto">
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-800">{clubName}</h1>
-                        <p className="text-gray-500 text-sm">Bem-vindo ao seu clube!</p>
+                        <h1 className="text-2xl font-bold text-gray-800">{club.name}</h1>
+                        <div className="flex items-center text-gray-500 text-sm mt-1">
+                            <MapPin className="w-3 h-3 mr-1" />
+                            {club.city?.name} - {club.city?.state}
+                        </div>
                     </div>
                     <button onClick={() => navigate('/')} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors">
                         <X className="w-5 h-5 text-gray-600" />
@@ -80,18 +120,24 @@ export function ClubHome() {
                 <div>
                     <h2 className="text-lg font-bold text-gray-800 mb-4 px-1">Modalidades</h2>
                     <div className="grid grid-cols-3 gap-4">
-                        {MOCK_MENU.map((sport) => (
-                            <button
-                                key={sport.id}
-                                className="aspect-square bg-white rounded-2xl flex flex-col items-center justify-center gap-3 shadow-sm border border-gray-100 hover:shadow-md hover:-translate-y-1 transition-all"
-                                onClick={() => navigate(`/explore?sport=${sport.name}`)}
-                            >
-                                <div className={`w-12 h-12 ${sport.color} rounded-full flex items-center justify-center shadow-sm`}>
-                                    <Trophy className="w-5 h-5 text-white" />
-                                </div>
-                                <span className="text-gray-700 font-medium text-xs">{sport.name}</span>
-                            </button>
-                        ))}
+                        {activeSports.length > 0 ? (
+                            activeSports.map((sport) => (
+                                <button
+                                    key={sport.id}
+                                    className="aspect-square bg-white rounded-2xl flex flex-col items-center justify-center gap-3 shadow-sm border border-gray-100 hover:shadow-md hover:-translate-y-1 transition-all"
+                                    onClick={() => navigate(`/explore?sport=${sport.name}`)}
+                                >
+                                    <div className={`w-12 h-12 ${sport.color} rounded-full flex items-center justify-center shadow-sm`}>
+                                        <Trophy className="w-5 h-5 text-white" />
+                                    </div>
+                                    <span className="text-gray-700 font-medium text-xs">{sport.name}</span>
+                                </button>
+                            ))
+                        ) : (
+                            <div className="col-span-3 text-center py-8 text-gray-500">
+                                Nenhuma modalidade encontrada para este clube.
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
