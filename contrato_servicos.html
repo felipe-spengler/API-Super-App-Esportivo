@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contrato de Prestação de Serviços - Super App Esportivo</title>
+    <style>
+        body {
+            font-family: "Times New Roman", Times, serif;
+            line-height: 1.5;
+            color: #000;
+            background-color: #fff;
+            max-width: 21cm;
+            margin: 0 auto;
+            padding: 2cm;
+            box-sizing: border-box;
+        }
+
+        h1,
+        h2,
+        h3,
+        h4,
+        h5 {
+            font-weight: bold;
+            color: #000;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 16pt;
+            text-transform: uppercase;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+        }
+
+        h2 {
+            font-size: 14pt;
+            margin-top: 30px;
+            border-bottom: 1px solid #000;
+            padding-bottom: 5px;
+            background-color: #f0f0f0;
+            padding-left: 5px;
+        }
+
+        h3 {
+            font-size: 12pt;
+            margin-top: 20px;
+            text-transform: uppercase;
+        }
+
+        h4 {
+            font-size: 11pt;
+            margin-top: 15px;
+            margin-bottom: 5px;
+        }
+
+        p,
+        li {
+            font-size: 11pt;
+            text-align: justify;
+            margin-bottom: 8px;
+        }
+
+        ul {
+            list-style-type: disc;
+            padding-left: 20px;
+        }
+
+        /* Tabelas */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10pt;
+            margin-top: 10px;
+            margin-bottom: 20px;
+            page-break-inside: auto;
+        }
+
+        tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
+        }
+
+        th,
+        td {
+            border: 1px solid #000;
+            padding: 6px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            background-color: #e0e0e0;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .bg-light {
+            background-color: #f9f9f9;
+        }
+
+        /* Resumo Financeiro */
+        .financial-box {
+            border: 2px solid #000;
+            padding: 15px;
+            margin-top: 20px;
+            background-color: #fcfcfc;
+        }
+
+        .financial-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 12pt;
+        }
+
+        .total-row {
+            font-weight: bold;
+            font-size: 14pt;
+            border-top: 1px dashed #000;
+            padding-top: 10px;
+            margin-top: 10px;
+        }
+
+        /* Assinaturas */
+        .signatures {
+            margin-top: 80px;
+            display: flex;
+            justify-content: space-between;
+            page-break-inside: avoid;
+        }
+
+        .signature-block {
+            width: 45%;
+            text-align: center;
+            border-top: 1px solid #000;
+            padding-top: 10px;
+        }
+
+        /* Botão de impressão */
+        @media print {
+            body {
+                margin: 0;
+                padding: 1.5cm;
+                box-shadow: none;
+                width: 100%;
+            }
+
+            .no-print {
+                display: none;
+            }
+
+            .page-break {
+                page-break-before: always;
+            }
+        }
+
+        .btn-print {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-print:hover {
+            background-color: #0056b3;
+        }
+
+        .anexo-header {
+            text-align: center;
+            margin-top: 50px;
+            margin-bottom: 30px;
+            border: 3px double #000;
+            padding: 20px;
+        }
+
+        .item-price {
+            font-family: 'Courier New', Courier, monospace;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+
+<body>
+
+    <button class="btn-print no-print" onclick="window.print()">🖨️ IMPRIMIR / SALVAR PDF</button>
+
+    <h1>CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE DESENVOLVIMENTO DE SOFTWARE</h1>
+
+    <p style="text-align: center;"><strong>Data:</strong> 22 de Janeiro de 2026</p>
+
+    <h2>1. DO OBJETO</h2>
+    <p>O presente contrato tem como objeto o desenvolvimento de software customizado denominado <strong>"SUPER APP
+            ESPORTIVO"</strong>. A solução consiste em um <strong>Aplicativo Móvel Único (Android/iOS)</strong> com
+        controle de perfis de acesso (Multi-Role), suportado por um Painel Administrativo Web e Backend, conforme
+        detalhado minuciosamente nos <strong>Anexos I (Escopo)</strong> e <strong>Anexos II (Orçamento
+            Analítico)</strong> deste instrumento.</p>
+
+    <h2>2. VALOR E FORMA DE PAGAMENTO</h2>
+    <div class="financial-box">
+        <div class="financial-row">
+            <span>Valor Total dos Serviços (Vide Anexo II):</span>
+            <span>R$ 23.250,00</span>
+        </div>
+        <div class="financial-row" style="color: #d00;">
+            <span>(-) Desconto Comercial Concedido:</span>
+            <span>R$ 3.250,00</span>
+        </div>
+        <div class="financial-row total-row">
+            <span>VALOR LÍQUIDO TOTAL:</span>
+            <span>R$ 20.000,00</span>
+        </div>
+
+        <hr>
+
+        <p><strong>CONDIÇÃO DE PAGAMENTO:</strong></p>
+        <div class="financial-row">
+            <span>Parcelamento:</span>
+            <span><strong>40x (Quarenta parcelas)</strong></span>
+        </div>
+        <div class="financial-row">
+            <span>Valor da Parcela Mensal:</span>
+            <span><strong>R$ 500,00 (Quinhentos reais)</strong></span>
+        </div>
+    </div>
+
+    <h2>3. PRAZOS E VIGÊNCIA</h2>
+    <p>O prazo de desenvolvimento seguirá o cronograma de sprints a ser validado na reunião de Kick-off. A vigência
+        deste contrato inicia-se na data de assinatura e encerra-se após a entrega final e quitação de todas as
+        parcelas.</p>
+
+    <div class="signatures">
+        <div class="signature-block">
+            <p><strong>CONTRATANTE</strong></p>
+            <br>_____________________________<br>
+            Nome / CPF
+        </div>
+        <div class="signature-block">
+            <p><strong>CONTRATADA</strong></p>
+            <br>_____________________________<br>
+            Responsável Técnico
+        </div>
+    </div>
+
+    <!-- QUEBRA DE PÁGINA PARA ANEXOS -->
+    <div class="page-break"></div>
+
+    <!-- ANEXO I: ESCOPO -->
+    <div class="anexo-header">
+        <h2>ANEXO I<br>ESCOPO TÉCNICO E FUNCIONAL</h2>
+        <p>Descrição detalhada das regras de negócio e funcionalidades.</p>
+    </div>
+
+    <h3>1. VISÃO GERAL DO PRODUTO</h3>
+    <p>Plataforma "White-Label" para Gestão de Competições Esportivas. O acesso ao sistema é unificado, com
+        funcionalidades habilitadas conforme o perfil do usuário logado:</p>
+    <ol>
+        <li><strong>Perfil Gestor (Web Admin):</strong> Cria campeonatos, tabelas e financeiro (Acesso via
+            Navegador/Desktop).</li>
+        <li><strong>Perfil Operador/Juiz (App Mobile):</strong> Acesso restrito no app para súmula digital e validação.
+        </li>
+        <li><strong>Perfil Atleta/Torcedor (App Mobile):</strong> Acesso público no app para estatísticas, e-commerce e
+            acompanhamento.</li>
+    </ol>
+
+    <h3>2. MODALIDADES SUPORTADAS (POLIMORFISMO)</h3>
+    <ul>
+        <li><strong>GRUPO A (GOLS):</strong> Futebol, Futsal, Handebol. (Placar simples, cartões, timer).</li>
+        <li><strong>GRUPO B (SETS/PONTOS):</strong> Vôlei, Beach Tennis, Futevôlei. (Melhor de 3/5, Tie-Break).</li>
+        <li><strong>GRUPO B2 (TEMPORIZADOS):</strong> Basquete. (Quartos, faltas coletivas, parar tempo).</li>
+        <li><strong>GRUPO C (GAMES/SETS):</strong> Tênis, Padel. (15/30/40/Adv).</li>
+        <li><strong>GRUPO D (RACING):</strong> Corrida, Ciclismo, Natação. (Ranking por tempo).</li>
+        <li><strong>GRUPO E (COMBATE):</strong> Lutas, Xadrez. (Mata-mata).</li>
+    </ul>
+
+    <h3>3. FUNCIONALIDADES DO APP (PERFIL TORCEDOR/ATLETA)</h3>
+    <ul>
+        <li><strong>Cadastro:</strong> Login Social, Upload de doc com validação IA (OCR), Seleção de Clube.</li>
+        <li><strong>Competição:</strong> Dashboard, Tabelas automáticas, Estatísticas (Artilharia/MVP), Placar Ao Vivo (
+            <1s latência).</li>
+        <li><strong>Capitão:</strong> Criar time, link de convite, gestão de elenco.</li>
+        <li><strong>E-commerce:</strong> Loja do clube, carteira digital, pagamentos Pix/Cartão.</li>
+    </ul>
+
+    <h3>4. FUNCIONALIDADES WEB E OPERAÇÃO (PERFIL STAFF)</h3>
+    <ul>
+        <li><strong>Gestão Esportiva (Web):</strong> Criador de campeonatos, gerador de tabelas automático,
+            balanceamento de times.</li>
+        <li><strong>Súmula Digital (App):</strong> Módulo exclusivo "offline-first" dentro do app, com cronômetro
+            oficial e MVP voting, acessível apenas para usuários com permissão de Mesário.</li>
+        <li><strong>Marketing/Finanças (Web):</strong> Gerador de artes (Instagram) automático, gestão de cupons,
+            controle de fraudes.</li>
+    </ul>
+
+    <div class="page-break"></div>
+
+    <!-- ANEXO II: ORÇAMENTO -->
+    <div class="anexo-header">
+        <h2>ANEXO II<br>ORÇAMENTO ANALÍTICO DETALHADO</h2>
+        <p>Detalhamento de custos por tela desenvolvida e módulo de sistema.</p>
+    </div>
+
+    <h3>1. APP MOBILE ÚNICO (iOS / Android)</h3>
+    <p style="font-size: 10pt; font-style: italic; margin-bottom: 5px;">Inclui todas as telas dos perfis de Torcedor e
+        de Operação/Juíz integradas no mesmo binário.</p>
+    <table>
+        <thead>
+            <tr>
+                <th>Módulo Lógico</th>
+                <th>Tela / Recurso</th>
+                <th width="15%">Tipo</th>
+                <th width="15%">Valor Base</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- 1.1 -->
+            <tr>
+                <td rowspan="8"><strong>Acesso e Onboarding</strong></td>
+                <td>WelcomeScreen (Seleção Cidade/Clube)</td>
+                <td>Simples</td>
+                <td class="item-price">R$ 100</td>
+            </tr>
+            <tr>
+                <td>ForgotPasswordScreen</td>
+                <td>Simples</td>
+                <td class="item-price">R$ 100</td>
+            </tr>
+            <tr>
+                <td>VerifyCodeScreen (OTP)</td>
+                <td>Simples</td>
+                <td class="item-price">R$ 100</td>
+            </tr>
+            <tr>
+                <td>ResetPasswordScreen</td>
+                <td>Simples</td>
+                <td class="item-price">R$ 100</td>
+            </tr>
+            <tr>
+                <td>SuccessScreen</td>
+                <td>Simples</td>
+                <td class="item-price">R$ 100</td>
+            </tr>
+            <tr>
+                <td>LoginScreen</td>
+                <td>Média</td>
+                <td class="item-price">R$ 150</td>
+            </tr>
+            <tr>
+                <td>RegisterScreen (Upload Doc)</td>
+                <td>Média</td>
+                <td class="item-price">R$ 150</td>
+            </tr>
+            <tr>
+                <td>ProfileScreen & Configs</td>
+                <td>Média</td>
+                <td class="item-price">R$ 150</td>
+            </tr>
+
+            <!-- 1.2 -->
+            <tr>
+                <td rowspan="11"><strong>Área do Torcedor <br>(Navegação)</strong></td>
+                <td>SportsHub (Menu Ícones)</td>
+                <td>Simples</td>
+                <td class="item-price">R$ 100</td>
+            </tr>
+            <tr>
+                <td>EventMenuScreen</td>
+                <td>Simples</td>
+                <td class="item-price">R$ 100</td>
+            </tr>
+            <tr>
+                <td>HomeScreen (Dashboard)</td>
+                <td>Média</td>
+                <td class="item-price">R$ 150</td>
+            </tr>
+            <tr>
+                <td>TeamsListScreen</td>
+                <td>Média</td>
+                <td class="item-price">R$ 150</td>
+            </tr>
+            <tr>
+                <td>TeamDetailScreen</td>
+                <td>Média</td>
+                <td class="item-price">R$ 150</td>
+            </tr>
+            <tr>
+                <td>MatchesListScreen</td>
+                <td>Média</td>
+                <td class="item-price">R$ 150</td>
+            </tr>
+            <tr>
+                <td>LeaderboardScreen</td>
+                <td>Média</td>
+                <td class="item-price">R$ 150</td>
+            </tr>
+            <tr>
+                <td>StatisticsScreen</td>
+                <td>Média</td>
+                <td class="item-price">R$ 150</td>
+            </tr>
+            <tr>
+                <td>RaceEventScreen</td>
+                <td>Média</td>
+                <td class="item-price">R$ 150</td>
+            </tr>
+            <tr>
+                <td>RaceResultsScreen</td>
+                <td>Média</td>
+                <td class="item-price">R$ 150</td>
+            </tr>
+            <tr>
+                <td>MatchDetailScreen (Live + MVP)</td>
+                <td>Complexa</td>
+                <td class="item-price">R$ 250</td>
+            </tr>
+
+            <!-- 1.3 -->
+            <tr>
+                <td rowspan="7"><strong>E-commerce</strong></td>
+                <td>OrderSuccessScreen</td>
+                <td>Simples</td>
+                <td class="item-price">R$ 100</td>
+            </tr>
+            <tr>
+                <td>ProductListScreen</td>
+                <td>Média</td>
+                <td class="item-price">R$ 150</td>
+            </tr>
+            <tr>
+                <td>ProductDetailScreen</td>
+                <td>Média</td>
+                <td class="item-price">R$ 150</td>
+            </tr>
+            <tr>
+                <td>CartScreen</td>
+                <td>Média</td>
+                <td class="item-price">R$ 150</td>
+            </tr>
+            <tr>
+                <td>MyOrdersScreen</td>
+                <td>Média</td>
+                <td class="item-price">R$ 150</td>
+            </tr>
+            <tr>
+                <td>MyMatchesScreen</td>
+                <td>Média</td>
+                <td class="item-price">R$ 150</td>
+            </tr>
+            <tr>
+                <td>CheckoutScreen (Pgto)</td>
+                <td>Complexa</td>
+                <td class="item-price">R$ 250</td>
+            </tr>
+
+            <!-- 1.4 -->
+            <tr>
+                <td rowspan="9"><strong>Área Restrita <br>(Gestor de Campo)</strong></td>
+                <td>AdminHubScreen</td>
+                <td>Simples</td>
+                <td class="item-price">R$ 100</td>
+            </tr>
+            <tr>
+                <td>QRCodeScanner</td>
+                <td>Média</td>
+                <td class="item-price">R$ 150</td>
+            </tr>
+            <tr>
+                <td>Súmula V1: Futebol</td>
+                <td>Complexa</td>
+                <td class="item-price">R$ 250</td>
+            </tr>
+            <tr>
+                <td>Súmula V2: Vôlei/Beach</td>
+                <td>Complexa</td>
+                <td class="item-price">R$ 250</td>
+            </tr>
+            <tr>
+                <td>Súmula V3: Tênis</td>
+                <td>Complexa</td>
+                <td class="item-price">R$ 250</td>
+            </tr>
+            <tr>
+                <td>Súmula V4: Basquete</td>
+                <td>Complexa</td>
+                <td class="item-price">R$ 250</td>
+            </tr>
+            <tr>
+                <td>Súmula V5: Lutas</td>
+                <td>Complexa</td>
+                <td class="item-price">R$ 250</td>
+            </tr>
+            <tr>
+                <td>Súmula V6: Corrida</td>
+                <td>Complexa</td>
+                <td class="item-price">R$ 250</td>
+            </tr>
+            <tr>
+                <td>TeamManagement (Extra)</td>
+                <td>Média</td>
+                <td class="item-price">R$ 150</td>
+            </tr>
+
+            <tr class="bg-light">
+                <td colspan="3" class="text-right"><strong>TOTAL APP MOBILE (ÚNICO BINÁRIO):</strong></td>
+                <td class="item-price"><strong>R$ 5.950,00</strong></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h3>2. PLATAFORMA WEB (ADMINISTRATIVO)</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Módulo</th>
+                <th>Tela / Recurso</th>
+                <th width="15%">Valor Base</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td rowspan="7"><strong>Gestão e Cadastros</strong></td>
+                <td>ClubSettings (R$ 100) / UserManagement (R$ 100)</td>
+                <td class="item-price">R$ 200</td>
+            </tr>
+            <tr>
+                <td>DashboardGeral</td>
+                <td class="item-price">R$ 150</td>
+            </tr>
+            <tr>
+                <td>EventList</td>
+                <td class="item-price">R$ 150</td>
+            </tr>
+            <tr>
+                <td>MatchManagement</td>
+                <td class="item-price">R$ 150</td>
+            </tr>
+            <tr>
+                <td>EventCreateWizard (Wizard)</td>
+                <td class="item-price">R$ 250</td>
+            </tr>
+            <tr>
+                <td>LiveScoreControl (Bkp)</td>
+                <td class="item-price">R$ 250</td>
+            </tr>
+            <tr>
+                <td><em>Subtotal Parcial</em></td>
+                <td class="item-price"><em>R$ 1.150</em></td>
+            </tr>
+
+            <tr>
+                <td rowspan="7"><strong>Finanças e Marketing</strong></td>
+                <td>ArtGeneratorHub</td>
+                <td class="item-price">R$ 150</td>
+            </tr>
+            <tr>
+                <td>InscriptionsReport</td>
+                <td class="item-price">R$ 150</td>
+            </tr>
+            <tr>
+                <td>FinancialDashboard</td>
+                <td class="item-price">R$ 150</td>
+            </tr>
+            <tr>
+                <td>CouponsManager</td>
+                <td class="item-price">R$ 150</td>
+            </tr>
+            <tr>
+                <td>FraudControl</td>
+                <td class="item-price">R$ 150</td>
+            </tr>
+            <tr>
+                <td>RaceTimingManager</td>
+                <td class="item-price">R$ 150</td>
+            </tr>
+            <tr>
+                <td>ArtEditor (Canvas)</td>
+                <td class="item-price">R$ 250</td>
+            </tr>
+
+            <tr class="bg-light">
+                <td colspan="2" class="text-right"><strong>TOTAL PLATAFORMA WEB:</strong></td>
+                <td class="item-price"><strong>R$ 2.300,00</strong></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h3>3. BACKEND & ENGENHARIA</h3>
+    <table>
+        <tr>
+            <th>Módulos de Alta Complexidade</th>
+            <th width="20%">Valor</th>
+        </tr>
+        <tr>
+            <td>Autenticação Avançada (Sessão/Renovação)</td>
+            <td class="item-price">R$ 1.000</td>
+        </tr>
+        <tr>
+            <td>Arquitetura Multi-Tenant / ACL</td>
+            <td class="item-price">R$ 1.000</td>
+        </tr>
+        <tr>
+            <td>Microserviço OCR (IA Documentos)</td>
+            <td class="item-price">R$ 1.500</td>
+        </tr>
+        <tr>
+            <td>Arquitetura Polimórfica (Multi-Esportes)</td>
+            <td class="item-price">R$ 1.500</td>
+        </tr>
+        <tr>
+            <td>Motor de Classificação Automática</td>
+            <td class="item-price">R$ 1.500</td>
+        </tr>
+        <tr>
+            <td>Algoritmos de Sorteio e Chaveamento</td>
+            <td class="item-price">R$ 1.000</td>
+        </tr>
+        <tr>
+            <td>Websocket Server (Live Score)</td>
+            <td class="item-price">R$ 1.000</td>
+        </tr>
+        <tr>
+            <td>Gateway Pagamento (Pix/Boleto/Cartão)</td>
+            <td class="item-price">R$ 1.500</td>
+        </tr>
+        <tr>
+            <td>Webhooks e Ledger (Anti-fraude fin.)</td>
+            <td class="item-price">R$ 1.000</td>
+        </tr>
+        <tr>
+            <td>ETL Migração de Dados</td>
+            <td class="item-price">R$ 1.500</td>
+        </tr>
+        <tr>
+            <td>Gerador PDF/Artes (Instagram)</td>
+            <td class="item-price">R$ 1.500</td>
+        </tr>
+        <tr>
+            <td>API Whitelabel</td>
+            <td class="item-price">R$ 1.500</td>
+        </tr>
+        <tr class="bg-light">
+            <td class="text-right"><strong>TOTAL BACKEND:</strong></td>
+            <td class="item-price"><strong>R$ 13.000,00</strong></td>
+        </tr>
+    </table>
+
+    <h3>4. INFRAESTRUTURA</h3>
+    <table>
+        <tr>
+            <td>Configuração VPS, Docker, Nginx, Redis + Publicação Stores</td>
+            <td width="20%" class="item-price"><strong>R$ 2.000,00</strong></td>
+        </tr>
+    </table>
+
+    <br>
+    <div class="financial-box">
+        <h3 style="margin-top:0; text-align:center;">RESUMO DO INVESTIMENTO</h3>
+        <table style="margin-bottom:0;">
+            <tr>
+                <td>1. App Mobile Único (Multi-perfil)</td>
+                <td class="item-price text-right">R$ 5.950,00</td>
+            </tr>
+            <tr>
+                <td>2. Plataforma Web (Gestão)</td>
+                <td class="item-price text-right">R$ 2.300,00</td>
+            </tr>
+            <tr>
+                <td>3. Backend</td>
+                <td class="item-price text-right">R$ 13.000,00</td>
+            </tr>
+            <tr>
+                <td>4. Infraestrutura</td>
+                <td class="item-price text-right">R$ 2.000,00</td>
+            </tr>
+            <tr class="total-row">
+                <td><strong>TOTAL GERAL</strong></td>
+                <td class="item-price text-right"><strong>R$ 23.250,00</strong></td>
+            </tr>
+        </table>
+    </div>
+
+</body>
+
+</html>

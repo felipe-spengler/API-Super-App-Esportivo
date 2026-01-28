@@ -1,0 +1,682 @@
+id,id_partida,id_participante,id_equipe,tipo_evento,minuto_evento,descricao,periodo
+141,197,101,20,Gol,0,,Primeiro Tempo
+142,197,106,20,Gol,0,,Primeiro Tempo
+143,197,106,20,Gol,0,,Primeiro Tempo
+144,197,102,20,Gol,0,,Primeiro Tempo
+145,197,50,16,Gol,0,,Primeiro Tempo
+146,183,17,11,Gol,0,,Primeiro Tempo
+147,183,15,11,Gol,0,,Primeiro Tempo
+148,183,18,11,Gol,0,,Primeiro Tempo
+149,183,15,11,Gol,0,,Primeiro Tempo
+150,183,13,11,Gol,0,,Primeiro Tempo
+151,183,130,19,Gol,0,,Primeiro Tempo
+152,183,127,19,Gol,1,,Primeiro Tempo
+153,183,130,19,Gol,1,,Primeiro Tempo
+154,183,127,19,Gol,1,,Primeiro Tempo
+165,178,132,19,Gol,0,,Primeiro Tempo
+166,178,127,19,Gol,0,,Primeiro Tempo
+167,178,133,19,Gol,0,,Primeiro Tempo
+168,178,25,15,Gol,0,,Primeiro Tempo
+169,178,25,15,Gol,0,,Primeiro Tempo
+170,178,30,15,Gol,0,,Primeiro Tempo
+171,178,30,15,Gol,0,,Primeiro Tempo
+172,178,28,15,Gol,1,,Primeiro Tempo
+175,183,18,11,Assistência,0,,Segundo Tempo
+176,183,15,11,Assistência,0,,Segundo Tempo
+177,202,43,14,Gol,0,,Primeiro Tempo
+178,202,37,14,Gol,0,,Primeiro Tempo
+179,202,41,14,Gol,0,,Primeiro Tempo
+180,202,54,16,Gol,0,,Primeiro Tempo
+181,202,56,16,Assistência,0,,Primeiro Tempo
+182,202,35,14,Assistência,1,,Primeiro Tempo
+183,202,44,14,Assistência,1,,Primeiro Tempo
+184,202,41,14,Cartão Amarelo,0,,Segundo Tempo
+185,202,56,16,Cartão Amarelo,0,,Segundo Tempo
+199,205,76,18,Gol,0,,Primeiro Tempo
+200,205,75,18,Gol,0,,Primeiro Tempo
+201,205,77,18,Gol,1,,Primeiro Tempo
+202,205,109,20,Gol,1,,Primeiro Tempo
+203,205,101,20,Gol,1,,Primeiro Tempo
+204,205,106,20,Gol,1,,Primeiro Tempo
+205,201,86,13,Gol,0,,Primeiro Tempo
+206,201,86,13,Gol,0,,Primeiro Tempo
+207,201,86,13,Gol,0,,Primeiro Tempo
+208,201,93,13,Gol,0,,Primeiro Tempo
+209,201,87,13,Gol,1,,Primeiro Tempo
+210,201,129,19,Gol,1,,Primeiro Tempo
+211,201,129,19,Gol,1,,Primeiro Tempo
+212,201,134,19,Cartão Amarelo,1,,Primeiro Tempo
+213,201,133,19,Cartão Amarelo,2,,Primeiro Tempo
+214,201,94,13,Cartão Amarelo,2,,Primeiro Tempo
+215,199,65,12,Gol,0,,Primeiro Tempo
+216,199,65,12,Gol,0,,Primeiro Tempo
+217,199,65,12,Gol,0,,Primeiro Tempo
+218,199,116,17,Gol,1,,Primeiro Tempo
+219,199,116,17,Gol,1,,Primeiro Tempo
+220,199,121,17,Gol,1,,Primeiro Tempo
+221,199,114,17,Cartão Amarelo,2,,Primeiro Tempo
+222,199,121,17,Cartão Amarelo,2,,Primeiro Tempo
+223,199,70,12,Cartão Amarelo,2,,Primeiro Tempo
+224,196,65,12,Gol,0,,Primeiro Tempo
+225,196,67,12,Falta,1,,Primeiro Tempo
+226,196,71,12,Falta,3,,Primeiro Tempo
+227,196,61,12,Falta,9,,Primeiro Tempo
+228,196,67,12,Gol,10,,Primeiro Tempo
+229,196,65,12,Assistência,11,,Primeiro Tempo
+230,196,34,14,Falta,12,,Primeiro Tempo
+231,196,65,12,Falta,13,,Primeiro Tempo
+232,196,37,14,Gol,14,,Primeiro Tempo
+233,196,35,14,Falta,15,,Primeiro Tempo
+234,196,65,12,Gol,18,,Primeiro Tempo
+235,196,65,12,Gol,0,,Segundo Tempo
+236,196,62,12,Falta,7,,Segundo Tempo
+237,196,39,14,Falta,10,,Segundo Tempo
+238,196,44,14,Gol,13,,Segundo Tempo
+239,196,39,14,Assistência,13,,Segundo Tempo
+240,196,61,12,Assistência,17,,Segundo Tempo
+241,196,68,12,Gol,17,,Segundo Tempo
+242,196,43,14,Cartão Amarelo,21,,Segundo Tempo
+248,244,58,16,Falta,1,,Primeiro Tempo
+249,244,58,16,Falta,6,,Primeiro Tempo
+250,244,53,16,Falta,11,,Primeiro Tempo
+251,244,117,17,Falta,12,,Primeiro Tempo
+252,244,119,17,Falta,15,,Primeiro Tempo
+253,244,115,17,Cartão Amarelo,23,,Primeiro Tempo
+254,244,53,16,Falta,1,,Segundo Tempo
+255,244,116,17,Gol,1,,Segundo Tempo
+256,244,119,17,Falta,9,,Segundo Tempo
+257,244,114,17,Falta,9,,Segundo Tempo
+258,244,119,17,Assistência,11,,Segundo Tempo
+259,244,116,17,Gol,11,,Segundo Tempo
+260,244,56,16,Cartão Amarelo,14,,Segundo Tempo
+261,244,121,17,Gol,17,,Segundo Tempo
+262,244,57,16,Falta,19,,Segundo Tempo
+263,244,116,17,Falta,23,,Segundo Tempo
+264,244,119,17,Falta,25,,Segundo Tempo
+265,245,81,18,Falta,0,,Primeiro Tempo
+266,245,132,19,Falta,5,,Primeiro Tempo
+267,245,127,19,Assistência,7,,Primeiro Tempo
+268,245,131,19,Gol,8,,Primeiro Tempo
+269,245,75,18,Assistência,9,,Primeiro Tempo
+270,245,77,18,Gol,9,,Primeiro Tempo
+271,245,77,18,Falta,9,,Primeiro Tempo
+272,245,131,19,Falta,10,,Primeiro Tempo
+273,245,76,18,Gol,12,,Primeiro Tempo
+274,245,133,19,Falta,17,,Primeiro Tempo
+275,245,75,18,Falta,18,,Primeiro Tempo
+276,245,130,19,Falta,1,,Segundo Tempo
+277,245,79,18,Falta,3,,Segundo Tempo
+278,245,75,18,Gol,6,,Segundo Tempo
+279,245,84,18,Assistência,7,,Segundo Tempo
+280,245,133,19,Falta,8,,Segundo Tempo
+281,245,75,18,Gol,10,,Segundo Tempo
+282,245,75,18,Falta,16,,Segundo Tempo
+283,245,76,18,Assistência,17,,Segundo Tempo
+284,245,77,18,Gol,17,,Segundo Tempo
+285,245,131,19,Falta,18,,Segundo Tempo
+286,268,41,14,Gol,0,,Primeiro Tempo
+287,268,42,14,Gol,0,,Primeiro Tempo
+288,268,35,14,Gol,0,,Primeiro Tempo
+289,268,104,20,Gol,1,,Primeiro Tempo
+290,268,104,20,Gol,1,,Primeiro Tempo
+291,268,101,20,Gol,1,,Primeiro Tempo
+292,268,101,20,Gol,2,,Primeiro Tempo
+293,268,101,20,Gol,2,,Primeiro Tempo
+294,268,106,20,Gol,2,,Primeiro Tempo
+295,268,106,20,Gol,2,,Primeiro Tempo
+296,272,121,17,Gol,0,,Primeiro Tempo
+297,272,121,17,Gol,0,,Primeiro Tempo
+298,209,43,14,Falta,0,,Primeiro Tempo
+299,209,38,14,Cartão Amarelo,0,,Primeiro Tempo
+300,209,34,14,Falta,1,,Primeiro Tempo
+301,209,42,14,Assistência,1,,Primeiro Tempo
+302,209,38,14,Gol,1,,Primeiro Tempo
+303,209,43,14,Falta,1,,Primeiro Tempo
+304,209,47,14,Falta,2,,Primeiro Tempo
+305,209,42,14,Falta,2,,Primeiro Tempo
+306,209,41,14,Gol,2,,Primeiro Tempo
+307,209,37,14,Assistência,2,,Primeiro Tempo
+308,209,89,13,Gol,3,,Primeiro Tempo
+309,209,41,14,Gol,3,,Primeiro Tempo
+310,209,93,13,Gol,3,,Primeiro Tempo
+311,209,87,13,Assistência,3,,Primeiro Tempo
+312,209,41,14,Gol,3,,Primeiro Tempo
+313,209,91,13,Falta,4,,Primeiro Tempo
+314,209,93,13,Falta,4,,Primeiro Tempo
+315,209,91,13,Falta,4,,Primeiro Tempo
+316,209,95,13,Falta,4,,Primeiro Tempo
+317,209,41,14,Gol,5,,Primeiro Tempo
+318,209,44,14,Gol,5,,Primeiro Tempo
+319,209,38,14,Assistência,5,,Primeiro Tempo
+320,209,44,14,Falta,5,,Primeiro Tempo
+321,209,92,13,Falta,5,,Primeiro Tempo
+322,211,49,16,Cartão Amarelo,1,,Primeiro Tempo
+323,211,58,16,Gol,2,,Primeiro Tempo
+324,211,53,16,Gol,2,,Primeiro Tempo
+325,211,56,16,Gol,2,,Primeiro Tempo
+326,211,56,16,Gol,2,,Primeiro Tempo
+327,210,121,17,Gol,0,,Primeiro Tempo
+328,210,121,17,Gol,0,,Primeiro Tempo
+329,210,121,17,Gol,0,,Primeiro Tempo
+330,210,15,11,Gol,0,,Primeiro Tempo
+331,210,15,11,Gol,0,,Primeiro Tempo
+332,210,19,11,Gol,0,,Primeiro Tempo
+333,210,117,17,Cartão Amarelo,0,,Primeiro Tempo
+334,208,81,18,Gol,0,,Primeiro Tempo
+335,208,81,18,Cartão Amarelo,0,,Primeiro Tempo
+336,208,27,15,Gol,0,,Primeiro Tempo
+337,208,83,18,Cartão Amarelo,0,,Primeiro Tempo
+338,208,30,15,Gol,1,,Primeiro Tempo
+339,208,25,15,Gol,1,,Primeiro Tempo
+340,208,25,15,Gol,1,,Primeiro Tempo
+341,208,76,18,Gol,1,,Primeiro Tempo
+342,208,76,18,Gol,1,,Primeiro Tempo
+343,208,79,18,Gol,2,,Primeiro Tempo
+344,243,68,12,Gol,0,,Primeiro Tempo
+345,243,88,13,Gol,0,,Primeiro Tempo
+346,243,67,12,Gol,0,,Primeiro Tempo
+347,243,87,13,Gol,0,,Primeiro Tempo
+348,243,87,13,Gol,0,,Primeiro Tempo
+349,243,62,12,Gol,0,,Primeiro Tempo
+350,243,65,12,Gol,1,,Primeiro Tempo
+351,243,65,12,Gol,1,,Primeiro Tempo
+352,243,65,12,Gol,1,,Primeiro Tempo
+353,242,29,15,Cartão Amarelo,0,,Primeiro Tempo
+354,242,107,20,Cartão Amarelo,0,,Primeiro Tempo
+355,242,107,20,Cartão Azul,1,,Primeiro Tempo
+356,242,23,15,Gol,1,,Primeiro Tempo
+357,242,109,20,Gol,1,,Primeiro Tempo
+358,242,101,20,Gol,1,,Primeiro Tempo
+359,242,101,20,Gol,1,,Primeiro Tempo
+360,242,101,20,Gol,1,,Primeiro Tempo
+361,242,30,15,Gol,2,,Primeiro Tempo
+362,242,106,20,Gol,4,,Primeiro Tempo
+363,242,25,15,Gol,4,,Primeiro Tempo
+364,242,25,15,Gol,5,,Primeiro Tempo
+365,211,149,16,Gol,0,,Segundo Tempo
+366,211,149,16,Gol,0,,Segundo Tempo
+367,211,149,16,Gol,0,,Segundo Tempo
+368,211,149,16,Cartão Amarelo,0,,Segundo Tempo
+369,241,38,14,Assistência,1,,Primeiro Tempo
+370,241,41,14,Gol,2,,Primeiro Tempo
+371,241,44,14,Falta,2,,Primeiro Tempo
+372,241,43,14,Falta,3,,Primeiro Tempo
+373,241,38,14,Falta,5,,Primeiro Tempo
+374,241,19,11,Falta,9,,Primeiro Tempo
+375,241,37,14,Falta,10,,Primeiro Tempo
+376,241,43,14,Falta,14,,Primeiro Tempo
+377,241,19,11,Falta,16,,Primeiro Tempo
+378,241,38,14,Falta,17,,Primeiro Tempo
+379,241,13,11,Falta,19,,Primeiro Tempo
+380,241,44,14,Assistência,19,,Primeiro Tempo
+381,241,41,14,Gol,20,,Primeiro Tempo
+382,241,20,11,Gol,21,,Primeiro Tempo
+383,241,21,11,Falta,22,,Primeiro Tempo
+384,241,39,14,Falta,2,,Segundo Tempo
+385,241,39,14,Falta,3,,Segundo Tempo
+386,241,18,11,Falta,4,,Segundo Tempo
+387,241,37,14,Assistência,8,,Segundo Tempo
+389,241,41,14,Gol,8,,Segundo Tempo
+390,241,21,11,Falta,8,,Segundo Tempo
+391,241,43,14,Falta,11,,Segundo Tempo
+392,241,43,14,Cartão Amarelo,12,,Segundo Tempo
+393,241,42,14,Falta,13,,Segundo Tempo
+394,241,18,11,Falta,16,,Segundo Tempo
+395,241,41,14,Falta,17,,Segundo Tempo
+396,241,21,11,Falta,20,,Segundo Tempo
+397,241,21,11,Cartão Amarelo,20,,Segundo Tempo
+398,241,16,11,Cartão Azul,24,,Segundo Tempo
+400,241,18,11,Gol,0,,Tempo Extra
+401,246,86,13,Assistência,4,,Primeiro Tempo
+402,246,91,13,Gol,4,,Primeiro Tempo
+403,246,96,13,Gol,5,,Primeiro Tempo
+404,246,87,13,Assistência,5,,Primeiro Tempo
+405,246,96,13,Gol,8,,Primeiro Tempo
+406,246,52,16,Gol,8,,Primeiro Tempo
+407,246,60,16,Assistência,9,,Primeiro Tempo
+408,246,91,13,Assistência,12,,Primeiro Tempo
+409,246,87,13,Gol,12,,Primeiro Tempo
+410,246,90,13,Falta,23,,Primeiro Tempo
+411,246,54,16,Assistência,4,,Segundo Tempo
+412,246,51,16,Gol,5,,Segundo Tempo
+413,246,86,13,Gol,5,,Segundo Tempo
+414,246,51,16,Gol,7,,Segundo Tempo
+416,246,56,16,Assistência,9,,Segundo Tempo
+417,246,57,16,Falta,9,,Segundo Tempo
+418,246,57,16,Gol,10,,Segundo Tempo
+419,246,56,16,Assistência,10,,Segundo Tempo
+420,246,86,13,Gol,11,,Segundo Tempo
+421,246,91,13,Falta,19,,Segundo Tempo
+422,246,56,16,Gol,19,,Segundo Tempo
+424,247,121,17,Gol,2,,Primeiro Tempo
+425,247,117,17,Assistência,2,,Primeiro Tempo
+426,247,119,17,Falta,4,,Primeiro Tempo
+427,247,115,17,Gol,4,,Primeiro Tempo
+428,247,119,17,Assistência,7,,Primeiro Tempo
+429,247,121,17,Gol,7,,Primeiro Tempo
+431,247,121,17,Assistência,8,,Primeiro Tempo
+432,247,117,17,Gol,8,,Primeiro Tempo
+433,247,74,18,Falta,10,,Primeiro Tempo
+434,247,115,17,Falta,11,,Primeiro Tempo
+435,247,117,17,Falta,16,,Primeiro Tempo
+436,247,121,17,Gol,18,,Primeiro Tempo
+437,247,112,17,Falta,20,,Primeiro Tempo
+438,248,27,15,Falta,1,,Primeiro Tempo
+439,248,27,15,Falta,10,,Primeiro Tempo
+440,248,70,12,Falta,11,,Primeiro Tempo
+441,248,29,15,Falta,12,,Primeiro Tempo
+442,248,61,12,Assistência,13,,Primeiro Tempo
+443,248,70,12,Gol,13,,Primeiro Tempo
+444,248,62,12,Assistência,14,,Primeiro Tempo
+445,248,70,12,Gol,14,,Primeiro Tempo
+446,248,70,12,Falta,18,,Primeiro Tempo
+447,248,65,12,Assistência,19,,Primeiro Tempo
+448,248,62,12,Gol,20,,Primeiro Tempo
+449,248,62,12,Falta,20,,Primeiro Tempo
+450,248,23,15,Falta,22,,Primeiro Tempo
+451,248,64,12,Cartão Amarelo,0,,Tempo Extra
+452,248,24,15,Gol,0,,Tempo Extra
+453,248,29,15,Falta,4,,Tempo Extra
+454,248,30,15,Cartão Amarelo,7,,Tempo Extra
+455,248,68,12,Falta,11,,Tempo Extra
+456,248,65,12,Assistência,14,,Tempo Extra
+457,248,71,12,Gol,14,,Tempo Extra
+458,248,71,12,Falta,19,,Tempo Extra
+460,278,29,15,Cartão Amarelo,0,,Primeiro Tempo
+461,278,27,15,Gol,0,,Primeiro Tempo
+462,278,15,11,Gol,0,,Primeiro Tempo
+463,278,15,11,Gol,0,,Primeiro Tempo
+464,278,16,11,Cartão Amarelo,0,,Primeiro Tempo
+465,278,16,11,Cartão Azul,0,,Primeiro Tempo
+466,278,21,11,Cartão Amarelo,1,,Primeiro Tempo
+467,278,18,11,Assistência,1,,Primeiro Tempo
+468,278,21,11,Assistência,1,,Primeiro Tempo
+469,177,77,18,Falta,9,,Primeiro Tempo
+470,177,77,18,Falta,20,,Primeiro Tempo
+471,177,70,12,Gol,25,,Primeiro Tempo
+472,177,61,12,Assistência,25,,Primeiro Tempo
+473,177,64,12,Falta,5,,Segundo Tempo
+474,177,73,18,Gol,13,,Segundo Tempo
+475,177,71,12,Gol,17,,Segundo Tempo
+476,177,73,18,Falta,18,,Segundo Tempo
+477,177,63,12,Cartão Amarelo,21,,Segundo Tempo
+478,176,93,13,Falta,3,,Primeiro Tempo
+479,176,121,17,Assistência,6,,Primeiro Tempo
+480,176,115,17,Gol,6,,Primeiro Tempo
+481,176,119,17,Falta,6,,Primeiro Tempo
+482,176,121,17,Assistência,9,,Primeiro Tempo
+483,176,117,17,Gol,10,,Primeiro Tempo
+484,176,93,13,Assistência,11,,Primeiro Tempo
+485,176,86,13,Gol,11,,Primeiro Tempo
+486,176,121,17,Assistência,13,,Primeiro Tempo
+487,176,117,17,Gol,14,,Primeiro Tempo
+488,176,119,17,Falta,14,,Primeiro Tempo
+489,176,95,13,Gol,15,,Primeiro Tempo
+490,176,116,17,Gol,17,,Primeiro Tempo
+491,176,114,17,Assistência,17,,Primeiro Tempo
+492,176,119,17,Cartão Amarelo,20,,Primeiro Tempo
+493,176,86,13,Gol,20,,Primeiro Tempo
+494,176,112,17,Gol,24,,Primeiro Tempo
+495,176,121,17,Assistência,24,,Primeiro Tempo
+496,176,112,17,Assistência,26,,Primeiro Tempo
+497,176,116,17,Gol,26,,Primeiro Tempo
+498,176,121,17,Gol,5,,Segundo Tempo
+499,176,121,17,Gol,5,,Segundo Tempo
+500,176,112,17,Assistência,5,,Segundo Tempo
+501,176,95,13,Cartão Amarelo,6,,Segundo Tempo
+502,212,109,20,Falta,7,,Primeiro Tempo
+503,212,99,20,Falta,8,,Primeiro Tempo
+504,212,65,12,Gol,8,,Primeiro Tempo
+505,212,67,12,Gol,9,,Primeiro Tempo
+506,212,106,20,Gol,11,,Primeiro Tempo
+507,212,109,20,Assistência,11,,Primeiro Tempo
+508,212,104,20,Falta,17,,Primeiro Tempo
+509,212,106,20,Assistência,22,,Primeiro Tempo
+510,212,101,20,Gol,22,,Primeiro Tempo
+511,212,104,20,Falta,24,,Primeiro Tempo
+512,212,65,12,Gol,24,,Primeiro Tempo
+513,212,101,20,Gol,2,,Segundo Tempo
+514,212,99,20,Falta,3,,Segundo Tempo
+515,212,71,12,Cartão Amarelo,5,,Segundo Tempo
+516,212,106,20,Assistência,7,,Segundo Tempo
+517,212,101,20,Gol,7,,Segundo Tempo
+518,212,99,20,Falta,10,,Segundo Tempo
+519,212,62,12,Falta,12,,Segundo Tempo
+520,212,62,12,Cartão Amarelo,12,,Segundo Tempo
+521,212,99,20,Falta,13,,Segundo Tempo
+522,212,71,12,Falta,14,,Segundo Tempo
+523,212,104,20,Gol,15,,Segundo Tempo
+524,212,71,12,Assistência,16,,Segundo Tempo
+525,212,67,12,Gol,16,,Segundo Tempo
+526,212,62,12,Falta,20,,Segundo Tempo
+527,212,65,12,Gol,22,,Segundo Tempo
+528,212,67,12,Assistência,22,,Segundo Tempo
+529,212,72,12,Melhor em Campo,25,,Segundo Tempo
+530,194,81,18,Falta,1,,Primeiro Tempo
+531,194,83,18,Falta,11,,Primeiro Tempo
+532,194,90,13,Cartão Amarelo,19,,Primeiro Tempo
+533,194,82,18,Falta,23,,Primeiro Tempo
+534,194,76,18,Falta,0,,Segundo Tempo
+535,194,87,13,Falta,2,,Segundo Tempo
+536,194,83,18,Falta,6,,Segundo Tempo
+537,194,81,18,Falta,6,,Segundo Tempo
+538,194,81,18,Cartão Amarelo,8,,Segundo Tempo
+539,194,91,13,Falta,10,,Segundo Tempo
+540,194,98,13,Cartão Azul,15,,Segundo Tempo
+541,194,93,13,Falta,19,,Segundo Tempo
+542,194,93,13,Falta,19,,Segundo Tempo
+543,194,81,18,Cartão Azul,21,,Segundo Tempo
+544,194,87,13,Cartão Azul,21,,Segundo Tempo
+545,194,76,18,Falta,25,,Segundo Tempo
+546,194,85,18,Melhor em Campo,26,,Segundo Tempo
+547,255,71,12,Assistência,7,,Primeiro Tempo
+548,255,61,12,Gol,8,,Primeiro Tempo
+549,255,70,12,Falta,9,,Primeiro Tempo
+550,255,21,11,Falta,19,,Primeiro Tempo
+551,255,71,12,Falta,23,,Primeiro Tempo
+552,255,15,11,Falta,1,,Segundo Tempo
+553,255,70,12,Gol,4,,Segundo Tempo
+554,255,66,12,Falta,11,,Segundo Tempo
+555,255,65,12,Cartão Amarelo,13,,Segundo Tempo
+556,255,61,12,Gol,13,,Segundo Tempo
+557,255,19,11,Falta,16,,Segundo Tempo
+558,255,15,11,Falta,20,,Segundo Tempo
+559,255,65,12,Gol,20,,Segundo Tempo
+560,255,19,11,Falta,21,,Segundo Tempo
+561,255,67,12,Gol,22,,Segundo Tempo
+562,255,65,12,Assistência,22,,Segundo Tempo
+563,255,19,11,Cartão Amarelo,23,,Segundo Tempo
+564,255,61,12,Melhor em Campo,24,,Segundo Tempo
+565,251,149,16,Gol,11,,Primeiro Tempo
+566,251,76,18,Falta,11,,Primeiro Tempo
+567,251,56,16,Gol,17,,Primeiro Tempo
+568,251,53,16,Falta,18,,Primeiro Tempo
+569,251,73,18,Assistência,21,,Primeiro Tempo
+570,251,82,18,Gol,21,,Primeiro Tempo
+571,251,84,18,Falta,21,,Primeiro Tempo
+572,251,79,18,Falta,23,,Primeiro Tempo
+573,251,51,16,Gol,24,,Primeiro Tempo
+575,251,52,16,Cartão Amarelo,25,,Primeiro Tempo
+576,251,54,16,Assistência,0,,Segundo Tempo
+577,251,79,18,Gol,6,,Segundo Tempo
+578,251,75,18,Assistência,7,,Segundo Tempo
+579,251,53,16,Falta,7,,Segundo Tempo
+580,251,58,16,Falta,10,,Segundo Tempo
+581,251,76,18,Falta,16,,Segundo Tempo
+582,251,58,16,Falta,16,,Segundo Tempo
+583,251,75,18,Falta,19,,Segundo Tempo
+584,251,75,18,Cartão Amarelo,19,,Segundo Tempo
+585,251,73,18,Falta,22,,Segundo Tempo
+586,251,75,18,Gol,25,,Segundo Tempo
+587,251,73,18,Assistência,25,,Segundo Tempo
+589,251,56,16,Assistência,26,,Segundo Tempo
+590,251,58,16,Gol,26,,Segundo Tempo
+591,251,52,16,Cartão Amarelo,26,,Segundo Tempo
+592,251,52,16,Cartão Azul,27,,Segundo Tempo
+593,252,30,15,Gol,6,,Primeiro Tempo
+594,252,28,15,Assistência,6,,Primeiro Tempo
+595,252,28,15,Falta,7,,Primeiro Tempo
+596,252,26,15,Assistência,8,,Primeiro Tempo
+597,252,25,15,Gol,8,,Primeiro Tempo
+598,252,26,15,Assistência,14,,Primeiro Tempo
+599,252,25,15,Gol,14,,Primeiro Tempo
+600,252,25,15,Assistência,16,,Primeiro Tempo
+601,252,30,15,Gol,16,,Primeiro Tempo
+602,252,25,15,Gol,19,,Primeiro Tempo
+603,252,22,15,Assistência,1,,Segundo Tempo
+604,252,25,15,Gol,1,,Segundo Tempo
+605,252,30,15,Assistência,5,,Segundo Tempo
+606,252,23,15,Gol,5,,Segundo Tempo
+607,252,86,13,Gol,7,,Segundo Tempo
+608,252,22,15,Assistência,9,,Segundo Tempo
+609,252,23,15,Gol,9,,Segundo Tempo
+610,252,25,15,Gol,11,,Segundo Tempo
+611,252,30,15,Assistência,12,,Segundo Tempo
+612,252,25,15,Assistência,12,,Segundo Tempo
+613,252,30,15,Gol,12,,Segundo Tempo
+614,252,26,15,Gol,16,,Segundo Tempo
+616,252,30,15,Assistência,16,,Segundo Tempo
+617,253,43,14,Falta,16,,Primeiro Tempo
+618,253,43,14,Falta,16,,Primeiro Tempo
+619,253,41,14,Falta,0,,Segundo Tempo
+620,253,35,14,Assistência,0,,Segundo Tempo
+621,253,39,14,Gol,1,,Segundo Tempo
+622,253,41,14,Gol,1,,Segundo Tempo
+623,253,117,17,Falta,1,,Segundo Tempo
+624,253,121,17,Gol,1,,Segundo Tempo
+625,253,116,17,Falta,3,,Segundo Tempo
+626,253,43,14,Cartão Amarelo,3,,Segundo Tempo
+627,253,38,14,Falta,5,,Segundo Tempo
+628,253,116,17,Gol,16,,Segundo Tempo
+629,253,118,17,Assistência,16,,Segundo Tempo
+630,253,37,14,Falta,16,,Segundo Tempo
+631,253,37,14,Assistência,23,,Segundo Tempo
+632,253,41,14,Gol,23,,Segundo Tempo
+633,253,39,14,Gol,26,,Segundo Tempo
+634,253,39,14,Cartão Amarelo,26,,Segundo Tempo
+635,253,41,14,Falta,27,,Segundo Tempo
+636,253,37,14,Gol,34,,Segundo Tempo
+637,253,35,14,Assistência,35,,Segundo Tempo
+638,253,37,14,Gol,35,,Segundo Tempo
+639,253,121,17,Gol,35,,Segundo Tempo
+640,253,116,17,Falta,36,,Segundo Tempo
+641,253,47,14,Melhor em Campo,37,,Segundo Tempo
+642,265,78,18,Falta,7,,Primeiro Tempo
+643,265,73,18,Falta,7,,Primeiro Tempo
+644,265,21,11,Gol,8,,Primeiro Tempo
+645,265,15,11,Falta,11,,Primeiro Tempo
+646,265,83,18,Falta,13,,Primeiro Tempo
+647,265,78,18,Falta,13,,Primeiro Tempo
+648,265,19,11,Falta,23,,Primeiro Tempo
+649,265,78,18,Falta,24,,Primeiro Tempo
+650,265,78,18,Gol,3,,Segundo Tempo
+651,265,78,18,Gol,8,,Segundo Tempo
+652,265,16,11,Assistência,20,,Segundo Tempo
+653,265,20,11,Gol,20,,Segundo Tempo
+654,265,19,11,Falta,21,,Segundo Tempo
+655,265,78,18,Gol,22,,Segundo Tempo
+656,265,19,11,Falta,24,,Segundo Tempo
+658,256,25,15,Gol,10,,Primeiro Tempo
+659,256,53,16,Falta,10,,Primeiro Tempo
+660,256,25,15,Gol,18,,Primeiro Tempo
+661,256,25,15,Gol,19,,Primeiro Tempo
+662,256,30,15,Assistência,19,,Primeiro Tempo
+663,256,58,16,Falta,19,,Primeiro Tempo
+664,256,58,16,Cartão Amarelo,19,,Primeiro Tempo
+665,256,26,15,Gol,21,,Primeiro Tempo
+666,256,30,15,Assistência,21,,Primeiro Tempo
+667,256,54,16,Assistência,23,,Primeiro Tempo
+668,256,57,16,Gol,23,,Primeiro Tempo
+669,256,25,15,Gol,3,,Segundo Tempo
+670,256,25,15,Assistência,4,,Segundo Tempo
+671,256,30,15,Gol,5,,Segundo Tempo
+672,256,30,15,Assistência,5,,Segundo Tempo
+673,256,56,16,Gol,5,,Segundo Tempo
+674,256,50,16,Gol,7,,Segundo Tempo
+675,256,26,15,Gol,14,,Segundo Tempo
+676,256,28,15,Gol,16,,Segundo Tempo
+677,256,25,15,Gol,18,,Segundo Tempo
+678,256,30,15,Assistência,19,,Segundo Tempo
+679,256,30,15,Assistência,19,,Segundo Tempo
+680,256,54,16,Assistência,19,,Segundo Tempo
+681,256,56,16,Gol,19,,Segundo Tempo
+695,250,104,20,Gol,0,,Primeiro Tempo
+696,250,104,20,Gol,0,,Primeiro Tempo
+697,250,104,20,Gol,0,,Primeiro Tempo
+698,250,104,20,Gol,0,,Primeiro Tempo
+699,250,104,20,Assistência,0,,Primeiro Tempo
+700,250,109,20,Gol,1,,Primeiro Tempo
+701,250,106,20,Gol,1,,Primeiro Tempo
+702,250,99,20,Assistência,1,,Primeiro Tempo
+703,250,99,20,Assistência,2,,Primeiro Tempo
+704,250,21,11,Gol,2,,Primeiro Tempo
+705,250,19,11,Cartão Amarelo,2,,Primeiro Tempo
+706,250,108,20,Falta,3,,Primeiro Tempo
+707,250,106,20,Falta,3,,Primeiro Tempo
+708,250,99,20,Falta,3,,Primeiro Tempo
+709,250,20,11,Falta,3,,Primeiro Tempo
+710,250,19,11,Falta,4,,Primeiro Tempo
+711,3001,2001,1001,Cartão Amarelo,0,,Primeiro Set
+712,3001,2014,1001,Ponto Saque,1,,Primeiro Set
+714,258,15,11,Gol,0,,Primeiro Tempo
+715,258,15,11,Gol,0,,Primeiro Tempo
+716,258,15,11,Assistência,0,,Primeiro Tempo
+717,258,17,11,Gol,1,,Primeiro Tempo
+718,258,20,11,Assistência,1,,Primeiro Tempo
+719,258,20,11,Gol,1,,Primeiro Tempo
+720,258,21,11,Gol,1,,Primeiro Tempo
+721,258,21,11,Gol,2,,Primeiro Tempo
+722,258,21,11,Gol,2,,Primeiro Tempo
+723,258,21,11,Assistência,2,,Primeiro Tempo
+724,258,21,11,Assistência,2,,Primeiro Tempo
+725,258,11,11,Gol,2,,Primeiro Tempo
+726,258,93,13,Gol,2,,Primeiro Tempo
+727,258,93,13,Assistência,3,,Primeiro Tempo
+728,258,86,13,Gol,3,,Primeiro Tempo
+729,258,93,13,Gol,3,,Primeiro Tempo
+730,258,87,13,Gol,3,,Primeiro Tempo
+731,258,87,13,Assistência,4,,Primeiro Tempo
+732,259,121,17,Gol,0,,Tempo Extra
+733,259,121,17,Gol,0,,Tempo Extra
+734,259,121,17,Gol,0,,Tempo Extra
+735,259,121,17,Assistência,0,,Tempo Extra
+736,259,119,17,Gol,1,,Tempo Extra
+737,259,119,17,Assistência,1,,Tempo Extra
+738,259,112,17,Gol,1,,Tempo Extra
+739,259,112,17,Assistência,1,,Tempo Extra
+740,257,39,14,Gol,2,,Primeiro Tempo
+741,257,39,14,Gol,3,,Primeiro Tempo
+742,257,41,14,Gol,3,,Primeiro Tempo
+743,257,37,14,Gol,3,,Primeiro Tempo
+744,257,40,14,Gol,3,,Primeiro Tempo
+745,257,34,14,Gol,3,,Primeiro Tempo
+746,257,76,18,Gol,4,,Primeiro Tempo
+747,257,76,18,Gol,4,,Primeiro Tempo
+748,257,2021,18,Gol,4,,Primeiro Tempo
+749,257,77,18,Gol,4,,Primeiro Tempo
+750,262,64,12,Cartão Amarelo,0,,Primeiro Tempo
+751,262,58,16,Cartão Azul,0,,Primeiro Tempo
+752,262,61,12,Gol,0,,Primeiro Tempo
+753,262,71,12,Gol,1,,Primeiro Tempo
+754,262,65,12,Gol,1,,Primeiro Tempo
+755,262,65,12,Gol,1,,Primeiro Tempo
+756,264,37,14,Gol,2,,Primeiro Tempo
+757,264,24,15,Gol,5,,Primeiro Tempo
+758,264,30,15,Assistência,5,,Primeiro Tempo
+760,264,37,14,Gol,10,,Primeiro Tempo
+761,264,35,14,Assistência,10,,Primeiro Tempo
+762,264,23,15,Gol,11,,Primeiro Tempo
+763,264,24,15,Assistência,11,,Primeiro Tempo
+764,264,40,14,Assistência,12,,Primeiro Tempo
+765,264,37,14,Gol,12,,Primeiro Tempo
+766,264,40,14,Gol,14,,Primeiro Tempo
+767,264,41,14,Assistência,14,,Primeiro Tempo
+768,264,40,14,Falta,17,,Primeiro Tempo
+769,264,25,15,Gol,17,,Primeiro Tempo
+770,264,37,14,Gol,19,,Primeiro Tempo
+771,264,37,14,Falta,19,,Primeiro Tempo
+772,264,30,15,Gol,24,,Primeiro Tempo
+773,264,41,14,Falta,24,,Primeiro Tempo
+774,264,34,14,Cartão Amarelo,4,,Segundo Tempo
+775,264,30,15,Gol,5,,Segundo Tempo
+776,264,37,14,Gol,8,,Segundo Tempo
+777,264,23,15,Gol,9,,Segundo Tempo
+778,264,41,14,Gol,11,,Segundo Tempo
+779,264,37,14,Assistência,11,,Segundo Tempo
+780,264,35,14,Cartão Amarelo,11,,Segundo Tempo
+781,264,25,15,Falta,14,,Segundo Tempo
+782,264,25,15,Gol,14,,Segundo Tempo
+783,264,30,15,Assistência,14,,Segundo Tempo
+784,264,38,14,Gol,16,,Segundo Tempo
+785,264,37,14,Assistência,16,,Segundo Tempo
+786,264,30,15,Gol,16,,Segundo Tempo
+787,264,25,15,Assistência,17,,Segundo Tempo
+788,264,41,14,Gol,22,,Segundo Tempo
+799,3002,2019,1002,Ponto de Bloqueio,5,,3º Set
+800,3002,2019,1002,Ponto de Bloqueio,5,,3º Set
+801,3002,2020,1002,Ponto de Saque,5,,3º Set
+802,3002,2019,1002,Ponto de Bloqueio,49,,4º Set
+804,3002,2012,1001,Ponto de Saque,0,,5º Set
+805,3002,2009,1001,Ponto de Saque,0,,5º Set
+806,3002,2014,1001,Ponto de Saque,0,,5º Set
+807,3002,2014,1001,Ponto de Bloqueio,0,,5º Set
+808,3002,2009,1001,Ponto de Saque,1,,5º Set
+823,3016,21,11,Assistência,0,,Primeiro Tempo
+824,3016,15,11,Gol,0,,Primeiro Tempo
+825,3016,104,20,Gol,0,,Primeiro Tempo
+826,3016,104,20,Gol,0,,Primeiro Tempo
+827,3016,106,20,Gol,0,,Primeiro Tempo
+828,3015,117,17,Gol,0,,Primeiro Tempo
+829,3015,117,17,Gol,0,,Primeiro Tempo
+830,3015,117,17,Gol,0,,Primeiro Tempo
+831,3015,121,17,Gol,0,,Primeiro Tempo
+832,3015,25,15,Gol,0,,Primeiro Tempo
+833,3015,26,15,Gol,0,,Primeiro Tempo
+834,3014,61,12,Falta,3,,Primeiro Tempo
+836,3014,61,12,Assistência,7,,Primeiro Tempo
+837,3014,61,12,Falta,9,,Primeiro Tempo
+838,3014,65,12,Gol,13,,Primeiro Tempo
+839,3014,67,12,Gol,13,,Primeiro Tempo
+840,3014,68,12,Gol,17,,Primeiro Tempo
+841,3014,67,12,Gol,25,,Primeiro Tempo
+842,3014,65,12,Falta,0,,Segundo Tempo
+843,3014,95,13,Falta,1,,Segundo Tempo
+844,3014,65,12,Gol,6,,Segundo Tempo
+845,3014,62,12,Gol,8,,Segundo Tempo
+846,3014,65,12,Assistência,8,,Segundo Tempo
+847,3014,87,13,Gol,13,,Segundo Tempo
+848,3014,65,12,Gol,13,,Segundo Tempo
+849,3014,70,12,Gol,17,,Segundo Tempo
+850,3013,37,14,Gol,16,,Primeiro Tempo
+851,3013,41,14,Assistência,16,,Primeiro Tempo
+852,3013,41,14,Gol,24,,Primeiro Tempo
+853,3013,74,18,Assistência,4,,Segundo Tempo
+854,3013,75,18,Gol,5,,Segundo Tempo
+855,3013,47,14,Cartão Amarelo,6,,Segundo Tempo
+856,3013,43,14,Cartão Azul,12,,Segundo Tempo
+857,3013,41,14,Cartão Amarelo,13,,Segundo Tempo
+858,3013,43,14,Cartão Amarelo,13,,Segundo Tempo
+859,3013,38,14,Gol,21,,Segundo Tempo
+860,3013,84,18,Gol,22,,Segundo Tempo
+867,3012,2012,1001,Ponto de Saque,0,,1º Set
+868,3012,2016,1002,Ponto de Bloqueio,0,,1º Set
+869,3012,2014,1001,Ponto de Bloqueio,1,,1º Set
+870,3012,2018,1002,Ponto de Bloqueio,1,,1º Set
+871,3019,65,12,Gol,0,,Primeiro Tempo
+872,3019,106,20,Gol,0,,Primeiro Tempo
+873,3019,65,12,Assistência,2,,Primeiro Tempo
+874,3019,67,12,Gol,2,,Primeiro Tempo
+875,3019,65,12,Gol,3,,Primeiro Tempo
+876,3018,121,17,Assistência,12,,Primeiro Tempo
+877,3018,116,17,Gol,12,,Primeiro Tempo
+878,3018,44,14,Assistência,16,,Primeiro Tempo
+879,3018,43,14,Gol,16,,Primeiro Tempo
+880,3018,121,17,Gol,19,,Primeiro Tempo
+881,3018,37,14,Gol,20,,Primeiro Tempo
+882,3018,116,17,Assistência,21,,Primeiro Tempo
+883,3018,117,17,Gol,21,,Primeiro Tempo
+884,3012,2002,1002,Cartão Amarelo,0,,1º Set
+885,3012,2019,1002,Ponto de Saque,0,,1º Set
+886,3012,2019,1002,Cartão Amarelo,1,,1º Set
+887,3012,2009,1001,Ponto de Saque,1,,1º Set
+888,3012,2002,1002,Ponto de Saque,0,,2º Set
+889,3012,2019,1002,Ponto Normal,0,,2º Set
+890,3012,2015,1002,Ponto de Bloqueio,0,,2º Set
+891,3012,2013,1001,Ponto de Bloqueio,0,,2º Set
+892,3021,101,20,Falta,7,,Primeiro Tempo
+893,3021,100,20,Falta,21,,Primeiro Tempo
+894,3021,47,14,Cartão Amarelo,2,,Segundo Tempo
+895,3021,101,20,Gol,19,,Segundo Tempo
+896,3021,101,20,Gol,19,,Segundo Tempo
+897,3021,102,20,Assistência,0,,Tempo Extra
+898,3020,65,12,Cartão Amarelo,5,,Primeiro Tempo
+899,3020,121,17,Gol,14,,Primeiro Tempo
+900,3020,121,17,Assistência,23,,Primeiro Tempo
+901,3020,116,17,Gol,24,,Primeiro Tempo
+902,3020,121,17,Assistência,1,,Segundo Tempo
+903,3020,117,17,Gol,1,,Segundo Tempo
+904,3020,61,12,Gol,16,,Segundo Tempo
+905,3020,65,12,Assistência,17,,Segundo Tempo
+906,3020,121,17,Cartão Amarelo,17,,Segundo Tempo
+907,3020,121,17,Cartão Azul,18,,Segundo Tempo
+908,3020,121,17,Cartão Vermelho,18,,Segundo Tempo

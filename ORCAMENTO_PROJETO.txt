@@ -1,0 +1,45 @@
+ORÇAMENTO ANALÍTICO DE DESENVOLVIMENTO - SUPER APP ESPORTIVO
+
+--------------------------------------------------------------------------------
+1. DESENVOLVIMENTO MOBILE (FRONTEND)
+--------------------------------------------------------------------------------
+1.1. Fundação do App (Setup, Navegação, Redux): R$ 1.500,00
+1.2. Design System e UX/UI (Componentes Visuais): R$ 1.000,00
+1.3. Módulo de Tabelas, Jogos e Detalhes (Frontend): R$ 1.000,00
+1.4. Agenda Inteligente e Integração de Calendário: R$ 1.000,00
+
+--------------------------------------------------------------------------------
+2. DESENVOLVIMENTO BACKEND E CORE (REGRAS DE NEGÓCIO)
+--------------------------------------------------------------------------------
+2.1. Módulo de Autenticação e Segurança (JWT/Sanctum): R$ 1.000,00
+2.2. Core de Competições (Modelagem de Dados Complexa): R$ 4.500,00
+2.3. Adaptação Multi-Esportes (Regras Vôlei vs Futebol): R$ 1.000,00
+2.4. Súmula Digital e Processamento de Placar em Tempo Real: R$ 1.000,00
+2.5. Algoritmo de Sorteio Automático de Chaves e Tabelas: R$ 800,00
+2.6. Infraestrutura Multi-Clube (SaaS - Isolamento de Dados): R$ 1.000,00
+2.7. API de Personalização Visual (Temas Dinâmicos/Whitelabel): R$ 1.500,00
+
+--------------------------------------------------------------------------------
+3. MÓDULO FINANCEIRO E INTEGRAÇÕES
+--------------------------------------------------------------------------------
+3.1. E-commerce e Gestão de Produtos/Inscrições: R$ 1.000,00
+3.2. Configuração de Webhooks de Pagamento (Baixa Automática Pix/Cartão): R$ 1.500,00
+3.3. Validação de Documentos via IA/OCR (Prevenção de Fraudes): R$ 1.500,00
+
+--------------------------------------------------------------------------------
+4. GESTÃO E ADMINISTRAÇÃO
+--------------------------------------------------------------------------------
+4.1. Painel Administrativo Web (Dashboard do Gestor): R$ 1.200,00
+
+--------------------------------------------------------------------------------
+5. INFRAESTRUTURA, DEVOPS E SERVIÇOS
+--------------------------------------------------------------------------------
+5.1. Configuração de Servidores e Containers (Docker): R$ 1.000,00
+5.2. Rotinas de Backup Automático e Segurança de Dados (Redundância): R$ 1.300,00
+5.3. Publicação e Configuração nas Lojas (Apple App Store / Google Play): R$ 1.200,00
+5.4. Migração e Tratamento de Dados Legados (Importação SQL): R$ 1.000,00
+
+--------------------------------------------------------------------------------
+TOTAL GERAL DO INVESTIMENTO: R$ 25.000,00
+--------------------------------------------------------------------------------
+Observação: A granularidade dos itens reflete a complexidade técnica individual de cada micro-serviço e componente necessário para a operação robusta da plataforma.

@@ -1,0 +1,106 @@
+ESCOPO DO SISTEMA - SUPER APP ESPORTIVO
+VERSÃO FINAL DE CONTRATO
+
+Este documento consolida todas as funcionalidades, modalidades e regras de negócio que o sistema entregará. Serve como "Bíblia do Produto" para alinhar expectativas entre desenvolvedores e cliente final.
+
+--------------------------------------------------------------------------------
+1. VISÃO GERAL DO PRODUTO
+--------------------------------------------------------------------------------
+O Super App Esportivo é uma plataforma "White-Label" (personalizável) para Gestão de Competições Esportivas.
+Ele atende três públicos simultaneamente:
+1. O Gestor (Web Admin): Cria campeonatos, tabelas, gerencia financeiro.
+2. O Juiz/Mesário (App Admin): Lança placar ao vivo (Súmula Digital) e valida entrada (QR Code).
+3. O Atleta/Torcedor (Super App): Vê estatísticas, compra produtos, se inscreve e acompanha jogos.
+
+--------------------------------------------------------------------------------
+2. CATÁLOGO DE MODALIDADES SUPORTADAS (POLIMORFISMO)
+--------------------------------------------------------------------------------
+O sistema é "Multi-Esporte". Ele suporta regras de pontuação distintas.
+
+GRUPO A: ESPORTES DE GOLS (FUTEBOL)
+- Lógica: Placar simples (X vs Y), Controle de Cartões, Timer.
+- Modalidades: Futebol de Campo, Futebol 7 (Society), Futsal, Handebol.
+
+GRUPO B: ESPORTES DE SETS E PONTOS (VÔLEI/BEACH)
+- Lógica: Melhor de 3 ou 5 Sets. Pontuação não cronometrada. Tie-Break.
+- Modalidades: Vôlei de Quadra, Vôlei de Praia, Futevôlei, Beach Tennis.
+
+GRUPO B2: ESPORTES DE PONTOS TEMPORIZADOS (BASQUETE)
+- Lógica: 4 Quartos. Pontuação 1, 2 ou 3 pts. Faltas coletivas por quarto. Parar tempo.
+- Modalidades: Basquete 5x5, Basquete 3x3.
+
+GRUPO C: ESPORTES DE GAMES E SETS (RAQUETE)
+- Lógica: Pontuação 15/30/40/Advantage. Games vencem Sets.
+- Modalidades: Tênis de Campo, Padel, Squash.
+
+GRUPO D: ESPORTES INDIVIDUAIS / CORRIDA (RACING)
+- Lógica: Todos contra todos (lista). Resultado por Tempo ou Chegada.
+- Modalidades: Corrida de Rua (5k/10k/21k), Ciclismo (MTB/Speed), Natação, Triathlon.
+
+GRUPO E: ESPORTES DE COMBATE E TABULEIRO (1x1)
+- Lógica: Chaveamento direto (Mata-mata).
+- Modalidades: Jiu-Jitsu, Judô, Tênis de Mesa, Xadrez.
+
+--------------------------------------------------------------------------------
+3. FUNCIONALIDADES DO APP (O QUE O USUÁRIO FAZ)
+--------------------------------------------------------------------------------
+
+3.1. CADASTRO E IDENTIDADE
+- Login Social / Email.
+- Upload de Documento (RG/CNH) com Validação por IA (OCR).
+- Seleção de Clube Preferido (O app muda as cores/logo conforme o clube).
+
+3.2. COMPETIÇÃO
+- Dashboard com "Jogos de Hoje" e "Meus Campeonatos".
+- Tabela de Classificação Automática (Critérios: Pontos, Vitórias, Saldo...).
+- Estatísticas Completas: Artilharia, Melhores Goleiros, Cartões, MVPs.
+- Placar Ao Vivo (Live Score): O placar muda no celular do torcedor <1s após o gol.
+
+3.3. ÁREA DO CAPITÃO / TIME
+- Criar Time, Convidar Jogadores (Link compartilhável).
+- Gerir Elenco (Aprovar/Reprovar solicitação).
+- Inscrever Time no Campeonato.
+
+3.4. E-COMMERCE E FINANCEIRO
+- Loja do Clube: Comprar uniformes, reservas de quadra, ingressos.
+- Carteira Digital: Histórico de pagamentos.
+- Carrinho de Compras e Checkout (Pix/Cartão).
+
+--------------------------------------------------------------------------------
+4. FUNCIONALIDADES DO PAINEL DE GESTÃO (O QUE O ADM FAZ)
+--------------------------------------------------------------------------------
+
+4.1. GESTÃO ESPORTIVA
+- Criar Campeonatos e Categorias (Ex: "Sub-20", "Feminino").
+- Gerador de Tabelas: Algoritmo que monta chaves e rodadas automaticamente.
+- Balanceamento de Times: Algoritmo que monta times equilibrados baseado no nível técnico (Nível 1 a 5).
+
+4.2. OPERAÇÃO DE JOGO (SÚMULA)
+- App exclusivo para o Mesário.
+- Cronômetro oficial integrado.
+- Botões grandes para GOL, CARTÃO, PONTO.
+- Eleição de "Melhor da Partida" (MVP).
+
+4.3. MARKETING E MÍDIA
+- Gerador de Artes Automático: Cria post pro Instagram ("Fim de Jogo", "Artilheiro") com 1 clique (PDF/JPG).
+- Galeria de Fotos do Evento.
+
+4.4. FINANCEIRO E SEGURANÇA
+- Relatório de Vendas e Inscrições.
+- Gestão de Cupons de Desconto.
+- Controle de Acesso: Validação de QR Code na portaria.
+- Combate a Fraudes: Validação de documentos duplicados.
+
+--------------------------------------------------------------------------------
+5. DIFERENCIAIS TÉCNICOS (O INVISÍVEL)
+--------------------------------------------------------------------------------
+- Performance: Uso de Websockets para dados reais.
+- Offline-First: O Juiz consegue lançar gols mesmo se a internet cair (sincroniza depois).
+- Whitelabel: O mesmo código roda para "Clube A" (Azul) e "Clube B" (Vermelho) com dados isolados (Multi-tenant).
+
+--------------------------------------------------------------------------------
+RESUMO QUANTITATIVO
+- Total de Telas App: ~43
+- Total de Relatórios Gerenciais: ~10
+- Total de Regras de Esportes: 5 Grandes Grupos (Gols, Pontos, Sets, Tempo, Luta).
+--------------------------------------------------------------------------------

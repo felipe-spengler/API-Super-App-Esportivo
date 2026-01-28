@@ -1,0 +1,128 @@
+PROPOSTA TÉCNICA E FUNCIONAL - SISTEMA SUPER APP ESPORTIVO
+=========================================================
+
+1. RESUMO DO PROJETO
+--------------------
+Desenvolvimento de uma plataforma unificada (SaaS) para gestão esportiva completa. O sistema centraliza a gestão de múltiplos esportes (Futebol, Vôlei, Corrida, etc.) em um único aplicativo móvel para o atleta e um painel administrativo robusto para o gestor.
+
+O diferencial principal é a capacidade "Multi-Clube": o mesmo aplicativo se adapta visualmente (cores, logo, funcionalidades) dependendo da cidade e do clube onde o usuário está navegando.
+
+2. LISTA DETALHADA DE FUNCIONALIDADES
+-------------------------------------
+
+2.1. Funcionalidades Gerais (Sistema)
+- Multi-tenancy: Suporte a múltiplas cidades e múltiplos clubes dentro do mesmo banco de dados.
+- Personalização Visual (Whitelabel): Cada clube tem suas próprias cores, logos e fontes dentro do App.
+- Catálogo Polimórfico de Esportes: Suporte nativo para Esportes de Time (Futebol, Vôlei), Individuais (Corrida, Natação) e Lutas.
+
+2.2. Segurança e Cadastro (Atleta)
+- Login Unificado: Conta única para participar de todos os esportes.
+- Validação Antifraude (IA/OCR): Leitura automática de foto de RG/CNH para extrair Data de Nascimento real e evitar "gatos" em categorias de idade.
+- Auditoria de Documentos: Fila de aprovação manual para documentos que a IA não conseguiu validar.
+
+2.3. Gestão de Eventos de Time (Futebol/Vôlei)
+- Criação de Campeonatos: Configuração de fases (Grupos, Mata-mata).
+- Gestão de Categorias e Subcategorias: Estrutura hierárquica flexível (ex: Categoria Pai "5km" -> Subcategoria "Masculino 30-39 anos") para comportar regulamentos complexos de qualquer esporte.
+- Inscrição de Equipes: Capitão inscreve o time e paga a taxa única.
+- Súmula Digital: Painel para o mesário lançar gols, cartões e sets (vôlei) em tempo real.
+- Estatísticas Automáticas: O sistema calcula automaticamente a Tabela de Classificação, Artilharia, Melhor Defesa, etc.
+- Votação de "Melhor da Partida": Votação aberta no App durante o jogo.
+
+2.4. Gestão de Eventos Individuais (Corrida/Ciclismo)
+- Hotsite do Evento: Página com mapa do percurso, regulamento e kits.
+- Venda de Inscrições: E-commerce completo (Lotes, Virada de Lote, Cupons).
+- Gestão de Kits: Controle de estoque de camisetas (P, M, G).
+- Importação de Resultados: Upload de planilha de cronometragem para gerar ranking instantâneo no App.
+
+2.5. Financeiro e E-commerce
+- Venda de Produtos: Camisetas, Canecas ou Inscrições Extras.
+- Sistema de Cupons: Criação de códigos promocionais (Valor fixo ou Porcentagem) para campanhas de marketing.
+- Carrinho de Compras: Pagamento via PIX (Copia e Cola) ou Cartão.
+- Split de Pagamento: Cálculo automático da taxa da plataforma vs valor líquido do clube.
+- Relatórios Financeiros: Fluxo de caixa detalhado por evento.
+
+2.6. Marketing e Engajamento
+- Gerador de Artes Automático: O sistema gera imagens prontas para Instagram/Stories com os dados do jogo (ex: "Fim de Jogo: Time A 2x1 Time B") respeitando a identidade visual do clube.
+- Notificações Push: Avisos de gols, início de partida ou abertura de inscrições.
+
+---------------------------------------------------------
+
+NOTA IMPORTANTE SOBRE GESTÃO (WEB vs APP)
+O sistema foi desenhado estrategicamente para otimizar a rotina do gestor:
+- WEB ADMIN (Computador): Focado no "Trabalho de Escritório". Configuração de campeonatos complexos, importação de planilhas, relatórios financeiros densos e customização visual.
+- APP ADMIN (Celular/Tablet): Focado no "Trabalho de Campo". Súmula digital (touch), validação de entrada (QR Code) e consulta rápida de faturamento.
+
+3. MAPA DE TELAS DO SISTEMA (42 TELAS TOTAIS)
+---------------------------------------------------------
+
+A. APLICATIVO MOBILE (USO DO ATLETA/TORCEDOR)
+
+[Fluxo de Entrada]
+1. Tela de Boas-Vindas (Seleção de Cidade e Clube)
+2. Tela de Login (Email/Senha)
+3. Tela de Cadastro (Dados Pessoais + Upload de Documento/Selfie)
+4. Tela "Esqueci Minha Senha"
+5. Tela de Verificação de Código (Email)
+6. Tela de Nova Senha
+7. Tela de Sucesso/Feedback
+
+[Navegação Principal]
+8. Home Screen (Dashboard com Destaques e Próximos Jogos)
+9. Sports Hub (Menu de Ícones: Futebol, Vôlei, Corrida...)
+10. Perfil do Usuário (Edição de Dados, Foto)
+
+[Fluxo de Esportes de Time]
+11. Dashboard do Campeonato (Menu com Classificação, Jogos, Artilharia)
+12. Tabela de Classificação (Pontos, Vitórias, Saldo)
+13. Estatísticas Individuais (Artilheiros, Melhores Bloqueadores)
+14. Lista de Equipes (Escudos e Nomes)
+15. Detalhe da Equipe (Elenco de Jogadores)
+16. Lista de Partidas/Rodadas
+17. Detalhe da Partida (Placar Ao Vivo, Timeline de Lances, Votação de Craque)
+18. Gestão de Equipe (Tela do Capitão para convidar jogadores)
+
+[Fluxo de Esportes Individuais]
+19. Home da Corrida/Evento (Infos Gerais, Botão Inscrever)
+20. Resultados e Tempos (Ranking Geral e por Faixa Etária)
+
+[Fluxo de Loja/Pagamento]
+21. Lista de Produtos/Inscrições
+22. Detalhe do Produto (Seleção de Tamanho/Cor)
+23. Carrinho de Compras
+24. Checkout (Resumo e Pagamento)
+25. Recibo do Pedido
+
+[Histórico]
+26. Meus Pedidos (Histórico Financeiro)
+27. Minhas Partidas (Histórico Esportivo)
+
+[Área do Gestor (No App)]
+28. Menu Admin Mobile (Acesso rápido)
+29. Súmula Digital Touch (Para uso em quadra/campo)
+30. Leitor de QR Code (Validação de Kits e Entrada)
+
+---------------------------------------------------------
+
+B. PAINEL ADMINISTRATIVO (USO WEB/DESKTOP PELO GESTOR)
+
+[Gestão de Eventos]
+28. Dashboard Geral (Visão Macro de Atletas e Eventos)
+29. Lista de Eventos (Filtros e Status)
+30. Criador de Eventos (Wizard passo-a-passo para configurar campeonato)
+
+[Operação de Jogo]
+31. Gestão de Partidas/Tabela (Agendar horários e locais)
+32. Súmula Digital (Painel de Controle ao vivo para o Mesário)
+
+[Marketing]
+33. Galeria de Artes (Seleção de Templates)
+34. Editor de Artes (Ajustes finais e Download da imagem)
+
+[Financeiro e Relatórios]
+35. Relatório de Inscritos (Lista para Excel)
+36. Dashboard Financeiro (Total Vendido, Taxas)
+37. Controle de Fraude (Aprovação manual de documentos retidos)
+
+[Configurações]
+38. Configurações do Clube (Cores, Logos)
+39. Gestão de Usuários (Permissões de Acesso)

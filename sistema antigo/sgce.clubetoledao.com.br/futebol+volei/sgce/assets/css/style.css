@@ -1,0 +1,100 @@
+/* /assets/css/style.css */
+:root {
+    --bs-primary: #0d6efd;
+    --bs-primary-rgb: 13, 110, 253;
+    --sidebar-width: 250px;
+    --light-gray: #f8f9fa;
+    --border-color: #dee2e6;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: var(--light-gray);
+    color: #212529;
+}
+
+/* --- LAYOUT DO DASHBOARD --- */
+#wrapper {
+    display: flex;
+    transition: margin-left 0.3s ease-in-out;
+}
+
+#sidebar-wrapper {
+    width: var(--sidebar-width);
+    min-height: 100vh;
+    background-color: #fff;
+    border-right: 1px solid var(--border-color);
+    transition: margin-left 0.3s ease-in-out;
+    z-index: 1000;
+}
+
+#wrapper.toggled #sidebar-wrapper {
+    margin-left: calc(-1 * var(--sidebar-width));
+}
+
+#page-content-wrapper {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+}
+
+/* --- ESTILOS DA SIDEBAR CLARA --- */
+.sidebar-heading {
+    padding: 1.5rem 1.25rem;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--bs-primary);
+    text-align: center;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.sidebar-heading .fa-trophy {
+    margin-right: 0.5rem;
+}
+
+#sidebar-wrapper .list-group-item {
+    background-color: #fff !important;
+    color: #5a5a5a !important;
+    border: none !important;
+    padding: 1rem 1.5rem;
+    font-weight: 500;
+    transition: all 0.2s ease-in-out;
+}
+
+#sidebar-wrapper .list-group-item .fa-fw {
+    width: 1.25em;
+}
+
+#sidebar-wrapper .list-group-item:hover,
+#sidebar-wrapper .list-group-item.active {
+    background-color: rgba(var(--bs-primary-rgb), 0.1) !important;
+    color: var(--bs-primary) !important;
+    border-left: 4px solid var(--bs-primary);
+    padding-left: calc(1.5rem - 4px);
+}
+
+#sidebar-wrapper .list-group-item.danger-link:hover {
+    background-color: rgba(220, 53, 69, 0.1) !important;
+    color: #dc3545 !important;
+    border-left: 4px solid #dc3545;
+}
+
+
+/* --- CABEÇALHO DO CONTEÚDO --- */
+#page-content-wrapper .navbar {
+    background-color: #fff !important;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+}
+
+/* --- ESTILOS DE CARD --- */
+.card {
+    border: none;
+    border-radius: 0.5rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.card-header {
+    background-color: #fff;
+    border-bottom: 1px solid var(--border-color);
+    font-weight: 600;
+}

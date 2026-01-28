@@ -1,0 +1,7 @@
+SUPER ADMIN - GERAL
+admin@plataforma.com
+password
+
+ADMIN DO TOLEDAO
+admin@toledao.com	
+password
