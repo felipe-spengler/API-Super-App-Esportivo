@@ -47,11 +47,13 @@ class ImportRunEvents extends Command
         $handle = fopen($file, "r");
         while (($data = fgetcsv($handle, 2000, ",")) !== FALSE) {
             // 0:id, 1:nome, 2:email, 3:senha, 4:cpf, 5:data_nascimento, 7:telefone
-            $csvId = $data[0];
-            if (!is_numeric($csvId))
+            $csvId = $data[0] ?? null;
+            if (!$csvId || !is_numeric($csvId))
                 continue;
 
-            $email = $data[2];
+            $email = $data[2] ?? null;
+            if (!$email)
+                continue;
 
             $existing = DB::table('users')->where('email', $email)->first();
 
@@ -61,12 +63,12 @@ class ImportRunEvents extends Command
                 $existingById = DB::table('users')->find($csvId);
 
                 $userData = [
-                    'name' => $data[1],
-                    'email' => $data[2],
-                    'password' => $data[3],
-                    'cpf' => $data[4] == 'NULL' ? null : $data[4],
-                    'birth_date' => ($data[5] == 'NULL' || !$data[5]) ? null : $data[5],
-                    'phone' => ($data[7] == 'NULL' || !$data[7]) ? null : $data[7],
+                    'name' => $data[1] ?? 'User ' . $csvId,
+                    'email' => $email,
+                    'password' => $data[3] ?? bcrypt('123456'),
+                    'cpf' => (!empty($data[4]) && $data[4] !== 'NULL') ? $data[4] : null,
+                    'birth_date' => (!empty($data[5]) && $data[5] !== 'NULL') ? $data[5] : null,
+                    'phone' => (!empty($data[7]) && $data[7] !== 'NULL') ? $data[7] : null,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ];
@@ -94,26 +96,26 @@ class ImportRunEvents extends Command
         $handle = fopen($file, "r");
         while (($data = fgetcsv($handle, 2000, ",")) !== FALSE) {
             // 0:id, 1:nome, 3:local_evento, 4:data_evento, 5:tipo_evento
-            $id = $data[0];
-            if (!is_numeric($id))
+            $id = $data[0] ?? null;
+            if (!$id || !is_numeric($id))
                 continue;
 
             $sportId = 3; // Default Corrida
             if (isset($data[5]) && strtolower($data[5]) == 'bike')
-                $sportId = 3;
+                $sportId = 3; // Mantemos 3 se o ID do esporte bike/corrida for o mesmo ou ajustar conforme seed
 
             Championship::updateOrCreate(['id' => $id], [
                 'club_id' => 5, // RunEvents
                 'sport_id' => $sportId,
-                'name' => $data[1],
-                'start_date' => $data[4],
+                'name' => $data[1] ?? 'Evento sem nome',
+                'start_date' => $data[4] ?? now(),
                 'status' => 'finished',
                 'awards' => []
             ]);
 
             Race::updateOrCreate(['championship_id' => $id], [
-                'start_datetime' => $data[4],
-                'location_name' => ($data[3] == 'NULL') ? '' : $data[3],
+                'start_datetime' => $data[4] ?? now(),
+                'location_name' => (!empty($data[3]) && $data[3] !== 'NULL') ? $data[3] : '',
             ]);
         }
         fclose($handle);
@@ -130,13 +132,13 @@ class ImportRunEvents extends Command
         $handle = fopen($file, "r");
         while (($data = fgetcsv($handle, 2000, ",")) !== FALSE) {
             // 0:id, 1:id_evento, 2:nome
-            $id = $data[0];
-            if (!is_numeric($id))
+            $id = $data[0] ?? null;
+            if (!$id || !is_numeric($id))
                 continue;
 
             Category::updateOrCreate(['id' => $id], [
-                'championship_id' => $data[1],
-                'name' => $data[2],
+                'championship_id' => $data[1] ?? null,
+                'name' => $data[2] ?? 'Categoria ' . $id,
                 'description' => isset($data[4]) ? ($data[4] == 'misto' ? 'General' : ucfirst($data[4])) : '',
             ]);
         }
@@ -154,12 +156,12 @@ class ImportRunEvents extends Command
         $handle = fopen($inscFile, "r");
         while (($data = fgetcsv($handle, 2000, ",")) !== FALSE) {
             // 0:id, 2:id_usuario, 4:id_evento, 5:id_categoria
-            $id = $data[0];
-            if (!is_numeric($id))
+            $id = $data[0] ?? null;
+            if (!$id || !is_numeric($id))
                 continue;
             $inscriptions[$id] = [
-                'user_id' => $data[2],
-                'category_id' => $data[5]
+                'user_id' => $data[2] ?? null,
+                'category_id' => $data[5] ?? null
             ];
         }
         fclose($handle);
@@ -172,12 +174,12 @@ class ImportRunEvents extends Command
         $handle = fopen($resFile, "r");
         while (($data = fgetcsv($handle, 2000, ",")) !== FALSE) {
             // 0:id, 1:id_inscricao, 2:tempo, 3:posicao, 4:posicao_categoria, 6:id_evento
-            $id = $data[0];
-            if (!is_numeric($id))
+            $id = $data[0] ?? null;
+            if (!$id || !is_numeric($id))
                 continue;
 
-            $inscId = $data[1];
-            if (!isset($inscriptions[$inscId]))
+            $inscId = $data[1] ?? null;
+            if (!$inscId || !isset($inscriptions[$inscId]))
                 continue;
 
             $csvUserId = $inscriptions[$inscId]['user_id'];
@@ -186,7 +188,10 @@ class ImportRunEvents extends Command
                 continue;
 
             $catId = $inscriptions[$inscId]['category_id'];
-            $champId = $data[6];
+            $champId = $data[6] ?? null;
+
+            if (!$champId)
+                continue;
 
             $race = Race::where('championship_id', $champId)->first();
             if (!$race)
@@ -199,13 +204,14 @@ class ImportRunEvents extends Command
                 'user_id' => $realUserId,
                 'category_id' => $catId,
                 'name' => $userName ?: 'Unknown',
-                'net_time' => $data[2],
-                'gross_time' => $data[2],
-                'position_general' => $data[3],
-                'position_category' => $data[4],
+                'net_time' => $data[2] ?? '00:00:00',
+                'gross_time' => $data[2] ?? '00:00:00',
+                'position_general' => $data[3] ?? 0,
+                'position_category' => $data[4] ?? 0,
             ]);
         }
         fclose($handle);
+
         RaceResult::reguard();
     }
 }

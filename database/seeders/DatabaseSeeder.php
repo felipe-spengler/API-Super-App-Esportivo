@@ -113,8 +113,10 @@ class DatabaseSeeder extends Seeder
         // 5. Execute Import Commands
         $this->command->info('Running ImportOldData (Toledao)...');
         \Illuminate\Support\Facades\Artisan::call('import:old-data');
+        $this->command->info(\Illuminate\Support\Facades\Artisan::output());
 
         $this->command->info('Running ImportRunEvents...');
         \Illuminate\Support\Facades\Artisan::call('import:run-events');
+        $this->command->info(\Illuminate\Support\Facades\Artisan::output());
     }
 }
