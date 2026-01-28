@@ -15,6 +15,22 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/ocr/analyze', [App\Http\Controllers\DocumentOCRController::class, 'analyze']);
 
+Route::get('/debug/csv', function () {
+    $path = base_path('database/data/campeonatos.csv');
+    if (!file_exists($path))
+        return response()->json(['error' => 'File not found']);
+    $content = [];
+    if (($handle = fopen($path, "r")) !== FALSE) {
+        $row = 0;
+        while (($data = fgetcsv($handle, 1000, ",")) !== FALSE && $row < 5) {
+            $content[] = $data;
+            $row++;
+        }
+        fclose($handle);
+    }
+    return response()->json($content);
+});
+
 Route::get('/cities', [CoreController::class, 'cities']);
 Route::get('/cities/{citySlug}/clubs', [CoreController::class, 'clubs']);
 Route::get('/clubs/{clubSlug}', [CoreController::class, 'clubDetails']);
