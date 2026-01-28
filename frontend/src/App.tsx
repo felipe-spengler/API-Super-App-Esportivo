@@ -9,7 +9,9 @@ import { ChampionshipForm } from './pages/Championships/ChampionshipForm';
 import { Teams } from './pages/Teams';
 import { Matches } from './pages/Matches';
 import { SumulaFutebol } from './pages/Matches/SumulaFutebol';
+// Race Pages
 import { CreateRaceWizard } from './pages/Corridas/CreateRaceWizard';
+import { RaceResults } from './pages/Corridas/RaceResults';
 import { NewEventSelection } from './pages/EventWizard/NewEventSelection';
 
 import { PublicLayout } from './layouts/PublicLayout';
@@ -39,6 +41,7 @@ function App() {
               <Route path="championships/new" element={<NewEventSelection />} />
               <Route path="championships/new/team-sports" element={<ChampionshipForm />} />
               <Route path="races/new" element={<CreateRaceWizard />} />
+              <Route path="races/:id/results" element={<RaceResults />} />
 
               <Route path="teams" element={<Teams />} />
               <Route path="matches" element={<Matches />} />

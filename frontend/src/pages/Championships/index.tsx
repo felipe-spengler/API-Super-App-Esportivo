@@ -120,9 +120,25 @@ export function Championships() {
                                 <h3 className="text-lg font-bold text-gray-900 mb-1 group-hover:text-indigo-600 transition-colors">{camp.name}</h3>
                                 <p className="text-sm text-indigo-600 font-medium mb-4">{camp.sport}</p>
 
-                                <div className="mt-auto flex items-center gap-2 text-gray-500 text-sm">
-                                    <Calendar className="w-4 h-4" />
-                                    <span>{new Date(camp.start_date).toLocaleDateString()}</span>
+                                <div className="mt-auto flex items-center justify-between text-gray-500 text-sm">
+                                    <div className="flex items-center gap-2">
+                                        <Calendar className="w-4 h-4" />
+                                        <span>{new Date(camp.start_date).toLocaleDateString()}</span>
+                                    </div>
+
+                                    {/* Botão Resultados para Corridas */}
+                                    {['Running', 'Cycling', 'MTB', 'Swimming', 'Corrida', 'Natação'].includes(camp.sport) && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                // @ts-ignore
+                                                window.location.href = `/admin/races/${camp.id}/results`;
+                                            }}
+                                            className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors z-10 relative"
+                                        >
+                                            Resultados
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         </Link>
