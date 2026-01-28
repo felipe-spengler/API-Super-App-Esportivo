@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Calendar, MapPin, Users, Trophy, ChevronLeft, Timer, Medal, Search, Download } from 'lucide-react';
+import { Calendar, MapPin, Users, Trophy, ChevronLeft, Medal, Search, Download } from 'lucide-react';
 import api from '../../services/api';
 
 export function EventDetails() {

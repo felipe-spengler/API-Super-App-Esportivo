@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, MapPin, Calendar, Trophy, ArrowRight, User } from 'lucide-react';
+import { Search, Filter, MapPin, Calendar, Trophy, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import api from '../../services/api';
 
