@@ -31,6 +31,7 @@ class User extends Authenticatable
         'is_admin',
         'club_id',
         'photo_path',  // Caminho da foto: "players/player_123.jpg"
+        'document_path', // Caminho do documento: "documents/doc_123.jpg"
     ];
 
     /**

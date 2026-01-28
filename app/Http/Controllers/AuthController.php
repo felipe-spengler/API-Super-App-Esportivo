@@ -20,7 +20,19 @@ class AuthController extends Controller
             'phone' => 'nullable|string',
             'cpf' => 'nullable|string',
             'birth_date' => 'nullable|date',
+            'photo' => 'nullable|image|max:2048', // Validação da foto de perfil
+            'document' => 'nullable|image|max:4096', // Validação da foto do documento
         ]);
+
+        $photoPath = null;
+        if ($request->hasFile('photo')) {
+            $photoPath = $request->file('photo')->store('players', 'public');
+        }
+
+        $documentPath = null;
+        if ($request->hasFile('document')) {
+            $documentPath = $request->file('document')->store('documents', 'public');
+        }
 
         $user = User::create([
             'name' => $validated['name'],
@@ -29,6 +41,8 @@ class AuthController extends Controller
             'phone' => $validated['phone'] ?? null,
             'cpf' => $validated['cpf'] ?? null,
             'birth_date' => $validated['birth_date'] ?? null,
+            'photo_path' => $photoPath,
+            'document_path' => $documentPath,
         ]);
 
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -89,7 +103,14 @@ class AuthController extends Controller
             'phone' => 'nullable|string',
             'cpf' => 'nullable|string',
             'device_token' => 'nullable|string',
+            'photo' => 'nullable|image|max:2048',
         ]);
+
+        if ($request->hasFile('photo')) {
+            // TODO: Deletar foto antiga se existir
+            $path = $request->file('photo')->store('players', 'public');
+            $validated['photo_path'] = $path;
+        }
 
         $user->update($validated);
 
