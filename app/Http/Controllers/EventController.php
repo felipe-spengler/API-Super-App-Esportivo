@@ -25,7 +25,7 @@ class EventController extends Controller
     public function publicList(Request $request)
     {
         // Retorna os próximos 6 eventos ativos/futuros para a home
-        $championships = Championship::whereIn('status', ['active', 'upcoming'])
+        $championships = Championship::whereIn('status', ['upcoming', 'ongoing', 'in_progress', 'registrations_open'])
             ->orderBy('start_date', 'asc')
             ->limit(6)
             ->get();
