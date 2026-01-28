@@ -28,8 +28,8 @@ services:
       dockerfile: Dockerfile
     image: app-esportivo-web
     restart: always
-    ports:
-      - "80:80"
+    expose:
+      - "80"
     depends_on:
       - api
 
@@ -49,8 +49,8 @@ services:
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
     restart: always
-    ports:
-      - "8082:80"
+    expose:
+      - "80"
     environment:
       PMA_HOST: db
       PMA_USER: ${DB_USERNAME}
