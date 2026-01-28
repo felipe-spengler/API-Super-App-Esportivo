@@ -18,7 +18,7 @@ class EventController extends Controller
             $query->where('sport_id', $request->sport_id);
         }
 
-        return response()->json($query->orderBy('start_date', 'desc')->get());
+        return response()->json($query->with('sport')->orderBy('start_date', 'desc')->get());
     }
 
     // 0. Listar Todos (Public Home)

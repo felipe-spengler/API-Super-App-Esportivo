@@ -24,13 +24,12 @@ export function Explore() {
 
                 let filtered = res.data;
 
-                // Filtragem simples no frontend se houver parametro sport
                 if (sportName && sportName !== 'Todos') {
                     filtered = filtered.filter((c: any) => {
-                        // Tenta filtrar pelo slug do esporte ou nome
-                        // Verifica se 'sport' existe (slug) ou se tem 'sport_name'
-                        const s = c.sport || c.sport_name || '';
-                        return s.toLowerCase() === sportName.toLowerCase();
+                        // Backend now returns check sport object (with('sport'))
+                        // Check nested name/slug, or fallback to direct property if any
+                        const s = c.sport?.name || c.sport?.slug || c.sport_name || '';
+                        return s.toString().toLowerCase() === sportName.toLowerCase();
                     });
                 }
                 setChampionships(filtered);
