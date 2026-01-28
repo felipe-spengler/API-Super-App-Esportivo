@@ -14,6 +14,12 @@ import { CreateRaceWizard } from './pages/Corridas/CreateRaceWizard';
 import { RaceResults } from './pages/Corridas/RaceResults';
 import { NewEventSelection } from './pages/EventWizard/NewEventSelection';
 
+import { Explore } from './pages/Public/Explore';
+import { EventDetails } from './pages/Public/EventDetails';
+
+// ... (imports anteriores mantidos se não removidos) 
+// OBS: Vou usar replace de bloco maior para garantir injection correta
+
 import { PublicLayout } from './layouts/PublicLayout';
 import { PublicHome } from './pages/Public/Home';
 
@@ -25,8 +31,8 @@ function App() {
           {/* ÁREA PÚBLICA (Visitante / Atleta) */}
           <Route element={<PublicLayout />}>
             <Route path="/" element={<PublicHome />} />
-            {/* <Route path="/explore" element={<Explore />} />  -- Implementar depois */}
-            {/* <Route path="/events/:id" element={<EventDetails />} /> -- Implementar depois */}
+            <Route path="/explore" element={<Explore />} />
+            <Route path="/events/:id" element={<EventDetails />} />
           </Route>
 
           <Route path="/login" element={<Login />} />

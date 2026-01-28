@@ -303,7 +303,21 @@ class EventController extends Controller
     }
     public function raceResults(Request $request, $championshipId)
     {
-        return response()->json([]);
+        $query = \App\Models\RaceResult::where('race_id', $championshipId);
+
+        if ($request->has('category')) {
+            $query->where('category', $request->category);
+        }
+
+        if ($request->has('search')) {
+            $term = $request->search;
+            $query->where(function ($q) use ($term) {
+                $q->where('name', 'like', "%{$term}%")
+                    ->orWhere('bib_number', 'like', "%{$term}%");
+            });
+        }
+
+        return response()->json($query->orderBy('net_time', 'asc')->get());
     }
     // 7. MVP (Most Valuable Player)
     public function mvp(Request $request, $championshipId)
