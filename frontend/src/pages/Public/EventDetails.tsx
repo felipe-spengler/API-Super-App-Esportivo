@@ -30,7 +30,7 @@ export function EventDetails() {
 
             // Load initial data based on type
             if (['Futebol', 'Futsal', 'Vôlei'].includes(res.data.sport?.name)) {
-                loadTeamData(res.data.id);
+                loadTeamData(res.data.id, res.data.sport?.name);
             } else {
                 loadRaceData(res.data.id);
             }
@@ -42,12 +42,15 @@ export function EventDetails() {
         }
     }
 
-    async function loadTeamData(eventId: string) {
+    async function loadTeamData(eventId: string, sportName: string) {
         try {
+            // Define o tipo de estatística baseado no esporte
+            const statType = sportName === 'Vôlei' ? 'points' : 'goals';
+
             const [resLeaderboard, resMatches, resStats] = await Promise.all([
                 api.get(`/championships/${eventId}/leaderboard`),
                 api.get(`/championships/${eventId}/matches`),
-                api.get(`/championships/${eventId}/stats/top-scorers`)
+                api.get(`/championships/${eventId}/stats?type=${statType}`)
             ]);
             setLeaderboard(resLeaderboard.data);
             setMatches(resMatches.data);
