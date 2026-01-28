@@ -22,6 +22,7 @@ import { EventDetails } from './pages/Public/EventDetails';
 
 import { PublicLayout } from './layouts/PublicLayout';
 import { PublicHome } from './pages/Public/Home';
+import { ClubHome } from './pages/Public/ClubHome';
 
 function App() {
   return (
@@ -32,7 +33,9 @@ function App() {
           <Route element={<PublicLayout />}>
             <Route path="/" element={<PublicHome />} />
             <Route path="/explore" element={<Explore />} />
+            <Route path="/club-home" element={<ClubHome />} />
             <Route path="/events/:id" element={<EventDetails />} />
+            <Route path="/profile" element={/* Mock Profile for visual consistency */ <div className="text-center p-10 font-bold text-gray-400">Perfil (Em Breve)</div>} />
           </Route>
 
           <Route path="/login" element={<Login />} />

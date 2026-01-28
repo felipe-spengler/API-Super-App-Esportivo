@@ -21,7 +21,7 @@ export function PublicHome() {
                         ].map((club) => (
                             <Link
                                 key={club.id}
-                                to="/login"
+                                to="/club-home"
                                 className="flex items-center p-4 bg-gray-50 hover:bg-indigo-50 border border-gray-100 hover:border-indigo-200 rounded-xl transition-all group duration-300"
                             >
                                 <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mr-4 group-hover:bg-blue-600 group-hover:text-white transition-colors">
