@@ -31,7 +31,9 @@ export function EventMatches() {
                 // but usually there is /public/matches or similar.
                 // Given the context of "parity with mobile", mobile probably hits /matches?championship_id=X
 
-                const response = await api.get(`/matches?championship_id=${id}${categoryId ? `&category_id=${categoryId}` : ''}`);
+                const response = await api.get(`/championships/${id}/matches`, {
+                    params: { category_id: categoryId }
+                });
                 setMatches(response.data);
 
             } catch (error) {
