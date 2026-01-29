@@ -59,6 +59,10 @@ class EventController extends Controller
     {
         $champ = Championship::with('sport')->findOrFail($championshipId);
         $sportSlug = $champ->sport->slug ?? 'futebol';
+        // Normalize for logic (Volei uses sets, others use goals)
+        if (strpos($sportSlug, 'volei') !== false) {
+            $sportSlug = 'volei';
+        }
 
         $query = GameMatch::where('championship_id', $championshipId)
             ->with(['homeTeam', 'awayTeam'])
