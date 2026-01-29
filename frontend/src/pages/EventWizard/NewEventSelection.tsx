@@ -14,7 +14,7 @@ export function NewEventSelection() {
             <div className="grid md:grid-cols-2 gap-8 max-w-5xl w-full">
                 {/* CARD 1: Campeonato de Times (Futebol, Volei) */}
                 <button
-                    onClick={() => navigate('/championships/new/team-sports')}
+                    onClick={() => navigate('/admin/championships/new/team-sports')}
                     className="group relative bg-white rounded-3xl p-8 shadow-xl border-2 border-transparent hover:border-indigo-500 text-left transition-all hover:-translate-y-2 hover:shadow-2xl flex flex-col"
                 >
                     <div className="bg-indigo-100 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-indigo-600 transition-colors">
@@ -39,7 +39,7 @@ export function NewEventSelection() {
 
                 {/* CARD 2: Corrida / Prova (Running, Swim) */}
                 <button
-                    onClick={() => navigate('/races/new')}
+                    onClick={() => navigate('/admin/races/new')}
                     className="group relative bg-white rounded-3xl p-8 shadow-xl border-2 border-transparent hover:border-emerald-500 text-left transition-all hover:-translate-y-2 hover:shadow-2xl flex flex-col"
                 >
                     <div className="bg-emerald-100 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-emerald-600 transition-colors">
