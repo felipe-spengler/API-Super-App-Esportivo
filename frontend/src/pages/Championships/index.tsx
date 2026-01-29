@@ -142,7 +142,9 @@ export function Championships() {
 
                             <div className="p-5 flex-1 flex flex-col">
                                 <h3 className="text-lg font-bold text-gray-900 mb-1 group-hover:text-indigo-600 transition-colors">{camp.name}</h3>
-                                <p className="text-sm text-indigo-600 font-medium mb-4">{camp.sport || 'Esporte não definido'}</p>
+                                <p className="text-sm text-indigo-600 font-medium mb-4">
+                                    {typeof camp.sport === 'object' ? (camp.sport as any)?.name : camp.sport || 'Esporte não definido'}
+                                </p>
 
                                 <div className="mt-auto flex items-center justify-between text-gray-500 text-sm mb-4">
                                     <div className="flex items-center gap-2">
