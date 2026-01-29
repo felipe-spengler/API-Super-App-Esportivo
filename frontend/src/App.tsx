@@ -11,95 +11,62 @@ import { Teams } from './pages/Teams';
 import { Matches } from './pages/Matches';
 import { SumulaFutebol } from './pages/Matches/SumulaFutebol';
 // Race Pages
-import { CreateRaceWizard } from './pages/Corridas/CreateRaceWizard';
-import { RaceResults } from './pages/Corridas/RaceResults';
-import { NewEventSelection } from './pages/EventWizard/NewEventSelection';
+import { EventStats } from './pages/Public/EventStats';
+import { EventMVP } from './pages/Public/EventMVP';
+import { EventParticipants } from './pages/Public/EventParticipants';
+import { EventArts } from './pages/Public/EventArts';
 
-import { Explore } from './pages/Public/Explore';
-import { EventDetails } from './pages/Public/EventDetails';
-import { EventMatches } from './pages/Public/EventMatches';
-import { EventLeaderboard } from './pages/Public/EventLeaderboard';
+// ... (existing imports)
 
-// ... (imports anteriores mantidos se não removidos) 
-// OBS: Vou usar replace de bloco maior para garantir injection correta
-
-import { PublicLayout } from './layouts/PublicLayout';
-import { PublicHome } from './pages/Public/Home';
-import { ClubHome } from './pages/Public/ClubHome';
-import { Wallet } from './pages/Public/Wallet';
-import { Agenda } from './pages/Public/Agenda';
-import { Shop } from './pages/Public/Shop';
-import { RaceDetails } from './pages/Public/RaceDetails';
-import { Register } from './pages/Register';
-import { Profile } from './pages/Public/Profile';
-import { MyTeams } from './pages/Public/MyTeams';
-import { MyInscriptions } from './pages/Public/MyInscriptions';
-import { Voting } from './pages/Public/Voting';
-import { SumulaVolei } from './pages/Matches/SumulaVolei';
-import { SumulaBasquete } from './pages/Matches/SumulaBasquete';
-
-function App() {
-  return (
-    <BrowserRouter>
-      <AuthProvider>
-        <Routes>
-          {/* ÁREA PÚBLICA (Visitante / Atleta) */}
-          <Route element={<PublicLayout />}>
-            <Route path="/" element={<PublicHome />} />
-            <Route path="/explore" element={<Explore />} />
-            <Route path="/club-home" element={<ClubHome />} />
-            <Route path="/wallet" element={<Wallet />} />
-            <Route path="/agenda" element={<Agenda />} />
-            <Route path="/shop" element={<Shop />} />
-            <Route path="/events/:id" element={<EventDetails />} />
+// Inside Routes:
             <Route path="/events/:id/matches" element={<EventMatches />} />
             <Route path="/events/:id/leaderboard" element={<EventLeaderboard />} />
-            <Route path="/events/:id/stats" element={<div className="p-4">Estatísticas (Em desenvolvimento)</div>} />
-            <Route path="/events/:id/mvp" element={<div className="p-4">MVP (Em desenvolvimento)</div>} />
-            <Route path="/events/:id/teams" element={<div className="p-4">Equipes (Em desenvolvimento)</div>} />
-            <Route path="/events/:id/awards" element={<div className="p-4">Artes (Em desenvolvimento)</div>} />
+            <Route path="/events/:id/stats" element={<EventStats />} />
+            <Route path="/events/:id/mvp" element={<EventMVP />} />
+            <Route path="/events/:id/teams" element={<EventParticipants />} />
+            <Route path="/events/:id/awards" element={<EventArts />} />
             <Route path="/register" element={<Register />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/races/:id" element={<RaceDetails />} />
             <Route path="/races/:id/results" element={<div className="p-10 text-center">Resultados (Em Breve)</div>} />
 
-            {/* Athlete Private Area */}
+{/* Athlete Private Area */ }
             <Route path="/profile/teams" element={<MyTeams />} />
             <Route path="/profile/inscriptions" element={<MyInscriptions />} />
             <Route path="/profile/orders" element={<div className="p-10 text-center text-gray-500">Meus Pedidos (Em desenvolvimento)</div>} />
             <Route path="/voting" element={<Voting />} />
-          </Route>
+          </Route >
 
-          <Route path="/login" element={<Login />} />
+  <Route path="/login" element={<Login />} />
 
-          {/* ÁREA ADMINISTRATIVA (Protegida) */}
-          <Route path="/admin" element={<PrivateRoute />}>
-            <Route element={<AdminLayout />}>
-              <Route index element={<Dashboard />} />
-              <Route path="/admin/dashboard" element={<Navigate to="/admin" replace />} /> {/* Redirect legado */}
+{/* ÁREA ADMINISTRATIVA (Protegida) */ }
+<Route path="/admin" element={<PrivateRoute />}>
+  <Route element={<AdminLayout />}>
+    <Route index element={<Dashboard />} />
+    <Route path="/admin/dashboard" element={<Navigate to="/admin" replace />} /> {/* Redirect legado */}
 
-              <Route path="championships" element={<Championships />} />
-              <Route path="championships/new" element={<NewEventSelection />} />
-              <Route path="championships/new/team-sports" element={<ChampionshipForm />} />
-              <Route path="championships/:id/draw" element={<GroupDraw />} />
-              <Route path="races/new" element={<CreateRaceWizard />} />
-              <Route path="races/:id/results" element={<RaceResults />} />
+    <Route path="championships" element={<Championships />} />
+    <Route path="championships/new" element={<NewEventSelection />} />
+    <Route path="championships/new/team-sports" element={<ChampionshipForm />} />
+    <Route path="championships/:id/draw" element={<GroupDraw />} />
+    <Route path="races/new" element={<CreateRaceWizard />} />
+    <Route path="races/:id/results" element={<RaceResults />} />
 
-              <Route path="teams" element={<Teams />} />
-              <Route path="matches" element={<Matches />} />
-            </Route>
+    <Route path="teams" element={<Teams />} />
+    <Route path="matches" element={<Matches />} />
+  </Route>
 
-            {/* Rotas Fullscreen do Admin (fora do layout) */}
-            <Route path="matches/:id/sumula" element={<SumulaFutebol />} />
-            <Route path="matches/:id/sumula-volei" element={<SumulaVolei />} />
-            <Route path="matches/:id/sumula-basquete" element={<SumulaBasquete />} />
-          </Route>
+  {/* Rotas Fullscreen do Admin (fora do layout) */}
+  <Route path="matches/:id/sumula" element={<SumulaFutebol />} />
+  <Route path="matches/:id/sumula-volei" element={<SumulaVolei />} />
+  <Route path="matches/:id/sumula-basquete" element={<SumulaBasquete />} />
+</Route>
 
-          {/* Fallback */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </AuthProvider>
-    </BrowserRouter>
+{/* Fallback */ }
+<Route path="*" element={<Navigate to="/" replace />} />
+        </Routes >
+      </AuthProvider >
+    </BrowserRouter >
   );
 }
 
