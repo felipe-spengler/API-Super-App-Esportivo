@@ -122,7 +122,8 @@ class ArtGeneratorController extends Controller
         // Get total matches for player in this championship
         $matches = MatchEvent::where('player_id', $topScorer->player_id)
             ->whereHas('gameMatch', function ($q) use ($championshipId) {
-                $q->where('championship_id', $championshipId); })
+                $q->where('championship_id', $championshipId);
+            })
             ->distinct('game_match_id')
             ->count();
 
@@ -170,5 +171,127 @@ class ArtGeneratorController extends Controller
             'type' => 'standings',
             'message' => 'Dados para arte de classificação prontos (mock).'
         ]);
+    }
+    /**
+     * Gera e retorna a Imagem do MVP (JPEG)
+     */
+    public function downloadMvpArt($matchId)
+    {
+        $match = GameMatch::with(['homeTeam', 'awayTeam', 'mvpPlayer', 'championship'])->findOrFail($matchId);
+
+        if (!$match->mvp_player_id) {
+            return response('MVP não definido para esta partida.', 404);
+        }
+
+        // --- Configuração ---
+        $bgPath = public_path('assets/templates/bg_mvp.jpg');
+        $fontPath = public_path('assets/fonts/Roboto-Bold.ttf');
+
+        if (!file_exists($bgPath)) {
+            // Fallback development logic if file missing (should not happen after copy)
+            return response('Template de fundo não encontrado: ' . $bgPath, 500);
+        }
+
+        // --- 1. Inicializa Imagem ---
+        $img = @imagecreatefromjpeg($bgPath);
+        if (!$img)
+            return response('Erro ao carregar template.', 500);
+
+        $width = imagesx($img);
+        $white = imagecolorallocate($img, 255, 255, 255);
+        $black = imagecolorallocate($img, 30, 30, 30);
+
+        // --- 2. Foto do Jogador ---
+        if ($match->mvpPlayer->photo_path) {
+            $photoPath = storage_path('app/public/' . $match->mvpPlayer->photo_path);
+
+            // Tenta caminho alternativo se não achar (links simbolicos as vezes)
+            if (!file_exists($photoPath)) {
+                $photoPath = public_path('storage/' . $match->mvpPlayer->photo_path);
+            }
+
+            if (file_exists($photoPath)) {
+                $photoInfo = getimagesize($photoPath);
+                $playerImg = null;
+
+                if ($photoInfo['mime'] == 'image/jpeg')
+                    $playerImg = @imagecreatefromjpeg($photoPath);
+                elseif ($photoInfo['mime'] == 'image/png')
+                    $playerImg = @imagecreatefrompng($photoPath);
+
+                if ($playerImg) {
+                    // Lógica Legacy: Altura fixa 800px
+                    $targetHeight = 800;
+                    $origW = imagesx($playerImg);
+                    $origH = imagesy($playerImg);
+                    $ratio = $origW / $origH;
+                    $targetWidth = $targetHeight * $ratio;
+
+                    $resizedImg = imagecreatetruecolor($targetWidth, $targetHeight);
+
+                    // Transparência para PNG
+                    imagealphablending($resizedImg, false);
+                    imagesavealpha($resizedImg, true);
+
+                    imagecopyresampled($resizedImg, $playerImg, 0, 0, 0, 0, $targetWidth, $targetHeight, $origW, $origH);
+
+                    // Centralizar
+                    $xPos = ($width - $targetWidth) / 2;
+                    $yPos = 335; // Posição vertical fixa do legado
+
+                    imagecopy($img, $resizedImg, $xPos, $yPos, 0, 0, $targetWidth, $targetHeight);
+
+                    imagedestroy($playerImg);
+                    imagedestroy($resizedImg);
+                }
+            }
+        }
+
+        // --- 3. Textos ---
+        // Helper para centralizar texto
+        $drawCenteredText = function ($image, $size, $y, $color, $font, $text) use ($width) {
+            $box = imagettfbbox($size, 0, $font, $text);
+            $textWidth = $box[2] - $box[0];
+            $x = ($width - $textWidth) / 2;
+            imagettftext($image, $size, 0, $x, $y, $color, $font, $text);
+        };
+
+        // Nome do Jogador
+        $playerName = mb_strtoupper($match->mvpPlayer->name);
+        $drawCenteredText($img, 70, 1230, $white, $fontPath, $playerName);
+
+        // Nome do Campeonato
+        $champName = mb_strtoupper($match->championship->name);
+        $drawCenteredText($img, 40, 1700, $white, $fontPath, $champName);
+
+        // Rodada
+        $roundName = mb_strtoupper($match->round_name ?? 'Rodada');
+        $drawCenteredText($img, 30, 1750, $white, $fontPath, $roundName);
+
+        // Label Categoria (Fixo CRAQUE DO JOGO por enquanto)
+        //$drawCenteredText($img, 50, 1150, $white, $fontPath, 'CRAQUE DO JOGO');
+
+
+        // --- 4. Placar ---
+        $homeScore = $match->home_score ?? 0;
+        $awayScore = $match->away_score ?? 0;
+        $scoreY = 1535;
+
+        // Placar Esquerdo
+        $boxA = imagettfbbox(100, 0, $fontPath, $homeScore);
+        $wA = $boxA[2] - $boxA[0];
+        imagettftext($img, 100, 0, ($width / 2) - 180 - $wA, $scoreY, $black, $fontPath, $homeScore);
+
+        // Placar Direito
+        imagettftext($img, 100, 0, ($width / 2) + 180 + 40, $scoreY, $black, $fontPath, $awayScore);
+
+
+        // --- 5. Output ---
+        ob_start();
+        imagejpeg($img, null, 90);
+        $content = ob_get_clean();
+        imagedestroy($img);
+
+        return response($content)->header('Content-Type', 'image/jpeg');
     }
 }

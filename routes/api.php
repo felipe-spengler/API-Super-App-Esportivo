@@ -38,6 +38,7 @@ Route::get('/championships/{id}/race-results', [EventController::class, 'raceRes
 Route::get('/championships/{id}/mvp', [EventController::class, 'mvp']);
 Route::get('/championships/{id}/teams', [EventController::class, 'teamsList']);
 Route::get('/championships/{id}/h2h', [EventController::class, 'h2h']);
+Route::get('/public/art/match/{matchId}/mvp', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'downloadMvpArt']);
 
 // Loja (Público)
 Route::get('/clubs/{clubId}/products', [ShopController::class, 'products']);
