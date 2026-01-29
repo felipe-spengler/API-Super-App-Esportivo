@@ -166,11 +166,23 @@ export function EventDetails() {
 
     let sportSlug = champ?.sport?.slug || 'default';
 
-    // Resolve Alias
-    let gridItems = SPORT_MENUS[sportSlug];
-    if (typeof gridItems === 'string') {
-        gridItems = SPORT_MENUS[gridItems];
-    }
+    // Normalização Inteligente de Slug (para garantir que variations como 'fut7', 'futebol-campo' funcionem)
+    const normalizeSlug = (s: string) => {
+        s = s.toLowerCase();
+        if (s.includes('fute') || s.includes('fut') || s.includes('society') || s.includes('soccer')) return 'futebol';
+        if (s.includes('volei') || s.includes('volleyball')) return 'volei';
+        if (s.includes('hand')) return 'handebol';
+        if (s.includes('basket') || s.includes('basquete')) return 'basquete';
+        if (s.includes('corrida') || s.includes('run') || s.includes('atletismo') || s.includes('maratona') || s.includes('ciclismo')) return 'corrida';
+        if (s.includes('tenis') || s.includes('padel') || s.includes('racket')) return 'tenis';
+        if (s.includes('luta') || s.includes('jiu') || s.includes('boxe') || s.includes('mma') || s.includes('judô')) return 'jiu-jitsu';
+        if (s.includes('swim') || s.includes('nata')) return 'natacao';
+        if (s.includes('skate') || s.includes('surf')) return 'skate';
+        return s;
+    };
+
+    const resolvedSlug = normalizeSlug(sportSlug);
+    let gridItems = SPORT_MENUS[resolvedSlug] || SPORT_MENUS[sportSlug];
 
     // Fallback
     if (!gridItems) {
