@@ -67,7 +67,7 @@ class AdminChampionshipController extends Controller
             'start_date' => 'date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
             'description' => 'nullable|string',
-            'format' => 'in:league,knockout,groups',
+            'format' => 'in:league,knockout,groups,league_playoffs,double_elimination,time_ranking',
             'max_teams' => 'nullable|integer|min:2',
             'is_active' => 'boolean',
         ]);

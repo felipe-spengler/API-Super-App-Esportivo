@@ -64,7 +64,8 @@ class BracketController extends Controller
                 break;
 
             case 'groups':
-                $matches = $this->generateGroupsBracket($championship, $teams, $startDate, $intervalDays, $categoryId);
+                $customGroups = $request->input('custom_groups'); // Array of arrays of team IDs
+                $matches = $this->generateGroupsBracket($championship, $teams, $startDate, $intervalDays, $categoryId, $customGroups);
                 break;
         }
 
@@ -147,18 +148,35 @@ class BracketController extends Controller
     /**
      * Gera chaveamento de grupos
      */
-    private function generateGroupsBracket($championship, $teams, $startDate, $intervalDays, $categoryId = null)
+    private function generateGroupsBracket($championship, $teams, $startDate, $intervalDays, $categoryId = null, $customGroups = null)
     {
         $matches = [];
-        $teamsArray = $teams->shuffle()->toArray();
-        $totalTeams = count($teamsArray);
-
-        // Divide em 4 grupos (ou menos se houver poucas equipes)
-        $numGroups = min(4, ceil($totalTeams / 3));
-        $teamsPerGroup = ceil($totalTeams / $numGroups);
-
-        $groups = array_chunk($teamsArray, $teamsPerGroup);
         $matchDate = $startDate->copy();
+
+        if ($customGroups && is_array($customGroups)) {
+            // Use custom groups provided by frontend
+            $groups = [];
+            foreach ($customGroups as $groupTeamIds) {
+                // Filter teams that are in this group
+                $groupTeams = $teams->filter(function ($team) use ($groupTeamIds) {
+                    return in_array($team->id, $groupTeamIds);
+                })->values()->toArray();
+
+                if (!empty($groupTeams)) {
+                    $groups[] = $groupTeams;
+                }
+            }
+        } else {
+            // Default random generation
+            $teamsArray = $teams->shuffle()->toArray();
+            $totalTeams = count($teamsArray);
+
+            // Divide em 4 grupos (ou menos se houver poucas equipes)
+            $numGroups = min(4, ceil($totalTeams / 3));
+            $teamsPerGroup = ceil($totalTeams / $numGroups);
+
+            $groups = array_chunk($teamsArray, $teamsPerGroup);
+        }
 
         // Gera partidas dentro de cada grupo
         foreach ($groups as $groupIndex => $groupTeams) {

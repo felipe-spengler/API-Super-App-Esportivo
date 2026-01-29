@@ -107,7 +107,7 @@ export function ClubHome() {
                             <span className="text-xs text-gray-600 font-medium">Loja</span>
                         </button>
 
-                        <button className="flex flex-col items-center gap-2 group">
+                        <button className="flex flex-col items-center gap-2 group" onClick={() => navigate('/agenda')}>
                             <div className="bg-orange-50 p-4 rounded-2xl group-hover:bg-orange-100 transition-colors">
                                 <Calendar className="w-6 h-6 text-orange-500" />
                             </div>

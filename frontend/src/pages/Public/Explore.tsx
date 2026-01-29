@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, ChevronRight, Calendar, Trophy } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Calendar, Trophy, MapPin } from 'lucide-react';
 import api from '../../services/api';
 
 export function Explore() {
@@ -79,12 +79,12 @@ export function Explore() {
                                     <div className="flex justify-between items-start mb-2">
                                         <h3 className="text-lg font-bold text-gray-900 flex-1 pr-2 leading-tight">{item.name}</h3>
                                         <div className={`px-2 py-1 rounded-md shrink-0 ${item.status === 'registrations_open' ? 'bg-green-100' :
-                                                item.status === 'finished' ? 'bg-gray-200' :
-                                                    item.status === 'upcoming' ? 'bg-blue-100' : 'bg-yellow-100'
+                                            item.status === 'finished' ? 'bg-gray-200' :
+                                                item.status === 'upcoming' ? 'bg-blue-100' : 'bg-yellow-100'
                                             }`}>
                                             <span className={`text-[10px] font-bold uppercase tracking-wide ${item.status === 'registrations_open' ? 'text-green-700' :
-                                                    item.status === 'finished' ? 'text-gray-600' :
-                                                        item.status === 'upcoming' ? 'text-blue-700' : 'text-yellow-700'
+                                                item.status === 'finished' ? 'text-gray-600' :
+                                                    item.status === 'upcoming' ? 'text-blue-700' : 'text-yellow-700'
                                                 }`}>
                                                 {item.status === 'registrations_open' ? 'Inscrições Abertas' :
                                                     item.status === 'finished' ? 'Finalizado' :
@@ -98,9 +98,28 @@ export function Explore() {
                                     </p>
 
                                     <div className="flex items-center justify-between border-t border-gray-100 pt-3">
-                                        <div className="flex items-center text-xs text-gray-500 font-medium">
-                                            <Calendar className="w-3 h-3 mr-1.5 text-indigo-500" />
-                                            De {item.start_date ? new Date(item.start_date).toLocaleDateString() : 'TBA'} a {item.end_date ? new Date(item.end_date).toLocaleDateString() : 'TBA'}
+                                        <div className="flex flex-col gap-1.5">
+                                            {item.club?.name && (
+                                                <div className="flex items-center text-xs text-gray-700 font-bold">
+                                                    <Trophy className="w-3.5 h-3.5 mr-1.5 text-indigo-600" />
+                                                    {item.club.name}
+                                                    {(item.club.city || item.city) && (
+                                                        <span className="ml-1.5 font-normal text-gray-500 border-l border-gray-300 pl-1.5">
+                                                            {item.club.city || item.city}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
+                                            {!item.club?.name && (item.city || item.location) && (
+                                                <div className="flex items-center text-xs text-gray-700 font-bold">
+                                                    <MapPin className="w-3.5 h-3.5 mr-1.5 text-indigo-600" />
+                                                    {item.city || item.location}
+                                                </div>
+                                            )}
+                                            <div className="flex items-center text-xs text-gray-500 font-medium">
+                                                <Calendar className="w-3.5 h-3.5 mr-1.5 text-indigo-500" />
+                                                De {item.start_date ? new Date(item.start_date).toLocaleDateString() : 'TBA'} a {item.end_date ? new Date(item.end_date).toLocaleDateString() : 'TBA'}
+                                            </div>
                                         </div>
                                         <ChevronRight className="w-4 h-4 text-gray-400" />
                                     </div>

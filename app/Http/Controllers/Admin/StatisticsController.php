@@ -117,11 +117,14 @@ class StatisticsController extends Controller
 
         foreach ($matches as $match) {
             // Inicializa equipes se não existirem
+            $groupName = $match->group_name ?? 'Geral';
+
             if (!isset($standings[$match->home_team_id])) {
                 $standings[$match->home_team_id] = [
                     'team_id' => $match->home_team_id,
                     'team_name' => $match->homeTeam->name ?? 'N/A',
                     'team_logo' => $match->homeTeam->logo_path ? asset('storage/' . $match->homeTeam->logo_path) : null,
+                    'group_name' => $groupName,
                     'played' => 0,
                     'won' => 0,
                     'drawn' => 0,
@@ -138,6 +141,7 @@ class StatisticsController extends Controller
                     'team_id' => $match->away_team_id,
                     'team_name' => $match->awayTeam->name ?? 'N/A',
                     'team_logo' => $match->awayTeam->logo_path ? asset('storage/' . $match->awayTeam->logo_path) : null,
+                    'group_name' => $groupName,
                     'played' => 0,
                     'won' => 0,
                     'drawn' => 0,
@@ -181,8 +185,11 @@ class StatisticsController extends Controller
             $team['goal_difference'] = $team['goals_for'] - $team['goals_against'];
         }
 
-        // Ordena por pontos, saldo de gols, gols marcados
+        // Ordena por Grupo, Pontos, Saldo
         usort($standings, function ($a, $b) {
+            if ($a['group_name'] != $b['group_name']) {
+                return strcmp($a['group_name'], $b['group_name']);
+            }
             if ($a['points'] != $b['points']) {
                 return $b['points'] - $a['points'];
             }
@@ -192,10 +199,17 @@ class StatisticsController extends Controller
             return $b['goals_for'] - $a['goals_for'];
         });
 
-        // Adiciona Posição
+        // Adiciona Posição (reinicia por grupo)
         $rankedStandings = array_values($standings);
-        foreach ($rankedStandings as $index => &$row) {
-            $row['position'] = $index + 1;
+        $currentGroup = null;
+        $position = 1;
+
+        foreach ($rankedStandings as &$row) {
+            if ($row['group_name'] !== $currentGroup) {
+                $currentGroup = $row['group_name'];
+                $position = 1;
+            }
+            $row['position'] = $position++;
         }
 
         return response()->json($rankedStandings);

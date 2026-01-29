@@ -13,20 +13,29 @@ import {
     MapPin,
     UserPlus,
     Star,
-    Images
+    Images,
+    Hand
 } from 'lucide-react';
 import api from '../../services/api';
 
 // Menu items baseados no esporte (igual ao mobile)
 const SPORT_MENUS: any = {
+    // 1. TIME / PLACAR (TEAM SPORTS)
     futebol: [
         { label: 'Jogos', icon: Trophy, route: 'matches', color: 'orange' },
         { label: 'Classificação', icon: ListOrdered, route: 'leaderboard', color: 'blue' },
         { label: 'Artilharia', icon: Target, route: 'stats', params: { type: 'goals', title: 'Artilharia' }, color: 'gray' },
-        { label: 'Cartão Amarelo', icon: Square, iconColor: '#FBBF24', route: 'stats', params: { type: 'yellow_cards', title: 'Cartões Amarelos' }, color: 'yellow' },
-        { label: 'Cartão Azul', icon: Square, iconColor: '#3B82F6', route: 'stats', params: { type: 'blue_cards', title: 'Cartões Azuis' }, color: 'blue' },
-        { label: 'Cartão Vermelho', icon: Square, iconColor: '#EF4444', route: 'stats', params: { type: 'red_cards', title: 'Cartões Vermelhos' }, color: 'red' },
+        { label: 'Cartões', icon: Square, iconColor: '#EF4444', route: 'stats', params: { type: 'cards', title: 'Cartões' }, color: 'red' },
         { label: 'Melhor em Campo', icon: Crown, route: 'mvp', color: 'black' },
+        { label: 'Ver Artes', icon: Images, route: 'awards', color: 'green' },
+    ],
+    futsal: 'futebol', // Alias
+    society: 'futebol', // Alias
+    handebol: [
+        { label: 'Jogos', icon: Trophy, route: 'matches', color: 'orange' },
+        { label: 'Classificação', icon: ListOrdered, route: 'leaderboard', color: 'blue' },
+        { label: 'Artilharia', icon: Target, route: 'stats', params: { type: 'goals', title: 'Artilharia' }, color: 'gray' },
+        { label: 'MVP', icon: Crown, route: 'mvp', color: 'black' },
         { label: 'Ver Artes', icon: Images, route: 'awards', color: 'green' },
     ],
     volei: [
@@ -35,22 +44,64 @@ const SPORT_MENUS: any = {
         { label: 'Pontuador', icon: Target, route: 'stats', params: { type: 'points', title: 'Maiores Pontuadores' }, color: 'gray' },
         { label: 'Bloqueador', icon: HandMetal, route: 'stats', params: { type: 'blocks', title: 'Melhores Bloqueadores' }, color: 'cyan' },
         { label: 'Acer', icon: Star, route: 'stats', params: { type: 'aces', title: 'Melhores Sacadores' }, color: 'indigo' },
-        { label: 'Melhor em Quadra', icon: Crown, route: 'mvp', color: 'purple' },
-        { label: 'Equipes', icon: Users, route: 'teams', color: 'blue' },
+        { label: 'MVP', icon: Crown, route: 'mvp', color: 'purple' },
         { label: 'Ver Artes', icon: Images, route: 'awards', color: 'green' },
     ],
+    basquete: [
+        { label: 'Jogos', icon: Trophy, route: 'matches', color: 'orange' },
+        { label: 'Classificação', icon: ListOrdered, route: 'leaderboard', color: 'blue' },
+        { label: 'Cestinhas', icon: Target, route: 'stats', params: { type: 'points', title: 'Cestinhas' }, color: 'gray' },
+        { label: 'Rebotes', icon: Hand, route: 'stats', params: { type: 'rebounds', title: 'Líderes em Rebotes' }, color: 'cyan' },
+        { label: 'Assistências', icon: HandMetal, route: 'stats', params: { type: 'assists', title: 'Líderes em Assistências' }, color: 'indigo' },
+        { label: 'MVP', icon: Crown, route: 'mvp', color: 'black' },
+        { label: 'Ver Artes', icon: Images, route: 'awards', color: 'green' },
+    ],
+
+    // 2. CORRIDA / TEMPO (RACING)
     corrida: [
         { label: 'Resultados', icon: Trophy, route: 'results', color: 'orange' },
         { label: 'Inscritos', icon: Users, route: 'participants', color: 'blue' },
         { label: 'Categorias', icon: ListOrdered, route: 'categories', color: 'cyan' },
         { label: 'Ver Artes', icon: Images, route: 'awards', color: 'green' },
     ],
-    futsal: [
-        { label: 'Jogos', icon: Trophy, route: 'matches', color: 'orange' },
-        { label: 'Classificação', icon: ListOrdered, route: 'leaderboard', color: 'blue' },
-        { label: 'Artilharia', icon: Target, route: 'stats', params: { type: 'goals', title: 'Artilharia' }, color: 'gray' },
-        { label: 'Cartões', icon: Square, iconColor: '#FBBF24', route: 'stats', params: { type: 'cards', title: 'Cartões' }, color: 'yellow' },
+    ciclismo: 'corrida',
+    mtb: 'corrida',
+    natacao: 'corrida',
+    triathlon: 'corrida',
+
+    // 3. COMBATE / INDIVIDUAL (COMBAT & RACKET)
+    'jiu-jitsu': [
+        { label: 'Chaves', icon: Target, route: 'brackets', color: 'orange' },
+        { label: 'Inscritos', icon: Users, route: 'participants', color: 'blue' },
+        { label: 'Ao Vivo', icon: Trophy, route: 'matches', color: 'red' },
+        { label: 'Ver Artes', icon: Images, route: 'awards', color: 'green' },
     ],
+    judo: 'jiu-jitsu',
+    boxe: 'jiu-jitsu',
+    mma: 'jiu-jitsu',
+
+    // Racket Sports (Sets/Games)
+    tenis: [
+        { label: 'Chaves', icon: Target, route: 'brackets', color: 'orange' },
+        { label: 'Jogos', icon: Trophy, route: 'matches', color: 'blue' },
+        { label: 'Inscritos', icon: Users, route: 'participants', color: 'purple' },
+        { label: 'Ver Artes', icon: Images, route: 'awards', color: 'green' },
+    ],
+    'beach-tennis': 'tenis',
+    padel: 'tenis',
+    'tenis-mesa': 'tenis',
+
+    // 4. PERFORMANCE / NOTA (SCORE)
+    skate: [
+        { label: 'Resultados', icon: Trophy, route: 'leaderboard', color: 'orange' }, // Ranking por nota
+        { label: 'Baterias', icon: ListOrdered, route: 'heats', color: 'blue' },
+        { label: 'Inscritos', icon: Users, route: 'participants', color: 'purple' },
+        { label: 'Ver Artes', icon: Images, route: 'awards', color: 'green' },
+    ],
+    surf: 'skate',
+    ginastica: 'skate',
+    crossfit: 'skate', // Pode ser tempo ou nota, mas estrutura similar de heats
+
     default: [
         { label: 'Jogos', icon: Trophy, route: 'matches', color: 'orange' },
         { label: 'Classificação', icon: ListOrdered, route: 'leaderboard', color: 'blue' },
@@ -113,8 +164,18 @@ export function EventDetails() {
         );
     }
 
-    const sportSlug = champ?.sport?.slug || 'default';
-    const gridItems = SPORT_MENUS[sportSlug] || SPORT_MENUS['default'];
+    let sportSlug = champ?.sport?.slug || 'default';
+
+    // Resolve Alias
+    let gridItems = SPORT_MENUS[sportSlug];
+    if (typeof gridItems === 'string') {
+        gridItems = SPORT_MENUS[gridItems];
+    }
+
+    // Fallback
+    if (!gridItems) {
+        gridItems = SPORT_MENUS['default'];
+    }
 
     return (
         <div className="min-h-screen bg-gray-50 pb-20">
@@ -161,8 +222,8 @@ export function EventDetails() {
                                     key={cat.id}
                                     onClick={() => setSelectedCategory(cat)}
                                     className={`px-4 py-2 rounded-full text-xs font-bold uppercase whitespace-nowrap transition-all ${selectedCategory?.id === cat.id
-                                            ? 'bg-white text-indigo-900 shadow-md'
-                                            : 'bg-blue-800/50 text-blue-100 border border-blue-700 hover:bg-blue-700/50'
+                                        ? 'bg-white text-indigo-900 shadow-md'
+                                        : 'bg-blue-800/50 text-blue-100 border border-blue-700 hover:bg-blue-700/50'
                                         }`}
                                 >
                                     {cat.name}
@@ -194,7 +255,7 @@ export function EventDetails() {
                             <Link
                                 key={index}
                                 to={`/events/${id}/${item.route}?category_id=${selectedCategory?.id || ''}&type=${item.params?.type || ''}&title=${item.params?.title || item.label}`}
-                                className="bg-white rounded-xl p-4 shadow-sm border-l-4 hover:shadow-md transition-all active:scale-[0.98] group"
+                                className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 border-l-4 hover:shadow-md transition-all active:scale-[0.98] group"
                                 style={{ borderLeftColor: borderColor }}
                             >
                                 <div className="flex justify-between items-start mb-2">

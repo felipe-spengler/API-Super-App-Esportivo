@@ -126,6 +126,14 @@ export function Championships() {
                                         <span>{new Date(camp.start_date).toLocaleDateString()}</span>
                                     </div>
 
+                                    <Link
+                                        to={`/admin/championships/${camp.id}/draw`}
+                                        className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors z-10 relative"
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        Grupos
+                                    </Link>
+
                                     {/* Botão Resultados para Corridas */}
                                     {['Running', 'Cycling', 'MTB', 'Swimming', 'Corrida', 'Natação'].includes(camp.sport) && (
                                         <button

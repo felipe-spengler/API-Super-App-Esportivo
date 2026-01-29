@@ -97,10 +97,16 @@ class EventController extends Controller
             if (!$homeId || !$awayId)
                 continue; // Ignora jogos sem definição
 
-            if (!isset($teamsData[$homeId]))
+            $groupName = $m->group_name ?? 'Geral';
+
+            if (!isset($teamsData[$homeId])) {
                 $teamsData[$homeId] = $initStats($m->homeTeam->name ?? 'Time A');
-            if (!isset($teamsData[$awayId]))
+                $teamsData[$homeId]['group_name'] = $groupName;
+            }
+            if (!isset($teamsData[$awayId])) {
                 $teamsData[$awayId] = $initStats($m->awayTeam->name ?? 'Time B');
+                $teamsData[$awayId]['group_name'] = $groupName;
+            }
 
             // Lógica de Pontuação
             $teamsData[$homeId]['stats']['played']++;
@@ -175,6 +181,13 @@ class EventController extends Controller
 
         // Ordenação
         usort($teamsData, function ($a, $b) {
+            // Sort by Group
+            $groupA = $a['group_name'] ?? 'Geral';
+            $groupB = $b['group_name'] ?? 'Geral';
+            if ($groupA !== $groupB) {
+                return strcmp($groupA, $groupB);
+            }
+
             if ($a['stats']['points'] === $b['stats']['points']) {
                 if ($a['stats']['wins'] === $b['stats']['wins']) {
                     // Saldo
