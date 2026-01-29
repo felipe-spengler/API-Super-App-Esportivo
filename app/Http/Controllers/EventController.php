@@ -249,6 +249,8 @@ class EventController extends Controller
             $dbTypes = ['block']; // Volleyball block only
         elseif ($type === 'aces')
             $dbTypes = ['ace']; // Volleyball ace only
+        elseif ($type === 'blue_cards')
+            $dbTypes = ['blue_card'];
 
         if (empty($dbTypes)) {
             return response()->json([]);

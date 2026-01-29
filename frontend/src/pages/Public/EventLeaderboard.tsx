@@ -24,7 +24,7 @@ export function EventLeaderboard() {
 
                 // Fetch standings
                 // Endpoint hypothesis: /championships/:id/standings?category_id=X
-                const response = await api.get(`/championships/${id}/standings${categoryId ? `?category_id=${categoryId}` : ''}`);
+                const response = await api.get(`/championships/${id}/leaderboard${categoryId ? `?category_id=${categoryId}` : ''}`);
                 setStandings(response.data);
 
             } catch (error) {

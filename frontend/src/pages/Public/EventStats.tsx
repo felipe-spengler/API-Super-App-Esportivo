@@ -8,13 +8,18 @@ export function EventStats() {
     const { id } = useParams();
     const [searchParams] = useSearchParams();
     const categoryId = searchParams.get('category_id');
-    const type = searchParams.get('type') || 'goals';
+    const initialType = searchParams.get('type') || 'goals';
     const title = searchParams.get('title') || 'Estatísticas';
     const navigate = useNavigate();
+
+    // Map 'cards' generic type to specific 'yellow_cards' default
+    const [activeTab, setActiveTab] = useState(initialType === 'cards' ? 'yellow_cards' : initialType);
 
     const [stats, setStats] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [champName, setChampName] = useState('');
+
+    const isCardStats = ['cards', 'yellow_cards', 'red_cards', 'blue_cards'].includes(initialType);
 
     useEffect(() => {
         async function loadData() {
@@ -24,7 +29,7 @@ export function EventStats() {
                 setChampName(champRes.data.name);
 
                 const response = await api.get(`/championships/${id}/stats`, {
-                    params: { type, category_id: categoryId }
+                    params: { type: activeTab, category_id: categoryId }
                 });
                 setStats(response.data);
 
@@ -35,14 +40,15 @@ export function EventStats() {
             }
         }
         loadData();
-    }, [id, type, categoryId]);
+    }, [id, activeTab, categoryId]);
 
     const getIcon = () => {
-        switch (type) {
+        switch (activeTab) {
             case 'goals': return <Target className="w-5 h-5 text-gray-500" />;
             case 'cards': return <AlertTriangle className="w-5 h-5 text-red-500" />;
             case 'yellow_cards': return <AlertTriangle className="w-5 h-5 text-yellow-500" />;
             case 'red_cards': return <AlertOctagon className="w-5 h-5 text-red-600" />;
+            case 'blue_cards': return <Shield className="w-5 h-5 text-blue-600" />;
             case 'assists': return <Hand className="w-5 h-5 text-blue-500" />;
             case 'blocks': return <Shield className="w-5 h-5 text-cyan-500" />;
             case 'aces': return <Star className="w-5 h-5 text-yellow-500" />;
@@ -52,9 +58,12 @@ export function EventStats() {
     };
 
     const getValueLabel = () => {
-        switch (type) {
+        switch (activeTab) {
             case 'goals': return 'Gols';
             case 'cards': return 'Cartões';
+            case 'yellow_cards': return 'Amarelos';
+            case 'red_cards': return 'Vermelhos';
+            case 'blue_cards': return 'Azuis';
             case 'assists': return 'Assis.';
             case 'blocks': return 'Bloq.';
             case 'aces': return 'Aces';
@@ -75,6 +84,32 @@ export function EventStats() {
                     <p className="text-xs text-gray-500 mt-1">{champName || 'Carregando...'}</p>
                 </div>
             </div>
+
+            {/* Tabs for Cards */}
+            {isCardStats && (
+                <div className="bg-white border-b border-gray-200 px-4">
+                    <div className="flex gap-6">
+                        <button
+                            onClick={() => setActiveTab('yellow_cards')}
+                            className={`py-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'yellow_cards' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                        >
+                            Amarelos
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('red_cards')}
+                            className={`py-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'red_cards' ? 'border-red-500 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                        >
+                            Vermelhos
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('blue_cards')}
+                            className={`py-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'blue_cards' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                        >
+                            Azuis
+                        </button>
+                    </div>
+                </div>
+            )}
 
             <div className="max-w-3xl mx-auto p-4 space-y-2">
                 {loading ? (
