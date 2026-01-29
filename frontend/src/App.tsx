@@ -10,6 +10,7 @@ import { GroupDraw } from './pages/Championships/GroupDraw';
 import { Teams } from './pages/Teams';
 import { TeamForm } from './pages/Teams/TeamForm';
 import { Players } from './pages/Players';
+import { PlayerForm } from './pages/Players/PlayerForm';
 import { Reports } from './pages/Reports';
 import { Settings } from './pages/Settings';
 import { Matches } from './pages/Matches';
@@ -37,6 +38,8 @@ import { RaceDetails } from './pages/Public/RaceDetails';
 import { Register } from './pages/Register';
 import { Profile } from './pages/Public/Profile';
 import { MyTeams } from './pages/Public/MyTeams';
+import { MyTeamForm } from './pages/Public/MyTeamForm';
+import { MyTeamDetails } from './pages/Public/MyTeamDetails';
 import { MyInscriptions } from './pages/Public/MyInscriptions';
 import { Voting } from './pages/Public/Voting';
 import { SumulaVolei } from './pages/Matches/SumulaVolei';
@@ -70,6 +73,8 @@ function App() {
 
             {/* Athlete Private Area */}
             <Route path="/profile/teams" element={<MyTeams />} />
+            <Route path="/profile/teams/new" element={<MyTeamForm />} />
+            <Route path="/profile/teams/:id" element={<MyTeamDetails />} />
             <Route path="/profile/inscriptions" element={<MyInscriptions />} />
             <Route path="/profile/orders" element={<div className="p-10 text-center text-gray-500">Meus Pedidos (Em desenvolvimento)</div>} />
             <Route path="/voting" element={<Voting />} />
@@ -93,6 +98,8 @@ function App() {
               <Route path="teams" element={<Teams />} />
               <Route path="teams/new" element={<TeamForm />} />
               <Route path="players" element={<Players />} />
+              <Route path="players/new" element={<PlayerForm />} />
+              <Route path="players/:id/edit" element={<PlayerForm />} />
               <Route path="reports" element={<Reports />} />
               <Route path="settings" element={<Settings />} />
 

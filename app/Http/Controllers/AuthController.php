@@ -20,6 +20,10 @@ class AuthController extends Controller
             'phone' => 'nullable|string',
             'cpf' => 'nullable|string',
             'birth_date' => 'nullable|date',
+            'rg' => 'nullable|string',
+            'mother_name' => 'nullable|string',
+            'gender' => 'nullable|in:M,F,O',
+            'document_number' => 'nullable|string',
             'photo' => 'nullable|image|max:2048', // Validação da foto de perfil
             'document' => 'nullable|image|max:4096', // Validação da foto do documento
         ]);
@@ -41,6 +45,10 @@ class AuthController extends Controller
             'phone' => $validated['phone'] ?? null,
             'cpf' => $validated['cpf'] ?? null,
             'birth_date' => $validated['birth_date'] ?? null,
+            'rg' => $validated['rg'] ?? null,
+            'mother_name' => $validated['mother_name'] ?? null,
+            'gender' => $validated['gender'] ?? null,
+            'document_number' => $validated['document_number'] ?? null,
             'photo_path' => $photoPath,
             'document_path' => $documentPath,
         ]);

@@ -69,6 +69,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Gestão de Times (Capitão)
     Route::get('/my-teams', [\App\Http\Controllers\TeamController::class, 'index']);
+    Route::post('/my-teams', [\App\Http\Controllers\TeamController::class, 'store']);
     Route::get('/teams/{id}', [\App\Http\Controllers\TeamController::class, 'show']);
     Route::post('/teams/{id}/players', [\App\Http\Controllers\TeamController::class, 'addPlayer']);
 
@@ -187,6 +188,19 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/races/{id}/results', [\App\Http\Controllers\Admin\RaceResultController::class, 'store']);
         Route::post('/races/{id}/results/import', [\App\Http\Controllers\Admin\RaceResultController::class, 'uploadCsv']);
         Route::put('/results/{id}', [\App\Http\Controllers\Admin\RaceResultController::class, 'update']);
+        // Configurações (NEW)
+        Route::get('/settings', [\App\Http\Controllers\Admin\AdminSettingController::class, 'show']);
+        Route::put('/settings', [\App\Http\Controllers\Admin\AdminSettingController::class, 'update']);
+
+        // System Settings (SMTP)
+        Route::get('/system-settings', [\App\Http\Controllers\Admin\AdminSystemSettingController::class, 'index']);
+        Route::put('/system-settings', [\App\Http\Controllers\Admin\AdminSystemSettingController::class, 'update']);
+
+        // Categories
+        Route::get('/categories', [\App\Http\Controllers\Admin\AdminCategoryController::class, 'index']);
+        Route::post('/categories', [\App\Http\Controllers\Admin\AdminCategoryController::class, 'store']);
+        Route::put('/categories/{id}', [\App\Http\Controllers\Admin\AdminCategoryController::class, 'update']);
+        Route::delete('/categories/{id}', [\App\Http\Controllers\Admin\AdminCategoryController::class, 'destroy']);
     });
 });
 

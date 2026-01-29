@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, User, Filter, AlertCircle, Loader2, Edit, Trash2 } from 'lucide-react';
+import { Plus, Search, User, AlertCircle, Loader2, Edit, Trash2 } from 'lucide-react';
 import api from '../../services/api';
+import { Link } from 'react-router-dom';
 
 interface Player {
     id: number;
     name: string;
     email: string;
     position?: string;
-    team_name?: string; // or team object
+    team_name?: string;
     photo_url?: string;
     status?: 'active' | 'suspended' | 'pending';
 }
@@ -36,6 +37,16 @@ export function Players() {
         }
     }
 
+    async function handleDelete(id: number) {
+        if (!confirm('Tem certeza que deseja excluir este jogador?')) return;
+        try {
+            await api.delete(`/admin/players/${id}`);
+            loadPlayers();
+        } catch (error) {
+            alert('Erro ao excluir jogador.');
+        }
+    }
+
     const filtered = players.filter(p =>
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (p.email && p.email.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -48,13 +59,13 @@ export function Players() {
                     <h1 className="text-2xl font-bold text-gray-900">Jogadores</h1>
                     <p className="text-gray-500">Gerencie atletas e usuários da plataforma.</p>
                 </div>
-                <button
+                <Link
+                    to="/admin/players/new"
                     className="inline-flex items-center justify-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors font-medium shadow-md"
-                    onClick={() => alert('Feature de adicionar jogador manual em construção. Use o app móvel para cadastro por enquanto.')}
                 >
                     <Plus className="w-5 h-5" />
                     Novo Jogador
-                </button>
+                </Link>
             </div>
 
             <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6">
@@ -138,10 +149,16 @@ export function Players() {
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2">
-                                                <button className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+                                                <Link
+                                                    to={`/admin/players/${player.id}/edit`}
+                                                    className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                                >
                                                     <Edit className="w-4 h-4" />
-                                                </button>
-                                                <button className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                                                </Link>
+                                                <button
+                                                    onClick={() => handleDelete(player.id)}
+                                                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                >
                                                     <Trash2 className="w-4 h-4" />
                                                 </button>
                                             </div>

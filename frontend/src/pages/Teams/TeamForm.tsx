@@ -1,19 +1,45 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Save, ArrowLeft, Shield } from 'lucide-react';
+import { Save, ArrowLeft, Shield, User } from 'lucide-react';
 import api from '../../services/api';
+
+interface UserOption {
+    id: number;
+    name: string;
+    email: string;
+}
 
 export function TeamForm() {
     const navigate = useNavigate();
     const [name, setName] = useState('');
     const [city, setCity] = useState('');
+    const [captainId, setCaptainId] = useState('');
+    const [users, setUsers] = useState<UserOption[]>([]);
     const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        loadUsers();
+    }, []);
+
+    async function loadUsers() {
+        try {
+            const response = await api.get('/admin/players');
+            const data = Array.isArray(response.data) ? response.data : (response.data.data || []);
+            setUsers(data);
+        } catch (error) {
+            console.error('Erro ao carregar usuários', error);
+        }
+    }
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         setLoading(true);
         try {
-            await api.post('/admin/teams', { name, city });
+            await api.post('/admin/teams', {
+                name,
+                city,
+                captain_id: captainId ? Number(captainId) : null
+            });
             navigate('/admin/teams');
         } catch (error) {
             alert('Erro ao criar equipe');
@@ -62,6 +88,28 @@ export function TeamForm() {
                             className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                             placeholder="Ex: Toledo - PR"
                         />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Capitão / Responsável (Opcional)</label>
+                        <div className="relative">
+                            <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                            <select
+                                value={captainId}
+                                onChange={e => setCaptainId(e.target.value)}
+                                className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none appearance-none bg-white"
+                            >
+                                <option value="">Selecione um usuário...</option>
+                                {users.map(user => (
+                                    <option key={user.id} value={user.id}>
+                                        {user.name} ({user.email})
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                            O capitão poderá gerenciar a equipe e adicionar jogadores.
+                        </p>
                     </div>
 
                     <div className="pt-4">

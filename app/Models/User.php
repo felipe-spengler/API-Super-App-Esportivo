@@ -26,6 +26,10 @@ class User extends Authenticatable
         'password',
         'phone',
         'cpf',
+        'rg',
+        'mother_name',
+        'gender',
+        'document_number',
         'birth_date',
         'device_token',
         'is_admin',
@@ -73,5 +77,15 @@ class User extends Authenticatable
     public function club()
     {
         return $this->belongsTo(Club::class);
+    }
+
+    public function teamsAsCaptain()
+    {
+        return $this->hasMany(Team::class, 'captain_id');
+    }
+
+    public function teamsAsPlayer()
+    {
+        return $this->belongsToMany(Team::class, 'team_players')->withPivot(['position', 'number', 'is_approved']);
     }
 }

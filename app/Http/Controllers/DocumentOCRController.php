@@ -31,7 +31,7 @@ class DocumentOCRController extends Controller
             ]);
         }
 
-        $prompt = "Analise esta imagem de um documento brasileiro (CNH ou RG). Extraia EXATAMENTE os seguintes campos em formato JSON: { \"name\": string (Nome Completo), \"cpf\": string (apenas números), \"birth_date\": string (YYYY-MM-DD) }. Se não encontrar algum campo, retorne null. Não inclua markdown, apenas o JSON.";
+        $prompt = "Analise esta imagem de um documento brasileiro (CNH, RG ou CIN). Extraia EXATAMENTE os seguintes campos em formato JSON, ignorando acentos nas chaves: { \"name\": string (Nome Completo), \"cpf\": string (apenas números), \"birth_date\": string (YYYY-MM-DD), \"rg\": string (apenas números, se houver), \"mother_name\": string (Nome da Mãe, se houver), \"gender\": string (M ou F, apenas se estiver EXPLÍCITO no documento, senão null), \"document_number\": string (Número de Registro da CNH ou do Documento) }. Se não encontrar algum campo, retorne null. Não inclua markdown, apenas o JSON.";
 
         try {
             $response = Http::withHeaders([

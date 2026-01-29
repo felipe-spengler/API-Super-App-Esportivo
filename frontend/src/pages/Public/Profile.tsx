@@ -1,16 +1,16 @@
 
 import { ArrowLeft, User, Shield, CreditCard, LogOut, Shirt, Users, Trophy } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 export function Profile() {
     const navigate = useNavigate();
-    // Mock user
-    const user = {
-        name: 'Felipe Silva',
-        email: 'felipe@example.com',
-        role: 'Atleta',
-        avatar: null
-    };
+    const { user, signOut } = useAuth();
+
+    if (!user) {
+        navigate('/login');
+        return null; // Or loading
+    }
 
     const MENU_ITEMS = [
         { label: 'Meus Times', icon: Users, route: '/profile/teams', color: 'text-blue-600', bg: 'bg-blue-100' },
@@ -34,7 +34,7 @@ export function Profile() {
                 {/* Profile Card */}
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
                     <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center border-2 border-white shadow-sm overflow-hidden">
-                        {user.avatar ? <img src={user.avatar} className="w-full h-full object-cover" /> : <User className="w-8 h-8 text-gray-400" />}
+                        {(user as any).photo_url ? <img src={(user as any).photo_url} className="w-full h-full object-cover" /> : <User className="w-8 h-8 text-gray-400" />}
                     </div>
                     <div>
                         <h2 className="text-lg font-bold text-gray-900">{user.name}</h2>
