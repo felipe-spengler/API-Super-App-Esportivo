@@ -204,14 +204,67 @@ class EventController extends Controller
             return $b['stats']['points'] <=> $a['stats']['points'];
         });
 
-        // Adiciona ID se perdeu chave
+        // Adiciona ID e posição, e transforma para o formato esperado pelo frontend
+        $position = 1;
+        $formatted = [];
         foreach ($teamsData as $tid => &$t) {
             if (!isset($t['id']))
                 $t['id'] = $tid;
+
+            // Transformar estrutura para frontend
+            $formatted[] = [
+                'id' => $t['id'],
+                'team_name' => $t['name'],
+                'team_logo' => null, // TODO: adicionar logo se disponível
+                'position' => $position++,
+                'points' => $t['stats']['points'],
+                'played' => $t['stats']['played'],
+                'won' => $t['stats']['wins'],
+                'drawn' => $t['stats']['draws'],
+                'lost' => $t['stats']['losses'],
+                'goal_difference' => $t['stats']['goals_for'] - $t['stats']['goals_against'],
+                'group_name' => $t['group_name'] ?? 'Geral'
+            ];
         }
 
-        return response()->json(array_values($teamsData));
+        return response()->json($formatted);
     }
+
+    // 4.5. Chaveamento Mata-Mata (Knockout Bracket)
+    public function knockoutBracket(Request $request, $championshipId)
+    {
+        $query = GameMatch::where('championship_id', $championshipId)
+            ->with(['homeTeam', 'awayTeam'])
+            ->whereNotNull('round') // Apenas jogos de mata-mata têm 'round' definida
+            ->orderByRaw("FIELD(round, 'round_of_16', 'quarter', 'semi', 'final')");
+
+        if ($request->has('category_id') && $request->category_id != 'null') {
+            $query->where('category_id', $request->category_id);
+        }
+
+        $matches = $query->get();
+
+        // Formatar para o frontend
+        $formatted = $matches->map(function ($match) {
+            return [
+                'id' => $match->id,
+                'team1_name' => $match->homeTeam->name ?? 'A definir',
+                'team2_name' => $match->awayTeam->name ?? 'A definir',
+                'team1_logo' => $match->homeTeam->logo_url ?? null,
+                'team2_logo' => $match->awayTeam->logo_url ?? null,
+                'team1_score' => $match->home_score,
+                'team2_score' => $match->away_score,
+                'round' => $match->round, // 'round_of_16', 'quarter', 'semi', 'final'
+                'match_date' => $match->start_time,
+                'winner_team_id' => $match->home_score !== null && $match->away_score !== null
+                    ? ($match->home_score > $match->away_score ? $match->home_team_id : $match->away_team_id)
+                    : null
+            ];
+        });
+
+        return response()->json($formatted);
+    }
+
 
     // 5. Calendário
     public function calendarEvents($clubId)

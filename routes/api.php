@@ -28,6 +28,7 @@ Route::get('/clubs/{clubId}/championships', [EventController::class, 'championsh
 Route::get('/championships/{id}', [EventController::class, 'championshipDetails']);
 Route::get('/championships/{id}/matches', [EventController::class, 'matches']);
 Route::get('/championships/{id}/leaderboard', [EventController::class, 'leaderboard']);
+Route::get('/championships/{id}/knockout-bracket', [EventController::class, 'knockoutBracket']);
 Route::get('/clubs/{clubId}/agenda', [EventController::class, 'agenda']);
 Route::get('/clubs/{id}/calendar', [EventController::class, 'calendarEvents']);
 Route::get('/championships/{id}/stats', [EventController::class, 'stats']);

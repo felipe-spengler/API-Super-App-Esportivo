@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { Lock, Mail, ArrowRight, Loader2, User, Trophy } from 'lucide-react';
+import { Lock, Mail, ArrowRight, Loader2, User, Trophy, ArrowLeft } from 'lucide-react';
 
 export function Login() {
     // Auth States
@@ -39,6 +39,14 @@ export function Login() {
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center p-4 font-sans">
             <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden p-8">
+
+                <button
+                    onClick={() => navigate('/')}
+                    className="mb-4 flex items-center gap-2 text-gray-600 hover:text-indigo-600 transition-colors"
+                >
+                    <ArrowLeft className="w-5 h-5" />
+                    <span className="text-sm font-medium">Voltar</span>
+                </button>
 
                 <div className="text-center mb-8">
                     <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 bg-indigo-100 text-indigo-600">

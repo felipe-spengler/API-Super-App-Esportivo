@@ -13,6 +13,7 @@ export function EventMatches() {
     const [matches, setMatches] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [champName, setChampName] = useState('');
+    const [activeTab, setActiveTab] = useState<'all' | 'live' | 'upcoming' | 'finished'>('all');
 
     useEffect(() => {
         async function loadData() {
@@ -123,6 +124,36 @@ export function EventMatches() {
                 </div>
             </div>
 
+            {/* Tabs */}
+            <div className="bg-white border-b border-gray-200 sticky top-[73px] z-10">
+                <div className="max-w-3xl mx-auto flex">
+                    <button
+                        onClick={() => setActiveTab('all')}
+                        className={`flex-1 py-3 text-sm font-semibold transition-all border-b-2 ${activeTab === 'all' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                    >
+                        Todos ({matches.length})
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('live')}
+                        className={`flex-1 py-3 text-sm font-semibold transition-all border-b-2 ${activeTab === 'live' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                    >
+                        Ao Vivo ({liveMatches.length})
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('upcoming')}
+                        className={`flex-1 py-3 text-sm font-semibold transition-all border-b-2 ${activeTab === 'upcoming' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                    >
+                        Agendados ({upcomingMatches.length})
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('finished')}
+                        className={`flex-1 py-3 text-sm font-semibold transition-all border-b-2 ${activeTab === 'finished' ? 'border-gray-600 text-gray-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                    >
+                        Finalizados ({finishedMatches.length})
+                    </button>
+                </div>
+            </div>
+
             <div className="max-w-3xl mx-auto p-4 space-y-6">
                 {loading ? (
                     <div className="flex justify-center p-8">
@@ -134,37 +165,66 @@ export function EventMatches() {
                     </div>
                 ) : (
                     <>
-                        {/* Live Section */}
-                        {liveMatches.length > 0 && (
-                            <div>
-                                <h3 className="text-sm font-bold text-red-600 uppercase tracking-wider mb-3 flex items-center gap-2">
-                                    <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse"></span>
-                                    Acontecendo Agora
-                                </h3>
-                                {liveMatches.map(match => <MatchCard key={match.id} match={match} />)}
-                            </div>
+                        {activeTab === 'all' && (
+                            <>
+                                {liveMatches.length > 0 && (
+                                    <div>
+                                        <h3 className="text-sm font-bold text-red-600 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                            <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse"></span>
+                                            Acontecendo Agora
+                                        </h3>
+                                        {liveMatches.map(match => <MatchCard key={match.id} match={match} />)}
+                                    </div>
+                                )}
+                                {upcomingMatches.length > 0 && (
+                                    <div>
+                                        <h3 className="text-sm font-bold text-blue-600 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                            <Calendar className="w-4 h-4" />
+                                            Próximos Jogos
+                                        </h3>
+                                        {upcomingMatches.map(match => <MatchCard key={match.id} match={match} />)}
+                                    </div>
+                                )}
+                                {finishedMatches.length > 0 && (
+                                    <div>
+                                        <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                            <Clock className="w-4 h-4" />
+                                            Finalizados
+                                        </h3>
+                                        {finishedMatches.map(match => <MatchCard key={match.id} match={match} />)}
+                                    </div>
+                                )}
+                            </>
                         )}
 
-                        {/* Scheduled Section */}
-                        {upcomingMatches.length > 0 && (
-                            <div>
-                                <h3 className="text-sm font-bold text-blue-600 uppercase tracking-wider mb-3 flex items-center gap-2">
-                                    <Calendar className="w-4 h-4" />
-                                    Próximos Jogos
-                                </h3>
-                                {upcomingMatches.map(match => <MatchCard key={match.id} match={match} />)}
-                            </div>
+                        {activeTab === 'live' && (
+                            liveMatches.length > 0 ? (
+                                liveMatches.map(match => <MatchCard key={match.id} match={match} />)
+                            ) : (
+                                <div className="text-center py-10 bg-white rounded-xl shadow-sm border border-gray-100">
+                                    <p className="text-gray-500">Nenhum jogo ao vivo no momento.</p>
+                                </div>
+                            )
                         )}
 
-                        {/* Finished Section */}
-                        {finishedMatches.length > 0 && (
-                            <div>
-                                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
-                                    <Clock className="w-4 h-4" />
-                                    Finalizados
-                                </h3>
-                                {finishedMatches.map(match => <MatchCard key={match.id} match={match} />)}
-                            </div>
+                        {activeTab === 'upcoming' && (
+                            upcomingMatches.length > 0 ? (
+                                upcomingMatches.map(match => <MatchCard key={match.id} match={match} />)
+                            ) : (
+                                <div className="text-center py-10 bg-white rounded-xl shadow-sm border border-gray-100">
+                                    <p className="text-gray-500">Nenhum jogo agendado.</p>
+                                </div>
+                            )
+                        )}
+
+                        {activeTab === 'finished' && (
+                            finishedMatches.length > 0 ? (
+                                finishedMatches.map(match => <MatchCard key={match.id} match={match} />)
+                            ) : (
+                                <div className="text-center py-10 bg-white rounded-xl shadow-sm border border-gray-100">
+                                    <p className="text-gray-500">Nenhum jogo finalizado ainda.</p>
+                                </div>
+                            )
                         )}
                     </>
                 )}
