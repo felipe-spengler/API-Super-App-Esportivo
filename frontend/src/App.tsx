@@ -8,6 +8,10 @@ import { Championships } from './pages/Championships';
 import { ChampionshipForm } from './pages/Championships/ChampionshipForm';
 import { GroupDraw } from './pages/Championships/GroupDraw';
 import { Teams } from './pages/Teams';
+import { TeamForm } from './pages/Teams/TeamForm';
+import { Players } from './pages/Players';
+import { Reports } from './pages/Reports';
+import { Settings } from './pages/Settings';
 import { Matches } from './pages/Matches';
 import { SumulaFutebol } from './pages/Matches/SumulaFutebol';
 import { CreateRaceWizard } from './pages/Corridas/CreateRaceWizard';
@@ -48,6 +52,7 @@ function App() {
             <Route path="/" element={<PublicHome />} />
             <Route path="/explore" element={<Explore />} />
             <Route path="/club-home" element={<ClubHome />} />
+            <Route path="/club-home/:slug" element={<ClubHome />} />
             <Route path="/wallet" element={<Wallet />} />
             <Route path="/agenda" element={<Agenda />} />
             <Route path="/shop" element={<Shop />} />
@@ -86,6 +91,11 @@ function App() {
               <Route path="races/:id/results" element={<RaceResults />} />
 
               <Route path="teams" element={<Teams />} />
+              <Route path="teams/new" element={<TeamForm />} />
+              <Route path="players" element={<Players />} />
+              <Route path="reports" element={<Reports />} />
+              <Route path="settings" element={<Settings />} />
+
               <Route path="matches" element={<Matches />} />
             </Route>
 

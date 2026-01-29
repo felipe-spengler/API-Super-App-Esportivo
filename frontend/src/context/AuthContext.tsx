@@ -14,7 +14,7 @@ interface AuthContextData {
     signed: boolean;
     user: User | null;
     loading: boolean;
-    signIn: (email: string, pass: string) => Promise<void>;
+    signIn: (email: string, pass: string) => Promise<User>;
     signOut: () => void;
 }
 
@@ -56,6 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         setUser(user);
+        return user;
     }
 
     function signOut() {

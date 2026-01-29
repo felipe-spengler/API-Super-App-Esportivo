@@ -48,7 +48,7 @@ export function Teams() {
                     <p className="text-gray-500">Gerencie os times e seus participantes.</p>
                 </div>
                 <Link
-                    to="/teams/new"
+                    to="/admin/teams/new"
                     className="inline-flex items-center justify-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors font-medium shadow-md"
                 >
                     <Plus className="w-5 h-5" />

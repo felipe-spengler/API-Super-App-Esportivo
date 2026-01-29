@@ -427,4 +427,51 @@ class EventController extends Controller
 
         return response()->json($query->get());
     }
+
+    // 10. Agenda (Public with Filters)
+    public function agenda(Request $request, $clubId)
+    {
+        $statusMap = [
+            'agendado' => ['scheduled', 'upcoming', 'registrations_open', 'active'],
+            'concluido' => ['finished', 'completed'],
+            'ao_vivo' => ['live', 'ongoing', 'in_progress']
+        ];
+
+        $query = GameMatch::whereHas('championship', function ($q) use ($clubId) {
+            $q->where('club_id', $clubId);
+        })->with(['homeTeam', 'awayTeam', 'championship']);
+
+        // Date Filter
+        if ($request->has('start_date') && $request->start_date) {
+            $query->whereDate('start_time', '>=', $request->start_date);
+        }
+        if ($request->has('end_date') && $request->end_date) {
+            $query->whereDate('start_time', '<=', $request->end_date);
+        }
+
+        // Status Filter
+        if ($request->has('status') && isset($statusMap[$request->status])) {
+            $query->whereIn('status', $statusMap[$request->status]);
+        }
+
+        $matches = $query->orderBy('start_time', 'asc')->get();
+
+        $events = $matches->map(function ($match) {
+            return [
+                'id' => $match->id,
+                'title' => ($match->homeTeam->name ?? 'TBA') . ' vs ' . ($match->awayTeam->name ?? 'TBA'),
+                'date' => $match->start_time ? $match->start_time->format('Y-m-d H:i:s') : null,
+                'time' => $match->start_time ? $match->start_time->format('H:i') : null,
+                'location' => $match->location ?? 'Local não definido',
+                'category' => $match->championship->name ?? 'Campeonato',
+                'status' => $match->status,
+                'home_team' => $match->homeTeam->name ?? 'TBA',
+                'away_team' => $match->awayTeam->name ?? 'TBA',
+                'home_score' => $match->home_score,
+                'away_score' => $match->away_score
+            ];
+        });
+
+        return response()->json($events);
+    }
 }

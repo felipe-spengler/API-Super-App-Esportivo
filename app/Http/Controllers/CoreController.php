@@ -9,7 +9,9 @@ class CoreController extends Controller
     // 1. Listar todas as cidades disponíveis
     public function cities()
     {
-        return response()->json(\App\Models\City::all());
+        return response()->json(\App\Models\City::whereHas('clubs', function ($q) {
+            $q->where('is_active', true);
+        })->get());
     }
 
     // 2. Listar clubes de uma cidade (Busca por Slug ou ID)
