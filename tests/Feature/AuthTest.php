@@ -32,8 +32,8 @@ class AuthTest extends TestCase
             'rg' => '123456789',
             'mother_name' => 'Maria Silva',
             'document_number' => '987654321',
-            'photo' => UploadedFile::fake()->image('perfil.jpg'),
-            'document' => UploadedFile::fake()->image('documento.jpg'),
+            'photo' => UploadedFile::fake()->create('perfil.txt', 100),
+            'document' => UploadedFile::fake()->create('documento.txt', 100),
         ]);
 
         $response->assertStatus(201)

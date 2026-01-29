@@ -16,8 +16,8 @@ class ClubFactory extends Factory
             'name' => $name,
             'slug' => Str::slug($name),
             'city_id' => City::factory(),
-            'address' => fake()->streetAddress(),
-            'phone' => fake()->phoneNumber(),
+            'primary_color' => fake()->hexColor(),
+            'secondary_color' => fake()->hexColor(),
         ];
     }
 }

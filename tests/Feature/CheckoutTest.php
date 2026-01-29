@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Product;
 use App\Models\Coupon;
 use App\Models\Order;
+use App\Models\Club;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -55,18 +56,19 @@ class CheckoutTest extends TestCase
     {
         $user = User::factory()->create();
         $product = Product::factory()->create(['price' => 100.00]);
+        $club = Club::factory()->create();
 
         $coupon = Coupon::create([
+            'club_id' => $club->id,
             'code' => 'DESCONTO10',
-            'type' => 'percentage',
-            'value' => 10, // 10% de desconto
+            'discount_type' => 'percent',
+            'discount_value' => 10, // 10% de desconto
             'expires_at' => now()->addDays(30),
-            'is_active' => true,
         ]);
 
         // Calcular preço com desconto
         $originalPrice = 100.00;
-        $discount = ($originalPrice * $coupon->value) / 100;
+        $discount = ($originalPrice * $coupon->discount_value) / 100;
         $finalPrice = $originalPrice - $discount;
 
         $this->assertEquals(90.00, $finalPrice);
@@ -90,12 +92,14 @@ class CheckoutTest extends TestCase
      */
     public function test_expired_coupon_is_rejected(): void
     {
+        $club = Club::factory()->create();
+
         $coupon = Coupon::create([
+            'club_id' => $club->id,
             'code' => 'EXPIRADO',
-            'type' => 'percentage',
-            'value' => 20,
+            'discount_type' => 'percent',
+            'discount_value' => 20,
             'expires_at' => now()->subDays(1), // Expirou ontem
-            'is_active' => true,
         ]);
 
         $isExpired = $coupon->expires_at < now();
@@ -108,14 +112,21 @@ class CheckoutTest extends TestCase
      */
     public function test_inactive_coupon_cannot_be_used(): void
     {
+        $club = Club::factory()->create();
+
+        // Simular cupom que atingiu o limite de usos
         $coupon = Coupon::create([
-            'code' => 'INATIVO',
-            'type' => 'percentage',
-            'value' => 15,
+            'club_id' => $club->id,
+            'code' => 'LIMITADO',
+            'discount_type' => 'percent',
+            'discount_value' => 15,
             'expires_at' => now()->addDays(30),
-            'is_active' => false, // Desativado
+            'max_uses' => 5,
+            'used_count' => 5, // Já foi usado 5 vezes
         ]);
 
-        $this->assertFalse($coupon->is_active);
+        $isAvailable = $coupon->used_count < ($coupon->max_uses ?? PHP_INT_MAX);
+
+        $this->assertFalse($isAvailable);
     }
 }
