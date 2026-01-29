@@ -13,7 +13,8 @@ export function MyTeamForm() {
         e.preventDefault();
         setLoading(true);
         try {
-            await api.post('/inscriptions/team', { name, city, captain_check: true }); // Using existing inscription or create specific endpoint
+            // Removed incorrect call to /inscriptions/team
+
             // Wait, InscriptionController usually links to a championship. 
             // We need a generic Create Team endpoint for User.
             // Let's check api routes again.

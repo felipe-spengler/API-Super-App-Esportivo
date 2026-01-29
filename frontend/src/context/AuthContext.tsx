@@ -7,6 +7,7 @@ interface User {
     name: string;
     email: string;
     role: string; // 'super_admin', 'admin', 'user'
+    is_admin?: boolean;
     club_id?: number | null;
 }
 

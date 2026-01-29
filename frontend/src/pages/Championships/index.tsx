@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Calendar, Trophy, AlertCircle, Loader2 } from 'lucide-react';
+import { Plus, Search, Calendar, Trophy, AlertCircle, Loader2, Edit, Trash2, Power } from 'lucide-react';
 import api from '../../services/api';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 interface Championship {
     id: number;
@@ -11,9 +11,11 @@ interface Championship {
     status: 'active' | 'upcoming' | 'finished';
     sport: string;
     logo_url?: string;
+    is_active?: boolean;
 }
 
 export function Championships() {
+    const navigate = useNavigate();
     const [championships, setChampionships] = useState<Championship[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -33,16 +35,38 @@ export function Championships() {
         } catch (err) {
             console.error(err);
             setError('Não foi possível carregar os campeonatos. Verifique sua conexão.');
-            // Fallback para demonstrar visualmente se a API estiver offline
-            // setChampionships(MOCK_DATA); 
         } finally {
             setLoading(false);
         }
     }
 
+    async function handleDelete(id: number) {
+        if (confirm('Tem certeza que deseja excluir este campeonato? Todas as partidas e estatísticas serão perdidas.')) {
+            try {
+                await api.delete(`/admin/championships/${id}`);
+                setChampionships(championships.filter(c => c.id !== id));
+            } catch (err) {
+                alert('Erro ao excluir campeonato.');
+            }
+        }
+    }
+
+    async function handleToggleStatus(camp: Championship) {
+        // Logic to toggle status or active state could go here if API supports specific toggle
+        // For now, let's just use Delete as the primary "Disable" or "Remove" action requested.
+        // Or we could implement a basic status toggle update
+        try {
+            // Example: Toggle active status
+            // await api.put(`/admin/championships/${camp.id}`, { is_active: !camp.is_active });
+            // loadChampionships();
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
     const filtered = championships.filter(c =>
-        c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.sport.toLowerCase().includes(searchTerm.toLowerCase())
+        (c.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (c.sport || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     return (
@@ -95,12 +119,11 @@ export function Championships() {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filtered.map(camp => (
-                        <Link
+                        <div
                             key={camp.id}
-                            to={`/championships/${camp.id}`}
                             className="group bg-white rounded-xl shadow border border-gray-100 hover:border-indigo-500 hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col"
                         >
-                            <div className="h-32 bg-gray-100 relative overflow-hidden">
+                            <Link to={`/championships/${camp.id}`} className="h-32 bg-gray-100 relative overflow-hidden block">
                                 {camp.logo_url ? (
                                     <img src={camp.logo_url} alt={camp.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                                 ) : (
@@ -115,41 +138,45 @@ export function Championships() {
                                         {camp.status === 'active' ? 'Em Andamento' : camp.status === 'finished' ? 'Finalizado' : 'Próximo'}
                                     </span>
                                 </div>
-                            </div>
+                            </Link>
+
                             <div className="p-5 flex-1 flex flex-col">
                                 <h3 className="text-lg font-bold text-gray-900 mb-1 group-hover:text-indigo-600 transition-colors">{camp.name}</h3>
-                                <p className="text-sm text-indigo-600 font-medium mb-4">{camp.sport}</p>
+                                <p className="text-sm text-indigo-600 font-medium mb-4">{camp.sport || 'Esporte não definido'}</p>
 
-                                <div className="mt-auto flex items-center justify-between text-gray-500 text-sm">
+                                <div className="mt-auto flex items-center justify-between text-gray-500 text-sm mb-4">
                                     <div className="flex items-center gap-2">
                                         <Calendar className="w-4 h-4" />
-                                        <span>{new Date(camp.start_date).toLocaleDateString()}</span>
+                                        <span>{camp.start_date ? new Date(camp.start_date).toLocaleDateString() : 'Data indefinida'}</span>
                                     </div>
+                                </div>
 
-                                    <Link
-                                        to={`/admin/championships/${camp.id}/draw`}
-                                        className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors z-10 relative"
-                                        onClick={(e) => e.stopPropagation()}
+                                <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-100">
+                                    <button
+                                        onClick={() => navigate(`/admin/championships/${camp.id}/draw`)}
+                                        className="flex-1 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors"
                                     >
-                                        Grupos
-                                    </Link>
+                                        Gerenciar
+                                    </button>
 
-                                    {/* Botão Resultados para Corridas */}
-                                    {['Running', 'Cycling', 'MTB', 'Swimming', 'Corrida', 'Natação'].includes(camp.sport) && (
-                                        <button
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                // @ts-ignore
-                                                window.location.href = `/admin/races/${camp.id}/results`;
-                                            }}
-                                            className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors z-10 relative"
-                                        >
-                                            Resultados
-                                        </button>
-                                    )}
+                                    <button
+                                        onClick={() => navigate(`/admin/championships/${camp.id}/edit`)} // Assuming this route exists or we create it
+                                        className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-gray-50 rounded-lg transition-colors"
+                                        title="Editar"
+                                    >
+                                        <Edit className="w-4 h-4" />
+                                    </button>
+
+                                    <button
+                                        onClick={() => handleDelete(camp.id)}
+                                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                        title="Excluir"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
                                 </div>
                             </div>
-                        </Link>
+                        </div>
                     ))}
                 </div>
             )}

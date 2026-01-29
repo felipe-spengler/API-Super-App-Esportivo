@@ -47,6 +47,19 @@ export function Profile() {
 
                 {/* Menu Grid */}
                 <div className="grid grid-cols-2 gap-4">
+                    {/* Admin Link if Admin */}
+                    {(user.is_admin || user.role === 'admin' || user.role === 'super_admin') && (
+                        <button
+                            onClick={() => navigate('/admin/dashboard')}
+                            className="col-span-2 bg-gradient-to-r from-gray-900 to-gray-800 p-4 rounded-2xl shadow-lg border border-gray-700 flex flex-col items-center justify-center gap-3 active:scale-[0.98] py-6"
+                        >
+                            <div className="p-3 rounded-full bg-white/10 text-white">
+                                <Shield className="w-6 h-6" />
+                            </div>
+                            <span className="font-bold text-white text-sm">Painel Administrativo</span>
+                        </button>
+                    )}
+
                     {MENU_ITEMS.map((item, idx) => {
                         const Icon = item.icon;
                         return (

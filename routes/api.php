@@ -100,6 +100,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Gestão de Equipes (NEW)
         Route::get('/teams', [\App\Http\Controllers\Admin\AdminTeamController::class, 'index']);
+        Route::get('/teams/{id}', [\App\Http\Controllers\Admin\AdminTeamController::class, 'show']);
         Route::post('/teams', [\App\Http\Controllers\Admin\AdminTeamController::class, 'store']);
         Route::put('/teams/{id}', [\App\Http\Controllers\Admin\AdminTeamController::class, 'update']);
         Route::delete('/teams/{id}', [\App\Http\Controllers\Admin\AdminTeamController::class, 'destroy']);

@@ -1,12 +1,15 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Save, ArrowLeft, Trophy } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams, Link } from 'react-router-dom';
+import { Save, ArrowLeft, Trophy, Loader2 } from 'lucide-react';
 import api from '../../services/api';
-import { Link } from 'react-router-dom';
 
 export function ChampionshipForm() {
     const navigate = useNavigate();
+    const { id } = useParams();
+    const isEditing = !!id;
+
     const [loading, setLoading] = useState(false);
+    const [fetching, setFetching] = useState(!!id);
     const [formData, setFormData] = useState({
         name: '',
         sport: 'Futebol',
@@ -21,30 +24,73 @@ export function ChampionshipForm() {
         'Futebol 7', 'Futevôlei', 'Beach Tennis', 'Tênis de Mesa', 'Lutas'
     ];
 
+    useEffect(() => {
+        if (id) {
+            loadChampionship();
+        }
+    }, [id]);
+
+    async function loadChampionship() {
+        try {
+            const response = await api.get(`/championships/${id}`); // Assuming public endpoint has details or admin specific
+            // Actually, we should probably use the list from Admin mostly, or a specific admin show.
+            // But since previous steps showed Route::get('/championships/{id}', [EventController::class, 'championshipDetails']); is public, we can use it.
+            // Or better, check if there is an admin specific one. AdminChampionshipController doesn't have 'show'.
+            // Can use the public one for now as it contains the data needed.
+            const data = response.data;
+            setFormData({
+                name: data.name,
+                sport: data.sport,
+                start_date: data.start_date ? data.start_date.split('T')[0] : '',
+                end_date: data.end_date ? data.end_date.split('T')[0] : '',
+                description: data.description || '',
+                format: data.format || 'pontos_corridos'
+            });
+        } catch (err) {
+            console.error(err);
+            alert('Erro ao carregar dados do campeonato.');
+            navigate('/admin/championships');
+        } finally {
+            setFetching(false);
+        }
+    }
+
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         setLoading(true);
 
         try {
-            await api.post('/admin/championships', formData);
-            navigate('/championships');
+            if (isEditing) {
+                await api.put(`/admin/championships/${id}`, formData);
+            } else {
+                await api.post('/admin/championships', formData);
+            }
+            navigate('/admin/championships');
         } catch (err) {
             console.error(err);
-            alert('Erro ao criar campeonato. Verifique os dados.');
+            alert('Erro ao salvar campeonato. Verifique os dados.');
         } finally {
             setLoading(false);
         }
     }
 
+    if (fetching) {
+        return (
+            <div className="flex h-screen items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+            </div>
+        );
+    }
+
     return (
         <div className="max-w-4xl mx-auto animate-in fade-in duration-500">
             <div className="flex items-center gap-4 mb-8">
-                <Link to="/championships" className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                <Link to="/admin/championships" className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                     <ArrowLeft className="w-6 h-6 text-gray-600" />
                 </Link>
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Novo Campeonato</h1>
-                    <p className="text-gray-500">Preencha os dados para criar um novo evento.</p>
+                    <h1 className="text-2xl font-bold text-gray-900">{isEditing ? 'Editar Campeonato' : 'Novo Campeonato'}</h1>
+                    <p className="text-gray-500">Preencha os dados para {isEditing ? 'editar o' : 'criar um novo'} evento.</p>
                 </div>
             </div>
 
@@ -173,7 +219,7 @@ export function ChampionshipForm() {
                                 className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg hover:shadow-xl transition-all flex items-center gap-2 disabled:opacity-70"
                             >
                                 <Save className="w-5 h-5" />
-                                {loading ? 'Criando...' : 'Criar Campeonato'}
+                                {loading ? 'Salvando...' : (isEditing ? 'Atualizar Campeonato' : 'Criar Campeonato')}
                             </button>
                         </div>
                     </form>

@@ -34,6 +34,13 @@ class AdminTeamController extends Controller
         return response()->json($teams);
     }
 
+    // Show team details
+    public function show($id)
+    {
+        $team = Team::with(['club', 'players', 'championships'])->findOrFail($id);
+        return response()->json($team);
+    }
+
     // Create team
     public function store(StoreTeamRequest $request)
     {

@@ -9,6 +9,7 @@ import { ChampionshipForm } from './pages/Championships/ChampionshipForm';
 import { GroupDraw } from './pages/Championships/GroupDraw';
 import { Teams } from './pages/Teams';
 import { TeamForm } from './pages/Teams/TeamForm';
+import { TeamDetails } from './pages/Teams/TeamDetails';
 import { Players } from './pages/Players';
 import { PlayerForm } from './pages/Players/PlayerForm';
 import { Reports } from './pages/Reports';
@@ -91,11 +92,13 @@ function App() {
               <Route path="championships" element={<Championships />} />
               <Route path="championships/new" element={<NewEventSelection />} />
               <Route path="championships/new/team-sports" element={<ChampionshipForm />} />
+              <Route path="championships/:id/edit" element={<ChampionshipForm />} />
               <Route path="championships/:id/draw" element={<GroupDraw />} />
               <Route path="races/new" element={<CreateRaceWizard />} />
               <Route path="races/:id/results" element={<RaceResults />} />
 
               <Route path="teams" element={<Teams />} />
+              <Route path="teams/:id" element={<TeamDetails />} />
               <Route path="teams/new" element={<TeamForm />} />
               <Route path="players" element={<Players />} />
               <Route path="players/new" element={<PlayerForm />} />
