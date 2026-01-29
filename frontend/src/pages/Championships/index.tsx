@@ -123,7 +123,7 @@ export function Championships() {
                             key={camp.id}
                             className="group bg-white rounded-xl shadow border border-gray-100 hover:border-indigo-500 hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col"
                         >
-                            <Link to={`/championships/${camp.id}`} className="h-32 bg-gray-100 relative overflow-hidden block">
+                            <Link to={`/admin/championships/${camp.id}`} className="h-32 bg-gray-100 relative overflow-hidden block">
                                 {camp.logo_url ? (
                                     <img src={camp.logo_url} alt={camp.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                                 ) : (
@@ -155,7 +155,7 @@ export function Championships() {
 
                                 <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-100">
                                     <button
-                                        onClick={() => navigate(`/admin/championships/${camp.id}/draw`)}
+                                        onClick={() => navigate(`/admin/championships/${camp.id}`)}
                                         className="flex-1 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors"
                                     >
                                         Gerenciar

@@ -6,6 +6,7 @@ import { AdminLayout } from './layouts/AdminLayout';
 import { Dashboard } from './pages/Dashboard';
 import { Championships } from './pages/Championships';
 import { ChampionshipForm } from './pages/Championships/ChampionshipForm';
+import { AdminChampionshipDetails } from './pages/Championships/AdminChampionshipDetails';
 import { GroupDraw } from './pages/Championships/GroupDraw';
 import { Teams } from './pages/Teams';
 import { TeamForm } from './pages/Teams/TeamForm';
@@ -92,6 +93,7 @@ function App() {
               <Route path="championships" element={<Championships />} />
               <Route path="championships/new" element={<NewEventSelection />} />
               <Route path="championships/new/team-sports" element={<ChampionshipForm />} />
+              <Route path="championships/:id" element={<AdminChampionshipDetails />} />
               <Route path="championships/:id/edit" element={<ChampionshipForm />} />
               <Route path="championships/:id/draw" element={<GroupDraw />} />
               <Route path="races/new" element={<CreateRaceWizard />} />
