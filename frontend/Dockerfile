@@ -3,8 +3,6 @@ FROM node:18-alpine as build
 
 WORKDIR /app
 
-# Force development environment for build tools
-ENV NODE_ENV=development
 COPY package*.json ./
 RUN npm install --legacy-peer-deps
 
