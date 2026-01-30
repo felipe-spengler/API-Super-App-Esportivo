@@ -201,6 +201,8 @@ export function AdminMatchManager() {
                                                             if (slug === 'volei') return `/matches/${match.id}/sumula-volei`;
                                                             if (slug === 'futsal') return `/matches/${match.id}/sumula-futsal`;
                                                             if (slug === 'basquete') return `/matches/${match.id}/sumula-basquete`;
+                                                            if (slug === 'handebol') return `/matches/${match.id}/sumula-handebol`;
+                                                            if (slug === 'beach-tennis') return `/matches/${match.id}/sumula-beach-tennis`;
                                                             return `/matches/${match.id}/sumula`;
                                                         })()}
                                                         className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200"

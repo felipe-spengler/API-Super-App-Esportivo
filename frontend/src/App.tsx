@@ -49,6 +49,8 @@ import { ChampionshipInscription } from './pages/Public/ChampionshipInscription'
 import { SumulaVolei } from './pages/Matches/SumulaVolei';
 import { SumulaFutsal } from './pages/Matches/SumulaFutsal';
 import { SumulaBasquete } from './pages/Matches/SumulaBasquete';
+import { SumulaHandebol } from './pages/Matches/SumulaHandebol';
+import { SumulaBeachTennis } from './pages/Matches/SumulaBeachTennis';
 import { MatchPrintView } from './pages/Matches/MatchPrintView';
 
 function App() {
@@ -122,6 +124,8 @@ function App() {
             <Route path="matches/:id/sumula-volei" element={<SumulaVolei />} />
             <Route path="matches/:id/sumula-futsal" element={<SumulaFutsal />} />
             <Route path="matches/:id/sumula-basquete" element={<SumulaBasquete />} />
+            <Route path="matches/:id/sumula-handebol" element={<SumulaHandebol />} />
+            <Route path="matches/:id/sumula-beach-tennis" element={<SumulaBeachTennis />} />
             <Route path="matches/:id/sumula-print" element={<MatchPrintView />} />
           </Route>
 
