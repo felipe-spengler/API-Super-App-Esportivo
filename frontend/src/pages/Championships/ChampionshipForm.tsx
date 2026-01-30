@@ -3,53 +3,66 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import { Save, ArrowLeft, Trophy, Loader2 } from 'lucide-react';
 import api from '../../services/api';
 
+interface Sport {
+    id: number;
+    name: string;
+}
+
 export function ChampionshipForm() {
     const navigate = useNavigate();
     const { id } = useParams();
     const isEditing = !!id;
 
     const [loading, setLoading] = useState(false);
-    const [fetching, setFetching] = useState(!!id);
+    const [fetching, setFetching] = useState(true); // Default true until initial load
+    const [sports, setSports] = useState<Sport[]>([]);
+
     const [formData, setFormData] = useState({
         name: '',
-        sport: 'Futebol',
+        sport_id: '', // Will hold ID as string for select
         start_date: '',
         end_date: '',
+        registration_start_date: '',
+        registration_end_date: '',
+        registration_type: 'team', // 'individual' | 'team'
         description: '',
-        format: 'pontos_corridos'
+        format: 'league' // Default to league
     });
 
-    const sports = [
-        'Futebol', 'Futsal', 'Vôlei', 'Basquete', 'Handebol',
-        'Futebol 7', 'Futevôlei', 'Beach Tennis', 'Tênis de Mesa', 'Lutas'
-    ];
-
     useEffect(() => {
-        if (id) {
-            loadChampionship();
-        }
+        loadInitialData();
     }, [id]);
 
-    async function loadChampionship() {
+    async function loadInitialData() {
         try {
-            const response = await api.get(`/championships/${id}`); // Assuming public endpoint has details or admin specific
-            // Actually, we should probably use the list from Admin mostly, or a specific admin show.
-            // But since previous steps showed Route::get('/championships/{id}', [EventController::class, 'championshipDetails']); is public, we can use it.
-            // Or better, check if there is an admin specific one. AdminChampionshipController doesn't have 'show'.
-            // Can use the public one for now as it contains the data needed.
-            const data = response.data;
-            setFormData({
-                name: data.name,
-                sport: data.sport,
-                start_date: data.start_date ? data.start_date.split('T')[0] : '',
-                end_date: data.end_date ? data.end_date.split('T')[0] : '',
-                description: data.description || '',
-                format: data.format || 'pontos_corridos'
-            });
+            // Fetch Sports first
+            const sportsResponse = await api.get('/sports');
+            setSports(sportsResponse.data.sort((a: any, b: any) => a.name.localeCompare(b.name)));
+
+            if (id) {
+                const response = await api.get(`/championships/${id}`);
+                const data = response.data;
+                setFormData({
+                    name: data.name,
+                    sport_id: data.sport_id.toString(),
+                    start_date: data.start_date ? data.start_date.split('T')[0] : '',
+                    end_date: data.end_date ? data.end_date.split('T')[0] : '',
+                    registration_start_date: data.registration_start_date ? data.registration_start_date.split('T')[0] : '',
+                    registration_end_date: data.registration_end_date ? data.registration_end_date.split('T')[0] : '',
+                    registration_type: data.registration_type || 'team',
+                    description: data.description || '',
+                    format: data.format || 'league'
+                });
+            } else {
+                // Set default sport if available
+                if (sportsResponse.data.length > 0) {
+                    setFormData(prev => ({ ...prev, sport_id: sportsResponse.data[0].id.toString() }));
+                }
+            }
         } catch (err) {
             console.error(err);
-            alert('Erro ao carregar dados do campeonato.');
-            navigate('/admin/championships');
+            alert('Erro ao carregar dados.');
+            if (id) navigate('/admin/championships');
         } finally {
             setFetching(false);
         }
@@ -59,16 +72,30 @@ export function ChampionshipForm() {
         e.preventDefault();
         setLoading(true);
 
+        // Ensure we send numbers where expected
+        const payload = {
+            ...formData,
+            sport_id: parseInt(formData.sport_id),
+        };
+
         try {
             if (isEditing) {
-                await api.put(`/admin/championships/${id}`, formData);
+                await api.put(`/admin/championships/${id}`, payload);
+                navigate(`/admin/championships/${id}`);
             } else {
-                await api.post('/admin/championships', formData);
+                const response = await api.post('/admin/championships', payload);
+                navigate(`/admin/championships/${response.data.id}`);
             }
-            navigate('/admin/championships');
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
-            alert('Erro ao salvar campeonato. Verifique os dados.');
+            const msg = err.response?.data?.message || 'Erro ao salvar campeonato. Verifique os dados.';
+            // If validation errors are present, show them
+            if (err.response?.data?.errors) {
+                const errors = Object.values(err.response.data.errors).flat().join('\n');
+                alert(`Erro:\n${errors}`);
+            } else {
+                alert(msg);
+            }
         } finally {
             setLoading(false);
         }
@@ -83,53 +110,71 @@ export function ChampionshipForm() {
     }
 
     return (
-        <div className="max-w-4xl mx-auto animate-in fade-in duration-500">
+        <div className="max-w-4xl mx-auto animate-in fade-in duration-500 pb-20">
             <div className="flex items-center gap-4 mb-8">
                 <Link to="/admin/championships" className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                     <ArrowLeft className="w-6 h-6 text-gray-600" />
                 </Link>
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">{isEditing ? 'Editar Campeonato' : 'Novo Campeonato'}</h1>
-                    <p className="text-gray-500">Preencha os dados para {isEditing ? 'editar o' : 'criar um novo'} evento.</p>
+                    <p className="text-gray-500">Preencha os dados (Modalidade, Datas, Formato) para {isEditing ? 'editar o' : 'criar um novo'} evento.</p>
                 </div>
             </div>
 
             <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
                 <div className="p-8">
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        <div className="space-y-2">
-                            <label className="text-sm font-semibold text-gray-700">Nome do Campeonato</label>
-                            <div className="relative">
-                                <Trophy className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                                <input
-                                    type="text"
-                                    required
-                                    value={formData.name}
-                                    onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
-                                    placeholder="Ex: Copa Verão 2026"
-                                />
-                            </div>
-                        </div>
+                    <form onSubmit={handleSubmit} className="space-y-8">
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* 1. Details */}
+                        <div className="space-y-4">
+                            <h2 className="text-lg font-semibold text-gray-800 border-b pb-2">1. Detalhes Básicos</h2>
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-gray-700">Nome do Campeonato</label>
+                                <div className="relative">
+                                    <Trophy className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                                    <input
+                                        type="text"
+                                        required
+                                        value={formData.name}
+                                        onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                        className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
+                                        placeholder="Ex: Copa Verão 2026"
+                                    />
+                                </div>
+                            </div>
+
                             <div className="space-y-2">
                                 <label className="text-sm font-semibold text-gray-700">Modalidade</label>
                                 <select
-                                    value={formData.sport}
-                                    onChange={e => setFormData({ ...formData, sport: e.target.value })}
+                                    value={formData.sport_id}
+                                    onChange={e => setFormData({ ...formData, sport_id: e.target.value })}
                                     className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all bg-white"
+                                    required
                                 >
+                                    <option value="" disabled>Selecione um esporte</option>
                                     {sports.map(s => (
-                                        <option key={s} value={s}>{s}</option>
+                                        <option key={s.id} value={s.id}>{s.name}</option>
                                     ))}
                                 </select>
                             </div>
 
-                            {/* Datas */}
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-gray-700">Descrição (Opcional)</label>
+                                <textarea
+                                    value={formData.description}
+                                    onChange={e => setFormData({ ...formData, description: e.target.value })}
+                                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all h-24 resize-none"
+                                    placeholder="Detalhes sobre o campeonato..."
+                                />
+                            </div>
+                        </div>
+
+                        {/* 2. Datas */}
+                        <div className="space-y-4">
+                            <h2 className="text-lg font-semibold text-gray-800 border-b pb-2">2. Calendário</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-gray-700">Início</label>
+                                    <label className="text-sm font-semibold text-gray-700">Início do Evento</label>
                                     <input
                                         type="date"
                                         required
@@ -139,7 +184,7 @@ export function ChampionshipForm() {
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-gray-700">Fim</label>
+                                    <label className="text-sm font-semibold text-gray-700">Fim do Evento</label>
                                     <input
                                         type="date"
                                         required
@@ -151,44 +196,84 @@ export function ChampionshipForm() {
                             </div>
                         </div>
 
-                        <div className="space-y-2">
-                            <label className="text-sm font-semibold text-gray-700">Descrição (Opcional)</label>
-                            <textarea
-                                value={formData.description}
-                                onChange={e => setFormData({ ...formData, description: e.target.value })}
-                                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all h-32 resize-none"
-                                placeholder="Detalhes sobre o campeonato..."
-                            />
+                        {/* 3. Inscrições */}
+                        <div className="space-y-4">
+                            <h2 className="text-lg font-semibold text-gray-800 border-b pb-2">3. Configuração de Inscrições</h2>
+
+                            <div className="space-y-3">
+                                <label className="text-sm font-semibold text-gray-700">Tipo de Inscrição</label>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData({ ...formData, registration_type: 'individual' })}
+                                        className={`p-4 rounded-xl border text-left transition-all ${formData.registration_type === 'individual' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
+                                    >
+                                        <span className={`block font-bold mb-1 ${formData.registration_type === 'individual' ? 'text-indigo-700' : 'text-gray-900'}`}>Individual (Sorteio)</span>
+                                        <span className="text-xs text-gray-500">Atletas se inscrevem individualmente e o sistema sorteia os times.</span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData({ ...formData, registration_type: 'team' })}
+                                        className={`p-4 rounded-xl border text-left transition-all ${formData.registration_type === 'team' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
+                                    >
+                                        <span className={`block font-bold mb-1 ${formData.registration_type === 'team' ? 'text-indigo-700' : 'text-gray-900'}`}>Por Equipes</span>
+                                        <span className="text-xs text-gray-500">Um líder inscreve o time completo.</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-gray-700">Início das Inscrições</label>
+                                    <input
+                                        type="date"
+                                        value={formData.registration_start_date}
+                                        onChange={e => setFormData({ ...formData, registration_start_date: e.target.value })}
+                                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                    />
+                                    <p className="text-xs text-gray-400">Deixe em branco se não aplicável.</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-gray-700">Fim das Inscrições</label>
+                                    <input
+                                        type="date"
+                                        value={formData.registration_end_date}
+                                        onChange={e => setFormData({ ...formData, registration_end_date: e.target.value })}
+                                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                    />
+                                </div>
+                            </div>
                         </div>
 
-                        {/* Format Selection based on User Request */}
-                        <div className="space-y-2">
-                            <label className="text-sm font-semibold text-gray-700">Formato de Disputa</label>
+                        {/* 4. Formato */}
+                        <div className="space-y-4">
+                            <h2 className="text-lg font-semibold text-gray-800 border-b pb-2">4. Formato de Disputa</h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 <button
                                     type="button"
-                                    onClick={() => setFormData({ ...formData, format: 'pontos_corridos' })}
-                                    className={`p-4 rounded-xl border text-left transition-all ${formData.format === 'pontos_corridos' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
+                                    onClick={() => setFormData({ ...formData, format: 'league' })}
+                                    className={`p-4 rounded-xl border text-left transition-all ${formData.format === 'league' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
                                 >
-                                    <span className={`block font-bold mb-1 ${formData.format === 'pontos_corridos' ? 'text-indigo-700' : 'text-gray-900'}`}>Pontos Corridos</span>
+                                    <span className={`block font-bold mb-1 ${formData.format === 'league' ? 'text-indigo-700' : 'text-gray-900'}`}>Pontos Corridos</span>
                                     <span className="text-xs text-gray-500">Todos contra todos. Quem somar mais pontos vence.</span>
                                 </button>
 
                                 <button
                                     type="button"
-                                    onClick={() => setFormData({ ...formData, format: 'mata_mata' })}
-                                    className={`p-4 rounded-xl border text-left transition-all ${formData.format === 'mata_mata' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
+                                    onClick={() => setFormData({ ...formData, format: 'knockout' })}
+                                    className={`p-4 rounded-xl border text-left transition-all ${formData.format === 'knockout' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
                                 >
-                                    <span className={`block font-bold mb-1 ${formData.format === 'mata_mata' ? 'text-indigo-700' : 'text-gray-900'}`}>Mata-mata</span>
+                                    <span className={`block font-bold mb-1 ${formData.format === 'knockout' ? 'text-indigo-700' : 'text-gray-900'}`}>Mata-mata</span>
                                     <span className="text-xs text-gray-500">Eliminatória simples. Perdeu, saiu. (Chaves)</span>
                                 </button>
 
                                 <button
                                     type="button"
-                                    onClick={() => setFormData({ ...formData, format: 'grupos_mata_mata' })}
-                                    className={`p-4 rounded-xl border text-left transition-all ${formData.format === 'grupos_mata_mata' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
+                                    onClick={() => setFormData({ ...formData, format: 'group_knockout' })}
+                                    className={`p-4 rounded-xl border text-left transition-all ${formData.format === 'group_knockout' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
                                 >
-                                    <span className={`block font-bold mb-1 ${formData.format === 'grupos_mata_mata' ? 'text-indigo-700' : 'text-gray-900'}`}>Grupos + Mata-mata</span>
+                                    <span className={`block font-bold mb-1 ${formData.format === 'group_knockout' ? 'text-indigo-700' : 'text-gray-900'}`}>Grupos + Mata-mata</span>
                                     <span className="text-xs text-gray-500">Fase de grupos seguida de eliminatórias (Copa do Mundo).</span>
                                 </button>
 

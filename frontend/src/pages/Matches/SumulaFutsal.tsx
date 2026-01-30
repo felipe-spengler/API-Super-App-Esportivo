@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Play, Pause, Save, Clock, Users, X, Flag, Timer } from 'lucide-react';
 import api from '../../services/api';
 
-export function SumulaFutebol() {
+export function SumulaFutsal() {
     const { id } = useParams();
     const navigate = useNavigate();
 
@@ -53,17 +53,9 @@ export function SumulaFutebol() {
                 // Only merge history if not already preserved by persistence or if empty
                 setEvents(history);
 
-                // Calc Fouls (only if not recovered from localStorage to avoid overwrite with stale data if backend is behind)
-                // Actually, backend is source of truth for events, but failures might be local only first. 
-                // For now, let's trust backend for events list, but local for fouls counter if we want optimistic.
-                // But let's sync:
                 const homeFouls = history.filter((e: any) => e.team === 'home' && e.type === 'foul').length;
                 const awayFouls = history.filter((e: any) => e.team === 'away' && e.type === 'foul').length;
 
-                // If local storage has more fouls (optimistic), keep them? 
-                // Ideally we should merge. For simplicity, let's trust backend on load, 
-                // but if we are recovering a crash, backend might be outdated? 
-                // No, backend is always saved on event. So backend is safe.
                 setFouls({ home: homeFouls, away: awayFouls });
             }
         } catch (e) {
@@ -75,7 +67,7 @@ export function SumulaFutebol() {
     };
 
     // --- PERSISTENCE LOGIC START ---
-    const STORAGE_KEY = `match_state_${id}`;
+    const STORAGE_KEY = `match_state_futsal_${id}`; // Unique key for futsal
 
     // 1. Load State on Mount
     useEffect(() => {
@@ -130,8 +122,6 @@ export function SumulaFutebol() {
         }
         return () => clearInterval(interval);
     }, [isRunning]);
-
-
 
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
@@ -267,6 +257,20 @@ export function SumulaFutebol() {
         }
     };
 
+    // Helper to render foul dots (Futsal style)
+    const renderFouls = (count: number) => {
+        // Futsal limit is 5. 6th is penalty.
+        const dots = [];
+        for (let i = 0; i < 6; i++) {
+            const filled = i < count;
+            const isLimit = i >= 5; // 6th foul
+            dots.push(
+                <div key={i} className={`w-3 h-3 rounded-full border border-black ${filled ? (isLimit ? 'bg-purple-500 animate-pulse' : 'bg-red-500') : 'bg-gray-700'}`}></div>
+            );
+        }
+        return dots;
+    }
+
     if (loading || !matchData) return <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white"><span className="loading loading-spinner loading-lg"></span></div>;
 
     return (
@@ -276,7 +280,7 @@ export function SumulaFutebol() {
                 <div className="px-4 flex items-center justify-between mb-4">
                     <button onClick={() => navigate(-1)} className="p-2 bg-gray-700 rounded-full"><ArrowLeft className="w-5 h-5" /></button>
                     <div className="flex flex-col items-center">
-                        <span className="text-[10px] font-bold tracking-widest text-gray-400">SUMULA DIGITAL</span>
+                        <span className="text-[10px] font-bold tracking-widest text-gray-400">SUMULA DIGITAL - FUTSAL</span>
                         {(matchData.details?.arbitration?.referee) && <span className="text-[10px] text-gray-500">{matchData.details.arbitration.referee}</span>}
                     </div>
                     <button onClick={handlePeriodChange} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase transition-colors ${currentPeriod === 'Intervalo' || currentPeriod === 'Fim de Tempo Normal' ? 'bg-orange-500 text-white' :
@@ -301,7 +305,7 @@ export function SumulaFutebol() {
                         <div className="text-4xl sm:text-6xl font-black font-mono leading-none mb-1">{matchData.scoreHome}</div>
                         <h2 className="font-bold text-xs sm:text-sm text-gray-400 truncate max-w-[100px] mx-auto">{matchData.home_team?.name}</h2>
                         <div className="mt-1 flex justify-center gap-1">
-                            {[...Array(Math.min(fouls.home, 5))].map((_, i) => <div key={i} className="w-2 h-2 rounded-full bg-red-500 border border-black"></div>)}
+                            {renderFouls(fouls.home)}
                         </div>
                     </div>
 
@@ -322,7 +326,7 @@ export function SumulaFutebol() {
                         <div className="text-4xl sm:text-6xl font-black font-mono leading-none mb-1">{matchData.scoreAway}</div>
                         <h2 className="font-bold text-xs sm:text-sm text-gray-400 truncate max-w-[100px] mx-auto">{matchData.away_team?.name}</h2>
                         <div className="mt-1 flex justify-center gap-1">
-                            {[...Array(Math.min(fouls.away, 5))].map((_, i) => <div key={i} className="w-2 h-2 rounded-full bg-red-500 border border-black"></div>)}
+                            {renderFouls(fouls.away)}
                         </div>
                     </div>
                 </div>

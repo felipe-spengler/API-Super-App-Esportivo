@@ -27,9 +27,12 @@ class StoreChampionshipRequest extends FormRequest
             'description' => 'nullable|string',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
+            'registration_start_date' => 'nullable|date',
+            'registration_end_date' => 'nullable|date|after_or_equal:registration_start_date',
+            'registration_type' => 'required|in:individual,team',
             'image' => 'nullable|image|max:2048', // Validação de upload
             'rules' => 'nullable|string',
-            'format' => 'required|in:league,knockout,groups', // Formato é obrigatório
+            'format' => 'required|in:league,knockout,group_knockout,league_playoffs,double_elimination,racing,groups', // Expanded formats
         ];
     }
 

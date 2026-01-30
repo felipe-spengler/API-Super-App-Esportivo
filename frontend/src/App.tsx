@@ -7,6 +7,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Championships } from './pages/Championships';
 import { ChampionshipForm } from './pages/Championships/ChampionshipForm';
 import { AdminChampionshipDetails } from './pages/Championships/AdminChampionshipDetails';
+import { AdminMatchManager } from './pages/Championships/AdminMatchManager';
 import { GroupDraw } from './pages/Championships/GroupDraw';
 import { Teams } from './pages/Teams';
 import { TeamForm } from './pages/Teams/TeamForm';
@@ -44,8 +45,11 @@ import { MyTeamForm } from './pages/Public/MyTeamForm';
 import { MyTeamDetails } from './pages/Public/MyTeamDetails';
 import { MyInscriptions } from './pages/Public/MyInscriptions';
 import { Voting } from './pages/Public/Voting';
+import { ChampionshipInscription } from './pages/Public/ChampionshipInscription';
 import { SumulaVolei } from './pages/Matches/SumulaVolei';
+import { SumulaFutsal } from './pages/Matches/SumulaFutsal';
 import { SumulaBasquete } from './pages/Matches/SumulaBasquete';
+import { MatchPrintView } from './pages/Matches/MatchPrintView';
 
 function App() {
   return (
@@ -69,6 +73,7 @@ function App() {
             <Route path="/events/:id/teams" element={<EventParticipants />} />
             <Route path="/events/:id/awards" element={<EventArts />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/inscription/:id" element={<ChampionshipInscription />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/races/:id" element={<RaceDetails />} />
             <Route path="/races/:id/results" element={<div className="p-10 text-center">Resultados (Em Breve)</div>} />
@@ -95,6 +100,7 @@ function App() {
               <Route path="championships/new/team-sports" element={<ChampionshipForm />} />
               <Route path="championships/:id" element={<AdminChampionshipDetails />} />
               <Route path="championships/:id/edit" element={<ChampionshipForm />} />
+              <Route path="championships/:id/matches" element={<AdminMatchManager />} />
               <Route path="championships/:id/draw" element={<GroupDraw />} />
               <Route path="races/new" element={<CreateRaceWizard />} />
               <Route path="races/:id/results" element={<RaceResults />} />
@@ -114,7 +120,9 @@ function App() {
             {/* Rotas Fullscreen do Admin (fora do layout) */}
             <Route path="matches/:id/sumula" element={<SumulaFutebol />} />
             <Route path="matches/:id/sumula-volei" element={<SumulaVolei />} />
+            <Route path="matches/:id/sumula-futsal" element={<SumulaFutsal />} />
             <Route path="matches/:id/sumula-basquete" element={<SumulaBasquete />} />
+            <Route path="matches/:id/sumula-print" element={<MatchPrintView />} />
           </Route>
 
           {/* Fallback */}

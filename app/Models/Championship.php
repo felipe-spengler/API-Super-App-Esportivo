@@ -17,6 +17,7 @@ class Championship extends Model
         'end_date',
         'registration_start_date',
         'registration_end_date',
+        'registration_type', // 'individual', 'team'
         'status',
         'format', // 'league', 'knockout', 'group_knockout', 'racing'
         'image_path',  // Caminho da imagem: "championships/championship_123.jpg"

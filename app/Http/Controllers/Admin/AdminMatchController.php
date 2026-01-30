@@ -65,7 +65,17 @@ class AdminMatchController extends Controller
             'home_score' => 'nullable|integer|min:0',
             'away_score' => 'nullable|integer|min:0',
             'status' => 'in:scheduled,live,finished,cancelled',
+            'match_details' => 'nullable|array',
+            'arbitration' => 'nullable|array', // { referee: string, assistant1: string, ... }
         ]);
+
+        // Merge arbitration into match_details if provided
+        if (isset($validated['arbitration'])) {
+            $currentDetails = $match->match_details ?? [];
+            $currentDetails['arbitration'] = $validated['arbitration'];
+            $validated['match_details'] = $currentDetails;
+            unset($validated['arbitration']);
+        }
 
         $match->update($validated);
 
@@ -128,7 +138,7 @@ class AdminMatchController extends Controller
         $validated = $request->validate([
             'team_id' => 'required|exists:teams,id',
             'player_id' => 'nullable|integer',
-            'event_type' => 'required|in:goal,yellow_card,red_card,substitution,point,ace,block',
+            'event_type' => 'required|in:goal,yellow_card,red_card,substitution,point,ace,block,timeout',
             'minute' => 'nullable|integer|min:0',
             'value' => 'nullable|integer|min:1',
             'metadata' => 'nullable|array',

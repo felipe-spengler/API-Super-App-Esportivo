@@ -98,6 +98,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/matches/{id}/events', [\App\Http\Controllers\Admin\AdminMatchController::class, 'events']);
         Route::put('/matches/{id}/awards', [\App\Http\Controllers\Admin\AdminMatchController::class, 'updateAwards']);
 
+        // Gestão de Vôlei
+        Route::get('/matches/{id}/volley-state', [\App\Http\Controllers\Admin\AdminVolleyController::class, 'getState']);
+        Route::post('/matches/{id}/volley/point', [\App\Http\Controllers\Admin\AdminVolleyController::class, 'registerPoint']);
+        Route::post('/matches/{id}/volley/set-start', [\App\Http\Controllers\Admin\AdminVolleyController::class, 'startSet']);
+        Route::post('/matches/{id}/volley/rotation', [\App\Http\Controllers\Admin\AdminVolleyController::class, 'manualRotation']);
+        Route::post('/matches/{id}/volley/substitution', [\App\Http\Controllers\Admin\AdminVolleyController::class, 'substitutePlayer']);
+
         // Gestão de Equipes (NEW)
         Route::get('/teams', [\App\Http\Controllers\Admin\AdminTeamController::class, 'index']);
         Route::get('/teams/{id}', [\App\Http\Controllers\Admin\AdminTeamController::class, 'show']);
@@ -203,6 +210,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/categories', [\App\Http\Controllers\Admin\AdminCategoryController::class, 'store']);
         Route::put('/categories/{id}', [\App\Http\Controllers\Admin\AdminCategoryController::class, 'update']);
         Route::delete('/categories/{id}', [\App\Http\Controllers\Admin\AdminCategoryController::class, 'destroy']);
+        // Gestão de Clubes (Super Admin)
+        Route::get('/clubs-manage', [\App\Http\Controllers\Admin\AdminClubController::class, 'index']);
+        Route::post('/clubs-manage', [\App\Http\Controllers\Admin\AdminClubController::class, 'store']);
     });
 });
 
