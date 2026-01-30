@@ -191,6 +191,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/matches/{id}/status', [\App\Http\Controllers\MatchOperationController::class, 'updateStatus']);
         Route::get('/security/validate-player/{code}', [\App\Http\Controllers\SecurityController::class, 'validatePlayer']);
 
+        // Reports (NEW)
+        Route::get('/reports/dashboard', [\App\Http\Controllers\Admin\AdminReportController::class, 'dashboard']);
+        Route::get('/reports/championship/{id}', [\App\Http\Controllers\Admin\AdminReportController::class, 'championshipReport']);
+        Route::get('/reports/export', [\App\Http\Controllers\Admin\AdminReportController::class, 'export']);
+
         // Race Wizard & Results
         Route::post('/race-wizard', [\App\Http\Controllers\Admin\RaceWizardController::class, 'store']);
         Route::get('/races/{id}/results', [\App\Http\Controllers\Admin\RaceResultController::class, 'index']);
