@@ -150,7 +150,7 @@ export function AdminChampionshipDetails() {
                     </Link>
 
                     {/* Card Classificação */}
-                    <Link to={`/admin/championships/${id}/standings`} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow group">
+                    <Link to={`/events/${id}/leaderboard`} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow group">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="font-bold text-gray-900 flex items-center gap-2">
                                 <Medal className="w-5 h-5 text-yellow-500" />

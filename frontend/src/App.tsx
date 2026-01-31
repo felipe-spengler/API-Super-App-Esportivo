@@ -119,6 +119,7 @@ function App() {
               <Route path="teams" element={<Teams />} />
               <Route path="teams/:id" element={<TeamDetails />} />
               <Route path="teams/new" element={<TeamForm />} />
+              <Route path="teams/:id/edit" element={<TeamForm />} />
               <Route path="players" element={<Players />} />
               <Route path="players/new" element={<PlayerForm />} />
               <Route path="players/:id/edit" element={<PlayerForm />} />

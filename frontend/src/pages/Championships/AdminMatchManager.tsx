@@ -202,17 +202,17 @@ export function AdminMatchManager() {
                                                     <Link
                                                         to={(() => {
                                                             const slug = championship?.sport?.slug;
-                                                            if (slug === 'volei') return `/matches/${match.id}/sumula-volei`;
-                                                            if (slug === 'futsal') return `/matches/${match.id}/sumula-futsal`;
-                                                            if (slug === 'basquete') return `/matches/${match.id}/sumula-basquete`;
-                                                            if (slug === 'handebol') return `/matches/${match.id}/sumula-handebol`;
-                                                            if (slug === 'beach-tennis') return `/matches/${match.id}/sumula-beach-tennis`;
-                                                            if (slug === 'futebol-7') return `/matches/${match.id}/sumula-futebol7`;
-                                                            if (slug === 'futevolei') return `/matches/${match.id}/sumula-futevolei`;
-                                                            if (slug === 'volei-de-praia') return `/matches/${match.id}/sumula-volei-praia`;
-                                                            if (slug === 'tenis-de-mesa') return `/matches/${match.id}/sumula-tenis-mesa`;
-                                                            if (slug === 'jiu-jitsu') return `/matches/${match.id}/sumula-jiu-jitsu`;
-                                                            return `/matches/${match.id}/sumula`;
+                                                            if (slug === 'volei') return `/admin/matches/${match.id}/sumula-volei`;
+                                                            if (slug === 'futsal') return `/admin/matches/${match.id}/sumula-futsal`;
+                                                            if (slug === 'basquete') return `/admin/matches/${match.id}/sumula-basquete`;
+                                                            if (slug === 'handebol') return `/admin/matches/${match.id}/sumula-handebol`;
+                                                            if (slug === 'beach-tennis') return `/admin/matches/${match.id}/sumula-beach-tennis`;
+                                                            if (slug === 'futebol-7') return `/admin/matches/${match.id}/sumula-futebol7`;
+                                                            if (slug === 'futevolei') return `/admin/matches/${match.id}/sumula-futevolei`;
+                                                            if (slug === 'volei-de-praia') return `/admin/matches/${match.id}/sumula-volei-praia`;
+                                                            if (slug === 'tenis-de-mesa') return `/admin/matches/${match.id}/sumula-tenis-mesa`;
+                                                            if (slug === 'jiu-jitsu') return `/admin/matches/${match.id}/sumula-jiu-jitsu`;
+                                                            return `/admin/matches/${match.id}/sumula`;
                                                         })()}
                                                         className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200"
                                                         title="Abrir Súmula"
