@@ -7,7 +7,6 @@ use Illuminate\Http\Request;
 use App\Models\Championship;
 use App\Models\GameMatch;
 use App\Models\Team;
-use App\Models\Player;
 use App\Models\MatchEvent;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -26,7 +25,7 @@ class AdminReportController extends Controller
         $championshipsQuery = Championship::query();
         $matchesQuery = GameMatch::query();
         $teamsQuery = Team::query();
-        $playersQuery = Player::query();
+        $playersQuery = User::query(); // Change from Player to User model if Player model doesn't exist or is for something else
 
         if ($clubId) {
             $championshipsQuery->where('club_id', $clubId);
@@ -36,19 +35,24 @@ class AdminReportController extends Controller
         }
 
         // Basic counts
+        $totalChampionships = $championshipsQuery->count();
+        $totalMatches = $matchesQuery->count();
+
         $stats = [
-            'total_championships' => $championshipsQuery->count(),
-            'active_championships' => (clone $championshipsQuery)->where('status', 'active')->count(),
-            'total_matches' => $matchesQuery->count(),
+            'total_championships' => $totalChampionships,
+            'active_championships' => (clone $championshipsQuery)->whereIn('status', ['active', 'in_progress'])->count(),
+            'total_matches' => $totalMatches,
             'finished_matches' => (clone $matchesQuery)->where('status', 'Finalizado')->count(),
             'total_teams' => $teamsQuery->count(),
             'total_players' => $playersQuery->count(),
         ];
 
         // Championships by sport
+        // Try to join with sports if sport column is not on championship table
         $championshipsBySport = (clone $championshipsQuery)
-            ->select('sport', DB::raw('count(*) as count'))
-            ->groupBy('sport')
+            ->join('sports', 'championships.sport_id', '=', 'sports.id')
+            ->select('sports.name as sport', DB::raw('count(*) as count'))
+            ->groupBy('sports.name')
             ->get()
             ->pluck('count', 'sport');
 
@@ -61,9 +65,18 @@ class AdminReportController extends Controller
 
         // Recent championships
         $recentChampionships = (clone $championshipsQuery)
+            ->with('sport')
             ->orderBy('created_at', 'desc')
             ->limit(5)
-            ->get(['id', 'name', 'sport', 'status', 'start_date', 'end_date']);
+            ->get()
+            ->map(fn($c) => [
+                'id' => $c->id,
+                'name' => $c->name,
+                'sport' => $c->sport->name ?? 'Outro',
+                'status' => $c->status,
+                'start_date' => $c->start_date,
+                'end_date' => $c->end_date
+            ]);
 
         // Upcoming matches
         $upcomingMatches = (clone $matchesQuery)
@@ -266,16 +279,16 @@ class AdminReportController extends Controller
                 break;
 
             case 'players':
-                $players = Player::when($clubId, fn($q) => $q->where('club_id', $clubId))->get();
+                $players = User::when($clubId, fn($q) => $q->where('club_id', $clubId))->get();
 
-                $csv = "Nome,Apelido,Número,Posição\n";
+                $csv = "Nome,Email,Telefone,CPF\n";
                 foreach ($players as $p) {
                     $csv .= sprintf(
                         "%s,%s,%s,%s\n",
                         $p->name,
-                        $p->nickname ?? '-',
-                        $p->number ?? '-',
-                        $p->position ?? '-'
+                        $p->email,
+                        $p->phone ?? '-',
+                        $p->cpf ?? '-'
                     );
                 }
                 break;

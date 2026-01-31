@@ -97,7 +97,7 @@ export function AdminChampionshipDetails() {
                                 Categorias
                             </h3>
                             <button
-                                onClick={() => navigate(`/admin/championships/${id}/edit#categories`)}
+                                onClick={() => navigate(`/admin/championships/${id}/categories`)}
                                 className="text-sm text-indigo-600 font-medium hover:underline"
                             >
                                 + Adicionar

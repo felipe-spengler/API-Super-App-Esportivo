@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Shield, Loader2, AlertCircle } from 'lucide-react';
+import { Plus, Search, Shield, Loader2, AlertCircle, Edit2 } from 'lucide-react';
 import api from '../../services/api';
 import { Link } from 'react-router-dom';
 
@@ -99,12 +99,22 @@ export function Teams() {
                             <h3 className="text-lg font-bold text-gray-900 mb-1">{team.name}</h3>
                             <p className="text-sm text-gray-500 mb-4">{team.city || 'Sem cidade definida'}</p>
 
-                            <Link
-                                to={`/teams/${team.id}`}
-                                className="inline-block w-full py-2 px-4 rounded-lg bg-gray-50 text-indigo-600 font-medium text-sm hover:bg-indigo-50 transition-colors"
-                            >
-                                Ver Detalhes
-                            </Link>
+                            <div className="flex gap-2">
+                                <Link
+                                    to={`/admin/teams/${team.id}`}
+                                    className="flex-1 py-2 px-3 rounded-lg bg-gray-50 text-indigo-600 font-bold text-xs hover:bg-indigo-50 transition-colors flex items-center justify-center gap-1"
+                                >
+                                    <Shield className="w-3.5 h-3.5" />
+                                    Detalhes
+                                </Link>
+                                <Link
+                                    to={`/admin/teams/${team.id}/edit`}
+                                    className="p-2 rounded-lg bg-gray-50 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                                    title="Editar Equipe"
+                                >
+                                    <Edit2 className="w-4 h-4" />
+                                </Link>
+                            </div>
                         </div>
                     ))}
                 </div>
