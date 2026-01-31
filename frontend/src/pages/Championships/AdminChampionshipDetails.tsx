@@ -132,7 +132,9 @@ export function AdminChampionshipDetails() {
                         <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
                             <div className="h-full bg-emerald-500 w-1/3"></div>
                         </div>
-                        <p className="text-xs text-right mt-1 text-gray-400">8 times confirmados</p>
+                        <p className="text-xs text-right mt-1 text-gray-400">
+                            {championship.teams_count || 0} {championship.teams_count === 1 ? 'time confirmado' : 'times confirmados'}
+                        </p>
                     </Link>
 
                     {/* Card Tabela / Jogos */}

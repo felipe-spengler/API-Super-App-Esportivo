@@ -36,7 +36,9 @@ class EventController extends Controller
     // 2. Detalhes do Campeonato (com Categorias)
     public function championshipDetails($id)
     {
-        $champ = Championship::with(['categories.children', 'sport'])->findOrFail($id);
+        $champ = Championship::with(['categories.children', 'sport'])
+            ->withCount('teams')
+            ->findOrFail($id);
         return response()->json($champ);
     }
 
