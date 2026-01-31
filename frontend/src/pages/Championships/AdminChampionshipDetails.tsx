@@ -74,7 +74,7 @@ export function AdminChampionshipDetails() {
                                 Configurações
                             </button>
                             <button
-                                onClick={() => navigate(`/championships/${id}`)}
+                                onClick={() => navigate(`/events/${id}`)}
                                 className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
                             >
                                 <Tv className="w-4 h-4" />
@@ -96,7 +96,12 @@ export function AdminChampionshipDetails() {
                                 <List className="w-5 h-5 text-indigo-500" />
                                 Categorias
                             </h3>
-                            <button className="text-sm text-indigo-600 font-medium hover:underline">+ Adicionar</button>
+                            <button
+                                onClick={() => alert('Funcionalidade de adicionar categoria em desenvolvimento. Por enquanto, adicione via Configurações do Campeonato.')}
+                                className="text-sm text-indigo-600 font-medium hover:underline"
+                            >
+                                + Adicionar
+                            </button>
                         </div>
                         <div className="space-y-3">
                             {categories.length === 0 ? (
@@ -167,17 +172,23 @@ export function AdminChampionshipDetails() {
                             </h3>
                         </div>
                         <div className="space-y-2">
-                            <button className="w-full text-left text-sm text-gray-600 hover:bg-gray-50 p-2 rounded flex items-center gap-2">
+                            <button
+                                onClick={() => navigate(`/admin/championships/${id}/edit`)}
+                                className="w-full text-left text-sm text-gray-600 hover:bg-gray-50 p-2 rounded flex items-center gap-2"
+                            >
                                 <Edit className="w-4 h-4" /> Alterar Logo/Capa
                             </button>
-                            <button className="w-full text-left text-sm text-gray-600 hover:bg-gray-50 p-2 rounded flex items-center gap-2">
-                                <Tv className="w-4 h-4" /> Configurar Página Pública
+                            <button
+                                onClick={() => navigate(`/events/${id}`)}
+                                className="w-full text-left text-sm text-gray-600 hover:bg-gray-50 p-2 rounded flex items-center gap-2"
+                            >
+                                <Tv className="w-4 h-4" /> Ver Página Pública
                             </button>
                         </div>
                     </div>
 
                 </div>
             </div>
-        </div>
+        </div >
     );
 }
