@@ -108,6 +108,7 @@ export function AdminMatchManager() {
 
             <div className="max-w-5xl mx-auto p-6">
 
+
                 {/* Empty State / Generator */}
                 {matches.length === 0 ? (
                     <div className="bg-white rounded-xl p-12 text-center border border-gray-200 shadow-sm">
@@ -116,26 +117,29 @@ export function AdminMatchManager() {
                         </div>
                         <h2 className="text-xl font-bold text-gray-900 mb-2">Nenhum jogo criado ainda</h2>
                         <p className="text-gray-500 max-w-md mx-auto mb-8">
-                            O campeonato ainda não possui partidas. Você pode gerar a tabela automaticamente baseada nos times inscritos ou criar jogos manualmente.
+                            {championship?.format
+                                ? `O campeonato está configurado como "${championship.format}". Clique no botão abaixo para gerar a tabela de jogos automaticamente.`
+                                : "O campeonato ainda não possui partidas. Configure o formato nas configurações do campeonato."}
                         </p>
 
-                        <div className="flex flex-wrap justify-center gap-4">
+                        {championship?.format && (
                             <button
-                                onClick={() => handleGenerate('league')}
+                                onClick={() => handleGenerate(championship.format)}
                                 disabled={generating}
-                                className="px-6 py-3 bg-white border border-gray-300 text-gray-700 font-bold rounded-lg hover:bg-gray-50 hover:border-indigo-300 transition-all"
+                                className="px-8 py-4 bg-indigo-600 text-white font-bold text-lg rounded-lg hover:bg-indigo-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50"
                             >
-                                Gerar Pontos Corridos
+                                {generating ? 'Gerando...' : 'Gerar Tabela de Jogos'}
                             </button>
+                        )}
+
+                        {!championship?.format && (
                             <button
-                                onClick={() => handleGenerate('knockout')}
-                                disabled={generating}
-                                className="px-6 py-3 bg-white border border-gray-300 text-gray-700 font-bold rounded-lg hover:bg-gray-50 hover:border-indigo-300 transition-all"
+                                onClick={() => navigate(`/admin/championships/${id}/edit`)}
+                                className="px-6 py-3 bg-white border-2 border-indigo-600 text-indigo-600 font-bold rounded-lg hover:bg-indigo-50 transition-all"
                             >
-                                Gerar Mata-Mata
+                                Configurar Campeonato
                             </button>
-                            {/* Groups usually done via GroupDraw page */}
-                        </div>
+                        )}
                     </div>
                 ) : (
                     <div className="space-y-8">

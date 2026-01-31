@@ -22,7 +22,7 @@ export function Sidebar() {
     ];
 
     return (
-        <aside className="w-64 bg-gray-900 text-white min-h-screen flex flex-col fixed left-0 top-0 h-full z-30 shadow-xl">
+        <aside className="hidden md:block w-64 bg-gray-900 text-white min-h-screen flex-col fixed left-0 top-0 h-full z-30 shadow-xl">
             {/* Brand */}
             <div className="h-16 flex items-center justify-center border-b border-gray-800 bg-gray-950">
                 <span className="text-lg font-bold uppercase tracking-wider text-indigo-400">

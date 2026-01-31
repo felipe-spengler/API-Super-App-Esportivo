@@ -97,7 +97,7 @@ export function AdminChampionshipDetails() {
                                 Categorias
                             </h3>
                             <button
-                                onClick={() => alert('Funcionalidade de adicionar categoria em desenvolvimento. Por enquanto, adicione via Configurações do Campeonato.')}
+                                onClick={() => navigate(`/admin/championships/${id}/edit#categories`)}
                                 className="text-sm text-indigo-600 font-medium hover:underline"
                             >
                                 + Adicionar
