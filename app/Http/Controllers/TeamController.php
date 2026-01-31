@@ -105,6 +105,34 @@ class TeamController extends Controller
         }
 
         // Add to pivot
+        // Validação de elegibilidade se o time já estiver em algum campeonato/categoria
+        if ($userData) {
+            $teamCategories = \App\Models\Category::whereHas('teams', function ($q) use ($team) {
+                $q->where('teams.id', $team->id);
+            })->get();
+
+            // Também verificar categorias vinculadas via championship_team se houver
+            $champCategories = \App\Models\Category::whereIn('id', function ($query) use ($team) {
+                $query->select('category_id')
+                    ->from('championship_team')
+                    ->where('team_id', $team->id)
+                    ->whereNotNull('category_id');
+            })->get();
+
+            $allCategories = $teamCategories->merge($champCategories);
+
+            foreach ($allCategories as $category) {
+                $check = $category->isUserEligible($userData);
+                if (!$check['eligible']) {
+                    return response()->json([
+                        'message' => 'O atleta não atende aos requisitos desta categoria.',
+                        'reason' => $check['reason'],
+                        'category' => $category->name
+                    ], 403);
+                }
+            }
+        }
+
         $team->players()->attach($userData ? $userData->id : null, [
             'temp_player_name' => $userData ? $userData->name : $request->name,
             'position' => $request->position,

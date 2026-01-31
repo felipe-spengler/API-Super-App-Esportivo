@@ -156,6 +156,31 @@ class CategoryController extends Controller
             ], 400);
         }
 
+        // Validação de elegibilidade de todos os membros do time (incluindo capitão)
+        $team = \App\Models\Team::with(['players', 'captain'])->findOrFail($validated['team_id']);
+
+        // Verifica o capitão
+        if ($team->captain) {
+            $check = $category->isUserEligible($team->captain);
+            if (!$check['eligible']) {
+                return response()->json([
+                    'message' => "O capitão {$team->captain->name} não atende aos requisitos desta categoria.",
+                    'reason' => $check['reason']
+                ], 403);
+            }
+        }
+
+        // Verifica os jogadores
+        foreach ($team->players as $player) {
+            $check = $category->isUserEligible($player);
+            if (!$check['eligible']) {
+                return response()->json([
+                    'message' => "O atleta {$player->name} não atende aos requisitos desta categoria.",
+                    'reason' => $check['reason']
+                ], 403);
+            }
+        }
+
         $category->teams()->attach($validated['team_id']);
 
         return response()->json([

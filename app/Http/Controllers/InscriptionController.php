@@ -17,6 +17,16 @@ class InscriptionController extends Controller
             'players' => 'required|array|min:1', // Lista de { name, rg }
         ]);
 
+        // Validação de elegibilidade do Capitão (Usuário logado)
+        $category = \App\Models\Category::findOrFail($validated['category_id']);
+        $check = $category->isUserEligible($request->user());
+        if (!$check['eligible']) {
+            return response()->json([
+                'message' => 'Você não atende aos requisitos desta categoria.',
+                'reason' => $check['reason']
+            ], 403);
+        }
+
         // Mock: Simula o processamento (No futuro, salvaria em team_rosters)
         // Por enquanto, vamos criar apenas o Time na tabela teams
         $team = \App\Models\Team::create([

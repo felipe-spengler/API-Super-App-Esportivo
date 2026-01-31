@@ -42,4 +42,17 @@ class Team extends Model
             ->withPivot(['position', 'number', 'temp_player_name', 'is_approved'])
             ->withTimestamps();
     }
+
+    public function championships()
+    {
+        return $this->belongsToMany(Championship::class, 'championship_team')
+            ->withPivot('category_id')
+            ->withTimestamps();
+    }
+
+    public function categories()
+    {
+        return $this->belongsToMany(Category::class, 'category_team')
+            ->withTimestamps();
+    }
 }

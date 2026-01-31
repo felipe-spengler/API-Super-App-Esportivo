@@ -90,8 +90,35 @@ class AdminTeamController extends Controller
             'category_id' => 'nullable|exists:categories,id',
         ]);
 
-        $team = Team::findOrFail($teamId);
+        $team = Team::with(['players', 'captain'])->findOrFail($teamId);
         $championship = Championship::findOrFail($validated['championship_id']);
+
+        // Validação de elegibilidade se uma categoria for informada
+        if (!empty($validated['category_id'])) {
+            $category = \App\Models\Category::findOrFail($validated['category_id']);
+
+            // Verifica o capitão
+            if ($team->captain) {
+                $check = $category->isUserEligible($team->captain);
+                if (!$check['eligible']) {
+                    return response()->json([
+                        'message' => "O capitão {$team->captain->name} não atende aos requisitos da categoria {$category->name}.",
+                        'reason' => $check['reason']
+                    ], 403);
+                }
+            }
+
+            // Verifica os jogadores
+            foreach ($team->players as $player) {
+                $check = $category->isUserEligible($player);
+                if (!$check['eligible']) {
+                    return response()->json([
+                        'message' => "O atleta {$player->name} não atende aos requisitos da categoria {$category->name}.",
+                        'reason' => $check['reason']
+                    ], 403);
+                }
+            }
+        }
 
         // Attach team to championship
         $championship->teams()->syncWithoutDetaching([

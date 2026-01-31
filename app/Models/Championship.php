@@ -58,4 +58,11 @@ class Championship extends Model
     {
         return $this->hasMany(GameMatch::class);
     }
+
+    public function teams()
+    {
+        return $this->belongsToMany(Team::class, 'championship_team')
+            ->withPivot('category_id')
+            ->withTimestamps();
+    }
 }
