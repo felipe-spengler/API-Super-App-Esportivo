@@ -16,8 +16,12 @@ class AdminSettingController extends Controller
         if ($user->club_id) {
             $club = Club::find($user->club_id);
         } else {
-            // Se for superadmin ou não tiver clube, pega o primeiro (fallback)
             $club = Club::first();
+        }
+
+        if ($club) {
+            // Include all available sports for the modalities tab
+            $club->all_sports = \App\Models\Sport::all();
         }
 
         return response()->json($club);
@@ -43,6 +47,7 @@ class AdminSettingController extends Controller
             'contact_email' => 'nullable|email',
             'primary_color' => 'nullable|string',
             'secondary_color' => 'nullable|string',
+            'active_modalities' => 'nullable|array',
         ]);
 
         $club->update($data);
