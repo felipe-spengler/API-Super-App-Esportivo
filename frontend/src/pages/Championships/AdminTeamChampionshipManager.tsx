@@ -99,7 +99,7 @@ export function AdminTeamChampionshipManager() {
                 </div>
             </div>
 
-            <div className="grid lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Times no Campeonato */}
                 <div className="space-y-4">
                     <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2 px-2">

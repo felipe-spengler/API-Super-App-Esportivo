@@ -99,7 +99,8 @@ export function Players() {
                 </div>
             ) : (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div className="overflow-x-auto">
+                    {/* Desktop View */}
+                    <div className="overflow-x-auto hidden md:block">
                         <table className="w-full text-left text-sm text-gray-600">
                             <thead className="bg-gray-50 text-gray-900 font-semibold uppercase text-xs tracking-wider border-b border-gray-200">
                                 <tr>
@@ -167,6 +168,54 @@ export function Players() {
                                 ))}
                             </tbody>
                         </table>
+                    </div>
+
+                    {/* Mobile View */}
+                    <div className="md:hidden divide-y divide-gray-100">
+                        {filtered.map((player) => (
+                            <div key={player.id} className="p-4 space-y-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden shrink-0 border border-gray-100">
+                                        {player.photo_url ? (
+                                            <img src={player.photo_url} alt={player.name} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <User className="w-6 h-6 text-gray-500" />
+                                        )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="font-bold text-gray-900 truncate">{player.name}</div>
+                                        <div className="text-xs text-gray-500 truncate">{player.email}</div>
+                                    </div>
+                                    <div className="shrink-0">
+                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase
+                                            ${player.status === 'suspended' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}
+                                        `}>
+                                            {player.status === 'suspended' ? 'Suspenso' : 'Ativo'}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-between text-xs pt-1">
+                                    <div className="space-y-1">
+                                        <p className="text-gray-400">Posição: <span className="text-gray-700 font-medium">{player.position || '-'}</span></p>
+                                        <p className="text-gray-400">Equipe: <span className="text-indigo-600 font-bold">{player.team_name || 'Sem equipe'}</span></p>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <Link
+                                            to={`/admin/players/${player.id}/edit`}
+                                            className="p-2.5 bg-gray-50 text-indigo-600 rounded-lg border border-gray-100"
+                                        >
+                                            <Edit className="w-4 h-4" />
+                                        </Link>
+                                        <button
+                                            onClick={() => handleDelete(player.id)}
+                                            className="p-2.5 bg-gray-50 text-red-600 rounded-lg border border-gray-100"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
             )}

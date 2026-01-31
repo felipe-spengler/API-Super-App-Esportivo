@@ -65,17 +65,17 @@ export function AdminChampionshipDetails() {
                             </div>
                         </div>
 
-                        <div className="flex gap-2">
+                        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
                             <button
                                 onClick={() => navigate(`/admin/championships/${id}/edit`)}
-                                className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 hover:bg-gray-50 font-medium"
+                                className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 hover:bg-gray-50 font-medium w-full sm:w-auto text-sm"
                             >
                                 <Settings className="w-4 h-4" />
                                 Configurações
                             </button>
                             <button
                                 onClick={() => navigate(`/events/${id}`)}
-                                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+                                className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium w-full sm:w-auto text-sm"
                             >
                                 <Tv className="w-4 h-4" />
                                 Ver Página Pública

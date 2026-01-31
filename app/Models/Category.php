@@ -16,6 +16,7 @@ class Category extends Model
         'gender',
         'min_age',
         'max_age',
+        'max_teams',
         'price'
     ];
 

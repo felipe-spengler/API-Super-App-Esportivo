@@ -147,7 +147,7 @@ export function AdminCategoryManager() {
                     </button>
                 </div>
 
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto hidden md:block">
                     <table className="w-full text-left">
                         <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
                             <tr>
@@ -201,6 +201,50 @@ export function AdminCategoryManager() {
                             )}
                         </tbody>
                     </table>
+                </div>
+
+                {/* Mobile View - Cards */}
+                <div className="md:hidden divide-y divide-gray-100">
+                    {categories.length === 0 ? (
+                        <div className="px-6 py-10 text-center text-gray-400 italic">
+                            Nenhuma categoria cadastrada.
+                        </div>
+                    ) : (
+                        categories.map((cat) => (
+                            <div key={cat.id} className="p-4 space-y-3">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <h3 className="font-bold text-gray-900 text-lg">{cat.name}</h3>
+                                        <div className="flex flex-wrap gap-2 mt-1">
+                                            <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] font-bold uppercase rounded">
+                                                {cat.gender === 'male' ? 'Masculino' : cat.gender === 'female' ? 'Feminino' : 'Misto'}
+                                            </span>
+                                            <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[10px] font-bold uppercase rounded">
+                                                {cat.min_age || cat.max_age ? `${cat.min_age || 0}-${cat.max_age || '∞'} anos` : 'Livre'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="font-bold text-emerald-600">
+                                        {cat.price ? `R$ ${parseFloat(cat.price.toString()).toFixed(2)}` : 'Grátis'}
+                                    </div>
+                                </div>
+                                <div className="flex justify-end gap-3 pt-2">
+                                    <button
+                                        onClick={() => handleOpenModal(cat)}
+                                        className="flex-1 flex items-center justify-center gap-2 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold"
+                                    >
+                                        <Edit2 className="w-3.5 h-3.5" /> Editar
+                                    </button>
+                                    <button
+                                        onClick={() => handleDelete(cat.id)}
+                                        className="flex-1 flex items-center justify-center gap-2 py-2 bg-red-50 text-red-600 rounded-lg text-xs font-bold"
+                                    >
+                                        <Trash2 className="w-3.5 h-3.5" /> Excluir
+                                    </button>
+                                </div>
+                            </div>
+                        ))
+                    )}
                 </div>
             </div>
 

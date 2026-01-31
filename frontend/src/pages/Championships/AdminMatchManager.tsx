@@ -161,38 +161,42 @@ export function AdminMatchManager() {
                                                 </div>
 
                                                 {/* Scoreboard */}
-                                                <div className="flex items-center gap-4 flex-1 justify-center">
-                                                    <div className="flex items-center gap-3 text-right flex-1 justify-end">
-                                                        <span className="font-bold text-gray-900">{match.home_team?.name || 'Time A'}</span>
-                                                        {match.home_team?.logo_url ? (
-                                                            <img src={match.home_team.logo_url} className="w-8 h-8 rounded-full bg-gray-100" />
-                                                        ) : (
-                                                            <div className="w-8 h-8 rounded-full bg-gray-200"></div>
-                                                        )}
+                                                <div className="flex flex-col md:flex-row items-center gap-4 flex-1 justify-center w-full">
+                                                    <div className="flex items-center gap-3 text-right flex-1 justify-end w-full md:w-auto">
+                                                        <span className="font-bold text-gray-900 order-2 md:order-1">{match.home_team?.name || 'Time A'}</span>
+                                                        <div className="order-1 md:order-2">
+                                                            {match.home_team?.logo_url ? (
+                                                                <img src={match.home_team.logo_url} className="w-10 h-10 md:w-8 md:h-8 rounded-full bg-gray-100 border" />
+                                                            ) : (
+                                                                <div className="w-10 h-10 md:w-8 md:h-8 rounded-full bg-gray-200"></div>
+                                                            )}
+                                                        </div>
                                                     </div>
 
-                                                    <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+                                                    <div className="flex items-center gap-3 bg-gray-50 md:bg-gray-100 rounded-xl md:rounded-lg p-2 md:p-1 border md:border-0">
                                                         <input
                                                             type="number"
                                                             name={`home_${match.id}`}
                                                             defaultValue={match.home_score ?? ''}
-                                                            className="w-12 text-center bg-white border border-gray-200 rounded py-1 font-bold outline-none focus:ring-2 focus:ring-indigo-500"
+                                                            className="w-14 md:w-12 text-center bg-white border border-gray-200 rounded-lg py-2 md:py-1 font-bold outline-none focus:ring-2 focus:ring-indigo-500 text-lg md:text-base"
                                                         />
-                                                        <span className="text-gray-400 font-bold">X</span>
+                                                        <span className="text-gray-400 font-bold">VS</span>
                                                         <input
                                                             type="number"
                                                             name={`away_${match.id}`}
                                                             defaultValue={match.away_score ?? ''}
-                                                            className="w-12 text-center bg-white border border-gray-200 rounded py-1 font-bold outline-none focus:ring-2 focus:ring-indigo-500"
+                                                            className="w-14 md:w-12 text-center bg-white border border-gray-200 rounded-lg py-2 md:py-1 font-bold outline-none focus:ring-2 focus:ring-indigo-500 text-lg md:text-base"
                                                         />
                                                     </div>
 
-                                                    <div className="flex items-center gap-3 text-left flex-1 justify-start">
-                                                        {match.away_team?.logo_url ? (
-                                                            <img src={match.away_team.logo_url} className="w-8 h-8 rounded-full bg-gray-100" />
-                                                        ) : (
-                                                            <div className="w-8 h-8 rounded-full bg-gray-200"></div>
-                                                        )}
+                                                    <div className="flex items-center gap-3 text-left flex-1 justify-start w-full md:w-auto">
+                                                        <div className="">
+                                                            {match.away_team?.logo_url ? (
+                                                                <img src={match.away_team.logo_url} className="w-10 h-10 md:w-8 md:h-8 rounded-full bg-gray-100 border" />
+                                                            ) : (
+                                                                <div className="w-10 h-10 md:w-8 md:h-8 rounded-full bg-gray-200"></div>
+                                                            )}
+                                                        </div>
                                                         <span className="font-bold text-gray-900">{match.away_team?.name || 'Time B'}</span>
                                                     </div>
                                                 </div>
