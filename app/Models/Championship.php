@@ -21,6 +21,8 @@ class Championship extends Model
         'status',
         'format', // 'league', 'knockout', 'group_knockout', 'racing'
         'image_path',  // Caminho da imagem: "championships/championship_123.jpg"
+        'logo_url',    // URL completa do logo
+        'cover_image_url', // URL completa da capa
         'branding_settings',
         'art_generator_settings',
         'awards'
