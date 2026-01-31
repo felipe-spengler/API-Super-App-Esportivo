@@ -51,7 +51,7 @@ class CategoryController extends Controller
             'description' => 'nullable|string',
             'min_age' => 'nullable|integer|min:0',
             'max_age' => 'nullable|integer|min:0',
-            'gender' => 'nullable|in:M,F,MIXED',
+            'gender' => 'nullable|in:male,female,mixed',
             'max_teams' => 'nullable|integer|min:2',
         ]);
 
@@ -85,7 +85,7 @@ class CategoryController extends Controller
             'description' => 'nullable|string',
             'min_age' => 'nullable|integer|min:0',
             'max_age' => 'nullable|integer|min:0',
-            'gender' => 'nullable|in:M,F,MIXED',
+            'gender' => 'nullable|in:male,female,mixed',
             'max_teams' => 'nullable|integer|min:2',
         ]);
 
