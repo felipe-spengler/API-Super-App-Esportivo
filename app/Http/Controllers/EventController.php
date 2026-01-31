@@ -429,16 +429,15 @@ class EventController extends Controller
     // 8. Teams List
     public function teamsList(Request $request, $championshipId)
     {
-        $query = GameMatch::where('championship_id', $championshipId);
+        $championship = Championship::findOrFail($championshipId);
+
+        $query = $championship->teams();
 
         if ($request->has('category_id') && $request->category_id != 'null') {
-            $query->where('category_id', $request->category_id);
+            $query->wherePivot('category_id', $request->category_id);
         }
 
-        $matches = $query->select('home_team_id', 'away_team_id')->get();
-        $teamIds = $matches->pluck('home_team_id')->merge($matches->pluck('away_team_id'))->unique()->filter();
-
-        $teams = Team::whereIn('id', $teamIds)->orderBy('name')->get();
+        $teams = $query->orderBy('name')->get();
         return response()->json($teams);
     }
 
