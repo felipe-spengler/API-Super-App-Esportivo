@@ -128,13 +128,23 @@ export function AdminTeamChampionshipManager() {
                                             <p className="text-xs text-gray-500">{team.city || 'Cidade não informada'}</p>
                                         </div>
                                     </div>
-                                    <button
-                                        onClick={() => handleRemoveTeam(team.id)}
-                                        className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                        title="Remover do campeonato"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => navigate(`/admin/teams/${team.id}`)}
+                                            className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex items-center gap-1 text-xs font-bold"
+                                            title="Gerenciar Jogadores"
+                                        >
+                                            <Users className="w-4 h-4" />
+                                            <span className="hidden sm:inline">Jogadores</span>
+                                        </button>
+                                        <button
+                                            onClick={() => handleRemoveTeam(team.id)}
+                                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                            title="Remover do campeonato"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
                                 </div>
                             ))
                         )}
