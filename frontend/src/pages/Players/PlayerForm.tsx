@@ -10,6 +10,7 @@ export function PlayerForm() {
 
     const [form, setForm] = useState({
         name: '',
+        nickname: '',
         email: '',
         cpf: '',
         rg: '',
@@ -17,6 +18,7 @@ export function PlayerForm() {
         gender: '',
         birth_date: '',
         phone: '',
+        address: '',
         password: '',
         password_confirmation: ''
     });
@@ -96,7 +98,7 @@ export function PlayerForm() {
                         </h2>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="md:col-span-2">
+                            <div className="md:col-span-1">
                                 <label className="block text-sm font-bold text-gray-700 mb-2">Nome Completo</label>
                                 <input
                                     type="text"
@@ -108,10 +110,22 @@ export function PlayerForm() {
                                 />
                             </div>
 
+                            <div className="md:col-span-1">
+                                <label className="block text-sm font-bold text-gray-700 mb-2">Apelido</label>
+                                <input
+                                    type="text"
+                                    value={form.nickname}
+                                    onChange={e => setForm({ ...form, nickname: e.target.value })}
+                                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                    placeholder="Canhotinha"
+                                />
+                            </div>
+
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-2">CPF</label>
                                 <input
                                     type="text"
+                                    required
                                     value={form.cpf}
                                     onChange={e => setForm({ ...form, cpf: e.target.value })}
                                     className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
@@ -123,6 +137,7 @@ export function PlayerForm() {
                                 <label className="block text-sm font-bold text-gray-700 mb-2">RG</label>
                                 <input
                                     type="text"
+                                    required
                                     value={form.rg}
                                     onChange={e => setForm({ ...form, rg: e.target.value })}
                                     className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
@@ -134,6 +149,7 @@ export function PlayerForm() {
                                 <label className="block text-sm font-bold text-gray-700 mb-2">Data de Nascimento</label>
                                 <input
                                     type="date"
+                                    required
                                     value={form.birth_date}
                                     onChange={e => setForm({ ...form, birth_date: e.target.value })}
                                     className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
@@ -143,6 +159,7 @@ export function PlayerForm() {
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-2">Gênero</label>
                                 <select
+                                    required
                                     value={form.gender}
                                     onChange={e => setForm({ ...form, gender: e.target.value })}
                                     className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all bg-white"
@@ -158,10 +175,22 @@ export function PlayerForm() {
                                 <label className="block text-sm font-bold text-gray-700 mb-2">Nome da Mãe</label>
                                 <input
                                     type="text"
+                                    required
                                     value={form.mother_name}
                                     onChange={e => setForm({ ...form, mother_name: e.target.value })}
                                     className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                                     placeholder="Nome completo da mãe"
+                                />
+                            </div>
+
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-bold text-gray-700 mb-2">Endereço</label>
+                                <input
+                                    type="text"
+                                    value={form.address}
+                                    onChange={e => setForm({ ...form, address: e.target.value })}
+                                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                    placeholder="Rua, número, bairro, cidade..."
                                 />
                             </div>
                         </div>

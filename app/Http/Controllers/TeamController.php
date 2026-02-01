@@ -60,10 +60,16 @@ class TeamController extends Controller
         $request->validate([
             'name' => 'required|string',
             'position' => 'required|string',
-            'email' => 'nullable|email',
-            'cpf' => 'nullable|string',
+            'nickname' => 'nullable|string',
+            'email' => 'required|email',
+            'cpf' => 'required|string',
+            'phone' => 'nullable|string',
+            'gender' => 'required|string',
+            'address' => 'nullable|string',
+            'birth_date' => 'required|date',
             'number' => 'nullable|string',
-            'document_file' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120' // Max 5MB
+            'document_file' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120', // Max 5MB
+            'photo_file' => 'nullable|image|max:2048' // Max 2MB
         ]);
 
         $userData = null;
@@ -83,24 +89,49 @@ class TeamController extends Controller
             $documentPath = $request->file('document_file')->store('requests/documents', 'public');
         }
 
+        $photoPath = null;
+        if ($request->hasFile('photo_file')) {
+            $photoPath = $request->file('photo_file')->store('players/photos', 'public');
+        }
+
         // 3. Create User if not exists (Auto-Registration Logic)
-        if (!$userData && ($request->email || $request->cpf)) {
+        if (!$userData) {
             $tempPassword = $request->cpf ? preg_replace('/[^0-9]/', '', $request->cpf) : 'mudar123';
 
             $userData = \App\Models\User::create([
                 'name' => $request->name,
-                'email' => $request->email ?? ($request->cpf . '@temp.com.br'), // Fallback email
+                'nickname' => $request->nickname,
+                'email' => $request->email,
                 'cpf' => $request->cpf,
+                'phone' => $request->phone,
+                'gender' => $request->gender,
+                'address' => $request->address,
+                'birth_date' => $request->birth_date,
                 'password' => \Illuminate\Support\Facades\Hash::make($tempPassword),
                 'role' => 'user',
-                'document_path' => $documentPath
+                'document_path' => $documentPath,
+                'photo_path' => $photoPath
             ]);
+        } else {
+            // Update existing user with new info if they are blank
+            $updateData = [];
+            if (!$userData->document_path && $documentPath)
+                $updateData['document_path'] = $documentPath;
+            if (!$userData->photo_path && $photoPath)
+                $updateData['photo_path'] = $photoPath;
+            if (!$userData->phone && $request->phone)
+                $updateData['phone'] = $request->phone;
+            if (!$userData->gender && $request->gender)
+                $updateData['gender'] = $request->gender;
+            if (!$userData->address && $request->address)
+                $updateData['address'] = $request->address;
+            if (!$userData->nickname && $request->nickname)
+                $updateData['nickname'] = $request->nickname;
+            if (!$userData->birth_date && $request->birth_date)
+                $updateData['birth_date'] = $request->birth_date;
 
-            // TODO: Enviar email com credenciais
-            // Mail::to($userData->email)->send(new WelcomePlayerMail($userData, $tempPassword));
-        } else if ($userData && $documentPath) {
-            if (!$userData->document_path) {
-                $userData->update(['document_path' => $documentPath]);
+            if (!empty($updateData)) {
+                $userData->update($updateData);
             }
         }
 

@@ -36,11 +36,17 @@ export function TeamDetails() {
 
     // Form states
     const [newPlayerName, setNewPlayerName] = useState('');
+    const [newPlayerNickname, setNewPlayerNickname] = useState('');
     const [newPlayerPos, setNewPlayerPos] = useState('');
     const [newPlayerNum, setNewPlayerNum] = useState('');
     const [newPlayerEmail, setNewPlayerEmail] = useState('');
     const [newPlayerCpf, setNewPlayerCpf] = useState('');
+    const [newPlayerBirthDate, setNewPlayerBirthDate] = useState('');
+    const [newPlayerGender, setNewPlayerGender] = useState('');
+    const [newPlayerPhone, setNewPlayerPhone] = useState('');
+    const [newPlayerAddress, setNewPlayerAddress] = useState('');
     const [documentFile, setDocumentFile] = useState<File | null>(null);
+    const [photoFile, setPhotoFile] = useState<File | null>(null);
     const [adding, setAdding] = useState(false);
 
     useEffect(() => {
@@ -65,12 +71,21 @@ export function TeamDetails() {
         try {
             const formData = new FormData();
             formData.append('name', newPlayerName);
+            formData.append('nickname', newPlayerNickname);
             formData.append('position', newPlayerPos);
             formData.append('number', newPlayerNum);
             formData.append('email', newPlayerEmail);
             formData.append('cpf', newPlayerCpf);
+            formData.append('birth_date', newPlayerBirthDate);
+            formData.append('gender', newPlayerGender);
+            formData.append('phone', newPlayerPhone);
+            formData.append('address', newPlayerAddress);
+
             if (documentFile) {
                 formData.append('document_file', documentFile);
+            }
+            if (photoFile) {
+                formData.append('photo_file', photoFile);
             }
 
             await api.post(`/teams/${id}/players`, formData, {
@@ -91,11 +106,17 @@ export function TeamDetails() {
 
     function resetForm() {
         setNewPlayerName('');
+        setNewPlayerNickname('');
         setNewPlayerPos('');
         setNewPlayerNum('');
         setNewPlayerEmail('');
         setNewPlayerCpf('');
+        setNewPlayerBirthDate('');
+        setNewPlayerGender('');
+        setNewPlayerPhone('');
+        setNewPlayerAddress('');
         setDocumentFile(null);
+        setPhotoFile(null);
     }
 
     if (loading) {
@@ -216,57 +237,128 @@ export function TeamDetails() {
                             </button>
                         </div>
 
-                        <form onSubmit={handleAddPlayer} className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Nome do Atleta</label>
-                                <input
-                                    required
-                                    className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                                    placeholder="Ex: João da Silva"
-                                    value={newPlayerName}
-                                    onChange={e => setNewPlayerName(e.target.value)}
-                                />
-                            </div>
-                            <div className="flex gap-4">
-                                <div className="flex-1">
+                        <form onSubmit={handleAddPlayer} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="col-span-2">
+                                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Nome do Atleta</label>
+                                    <input
+                                        required
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
+                                        placeholder="Ex: João da Silva"
+                                        value={newPlayerName}
+                                        onChange={e => setNewPlayerName(e.target.value)}
+                                    />
+                                </div>
+                                <div className="col-span-2">
+                                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Apelido (Opcional)</label>
+                                    <input
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
+                                        placeholder="Ex: Canhotinha"
+                                        value={newPlayerNickname}
+                                        onChange={e => setNewPlayerNickname(e.target.value)}
+                                    />
+                                </div>
+                                <div>
                                     <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Posição</label>
                                     <input
                                         required
-                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
                                         placeholder="Ex: Goleiro"
                                         value={newPlayerPos}
                                         onChange={e => setNewPlayerPos(e.target.value)}
                                     />
                                 </div>
-                                <div className="w-24">
+                                <div>
                                     <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Número</label>
                                     <input
-                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-center"
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-center text-sm"
                                         placeholder="00"
                                         value={newPlayerNum}
                                         onChange={e => setNewPlayerNum(e.target.value)}
                                     />
                                 </div>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">CPF (Opcional)</label>
-                                <input
-                                    type="text"
-                                    className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                                    placeholder="000.000.000-00"
-                                    value={newPlayerCpf}
-                                    onChange={e => setNewPlayerCpf(e.target.value)}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Email (Opcional)</label>
-                                <input
-                                    type="email"
-                                    className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                                    placeholder="atleta@email.com"
-                                    value={newPlayerEmail}
-                                    onChange={e => setNewPlayerEmail(e.target.value)}
-                                />
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Data Nasc.</label>
+                                    <input
+                                        required
+                                        type="date"
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
+                                        value={newPlayerBirthDate}
+                                        onChange={e => setNewPlayerBirthDate(e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Sexo</label>
+                                    <select
+                                        required
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
+                                        value={newPlayerGender}
+                                        onChange={e => setNewPlayerGender(e.target.value)}
+                                    >
+                                        <option value="">Selecione</option>
+                                        <option value="M">Masculino</option>
+                                        <option value="F">Feminino</option>
+                                        <option value="O">Outro</option>
+                                    </select>
+                                </div>
+                                <div className="col-span-2">
+                                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">CPF</label>
+                                    <input
+                                        required
+                                        type="text"
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
+                                        placeholder="000.000.000-00"
+                                        value={newPlayerCpf}
+                                        onChange={e => setNewPlayerCpf(e.target.value)}
+                                    />
+                                </div>
+                                <div className="col-span-2">
+                                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Email</label>
+                                    <input
+                                        required
+                                        type="email"
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
+                                        placeholder="atleta@email.com"
+                                        value={newPlayerEmail}
+                                        onChange={e => setNewPlayerEmail(e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Telefone (Opcional)</label>
+                                    <input
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
+                                        placeholder="(00) 00000-0000"
+                                        value={newPlayerPhone}
+                                        onChange={e => setNewPlayerPhone(e.target.value)}
+                                    />
+                                </div>
+                                <div className="col-span-2">
+                                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Endereço (Opcional)</label>
+                                    <input
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
+                                        placeholder="Rua, número, bairro..."
+                                        value={newPlayerAddress}
+                                        onChange={e => setNewPlayerAddress(e.target.value)}
+                                    />
+                                </div>
+                                <div className="col-span-1">
+                                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Foto (Opcional)</label>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={e => setPhotoFile(e.target.files?.[0] || null)}
+                                        className="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                                    />
+                                </div>
+                                <div className="col-span-1">
+                                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Doc (PDF/Img)</label>
+                                    <input
+                                        type="file"
+                                        accept=".pdf,image/*"
+                                        onChange={e => setDocumentFile(e.target.files?.[0] || null)}
+                                        className="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-gray-50 file:text-gray-700 hover:file:bg-gray-100"
+                                    />
+                                </div>
                             </div>
 
                             <div className="pt-2">

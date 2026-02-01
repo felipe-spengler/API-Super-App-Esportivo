@@ -15,12 +15,15 @@ class StorePlayerRequest extends FormRequest
     {
         return [
             'name' => 'required|string|max:255',
+            'nickname' => 'nullable|string|max:255',
             'email' => 'required|email|unique:users,email',
-            'cpf' => 'nullable|string|unique:users,cpf', // CPF deve ser único
+            'cpf' => 'required|string|unique:users,cpf', // CPF obrigatório e único
             'phone' => 'nullable|string',
-            'birth_date' => 'nullable|date',
+            'gender' => 'required|string',
+            'address' => 'nullable|string',
+            'birth_date' => 'required|date',
             'photo' => 'nullable|image|max:2048',
-            'team_id' => 'nullable|exists:teams,id', // Opcional: já vincular a time
+            'team_id' => 'nullable|exists:teams,id',
         ];
     }
 
@@ -28,7 +31,6 @@ class StorePlayerRequest extends FormRequest
     {
         return [
             'name.required' => 'O nome do jogador é obrigatório.',
-            'email.required' => 'O e-mail é obrigatório.',
             'email.unique' => 'Este e-mail já está cadastrado.',
             'cpf.unique' => 'Este CPF já está cadastrado.',
         ];
