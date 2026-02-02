@@ -380,9 +380,12 @@ export function SumulaFutebol() {
                             ⭐ Craque
                         </button>
                     </div>
-                    <button onClick={() => registerSimpleEvent('home', 'timeout')} className="w-full py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg font-bold text-[9px] text-gray-400 uppercase tracking-widest active:scale-95">
-                        Pedido de Tempo
-                    </button>
+                    {/* Pedido de Tempo condicional */}
+                    {matchData?.championship?.sport?.slug !== 'futebol' && (
+                        <button onClick={() => registerSimpleEvent('home', 'timeout')} className="w-full py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg font-bold text-[9px] text-gray-400 uppercase tracking-widest active:scale-95">
+                            Pedido de Tempo
+                        </button>
+                    )}
                 </div>
 
                 {/* Away Controls */}
@@ -406,9 +409,12 @@ export function SumulaFutebol() {
                             ⭐ Craque
                         </button>
                     </div>
-                    <button onClick={() => registerSimpleEvent('away', 'timeout')} className="w-full py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg font-bold text-[9px] text-gray-400 uppercase tracking-widest active:scale-95">
-                        Pedido de Tempo
-                    </button>
+                    {/* Pedido de Tempo condicional */}
+                    {matchData?.championship?.sport?.slug !== 'futebol' && (
+                        <button onClick={() => registerSimpleEvent('away', 'timeout')} className="w-full py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg font-bold text-[9px] text-gray-400 uppercase tracking-widest active:scale-95">
+                            Pedido de Tempo
+                        </button>
+                    )}
                 </div>
             </div>
 
