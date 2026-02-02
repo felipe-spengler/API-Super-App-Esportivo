@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Play, Pause, Clock, Users, X, Flag, Timer, UserX } from 'lucide-react';
+import { ArrowLeft, Play, Pause, Clock, Users, X, Flag, Timer, UserX, Trash2 } from 'lucide-react';
 import api from '../../services/api';
 
 export function SumulaHandebol() {
@@ -24,7 +24,7 @@ export function SumulaHandebol() {
     // Modal State
     const [showEventModal, setShowEventModal] = useState(false);
     const [selectedTeam, setSelectedTeam] = useState<'home' | 'away' | null>(null);
-    const [eventType, setEventType] = useState<'goal' | 'yellow_card' | 'suspension_2min' | 'red_card' | null>(null);
+    const [eventType, setEventType] = useState<'goal' | 'yellow_card' | 'suspension_2min' | 'red_card' | 'assist' | 'mvp' | null>(null);
 
     const fetchMatchDetails = async () => {
         try {
@@ -137,7 +137,7 @@ export function SumulaHandebol() {
         }
     };
 
-    const openEventModal = (team: 'home' | 'away', type: 'goal' | 'yellow_card' | 'suspension_2min' | 'red_card') => {
+    const openEventModal = (team: 'home' | 'away', type: 'goal' | 'yellow_card' | 'suspension_2min' | 'red_card' | 'assist' | 'mvp') => {
         setSelectedTeam(team);
         setEventType(type);
         setShowEventModal(true);
@@ -161,7 +161,7 @@ export function SumulaHandebol() {
 
         try {
             await api.post(`/admin/matches/${id}/events`, {
-                type: 'timeout',
+                event_type: 'timeout',
                 team_id: teamId,
                 minute: currentTime,
                 period: currentPeriod
@@ -177,8 +177,16 @@ export function SumulaHandebol() {
         const currentTime = formatTime(time);
 
         try {
+            const response = await api.post(`/admin/matches/${id}/events`, {
+                event_type: eventType,
+                team_id: teamId,
+                minute: currentTime,
+                period: currentPeriod,
+                player_id: player.id
+            });
+
             const newEvent = {
-                id: Date.now(),
+                id: response.data.id,
                 type: eventType,
                 team: selectedTeam,
                 time: currentTime,
@@ -199,18 +207,34 @@ export function SumulaHandebol() {
                 setSuspensions(prev => ({ ...prev, [selectedTeam]: prev[selectedTeam] + 1 }));
                 alert(`⚠️ ${player.name} suspenso por 2 minutos!`);
             }
-
-            await api.post(`/admin/matches/${id}/events`, {
-                type: eventType,
-                team_id: teamId,
-                minute: currentTime,
-                period: currentPeriod,
-                player_id: player.id
-            });
             setShowEventModal(false);
         } catch (e) {
             console.error(e);
             alert('Erro ao registrar evento');
+        }
+    };
+
+    const handleDeleteEvent = async (eventId: number, type: string, team: 'home' | 'away') => {
+        if (!window.confirm('Excluir este evento?')) return;
+
+        try {
+            await api.delete(`/admin/matches/${id}/events/${eventId}`);
+            setEvents(prev => prev.filter(e => e.id !== eventId));
+
+            if (type === 'goal') {
+                setMatchData((prev: any) => ({
+                    ...prev,
+                    scoreHome: team === 'home' ? prev.scoreHome - 1 : prev.scoreHome,
+                    scoreAway: team === 'away' ? prev.scoreAway - 1 : prev.scoreAway
+                }));
+            }
+
+            if (type === 'suspension_2min') {
+                setSuspensions(prev => ({ ...prev, [team]: Math.max(0, prev[team] - 1) }));
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Erro ao excluir evento');
         }
     };
 
@@ -315,6 +339,10 @@ export function SumulaHandebol() {
                             <Timer size={14} /> Tempo
                         </button>
                     </div>
+                    <div className="grid grid-cols-2 gap-2">
+                        <button onClick={() => openEventModal('home', 'assist')} className="py-2 bg-indigo-500 rounded-lg font-bold border-b-4 border-indigo-700 active:scale-95 text-xs">👟 Assist.</button>
+                        <button onClick={() => openEventModal('home', 'mvp')} className="py-2 bg-amber-500 text-black rounded-lg font-bold border-b-4 border-amber-700 active:scale-95 text-xs">⭐ Craque</button>
+                    </div>
                 </div>
 
                 {/* Away Controls */}
@@ -333,6 +361,10 @@ export function SumulaHandebol() {
                         <button onClick={() => registerTimeout('away')} className="py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold text-xs flex items-center justify-center gap-1 active:scale-95 border-b-2 border-gray-900">
                             <Timer size={14} /> Tempo
                         </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                        <button onClick={() => openEventModal('away', 'assist')} className="py-2 bg-indigo-500 rounded-lg font-bold border-b-4 border-indigo-700 active:scale-95 text-xs">👟 Assist.</button>
+                        <button onClick={() => openEventModal('away', 'mvp')} className="py-2 bg-amber-500 text-black rounded-lg font-bold border-b-4 border-amber-700 active:scale-95 text-xs">⭐ Craque</button>
                     </div>
                 </div>
             </div>
@@ -359,12 +391,19 @@ export function SumulaHandebol() {
                                         {ev.type === 'yellow_card' && '🟨 Amarelo'}
                                         {ev.type === 'red_card' && '🟥 Vermelho'}
                                         {ev.type === 'suspension_2min' && '⏱ Suspensão 2min'}
+                                        {ev.type === 'assist' && '👟 Assistência'}
+                                        {ev.type === 'mvp' && '⭐ Craque'}
                                         {ev.type === 'timeout' && '⏱ Pedido de Tempo'}
                                     </span>
                                     {ev.player_name && <span className="text-xs text-gray-400">{ev.player_name}</span>}
                                 </div>
                             </div>
-                            <div className="text-[9px] uppercase font-bold tracking-wider text-gray-600">{ev.period}</div>
+                            <div className="flex items-center gap-3">
+                                <span className="text-[9px] uppercase font-bold tracking-wider text-gray-600">{ev.period}</span>
+                                <button onClick={() => handleDeleteEvent(ev.id, ev.type, ev.team)} className="p-1 px-2 hover:bg-red-500/20 text-gray-500 hover:text-red-500 rounded transition-colors">
+                                    <Trash2 size={16} />
+                                </button>
+                            </div>
                         </div>
                     ))}
                     {events.length === 0 && <div className="text-center text-gray-600 py-8 text-sm">Nenhum evento registrado ainda.</div>}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Play, Pause, Clock, Users, X, Timer, Flame } from 'lucide-react';
+import { ArrowLeft, Play, Pause, Clock, Users, X, Timer, Flame, Trash2 } from 'lucide-react';
 import api from '../../services/api';
 
 type Quarter = '1º Quarto' | '2º Quarto' | 'Intervalo' | '3º Quarto' | '4º Quarto' | 'Prorrogação' | 'Fim de Jogo';
@@ -208,7 +208,7 @@ export function SumulaBasquete() {
 
         try {
             await api.post(`/admin/matches/${id}/events`, {
-                type: 'timeout',
+                event_type: 'timeout',
                 team_id: teamId,
                 minute: currentTime,
                 period: currentQuarter
@@ -253,8 +253,17 @@ export function SumulaBasquete() {
                 }
             }
 
+            const response = await api.post(`/admin/matches/${id}/events`, {
+                event_type: apiType,
+                team_id: teamId,
+                minute: currentTime,
+                period: currentQuarter,
+                player_id: player.id,
+                value: points
+            });
+
             const newEvent = {
-                id: Date.now(),
+                id: response.data.id,
                 type: apiType,
                 team: selectedTeam,
                 time: currentTime,
@@ -271,19 +280,34 @@ export function SumulaBasquete() {
                     scoreAway: selectedTeam === 'away' ? prev.scoreAway + points : prev.scoreAway
                 }));
             }
-
-            await api.post(`/admin/matches/${id}/events`, {
-                type: apiType,
-                team_id: teamId,
-                minute: currentTime,
-                period: currentQuarter,
-                player_id: player.id,
-                value: points
-            });
             setShowEventModal(false);
         } catch (e) {
             console.error(e);
             alert('Erro ao registrar evento');
+        }
+    };
+
+    const handleDeleteEvent = async (eventId: number, type: string, team: 'home' | 'away', value: number) => {
+        if (!window.confirm('Excluir este evento?')) return;
+
+        try {
+            await api.delete(`/admin/matches/${id}/events/${eventId}`);
+            setEvents(prev => prev.filter(e => e.id !== eventId));
+
+            if (value > 0) {
+                setMatchData((prev: any) => ({
+                    ...prev,
+                    scoreHome: team === 'home' ? prev.scoreHome - value : prev.scoreHome,
+                    scoreAway: team === 'away' ? prev.scoreAway - value : prev.scoreAway
+                }));
+            }
+
+            if (type === 'foul') {
+                setTeamFouls(prev => ({ ...prev, [team]: Math.max(0, prev[team] - 1) }));
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Erro ao excluir evento');
         }
     };
 
@@ -454,7 +478,12 @@ export function SumulaBasquete() {
                                     {ev.player_name && <span className="text-xs text-gray-400">{ev.player_name}</span>}
                                 </div>
                             </div>
-                            <div className="text-[9px] uppercase font-bold tracking-wider text-gray-600">{ev.period}</div>
+                            <div className="flex items-center gap-3">
+                                <span className="text-[9px] uppercase font-bold tracking-wider text-gray-600">{ev.period}</span>
+                                <button onClick={() => handleDeleteEvent(ev.id, ev.type, ev.team, ev.value)} className="p-1 px-2 hover:bg-red-500/20 text-gray-500 hover:text-red-500 rounded transition-colors">
+                                    <Trash2 size={16} />
+                                </button>
+                            </div>
                         </div>
                     ))}
                     {events.length === 0 && <div className="text-center text-gray-600 py-8 text-sm">Nenhum evento registrado ainda.</div>}
