@@ -16,6 +16,9 @@ class Club extends Model
         'banner_url',
         'primary_color',
         'secondary_color',
+        'primary_font',
+        'secondary_font',
+        'contact_email',
         'active_modalities',
         'is_active'
     ];
