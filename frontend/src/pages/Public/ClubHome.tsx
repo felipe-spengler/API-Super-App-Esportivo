@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from 'react-router-dom';
-import { Trophy, Calendar, ShoppingBag, QrCode, Medal, X, MapPin } from 'lucide-react';
+import { Trophy, Calendar, ShoppingBag, X, MapPin } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import api from '../../services/api';
 
@@ -116,11 +116,11 @@ export function ClubHome() {
                 <div>
                     <h2 className="text-lg font-bold text-gray-800 mb-4 px-1">Acesso Rápido</h2>
                     <div className="bg-white rounded-2xl p-6 flex justify-around shadow-sm border border-gray-100">
-                        <button className="flex flex-col items-center gap-2 group" onClick={() => navigate('/wallet')}>
+                        <button className="flex flex-col items-center gap-2 group" onClick={() => navigate('/inscricoes')}>
                             <div className="bg-gray-50 p-4 rounded-2xl group-hover:bg-gray-100 transition-colors">
-                                <QrCode className="w-6 h-6" style={{ color: primaryColor }} />
+                                <Trophy className="w-6 h-6" style={{ color: primaryColor }} />
                             </div>
-                            <span className="text-xs text-gray-600 font-medium">Carteirinha</span>
+                            <span className="text-xs text-gray-600 font-medium">Inscrições</span>
                         </button>
 
                         <button className="flex flex-col items-center gap-2 group" onClick={() => navigate('/shop')}>

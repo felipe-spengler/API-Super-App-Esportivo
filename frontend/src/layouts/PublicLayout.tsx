@@ -1,8 +1,10 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { Trophy, Home, User, CreditCard, Lock } from 'lucide-react';
+import { Trophy, Home, User, Lock } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export function PublicLayout() {
     const location = useLocation();
+    const { user } = useAuth();
 
     // Helper to check active link
     const isActive = (path: string) => location.pathname === path;
@@ -48,16 +50,13 @@ export function PublicLayout() {
                         <span className="text-[10px] font-medium mt-1">Perfil</span>
                     </Link>
 
-                    {/* Carteirinha Placeholder - só funciona se logado, mas aqui é mockup visual */}
-                    <Link to="/wallet" className={`flex flex-col items-center p-2 ${isActive('/wallet') ? 'text-indigo-600' : 'text-gray-400'}`}>
-                        <CreditCard className="w-6 h-6" />
-                        <span className="text-[10px] font-medium mt-1">Carteira</span>
-                    </Link>
-
-                    <Link to="/login" className={`flex flex-col items-center p-2 ${isActive('/login') ? 'text-indigo-600' : 'text-gray-400'}`}>
-                        <Lock className="w-6 h-6" />
-                        <span className="text-[10px] font-medium mt-1">Admin</span>
-                    </Link>
+                    {/* Admin link - only show if user is admin */}
+                    {user?.is_admin && (
+                        <Link to="/admin" className={`flex flex-col items-center p-2 ${isActive('/admin') ? 'text-indigo-600' : 'text-gray-400'}`}>
+                            <Lock className="w-6 h-6" />
+                            <span className="text-[10px] font-medium mt-1">Admin</span>
+                        </Link>
+                    )}
                 </div>
             </div>
         </div>
