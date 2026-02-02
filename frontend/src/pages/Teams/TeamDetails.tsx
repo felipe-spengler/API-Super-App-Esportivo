@@ -14,6 +14,10 @@ interface Championship {
     id: number;
     name: string;
     status: string;
+    category_name?: string;
+    sport?: {
+        name: string;
+    };
 }
 
 interface Team {
@@ -214,11 +218,25 @@ export function TeamDetails() {
                             <p className="text-gray-400 text-sm text-center py-4">Nenhuma participação recente</p>
                         ) : (
                             team.championships.map(camp => (
-                                <div key={camp.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                                    <span className="text-sm font-medium text-gray-700">{camp.name}</span>
-                                    <span className="text-xs bg-white border border-gray-200 px-2 py-1 rounded text-gray-500">
-                                        {camp.status}
-                                    </span>
+                                <div key={camp.id} className="flex flex-col p-3 bg-gray-50 rounded-lg border border-gray-100 transition-all hover:bg-white hover:shadow-sm">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div>
+                                            <span className="text-sm font-bold text-gray-900 line-clamp-1">{camp.name}</span>
+                                            <div className="flex items-center gap-2 mt-0.5">
+                                                <span className="text-[10px] font-medium text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded uppercase">
+                                                    {camp.sport?.name || 'Esporte'}
+                                                </span>
+                                                {camp.category_name && (
+                                                    <span className="text-[10px] font-medium text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded uppercase">
+                                                        Cat: {camp.category_name}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <span className="text-[10px] bg-white border border-gray-200 px-2 py-1 rounded text-gray-500 font-bold uppercase tracking-wider">
+                                            {camp.status}
+                                        </span>
+                                    </div>
                                 </div>
                             ))
                         )}

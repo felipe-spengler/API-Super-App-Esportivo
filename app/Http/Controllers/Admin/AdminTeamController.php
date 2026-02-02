@@ -37,7 +37,19 @@ class AdminTeamController extends Controller
     // Show team details
     public function show($id)
     {
-        $team = Team::with(['club', 'players', 'championships'])->findOrFail($id);
+        $team = Team::with(['club', 'players', 'championships.sport', 'championships.categories'])->findOrFail($id);
+
+        // Map the category name to each championship
+        $team->championships->each(function ($championship) {
+            $categoryId = $championship->pivot->category_id;
+            if ($categoryId) {
+                $category = $championship->categories->firstWhere('id', $categoryId);
+                $championship->category_name = $category ? $category->name : null;
+            } else {
+                $championship->category_name = null;
+            }
+        });
+
         return response()->json($team);
     }
 
