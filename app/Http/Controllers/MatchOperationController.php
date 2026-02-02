@@ -13,12 +13,7 @@ class MatchOperationController extends Controller
     // RETORNA DADOS COMPLETOS PARA A SÚMULA (Players, histórico, sets, etc)
     public function show($id)
     {
-        $match = GameMatch::with(['homeTeam', 'awayTeam', 'championship.sport'])->findOrFail($id);
-
-        // Carregar jogadores (Simulado via Mock ou tabela se existisse)
-        // Como o seeder jogou positions no JSON, vamos tentar extrair de lá ou retornar lista fake se vazio
-        // Ideal: Tabela de 'championship_inscriptions' ou 'team_rosters'. 
-        // Para MVP, vamos retornar jogadores mockados baseados no time se não tiver no JSON.
+        $match = GameMatch::with(['homeTeam.players', 'awayTeam.players', 'championship.sport'])->findOrFail($id);
 
         $details = $match->match_details ?? [];
 
@@ -28,16 +23,12 @@ class MatchOperationController extends Controller
         if (!isset($details['sets']))
             $details['sets'] = [];
         if (!isset($details['positions']))
-            $details['positions'] = []; // Rodízio atual
+            $details['positions'] = [];
 
-        // Carregar jogadores dos times (Se existirem no banco)
-        // Assumindo que User tem club_id, podemos listar users dos clubes
-        $homePlayers = User::where('club_id', $match->home_team_id)->get(['id', 'name', 'created_at']); // Mock attributes
-
-        // Se não tiver users reais, mockar para o frontend não quebrar
+        // Carregar jogadores reais dos times
         $rosters = [
-            'home' => $this->formatRoster($match->home_team_id, $details['positions'], 'home'),
-            'away' => $this->formatRoster($match->away_team_id, $details['positions'], 'away'),
+            'home' => $this->formatRoster($match->homeTeam),
+            'away' => $this->formatRoster($match->awayTeam),
         ];
 
         return response()->json([
@@ -48,24 +39,20 @@ class MatchOperationController extends Controller
         ]);
     }
 
-    // LISTA DE JOGADORES (ROSTER)
-    private function formatRoster($teamId, $positions, $side)
+    // LISTA DE JOGADORES (ROSTER) REAL
+    private function formatRoster($team)
     {
-        // Tenta pegar do JSON positions primeiro 
-        // Se vazio, gera lista fictícia baseada no teamID
-        // Num app real, buscaria na tabela `team_players`
+        if (!$team)
+            return [];
 
-        $players = [];
-        // Mock players generator
-        for ($i = 1; $i <= 12; $i++) {
-            $players[] = [
-                'id' => $teamId * 100 + $i,
-                'number' => $i,
-                'name' => "Jogador $i ($side)",
-                'position' => null // 1 a 6 se estiver em quadra
+        return $team->players->map(function ($player) {
+            return [
+                'id' => $player->id,
+                'number' => $player->pivot->number ?? '',
+                'name' => $player->name,
+                'position' => $player->pivot->position
             ];
-        }
-        return $players;
+        });
     }
 
     // LANÇAR EVENTO (GOL, PONTO, CARTÃO)

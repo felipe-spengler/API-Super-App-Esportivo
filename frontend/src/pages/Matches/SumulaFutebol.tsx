@@ -206,7 +206,7 @@ export function SumulaFutebol() {
         // API
         try {
             await api.post(`/admin/matches/${id}/events`, {
-                type: type,
+                event_type: type,
                 team_id: teamId,
                 minute: currentTime,
                 period: currentPeriod
@@ -241,7 +241,7 @@ export function SumulaFutebol() {
             }
 
             await api.post(`/admin/matches/${id}/events`, {
-                type: eventType,
+                event_type: eventType,
                 team_id: teamId,
                 minute: currentTime,
                 period: currentPeriod,
