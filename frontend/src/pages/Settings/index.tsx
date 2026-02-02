@@ -250,8 +250,9 @@ export function Settings() {
                                     <Type className="w-6 h-6 text-indigo-500" />
                                     Fontes Customizadas
                                 </h2>
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                                    <div className="space-y-8">
+                                <div className="space-y-12">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                                        {/* Fonte Principal */}
                                         <div className="space-y-4">
                                             <div className="space-y-2">
                                                 <label className="block text-sm font-bold text-gray-700">Fonte Principal (Títulos)</label>
@@ -280,9 +281,16 @@ export function Settings() {
                                                         <option value="Ubuntu" style={{ fontFamily: 'Ubuntu' }}>Ubuntu</option>
                                                     </optgroup>
                                                 </select>
-                                                <p className="text-xs text-gray-400">Dica: Fontes como <b>Bebas Neue</b> ou <b>Anton</b> dão visual profissional de esporte.</p>
                                             </div>
+                                            <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100 min-h-[100px] flex items-center justify-center text-center overflow-hidden">
+                                                <p className="text-3xl break-all" style={{ fontFamily: settings.primary_font, color: settings.primary_color }}>
+                                                    Esse é um texto teste mesmo
+                                                </p>
+                                            </div>
+                                        </div>
 
+                                        {/* Fonte Secundária */}
+                                        <div className="space-y-4">
                                             <div className="space-y-2">
                                                 <label className="block text-sm font-bold text-gray-700">Fonte Secundária (Textos)</label>
                                                 <select
@@ -304,48 +312,14 @@ export function Settings() {
                                                         <option value="Montserrat" style={{ fontFamily: 'Montserrat' }}>Montserrat</option>
                                                     </optgroup>
                                                 </select>
-                                                <p className="text-xs text-gray-400">Usada para nomes de times e informações técnicas.</p>
                                             </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Preview Card Mockup */}
-                                    <div className="relative group">
-                                        <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-3xl blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
-                                        <div className="relative bg-white rounded-2xl border border-gray-100 shadow-2xl overflow-hidden aspect-[4/5] md:aspect-auto md:h-full min-h-[400px]">
-                                            <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, gray 1px, transparent 0)', backgroundSize: '24px 24px' }}></div>
-
-                                            <div className="p-8 h-full flex flex-col justify-between">
-                                                <header className="flex justify-between items-start">
-                                                    <div className="w-16 h-16 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-300">
-                                                        <Trophy size={32} />
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold mb-1" style={{ fontFamily: settings.secondary_font }}>Próximo Jogo</p>
-                                                        <p className="text-xs font-black text-gray-900" style={{ fontFamily: settings.primary_font }}>ESTÁDIO MUNICIPAL</p>
-                                                    </div>
-                                                </header>
-
-                                                <main className="flex-1 flex flex-col justify-center items-center text-center py-8">
-                                                    <div className="flex items-center gap-8 mb-6">
-                                                        <div className="w-20 h-20 rounded-full bg-indigo-50 border-4 border-white shadow-lg flex items-center justify-center text-indigo-500 font-black text-2xl" style={{ fontFamily: settings.primary_font }}>A</div>
-                                                        <span className="text-3xl font-black text-gray-300" style={{ fontFamily: settings.primary_font }}>VS</span>
-                                                        <div className="w-20 h-20 rounded-full bg-red-50 border-4 border-white shadow-lg flex items-center justify-center text-red-500 font-black text-2xl" style={{ fontFamily: settings.primary_font }}>B</div>
-                                                    </div>
-                                                    <h3 className="text-4xl leading-tight mb-2" style={{ fontFamily: settings.primary_font, color: settings.primary_color }}>
-                                                        {settings.name || 'NOME DO SEU CLUBE'}
-                                                    </h3>
-                                                    <p className="text-lg opacity-70" style={{ fontFamily: settings.secondary_font, color: settings.secondary_color === '#ffffff' ? '#6b7280' : settings.secondary_color }}>
-                                                        Campeonato Regional 2026
-                                                    </p>
-                                                </main>
-
-                                                <footer className="mt-auto">
-                                                    <div className="h-14 w-full rounded-2xl flex items-center justify-center text-white font-bold shadow-lg transform transition-transform group-hover:scale-[1.02]" style={{ backgroundColor: settings.primary_color, fontFamily: settings.primary_font }}>
-                                                        VER DETALHES DA PARTIDA
-                                                    </div>
-                                                    <p className="text-center mt-4 text-[10px] text-gray-400 font-medium tracking-tight">PREVIEW REAL EM TEMPO REAL</p>
-                                                </footer>
+                                            <div
+                                                className="p-6 rounded-2xl border border-gray-100 min-h-[100px] flex items-center justify-center text-center overflow-hidden"
+                                                style={{ backgroundColor: settings.secondary_color.toLowerCase() === '#ffffff' ? '#1a1a1a' : '#f9fafb' }}
+                                            >
+                                                <p className="text-xl" style={{ fontFamily: settings.secondary_font, color: settings.secondary_color }}>
+                                                    Esse é um texto teste mesmo
+                                                </p>
                                             </div>
                                         </div>
                                     </div>
@@ -502,7 +476,7 @@ export function Settings() {
                         </button>
                     </div>
                 </div>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 }
