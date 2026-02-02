@@ -9,9 +9,13 @@ export function Settings() {
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [uploadingLogo, setUploadingLogo] = useState(false);
+    const [uploadingBanner, setUploadingBanner] = useState(false);
     const [settings, setSettings] = useState({
         name: '',
         contact_email: '',
+        logo_url: '',
+        banner_url: '',
         primary_color: '#4f46e5',
         secondary_color: '#ffffff',
         primary_font: 'Inter',
@@ -43,6 +47,8 @@ export function Settings() {
                     setSettings({
                         name: response.data.name || '',
                         contact_email: response.data.contact_email || '',
+                        logo_url: response.data.logo_url || '',
+                        banner_url: response.data.banner_url || '',
                         primary_color: response.data.primary_color || '#4f46e5',
                         secondary_color: response.data.secondary_color || '#ffffff',
                         primary_font: response.data.primary_font || 'Inter',
@@ -84,6 +90,80 @@ export function Settings() {
             alert('Erro ao salvar configurações.');
         } finally {
             setSaving(false);
+        }
+    }
+
+    async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Validate file size (2MB max)
+        if (file.size > 2 * 1024 * 1024) {
+            alert('A imagem deve ter no máximo 2MB');
+            return;
+        }
+
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            alert('Apenas imagens são permitidas');
+            return;
+        }
+
+        setUploadingLogo(true);
+        try {
+            const formData = new FormData();
+            formData.append('logo', file);
+
+            const response = await api.post('/admin/settings/logo', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+
+            setSettings({ ...settings, logo_url: response.data.logo_url });
+            alert('Logo atualizado com sucesso!');
+        } catch (error) {
+            console.error(error);
+            alert('Erro ao fazer upload do logo');
+        } finally {
+            setUploadingLogo(false);
+        }
+    }
+
+    async function handleBannerUpload(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Validate file size (3MB max for banner)
+        if (file.size > 3 * 1024 * 1024) {
+            alert('A imagem deve ter no máximo 3MB');
+            return;
+        }
+
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            alert('Apenas imagens são permitidas');
+            return;
+        }
+
+        setUploadingBanner(true);
+        try {
+            const formData = new FormData();
+            formData.append('banner', file);
+
+            const response = await api.post('/admin/settings/banner', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+
+            setSettings({ ...settings, banner_url: response.data.banner_url });
+            alert('Banner atualizado com sucesso!');
+        } catch (error) {
+            console.error(error);
+            alert('Erro ao fazer upload do banner');
+        } finally {
+            setUploadingBanner(false);
         }
     }
 
@@ -181,6 +261,71 @@ export function Settings() {
                                             className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                                             placeholder="contato@clube.com"
                                         />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="block text-sm font-bold text-gray-700">Brasão do Clube (Logo)</label>
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-20 h-20 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center bg-gray-50 overflow-hidden">
+                                                {settings.logo_url ? (
+                                                    <img src={settings.logo_url} alt="Brasão" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <Trophy className="w-8 h-8 text-gray-300" />
+                                                )}
+                                            </div>
+                                            <div className="flex-1">
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    onChange={handleLogoUpload}
+                                                    className="hidden"
+                                                    id="logo-upload"
+                                                />
+                                                <label
+                                                    htmlFor="logo-upload"
+                                                    className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-sm font-bold hover:bg-indigo-100 transition-colors cursor-pointer"
+                                                >
+                                                    Selecionar Imagem
+                                                </label>
+                                                <p className="text-xs text-gray-400 mt-1">PNG ou JPG até 2MB (recomendado: quadrado)</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="block text-sm font-bold text-gray-700">Banner da Página Inicial</label>
+                                        <p className="text-xs text-gray-500 mb-2">Banner mostrado na home do app. Se não enviado, usa brasão + nome do clube como fallback.</p>
+                                        <div className="flex flex-col gap-4">
+                                            {settings.banner_url && (
+                                                <div className="w-full h-32 rounded-xl border-2 border-gray-200 overflow-hidden bg-gray-50">
+                                                    <img src={settings.banner_url} alt="Banner" className="w-full h-full object-cover" />
+                                                </div>
+                                            )}
+                                            <div className="flex items-center gap-3">
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    onChange={handleBannerUpload}
+                                                    className="hidden"
+                                                    id="banner-upload"
+                                                    disabled={uploadingBanner}
+                                                />
+                                                <label
+                                                    htmlFor="banner-upload"
+                                                    className={`inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-sm font-bold hover:bg-indigo-100 transition-colors cursor-pointer ${uploadingBanner ? 'opacity-50' : ''}`}
+                                                >
+                                                    {uploadingBanner ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                                                    {uploadingBanner ? 'Enviando...' : 'Selecionar Banner'}
+                                                </label>
+                                                {settings.banner_url && (
+                                                    <button
+                                                        onClick={() => setSettings({ ...settings, banner_url: '' })}
+                                                        className="text-xs text-red-600 hover:text-red-700 font-medium"
+                                                    >
+                                                        Remover Banner
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <p className="text-xs text-gray-400">PNG ou JPG até 3MB (recomendado: 16:9 landscape)</p>
+                                        </div>
                                     </div>
                                 </div>
                             </section>

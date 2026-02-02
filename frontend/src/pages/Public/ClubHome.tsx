@@ -66,29 +66,51 @@ export function ClubHome() {
 
             <div className="max-w-lg mx-auto p-4 space-y-6">
 
-                {/* Destaque / Banner - Using Primary Color */}
-                <div
-                    style={{ backgroundColor: primaryColor }}
-                    className="rounded-3xl p-6 relative h-48 flex flex-col justify-center shadow-lg overflow-hidden group hover:scale-[1.02] transition-transform cursor-pointer"
-                    onClick={() => navigate('/explore')}
-                >
-                    {/* Background Pattern */}
-                    <div className="absolute -right-4 -top-4 opacity-10">
-                        <Medal size={180} color="white" />
+                {/* Destaque / Banner - Custom or Fallback */}
+                {club.banner_url ? (
+                    // Custom Banner
+                    <div
+                        className="rounded-3xl relative h-56 shadow-lg overflow-hidden group hover:scale-[1.02] transition-transform cursor-pointer"
+                        onClick={() => navigate(`/club-home/${clubSlug}/championships`)}
+                    >
+                        <img
+                            src={club.banner_url}
+                            alt={club.name}
+                            className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                     </div>
+                ) : (
+                    // Fallback: Club Branding
+                    <div
+                        style={{ backgroundColor: primaryColor }}
+                        className="rounded-3xl p-8 relative h-56 flex flex-col items-center justify-center shadow-lg overflow-hidden group hover:scale-[1.02] transition-transform"
+                    >
+                        {/* Background Pattern */}
+                        <div className="absolute inset-0 opacity-5"
+                            style={{
+                                backgroundImage: `radial-gradient(circle at 20% 50%, ${secondaryColor} 1px, transparent 1px), radial-gradient(circle at 80% 80%, ${secondaryColor} 1px, transparent 1px)`,
+                                backgroundSize: '50px 50px'
+                            }}
+                        />
 
-                    <div className="relative z-10">
-                        <h2 className="text-white text-2xl font-bold mb-1">Copa Verão 2026</h2>
-                        <p className="text-white opacity-80 text-sm mb-6">Inscrições abertas até 30/01</p>
+                        <div className="relative z-10 flex flex-col items-center">
+                            {/* Club Logo/Brasão */}
+                            {club.logo_url ? (
+                                <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-white/20 backdrop-blur-sm border-4 border-white/30 flex items-center justify-center p-4 shadow-2xl mb-4">
+                                    <img src={club.logo_url} alt={club.name} className="w-full h-full object-contain" />
+                                </div>
+                            ) : (
+                                <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-white/20 backdrop-blur-sm border-4 border-white/30 flex items-center justify-center shadow-2xl mb-4">
+                                    <Trophy size={48} className="text-white" />
+                                </div>
+                            )}
 
-                        <span
-                            style={{ color: primaryColor }}
-                            className="bg-white px-5 py-2.5 rounded-full font-bold text-xs inline-block hover:bg-gray-50 transition-colors shadow-sm"
-                        >
-                            VER CAMPEONATOS
-                        </span>
+                            <h2 className="text-white text-2xl md:text-3xl font-bold text-center drop-shadow-lg">{club.name}</h2>
+                            <p className="text-white/90 text-sm mt-2 text-center font-medium">Bem-vindo ao App Esportivo</p>
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* Atalhos Rápidos */}
                 <div>
