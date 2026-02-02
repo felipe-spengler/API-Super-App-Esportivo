@@ -96,6 +96,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/matches/{id}/mvp', [\App\Http\Controllers\Admin\AdminMatchController::class, 'setMVP']);
         Route::post('/matches/{id}/events', [\App\Http\Controllers\Admin\AdminMatchController::class, 'addEvent']);
         Route::get('/matches/{id}/events', [\App\Http\Controllers\Admin\AdminMatchController::class, 'events']);
+        Route::delete('/matches/{id}/events/{eventId}', [\App\Http\Controllers\Admin\AdminMatchController::class, 'deleteEvent']);
         Route::put('/matches/{id}/awards', [\App\Http\Controllers\Admin\AdminMatchController::class, 'updateAwards']);
 
         // Gestão de Vôlei

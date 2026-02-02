@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Play, Pause, Save, Clock, Users, X, Flag, Timer } from 'lucide-react';
+import { ArrowLeft, Play, Pause, Save, Clock, Users, X, Flag, Timer, Trash2 } from 'lucide-react';
 import api from '../../services/api';
 
 export function SumulaFutebol() {
@@ -222,8 +222,16 @@ export function SumulaFutebol() {
         const currentTime = formatTime(time);
 
         try {
+            const response = await api.post(`/admin/matches/${id}/events`, {
+                event_type: eventType,
+                team_id: teamId,
+                minute: currentTime,
+                period: currentPeriod,
+                player_id: player.id
+            });
+
             const newEvent = {
-                id: Date.now(),
+                id: response.data.id, // Use real ID from backend
                 type: eventType,
                 team: selectedTeam,
                 time: currentTime,
@@ -239,18 +247,39 @@ export function SumulaFutebol() {
                     scoreAway: selectedTeam === 'away' ? prev.scoreAway + 1 : prev.scoreAway
                 }));
             }
-
-            await api.post(`/admin/matches/${id}/events`, {
-                event_type: eventType,
-                team_id: teamId,
-                minute: currentTime,
-                period: currentPeriod,
-                player_id: player.id
-            });
             setShowEventModal(false);
         } catch (e) {
             console.error(e);
             alert('Erro ao registrar evento');
+        }
+    };
+
+    const handleDeleteEvent = async (eventId: number, type: string, team: 'home' | 'away') => {
+        if (!window.confirm('Excluir este evento?')) return;
+
+        try {
+            await api.delete(`/admin/matches/${id}/events/${eventId}`);
+
+            // Update local state
+            setEvents(prev => prev.filter(e => e.id !== eventId));
+
+            if (type === 'goal') {
+                setMatchData((prev: any) => ({
+                    ...prev,
+                    scoreHome: team === 'home' ? prev.scoreHome - 1 : prev.scoreHome,
+                    scoreAway: team === 'away' ? prev.scoreAway - 1 : prev.scoreAway
+                }));
+            }
+
+            if (type === 'foul') {
+                setFouls(prev => ({
+                    ...prev,
+                    [team]: Math.max(0, prev[team] - 1)
+                }));
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Erro ao excluir evento');
         }
     };
 
@@ -413,7 +442,15 @@ export function SumulaFutebol() {
                                     {ev.player_name && <span className="text-xs text-gray-400">{ev.player_name}</span>}
                                 </div>
                             </div>
-                            <div className="text-[9px] uppercase font-bold tracking-wider text-gray-600">{ev.period}</div>
+                            <div className="flex items-center gap-2">
+                                <div className="text-[9px] uppercase font-bold tracking-wider text-gray-600">{ev.period}</div>
+                                <button
+                                    onClick={() => handleDeleteEvent(ev.id, ev.type, ev.team)}
+                                    className="p-1 px-2 hover:bg-red-500/20 text-gray-600 hover:text-red-500 rounded transition-colors"
+                                >
+                                    <Trash2 size={14} />
+                                </button>
+                            </div>
                         </div>
                     ))}
                     {events.length === 0 && <div className="text-center text-gray-600 py-8 text-sm">Nenhum evento registrado ainda.</div>}

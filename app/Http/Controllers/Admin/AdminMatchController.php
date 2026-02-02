@@ -187,4 +187,13 @@ class AdminMatchController extends Controller
 
         return response()->json($match);
     }
+
+    // Delete a specific event
+    public function deleteEvent($matchId, $eventId)
+    {
+        $event = MatchEvent::where('game_match_id', $matchId)->findOrFail($eventId);
+        $event->delete();
+
+        return response()->json(['message' => 'Event deleted successfully']);
+    }
 }
