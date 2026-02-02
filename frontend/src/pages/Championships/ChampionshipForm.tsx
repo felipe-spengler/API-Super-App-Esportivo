@@ -137,6 +137,13 @@ export function ChampionshipForm() {
                 console.log('[UPLOAD] Cover URL set to:', response.data.banner_url || response.data.cover_image_url);
             }
 
+            // Reload championship data to ensure UI is in sync
+            const refreshResponse = await api.get(`/championships/${id}`);
+            const updatedData = refreshResponse.data;
+            setLogoUrl(updatedData.logo_url);
+            setCoverImageUrl(updatedData.cover_image_url);
+            console.log('[UPLOAD] Reloaded data:', { logo_url: updatedData.logo_url, cover_image_url: updatedData.cover_image_url });
+
             alert(`${isLogo ? 'Logo' : 'Capa'} atualizada com sucesso!`);
         } catch (err: any) {
             console.error('[UPLOAD] Error:', err);
