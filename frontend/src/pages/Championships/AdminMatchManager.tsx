@@ -33,7 +33,8 @@ export function AdminMatchManager() {
     const [isSummaryOpen, setIsSummaryOpen] = useState(false);
     const [arbitrationData, setArbitrationData] = useState({ referee: '', assistant1: '', assistant2: '' });
     const [savingArbitration, setSavingArbitration] = useState(false);
-    const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+    const [selectedCategoryId, setSelectedCategoryId] = useState<number | 'no-category' | null>(null);
+
 
     useEffect(() => {
         loadData();
@@ -52,7 +53,14 @@ export function AdminMatchManager() {
                 setSelectedCategoryId(categoryToUse);
             }
 
-            const matchesRes = await api.get(`/admin/matches?championship_id=${id}${categoryToUse ? `&category_id=${categoryToUse}` : ''}`);
+            let url = `/admin/matches?championship_id=${id}`;
+            if (categoryToUse === 'no-category') {
+                url += '&category_id=null';
+            } else if (categoryToUse) {
+                url += `&category_id=${categoryToUse}`;
+            }
+
+            const matchesRes = await api.get(url);
             setMatches(matchesRes.data);
         } catch (error) {
             console.error(error);
@@ -70,7 +78,19 @@ export function AdminMatchManager() {
 
     async function loadMatches() {
         try {
-            const res = await api.get(`/admin/matches?championship_id=${id}${selectedCategoryId ? `&category_id=${selectedCategoryId}` : ''}`);
+            let url = `/admin/matches?championship_id=${id}`;
+
+            // Three cases:
+            // 1. null = show all matches
+            // 2. 'no-category' = show only matches without category
+            // 3. number = show matches of specific category
+            if (selectedCategoryId === 'no-category') {
+                url += '&category_id=null';
+            } else if (selectedCategoryId) {
+                url += `&category_id=${selectedCategoryId}`;
+            }
+
+            const res = await api.get(url);
             setMatches(res.data);
         } catch (error) {
             console.error(error);
@@ -290,7 +310,16 @@ export function AdminMatchManager() {
                                 : 'bg-white text-gray-400 border-gray-100 hover:border-gray-300 hover:text-gray-600'
                                 }`}
                         >
-                            Todas / Sem Categoria
+                            Todos
+                        </button>
+                        <button
+                            onClick={() => setSelectedCategoryId('no-category' as any)}
+                            className={`px-5 py-2.5 rounded-xl text-sm font-bold uppercase whitespace-nowrap transition-all border-2 ${selectedCategoryId === 'no-category'
+                                ? 'bg-orange-500 text-white border-orange-500 shadow-lg shadow-orange-100'
+                                : 'bg-white text-orange-400 border-orange-100 hover:border-orange-300 hover:text-orange-600'
+                                }`}
+                        >
+                            Sem Categoria
                         </button>
                         {championship.categories.map((cat: any) => (
                             <button
@@ -306,6 +335,7 @@ export function AdminMatchManager() {
                         ))}
                     </div>
                 )}
+
 
 
                 {/* Empty State / Generator */}
