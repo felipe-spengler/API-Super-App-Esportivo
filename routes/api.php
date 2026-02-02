@@ -77,6 +77,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Área Admin (Web) - Protegido com middleware 'admin'
     Route::prefix('admin')->middleware('admin')->group(function () {
         Route::get('/dashboard', [\App\Http\Controllers\AdminController::class, 'dashboard']);
+        Route::get('/stats', [\App\Http\Controllers\Admin\AdminDashboardController::class, 'index']);
+
 
         // Gestão de Campeonatos (NEW)
         Route::get('/championships', [\App\Http\Controllers\Admin\AdminChampionshipController::class, 'index']);

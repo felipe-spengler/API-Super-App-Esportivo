@@ -15,44 +15,56 @@ export function Dashboard() {
     useEffect(() => {
         async function loadDashboardData() {
             try {
-                // Request em paralelo para carregar estatísticas
-                const [championshipsRes, teamsRes, playersRes] = await Promise.allSettled([
-                    api.get('/admin/championships'),
-                    api.get('/admin/teams'),
-                    api.get('/admin/players')
-                ]);
-
-                const getData = (res: PromiseSettledResult<any>) => {
-                    if (res.status === 'fulfilled') {
-                        return Array.isArray(res.value.data) ? res.value.data : (res.value.data.data || []);
-                    }
-                    return [];
-                };
-
-                const championships = getData(championshipsRes);
-                const teams = getData(teamsRes);
-                const players = getData(playersRes);
-
-                const active = championships.filter((c: any) => c.status === 'active' || new Date(c.end_date) > new Date()).length;
+                // Load real stats from backend
+                const statsRes = await api.get('/admin/stats');
+                const data = statsRes.data;
 
                 setStats({
-                    totalUsers: players.length,
-                    activeEvents: active,
-                    totalTeams: teams.length,
-                    revenue: 0 // Mantemos 0 por enquanto
+                    totalUsers: data.stats.total_players || 0,
+                    activeEvents: data.stats.active_championships || 0,
+                    totalTeams: data.stats.total_teams || 0,
+                    revenue: 0 // Can be calculated later based on inscriptions
                 });
 
-                // Simular atividades baseadas nos dados reais
-                const mockActivities = [
-                    { id: 1, type: 'championship', title: 'Novo Campeonato', description: championships[0]?.name || 'Torneio de Verão', time: 'Há 2 horas', icon: Trophy, color: 'text-yellow-500' },
-                    { id: 2, type: 'team', title: 'Nova Equipe', description: teams[0]?.name || 'Guerreiros FC', time: 'Há 5 horas', icon: UserPlus, color: 'text-blue-500' },
-                    { id: 3, type: 'player', title: 'Novo Atleta', description: players[0]?.name || 'Carlos Oliveira', time: 'Há 8 horas', icon: Users, color: 'text-indigo-500' },
-                    { id: 4, type: 'system', title: 'Backup concluído', description: 'Sistema rodando 100%', time: 'Ontem', icon: CheckCircle2, color: 'text-green-500' },
-                ];
-                setActivities(mockActivities);
+                // Map activities to frontend format
+                const mappedActivities = data.activities.map((activity: any) => {
+                    const iconMap: any = {
+                        championship: Trophy,
+                        team: UserPlus,
+                        player: Users,
+                        match: CheckCircle2,
+                    };
+
+                    const colorMap: any = {
+                        championship: 'text-yellow-500',
+                        team: 'text-blue-500',
+                        player: 'text-indigo-500',
+                        match: 'text-green-500',
+                    };
+
+                    return {
+                        id: activity.id,
+                        type: activity.type,
+                        title: activity.title,
+                        description: activity.description,
+                        time: activity.time,
+                        icon: iconMap[activity.type] || CheckCircle2,
+                        color: colorMap[activity.type] || 'text-gray-500'
+                    };
+                });
+
+                setActivities(mappedActivities.slice(0, 8));
 
             } catch (err) {
                 console.error("Erro ao carregar dashboard:", err);
+                // Fallback to empty state on error
+                setStats({
+                    totalUsers: 0,
+                    activeEvents: 0,
+                    totalTeams: 0,
+                    revenue: 0
+                });
+                setActivities([]);
             } finally {
                 setLoading(false);
             }
@@ -100,10 +112,6 @@ export function Dashboard() {
                                 <stat.icon className={`w-6 h-6 ${stat.color}`} />
                             </div>
                         </div>
-                        <div className="mt-4 flex items-center text-xs font-medium text-green-600">
-                            <TrendingUp className="w-3 h-3 mr-1" />
-                            <span>+12% este mês</span>
-                        </div>
                     </div>
                 ))}
             </div>
@@ -112,31 +120,15 @@ export function Dashboard() {
                 {/* Platform Activity Chart Placeholder */}
                 <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
                     <div className="flex items-center justify-between mb-8">
-                        <h2 className="text-xl font-bold text-gray-800">Atividade da Plataforma</h2>
-                        <select className="text-sm border-none bg-gray-50 rounded-lg px-3 py-1 text-gray-600 focus:ring-2 focus:ring-indigo-500">
-                            <option>Últimos 7 dias</option>
-                            <option>Últimos 30 dias</option>
-                        </select>
+                        <h2 className="text-xl font-bold text-gray-800">Visão Geral de Atividades</h2>
                     </div>
 
-                    <div className="relative h-64 w-full flex items-end justify-between gap-2">
-                        {/* Bars visual representation */}
-                        {[40, 70, 45, 90, 65, 80, 55].map((h, i) => (
-                            <div key={i} className="flex-1 flex flex-col items-center gap-2 group">
-                                <div
-                                    className="w-full bg-indigo-100 rounded-t-lg group-hover:bg-indigo-500 transition-colors relative"
-                                    style={{ height: `${h}%` }}
-                                >
-                                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                                        {Math.floor(h * 2.5)} acessos
-                                    </div>
-                                </div>
-                                <span className="text-[10px] font-bold text-gray-400">0{i + 1}/Jan</span>
-                            </div>
-                        ))}
-                    </div>
-                    <div className="mt-8 pt-6 border-t border-gray-50 flex justify-center">
-                        <p className="text-gray-400 text-sm italic">Gráficos interativos em desenvolvimento</p>
+                    <div className="flex items-center justify-center h-64 border-2 border-dashed border-gray-200 rounded-xl">
+                        <div className="text-center">
+                            <TrendingUp className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                            <p className="text-gray-400 text-sm font-medium">Gráficos de atividade em desenvolvimento</p>
+                            <p className="text-gray-300 text-xs mt-1">Estatísticas detalhadas em breve</p>
+                        </div>
                     </div>
                 </div>
 
