@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use App\Models\Team;
 use App\Models\User;
+use App\Models\Championship;
 
 class ImageUploadController extends Controller
 {
@@ -131,6 +132,90 @@ class ImageUploadController extends Controller
         $player->save();
 
         return response()->json($responseData);
+    }
+
+    /**
+     * Upload de logo de campeonato
+     */
+    public function uploadChampionshipLogo(Request $request, $championshipId)
+    {
+        $request->validate([
+            'logo' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+        ]);
+
+        $championship = Championship::findOrFail($championshipId);
+
+        // Verifica permissão de clube
+        $user = $request->user();
+        if ($user->club_id !== null && $championship->club_id !== $user->club_id) {
+            return response()->json([
+                'message' => 'Você não tem permissão para editar este campeonato.'
+            ], 403);
+        }
+
+        // Remove logo antigo se existir
+        if ($championship->logo_url && !str_starts_with($championship->logo_url, 'http')) {
+            if (Storage::disk('public')->exists($championship->logo_url)) {
+                Storage::disk('public')->delete($championship->logo_url);
+            }
+        }
+
+        // Salva novo logo
+        $file = $request->file('logo');
+        $filename = 'championships/logo-' . $championship->id . '-' . time() . '.' . $file->getClientOriginalExtension();
+        $path = $file->storeAs('championships', $filename, 'public');
+
+        // Atualiza no banco (salvamos o path relativo para facilitar manipulação de arquivos)
+        $championship->logo_url = $path;
+        $championship->save();
+
+        return response()->json([
+            'message' => 'Logo atualizado com sucesso!',
+            'logo_url' => Storage::url($path),
+            'logo_path' => $path
+        ]);
+    }
+
+    /**
+     * Upload de capa de campeonato
+     */
+    public function uploadChampionshipBanner(Request $request, $championshipId)
+    {
+        $request->validate([
+            'banner' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:5120',
+        ]);
+
+        $championship = Championship::findOrFail($championshipId);
+
+        // Verifica permissão de clube
+        $user = $request->user();
+        if ($user->club_id !== null && $championship->club_id !== $user->club_id) {
+            return response()->json([
+                'message' => 'Você não tem permissão para editar este campeonato.'
+            ], 403);
+        }
+
+        // Remove banner antigo se existir
+        if ($championship->cover_image_url && !str_starts_with($championship->cover_image_url, 'http')) {
+            if (Storage::disk('public')->exists($championship->cover_image_url)) {
+                Storage::disk('public')->delete($championship->cover_image_url);
+            }
+        }
+
+        // Salva novo banner
+        $file = $request->file('banner');
+        $filename = 'championships/banner-' . $championship->id . '-' . time() . '.' . $file->getClientOriginalExtension();
+        $path = $file->storeAs('championships', $filename, 'public');
+
+        // Atualiza no banco
+        $championship->cover_image_url = $path;
+        $championship->save();
+
+        return response()->json([
+            'message' => 'Capa atualizada com sucesso!',
+            'banner_url' => Storage::url($path),
+            'banner_path' => $path
+        ]);
     }
 
     /**

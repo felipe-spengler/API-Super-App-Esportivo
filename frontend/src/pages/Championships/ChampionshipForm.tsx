@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { Save, ArrowLeft, Trophy, Loader2 } from 'lucide-react';
+import { Save, ArrowLeft, Trophy, Loader2, ImageIcon, Upload, X, CheckCircle2 } from 'lucide-react';
 import api from '../../services/api';
 
 interface Sport {
@@ -29,6 +29,11 @@ export function ChampionshipForm() {
         format: 'league' // Default to league
     });
 
+    const [logoUrl, setLogoUrl] = useState<string | null>(null);
+    const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
+    const [uploadingLogo, setUploadingLogo] = useState(false);
+    const [uploadingBanner, setUploadingBanner] = useState(false);
+
     useEffect(() => {
         loadInitialData();
     }, [id]);
@@ -53,6 +58,8 @@ export function ChampionshipForm() {
                     description: data.description || '',
                     format: data.format || 'league'
                 });
+                setLogoUrl(data.logo_url);
+                setCoverImageUrl(data.cover_image_url);
             } else {
                 // Set default sport if available
                 if (sportsResponse.data.length > 0) {
@@ -98,6 +105,36 @@ export function ChampionshipForm() {
             }
         } finally {
             setLoading(false);
+        }
+    }
+
+    async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'banner') {
+        const file = e.target.files?.[0];
+        if (!file || !id) return;
+
+        const isLogo = type === 'logo';
+        if (isLogo) setUploadingLogo(true);
+        else setUploadingBanner(true);
+
+        const formDataUpload = new FormData();
+        formDataUpload.append(type, file);
+
+        try {
+            const endpoint = isLogo ? `/admin/upload/championship-logo/${id}` : `/admin/upload/championship-banner/${id}`;
+            const response = await api.post(endpoint, formDataUpload, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
+            if (isLogo) setLogoUrl(response.data.logo_url);
+            else setCoverImageUrl(response.data.banner_url); // Backend still returns banner_url in JSON but saves to cover_image_url. Fixed that too actually below.
+
+            alert(`${isLogo ? 'Logo' : 'Capa'} atualizada com sucesso!`);
+        } catch (err) {
+            console.error(err);
+            alert('Erro ao fazer upload do arquivo.');
+        } finally {
+            if (isLogo) setUploadingLogo(false);
+            else setUploadingBanner(false);
         }
     }
 
@@ -296,6 +333,92 @@ export function ChampionshipForm() {
                                 </button>
                             </div>
                         </div>
+
+                        {/* 5. Identidade Visual */}
+                        {isEditing && (
+                            <div className="space-y-4 animate-in slide-in-from-bottom-4 duration-500">
+                                <h2 className="text-lg font-semibold text-gray-800 border-b pb-2">5. Identidade Visual do Campeonato</h2>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    {/* Logo Upload */}
+                                    <div className="space-y-4">
+                                        <label className="text-sm font-semibold text-gray-700 block">Logo do Campeonato (1:1)</label>
+                                        <div className="flex items-center gap-6">
+                                            <div className="w-24 h-24 rounded-2xl bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden shrink-0 relative group">
+                                                {logoUrl ? (
+                                                    <>
+                                                        <img src={logoUrl} className="w-full h-full object-cover" alt="Logo" />
+                                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                            <Upload className="text-white w-6 h-6" />
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <Trophy className="w-8 h-8 text-gray-300" />
+                                                )}
+                                                {uploadingLogo && (
+                                                    <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                                                        <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="flex-1 space-y-2">
+                                                <input
+                                                    type="file"
+                                                    id="logo-upload"
+                                                    className="hidden"
+                                                    accept="image/*"
+                                                    onChange={(e) => handleFileUpload(e, 'logo')}
+                                                />
+                                                <label
+                                                    htmlFor="logo-upload"
+                                                    className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-sm font-bold hover:bg-indigo-100 transition-colors cursor-pointer"
+                                                >
+                                                    <Upload size={16} /> Selecionar Logo
+                                                </label>
+                                                <p className="text-[11px] text-gray-400">PNG ou JPG até 2MB. Recomendado 512x512px.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Banner Upload */}
+                                    <div className="space-y-4">
+                                        <label className="text-sm font-semibold text-gray-700 block">Capa/Banner do Campeonato (16:9)</label>
+                                        <div className="space-y-3">
+                                            <div className="w-full h-24 rounded-2xl bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden relative group">
+                                                {coverImageUrl ? (
+                                                    <>
+                                                        <img src={coverImageUrl} className="w-full h-full object-cover" alt="Banner" />
+                                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                            <Upload className="text-white w-6 h-6" />
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <ImageIcon className="w-8 h-8 text-gray-300" />
+                                                )}
+                                                {uploadingBanner && (
+                                                    <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                                                        <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <input
+                                                type="file"
+                                                id="banner-upload"
+                                                className="hidden"
+                                                accept="image/*"
+                                                onChange={(e) => handleFileUpload(e, 'banner')}
+                                            />
+                                            <label
+                                                htmlFor="banner-upload"
+                                                className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-sm font-bold hover:bg-indigo-100 transition-colors cursor-pointer"
+                                            >
+                                                <Upload size={16} /> Selecionar Capa
+                                            </label>
+                                            <p className="text-[11px] text-gray-400">Recomendado 1920x1080px para melhor visualização.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         <div className="pt-6 border-t border-gray-100 flex justify-end">
                             <button

@@ -126,7 +126,9 @@ Route::middleware('auth:sanctum')->group(function () {
         // Upload de Imagens (NEW)
         Route::post('/upload/team-logo', [\App\Http\Controllers\Admin\ImageUploadController::class, 'uploadTeamLogo']);
         Route::post('/upload/player-photo', [\App\Http\Controllers\Admin\ImageUploadController::class, 'uploadPlayerPhoto']);
-        Route::post('/upload/championship-image', [\App\Http\Controllers\Admin\ImageUploadController::class, 'uploadChampionshipImage']); // Note: Verify if this method exists in ImageUploadController, if not, keep UploadController or implement it. 
+        Route::post('/upload/championship-image', [\App\Http\Controllers\Admin\ImageUploadController::class, 'uploadChampionshipImage']);
+        Route::post('/upload/championship-logo/{id}', [\App\Http\Controllers\Admin\ImageUploadController::class, 'uploadChampionshipLogo']);
+        Route::post('/upload/championship-banner/{id}', [\App\Http\Controllers\Admin\ImageUploadController::class, 'uploadChampionshipBanner']);
         // Wait, I saw ImageUploadController content, it had uploadTeamLogo, uploadPlayerPhoto, uploadAwardPhoto, uploadGeneric. 
         // It DOES NOT have uploadChampionshipImage explicitly named, but has uploadGeneric.
         // Let's assume uploadGeneric can handle it or use UploadController for championship if distinct.

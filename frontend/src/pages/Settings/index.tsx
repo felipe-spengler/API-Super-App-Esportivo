@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, Bell, Shield, Lock, CreditCard, Loader2, Trophy, MessageSquare } from 'lucide-react';
+import { Save, Bell, Shield, Lock, CreditCard, Loader2, Trophy, MessageSquare, Type } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
@@ -14,6 +14,8 @@ export function Settings() {
         contact_email: '',
         primary_color: '#4f46e5',
         secondary_color: '#ffffff',
+        primary_font: 'Inter',
+        secondary_font: 'Inter',
         active_modalities: [] as string[]
     });
 
@@ -43,6 +45,8 @@ export function Settings() {
                         contact_email: response.data.contact_email || '',
                         primary_color: response.data.primary_color || '#4f46e5',
                         secondary_color: response.data.secondary_color || '#ffffff',
+                        primary_font: response.data.primary_font || 'Inter',
+                        secondary_font: response.data.secondary_font || 'Inter',
                         active_modalities: response.data.active_modalities || []
                     });
                     setAllSports(response.data.all_sports || []);
@@ -193,35 +197,156 @@ export function Settings() {
                                     <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
                                         <label className="block text-sm font-bold text-gray-700 mb-4">Cor Primária</label>
                                         <div className="flex items-center gap-4">
-                                            <input
-                                                type="color"
-                                                value={settings.primary_color}
-                                                onChange={e => setSettings({ ...settings, primary_color: e.target.value })}
-                                                className="h-14 w-14 rounded-xl border-2 border-white shadow-md cursor-pointer"
-                                            />
+                                            <div className="relative group">
+                                                <div
+                                                    className="h-14 w-14 rounded-xl shadow-lg border-4 border-white shrink-0 transition-transform group-hover:scale-110"
+                                                    style={{ backgroundColor: settings.primary_color }}
+                                                />
+                                                <input
+                                                    type="color"
+                                                    value={settings.primary_color}
+                                                    onChange={e => setSettings({ ...settings, primary_color: e.target.value })}
+                                                    className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                                                />
+                                            </div>
                                             <input
                                                 type="text"
                                                 value={settings.primary_color}
                                                 onChange={e => setSettings({ ...settings, primary_color: e.target.value })}
-                                                className="flex-1 px-4 py-3 border border-gray-200 rounded-xl text-lg font-mono uppercase focus:ring-2 focus:ring-indigo-500 outline-none"
+                                                className="flex-1 px-4 py-3 border border-gray-200 rounded-xl text-lg font-mono uppercase focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
+                                                placeholder="#000000"
                                             />
                                         </div>
                                     </div>
                                     <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
                                         <label className="block text-sm font-bold text-gray-700 mb-4">Cor Secundária</label>
                                         <div className="flex items-center gap-4">
-                                            <input
-                                                type="color"
-                                                value={settings.secondary_color}
-                                                onChange={e => setSettings({ ...settings, secondary_color: e.target.value })}
-                                                className="h-14 w-14 rounded-xl border-2 border-white shadow-md cursor-pointer"
-                                            />
+                                            <div className="relative group">
+                                                <div
+                                                    className="h-14 w-14 rounded-xl shadow-lg border-4 border-white shrink-0 transition-transform group-hover:scale-110"
+                                                    style={{ backgroundColor: settings.secondary_color }}
+                                                />
+                                                <input
+                                                    type="color"
+                                                    value={settings.secondary_color}
+                                                    onChange={e => setSettings({ ...settings, secondary_color: e.target.value })}
+                                                    className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                                                />
+                                            </div>
                                             <input
                                                 type="text"
                                                 value={settings.secondary_color}
                                                 onChange={e => setSettings({ ...settings, secondary_color: e.target.value })}
-                                                className="flex-1 px-4 py-3 border border-gray-200 rounded-xl text-lg font-mono uppercase focus:ring-2 focus:ring-indigo-500 outline-none"
+                                                className="flex-1 px-4 py-3 border border-gray-200 rounded-xl text-lg font-mono uppercase focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
+                                                placeholder="#FFFFFF"
                                             />
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section>
+                                <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                                    <Type className="w-6 h-6 text-indigo-500" />
+                                    Fontes Customizadas
+                                </h2>
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                                    <div className="space-y-8">
+                                        <div className="space-y-4">
+                                            <div className="space-y-2">
+                                                <label className="block text-sm font-bold text-gray-700">Fonte Principal (Títulos)</label>
+                                                <select
+                                                    value={settings.primary_font}
+                                                    onChange={e => setSettings({ ...settings, primary_font: e.target.value })}
+                                                    className="w-full px-4 py-4 border-2 border-gray-100 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all bg-white font-medium text-lg shadow-sm hover:border-gray-200"
+                                                >
+                                                    <optgroup label="Modernas (Sans-serif)">
+                                                        <option value="Inter" style={{ fontFamily: 'Inter' }}>Inter (Padrão)</option>
+                                                        <option value="Montserrat" style={{ fontFamily: 'Montserrat' }}>Montserrat</option>
+                                                        <option value="Poppins" style={{ fontFamily: 'Poppins' }}>Poppins</option>
+                                                        <option value="Roboto" style={{ fontFamily: 'Roboto' }}>Roboto</option>
+                                                        <option value="Lexend" style={{ fontFamily: 'Lexend' }}>Lexend</option>
+                                                    </optgroup>
+                                                    <optgroup label="Impacto & Esportiva">
+                                                        <option value="Bebas Neue" style={{ fontFamily: 'Bebas Neue' }}>Bebas Neue (Impacto)</option>
+                                                        <option value="Anton" style={{ fontFamily: 'Anton' }}>Anton (Ultra Negrito)</option>
+                                                        <option value="Oswald" style={{ fontFamily: 'Oswald' }}>Oswald (Condensada)</option>
+                                                        <option value="Archivo Black" style={{ fontFamily: 'Archivo Black' }}>Archivo Black</option>
+                                                        <option value="Teko" style={{ fontFamily: 'Teko' }}>Teko (Tech/Sport)</option>
+                                                    </optgroup>
+                                                    <optgroup label="Clássicas & Elegantes">
+                                                        <option value="Playfair Display" style={{ fontFamily: 'Playfair Display' }}>Playfair Display (Serifada)</option>
+                                                        <option value="Cinzel" style={{ fontFamily: 'Cinzel' }}>Cinzel (Tradicional)</option>
+                                                        <option value="Ubuntu" style={{ fontFamily: 'Ubuntu' }}>Ubuntu</option>
+                                                    </optgroup>
+                                                </select>
+                                                <p className="text-xs text-gray-400">Dica: Fontes como <b>Bebas Neue</b> ou <b>Anton</b> dão visual profissional de esporte.</p>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <label className="block text-sm font-bold text-gray-700">Fonte Secundária (Textos)</label>
+                                                <select
+                                                    value={settings.secondary_font}
+                                                    onChange={e => setSettings({ ...settings, secondary_font: e.target.value })}
+                                                    className="w-full px-4 py-4 border-2 border-gray-100 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all bg-white font-medium text-lg shadow-sm hover:border-gray-200"
+                                                >
+                                                    <optgroup label="Sans-serif (Leitura)">
+                                                        <option value="Inter" style={{ fontFamily: 'Inter' }}>Inter (Padrão)</option>
+                                                        <option value="Open Sans" style={{ fontFamily: 'Open Sans' }}>Open Sans</option>
+                                                        <option value="Lato" style={{ fontFamily: 'Lato' }}>Lato</option>
+                                                        <option value="Roboto" style={{ fontFamily: 'Roboto' }}>Roboto</option>
+                                                        <option value="Source Sans 3" style={{ fontFamily: 'Source Sans 3' }}>Source Sans</option>
+                                                        <option value="Work Sans" style={{ fontFamily: 'Work Sans' }}>Work Sans</option>
+                                                    </optgroup>
+                                                    <optgroup label="Serif (Clássica)">
+                                                        <option value="Merriweather" style={{ fontFamily: 'Merriweather' }}>Merriweather</option>
+                                                        <option value="Lora" style={{ fontFamily: 'Lora' }}>Lora</option>
+                                                        <option value="Montserrat" style={{ fontFamily: 'Montserrat' }}>Montserrat</option>
+                                                    </optgroup>
+                                                </select>
+                                                <p className="text-xs text-gray-400">Usada para nomes de times e informações técnicas.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Preview Card Mockup */}
+                                    <div className="relative group">
+                                        <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-3xl blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
+                                        <div className="relative bg-white rounded-2xl border border-gray-100 shadow-2xl overflow-hidden aspect-[4/5] md:aspect-auto md:h-full min-h-[400px]">
+                                            <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, gray 1px, transparent 0)', backgroundSize: '24px 24px' }}></div>
+
+                                            <div className="p-8 h-full flex flex-col justify-between">
+                                                <header className="flex justify-between items-start">
+                                                    <div className="w-16 h-16 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-300">
+                                                        <Trophy size={32} />
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold mb-1" style={{ fontFamily: settings.secondary_font }}>Próximo Jogo</p>
+                                                        <p className="text-xs font-black text-gray-900" style={{ fontFamily: settings.primary_font }}>ESTÁDIO MUNICIPAL</p>
+                                                    </div>
+                                                </header>
+
+                                                <main className="flex-1 flex flex-col justify-center items-center text-center py-8">
+                                                    <div className="flex items-center gap-8 mb-6">
+                                                        <div className="w-20 h-20 rounded-full bg-indigo-50 border-4 border-white shadow-lg flex items-center justify-center text-indigo-500 font-black text-2xl" style={{ fontFamily: settings.primary_font }}>A</div>
+                                                        <span className="text-3xl font-black text-gray-300" style={{ fontFamily: settings.primary_font }}>VS</span>
+                                                        <div className="w-20 h-20 rounded-full bg-red-50 border-4 border-white shadow-lg flex items-center justify-center text-red-500 font-black text-2xl" style={{ fontFamily: settings.primary_font }}>B</div>
+                                                    </div>
+                                                    <h3 className="text-4xl leading-tight mb-2" style={{ fontFamily: settings.primary_font, color: settings.primary_color }}>
+                                                        {settings.name || 'NOME DO SEU CLUBE'}
+                                                    </h3>
+                                                    <p className="text-lg opacity-70" style={{ fontFamily: settings.secondary_font, color: settings.secondary_color === '#ffffff' ? '#6b7280' : settings.secondary_color }}>
+                                                        Campeonato Regional 2026
+                                                    </p>
+                                                </main>
+
+                                                <footer className="mt-auto">
+                                                    <div className="h-14 w-full rounded-2xl flex items-center justify-center text-white font-bold shadow-lg transform transition-transform group-hover:scale-[1.02]" style={{ backgroundColor: settings.primary_color, fontFamily: settings.primary_font }}>
+                                                        VER DETALHES DA PARTIDA
+                                                    </div>
+                                                    <p className="text-center mt-4 text-[10px] text-gray-400 font-medium tracking-tight">PREVIEW REAL EM TEMPO REAL</p>
+                                                </footer>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
