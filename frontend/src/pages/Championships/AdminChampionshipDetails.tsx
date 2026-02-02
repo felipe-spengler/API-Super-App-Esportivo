@@ -43,42 +43,46 @@ export function AdminChampionshipDetails() {
     return (
         <div className="bg-gray-50 min-h-screen pb-20">
             {/* Header */}
-            <div className="bg-white border-b border-gray-200 px-6 py-6 mb-8">
+            <div className="bg-white border-b border-gray-200 px-4 py-4 md:px-6 md:py-6 mb-4 md:mb-8">
                 <div className="max-w-6xl mx-auto">
-                    <button onClick={() => navigate('/admin/championships')} className="flex items-center text-gray-500 hover:text-gray-900 mb-4 transition-colors">
-                        <ArrowLeft className="w-5 h-5 mr-1" />
-                        Voltar para Campeonatos
+                    <button onClick={() => navigate('/admin/championships')} className="flex items-center text-gray-400 hover:text-gray-900 mb-4 transition-colors text-sm">
+                        <ArrowLeft className="w-4 h-4 mr-1" />
+                        Voltar
                     </button>
 
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-600">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div className="flex items-center gap-3 md:gap-4">
+                            <div className="w-12 h-12 md:w-16 md:h-16 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 shrink-0 border border-indigo-100 shadow-sm">
                                 {championship.logo_url ? (
-                                    <img src={championship.logo_url} alt="" className="w-full h-full object-cover rounded-lg" />
+                                    <img src={championship.logo_url} alt="" className="w-full h-full object-cover rounded-xl" />
                                 ) : (
-                                    <Trophy className="w-8 h-8" />
+                                    <Trophy className="w-6 h-6 md:w-8 md:h-8" />
                                 )}
                             </div>
                             <div>
-                                <h1 className="text-2xl font-bold text-gray-900">{championship.name}</h1>
-                                <p className="text-gray-500">{typeof championship.sport === 'object' ? championship.sport.name : championship.sport} • {new Date(championship.start_date).toLocaleDateString()}</p>
+                                <h1 className="text-xl md:text-2xl font-black text-gray-900 leading-tight">{championship.name}</h1>
+                                <p className="text-xs md:text-sm text-gray-500 font-medium">
+                                    {typeof championship.sport === 'object' ? championship.sport.name : championship.sport}
+                                    <span className="mx-1.5 opacity-30">•</span>
+                                    {new Date(championship.start_date).toLocaleDateString()}
+                                </p>
                             </div>
                         </div>
 
-                        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                        <div className="grid grid-cols-2 md:flex gap-3 w-full md:w-auto">
                             <button
                                 onClick={() => navigate(`/admin/championships/${id}/edit`)}
-                                className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 hover:bg-gray-50 font-medium w-full sm:w-auto text-sm"
+                                className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-200 rounded-xl bg-white text-gray-700 hover:bg-gray-50 font-bold transition-all shadow-sm text-xs md:text-sm"
                             >
-                                <Settings className="w-4 h-4" />
-                                Configurações
+                                <Settings className="w-4 h-4 text-gray-400" />
+                                Configurar
                             </button>
                             <button
                                 onClick={() => navigate(`/events/${id}`)}
-                                className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium w-full sm:w-auto text-sm"
+                                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-bold transition-all shadow-lg shadow-indigo-100 text-xs md:text-sm"
                             >
                                 <Tv className="w-4 h-4" />
-                                Ver Página Pública
+                                Ver Site
                             </button>
                         </div>
                     </div>

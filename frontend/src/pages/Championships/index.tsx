@@ -117,53 +117,55 @@ export function Championships() {
                     <p className="text-gray-500">Comece criando seu primeiro evento esportivo.</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                     {filtered.map(camp => (
                         <div
                             key={camp.id}
-                            className="group bg-white rounded-xl shadow border border-gray-100 hover:border-indigo-500 hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col"
+                            className="group bg-white rounded-2xl shadow-sm border border-gray-100 hover:border-indigo-500 hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col"
                         >
-                            <Link to={`/admin/championships/${camp.id}`} className="h-32 bg-gray-100 relative overflow-hidden block">
+                            <Link to={`/admin/championships/${camp.id}`} className="h-40 bg-gray-100 relative overflow-hidden block">
                                 {camp.logo_url ? (
-                                    <img src={camp.logo_url} alt={camp.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                    <img src={camp.logo_url} alt={camp.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center bg-indigo-50 text-indigo-200">
                                         <Trophy className="w-16 h-16 opacity-50" />
                                     </div>
                                 )}
-                                <div className="absolute top-2 right-2">
-                                    <span className={`px-2 py-1 rounded text-xs font-bold uppercase tracking-wide
-                                        ${camp.status === 'active' ? 'bg-green-100 text-green-700' :
-                                            camp.status === 'finished' ? 'bg-gray-100 text-gray-600' : 'bg-yellow-100 text-yellow-700'}`}>
+                                <div className="absolute top-3 right-3">
+                                    <span className={`px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider backdrop-blur-md shadow-lg
+                                        ${camp.status === 'active' ? 'bg-green-500/90 text-white' :
+                                            camp.status === 'finished' ? 'bg-gray-500/90 text-white' : 'bg-yellow-500/90 text-white'}`}>
                                         {camp.status === 'active' ? 'Em Andamento' : camp.status === 'finished' ? 'Finalizado' : 'Próximo'}
                                     </span>
                                 </div>
+                                <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
+                                    <span className="text-white text-xs font-bold">Ver Detalhes</span>
+                                </div>
                             </Link>
 
-                            <div className="p-5 flex-1 flex flex-col">
-                                <h3 className="text-lg font-bold text-gray-900 mb-1 group-hover:text-indigo-600 transition-colors">{camp.name}</h3>
-                                <p className="text-sm text-indigo-600 font-medium mb-4">
+                            <div className="p-4 md:p-6 flex-1 flex flex-col">
+                                <h3 className="text-lg font-black text-gray-900 mb-1 group-hover:text-indigo-600 transition-colors leading-tight">{camp.name}</h3>
+                                <p className="text-sm text-indigo-600 font-bold mb-4 flex items-center gap-1.5">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-600" />
                                     {typeof camp.sport === 'object' ? (camp.sport as any)?.name : camp.sport || 'Esporte não definido'}
                                 </p>
 
-                                <div className="mt-auto flex items-center justify-between text-gray-500 text-sm mb-4">
-                                    <div className="flex items-center gap-2">
-                                        <Calendar className="w-4 h-4" />
-                                        <span>{camp.start_date ? new Date(camp.start_date).toLocaleDateString() : 'Data indefinida'}</span>
-                                    </div>
+                                <div className="mt-auto flex items-center text-gray-400 text-xs font-medium mb-5">
+                                    <Calendar className="w-3.5 h-3.5 mr-1.5" />
+                                    <span>{camp.start_date ? new Date(camp.start_date).toLocaleDateString() : 'Data indefinida'}</span>
                                 </div>
 
-                                <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-100">
+                                <div className="flex items-center gap-2">
                                     <button
                                         onClick={() => navigate(`/admin/championships/${camp.id}`)}
-                                        className="flex-1 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors"
+                                        className="flex-1 py-3 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-wider hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
                                     >
                                         Gerenciar
                                     </button>
 
                                     <button
-                                        onClick={() => navigate(`/admin/championships/${camp.id}/edit`)} // Assuming this route exists or we create it
-                                        className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-gray-50 rounded-lg transition-colors"
+                                        onClick={() => navigate(`/admin/championships/${camp.id}/edit`)}
+                                        className="p-3 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all border border-gray-100"
                                         title="Editar"
                                     >
                                         <Edit className="w-4 h-4" />
@@ -171,7 +173,7 @@ export function Championships() {
 
                                     <button
                                         onClick={() => handleDelete(camp.id)}
-                                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                        className="p-3 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all border border-gray-100"
                                         title="Excluir"
                                     >
                                         <Trash2 className="w-4 h-4" />

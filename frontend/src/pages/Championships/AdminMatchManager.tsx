@@ -147,7 +147,9 @@ export function AdminMatchManager() {
     const handleSaveEdit = async () => {
         if (!selectedMatch) return;
         try {
-            await api.patch(`/admin/matches/${selectedMatch.id}`, {
+            // Using PUT to match common Laravel convention if PATCH isn't available, 
+            // but I also added PATCH to the backend. Using PUT here for robustness.
+            await api.put(`/admin/matches/${selectedMatch.id}`, {
                 start_time: editData.start_time,
                 location: editData.location,
                 round_number: editData.round_number,
@@ -352,72 +354,80 @@ export function AdminMatchManager() {
                                             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
 
                                                 {/* Date / Location */}
-                                                {/* Date / Location */}
-                                                <div className="w-full md:w-40 flex flex-col items-center md:items-start">
-                                                    <div className="text-[11px] font-bold text-indigo-600 flex items-center gap-1">
-                                                        <Calendar size={12} /> {new Date(match.start_time).toLocaleDateString('pt-BR')}
-                                                    </div>
-                                                    <div className="text-[10px] text-gray-500 flex items-center gap-1">
-                                                        <ClockIcon size={12} /> {new Date(match.start_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                                <div className="w-full md:w-40 flex flex-row md:flex-col items-center md:items-start justify-between md:justify-start border-b md:border-b-0 pb-2 md:pb-0 mb-2 md:mb-0">
+                                                    <div>
+                                                        <div className="text-[11px] font-bold text-indigo-600 flex items-center gap-1">
+                                                            <Calendar size={12} /> {new Date(match.start_time).toLocaleDateString('pt-BR')}
+                                                        </div>
+                                                        <div className="text-[10px] text-gray-500 flex items-center gap-1">
+                                                            <ClockIcon size={12} /> {new Date(match.start_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                                        </div>
                                                     </div>
                                                     {match.location && (
-                                                        <div className="text-[10px] text-gray-400 flex items-center gap-1 truncate max-w-[150px]">
+                                                        <div className="text-[10px] text-gray-400 flex items-center gap-1 truncate max-w-[120px] md:max-w-[150px] bg-gray-50 px-2 py-1 rounded md:bg-transparent md:p-0">
                                                             <MapPin size={10} /> {match.location}
                                                         </div>
                                                     )}
                                                 </div>
 
                                                 {/* Scoreboard */}
-                                                <div className="flex flex-col md:flex-row items-center gap-4 flex-1 justify-center w-full">
-                                                    <div className="flex items-center gap-3 text-right flex-1 justify-end w-full md:w-auto">
-                                                        <span className="font-bold text-gray-900 order-2 md:order-1">{match.home_team?.name || 'Time A'}</span>
+                                                <div className="flex flex-row items-center gap-2 md:gap-4 flex-1 justify-center w-full px-2">
+                                                    {/* Home Team */}
+                                                    <div className="flex flex-col md:flex-row items-center gap-1 md:gap-3 text-center md:text-right flex-1 justify-center md:justify-end">
                                                         <div className="order-1 md:order-2">
                                                             {match.home_team?.logo_url ? (
-                                                                <img src={match.home_team.logo_url} className="w-10 h-10 md:w-8 md:h-8 rounded-full bg-gray-100 border" />
+                                                                <img src={match.home_team.logo_url} className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white shadow-sm border p-0.5" />
                                                             ) : (
-                                                                <div className="w-10 h-10 md:w-8 md:h-8 rounded-full bg-gray-200"></div>
+                                                                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-400 border border-dashed">T1</div>
                                                             )}
                                                         </div>
+                                                        <span className="text-[11px] md:text-sm font-bold text-gray-900 order-2 md:order-1 truncate max-w-[80px] md:max-w-none">
+                                                            {match.home_team?.name || 'Time A'}
+                                                        </span>
                                                     </div>
 
-                                                    <div className="flex items-center gap-4 bg-gray-50 px-6 py-2 rounded-2xl border border-gray-100">
-                                                        <span className={`text-2xl font-black ${match.status === 'finished' ? 'text-gray-900' : 'text-gray-300'}`}>
+                                                    {/* Score */}
+                                                    <div className="flex items-center gap-2 md:gap-4 bg-white px-3 md:px-6 py-1.5 md:py-2 rounded-xl border border-gray-200 shadow-sm min-w-[90px] md:min-w-[120px] justify-center">
+                                                        <span className={`text-xl md:text-2xl font-black ${match.home_score !== null ? 'text-gray-900' : 'text-gray-300'}`}>
                                                             {match.home_score ?? 0}
                                                         </span>
-                                                        <span className="text-gray-400 font-bold text-xs">X</span>
-                                                        <span className={`text-2xl font-black ${match.status === 'finished' ? 'text-gray-900' : 'text-gray-300'}`}>
+                                                        <span className="text-gray-300 font-bold text-[10px]">X</span>
+                                                        <span className={`text-xl md:text-2xl font-black ${match.away_score !== null ? 'text-gray-900' : 'text-gray-300'}`}>
                                                             {match.away_score ?? 0}
                                                         </span>
                                                     </div>
 
-                                                    <div className="flex items-center gap-3 text-left flex-1 justify-start w-full md:w-auto">
+                                                    {/* Away Team */}
+                                                    <div className="flex flex-col md:flex-row items-center gap-1 md:gap-3 text-center md:text-left flex-1 justify-center md:justify-start">
                                                         <div className="">
                                                             {match.away_team?.logo_url ? (
-                                                                <img src={match.away_team.logo_url} className="w-10 h-10 md:w-8 md:h-8 rounded-full bg-gray-100 border" />
+                                                                <img src={match.away_team.logo_url} className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white shadow-sm border p-0.5" />
                                                             ) : (
-                                                                <div className="w-10 h-10 md:w-8 md:h-8 rounded-full bg-gray-200"></div>
+                                                                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-400 border border-dashed">T2</div>
                                                             )}
                                                         </div>
-                                                        <span className="font-bold text-gray-900">{match.away_team?.name || 'Time B'}</span>
+                                                        <span className="text-[11px] md:text-sm font-bold text-gray-900 truncate max-w-[80px] md:max-w-none">
+                                                            {match.away_team?.name || 'Time B'}
+                                                        </span>
                                                     </div>
                                                 </div>
 
                                                 {/* Actions */}
-                                                <div className="md:w-32 flex justify-end gap-1">
+                                                <div className="w-full md:w-auto flex justify-around md:justify-end gap-2 border-t md:border-t-0 pt-3 md:pt-0 mt-2 md:mt-0">
                                                     <button
                                                         onClick={() => openMatchSumula(match)}
-                                                        className={`p-2 rounded-lg transition-colors border border-transparent ${match.status === 'finished' ? 'text-green-600 hover:bg-green-50 hover:border-green-100' : 'text-indigo-600 hover:bg-indigo-50 hover:border-indigo-100'}`}
-                                                        title={match.status === 'finished' ? 'Resumo da Partida' : 'Abrir Súmula'}
+                                                        className={`flex-1 md:flex-none flex items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all border ${match.status === 'finished' ? 'text-green-600 bg-green-50 border-green-100' : 'text-indigo-600 bg-indigo-50 border-indigo-100'}`}
                                                     >
-                                                        {match.status === 'finished' ? <CheckCircle className="w-5 h-5" /> : <List className="w-5 h-5" />}
+                                                        {match.status === 'finished' ? <CheckCircle className="w-4 h-4" /> : <List className="w-4 h-4" />}
+                                                        <span className="text-[10px] font-bold uppercase md:hidden">{match.status === 'finished' ? 'Resumo' : 'Súmula'}</span>
                                                     </button>
 
                                                     <button
                                                         onClick={() => openEditModal(match)}
-                                                        className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors border border-transparent hover:border-gray-200"
-                                                        title="Editar Dados do Jogo"
+                                                        className="flex-1 md:flex-none flex items-center justify-center gap-1 px-3 py-2 text-gray-500 bg-gray-50 border border-gray-200 rounded-lg transition-all"
                                                     >
-                                                        <Edit2 className="w-5 h-5" />
+                                                        <Edit2 className="w-4 h-4" />
+                                                        <span className="text-[10px] font-bold uppercase md:hidden">Editar</span>
                                                     </button>
                                                 </div>
                                             </div>

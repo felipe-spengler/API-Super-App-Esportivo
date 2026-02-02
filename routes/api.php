@@ -91,6 +91,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/matches', [\App\Http\Controllers\Admin\AdminMatchController::class, 'index']);
         Route::post('/matches', [\App\Http\Controllers\Admin\AdminMatchController::class, 'store']);
         Route::put('/matches/{id}', [\App\Http\Controllers\Admin\AdminMatchController::class, 'update']);
+        Route::patch('/matches/{id}', [\App\Http\Controllers\Admin\AdminMatchController::class, 'update']);
         Route::delete('/matches/{id}', [\App\Http\Controllers\Admin\AdminMatchController::class, 'destroy']);
         Route::post('/matches/{id}/finish', [\App\Http\Controllers\Admin\AdminMatchController::class, 'finish']);
         Route::post('/matches/{id}/mvp', [\App\Http\Controllers\Admin\AdminMatchController::class, 'setMVP']);
