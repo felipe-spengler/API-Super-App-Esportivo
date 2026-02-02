@@ -84,9 +84,17 @@ class GameMatch extends Model
 
         if ($this->relationLoaded('events')) {
             $legacy['events'] = $this->events->map(function ($e) {
+                $playerName = 'Desconhecido';
+                if ($e->metadata) {
+                    $metadata = is_string($e->metadata) ? json_decode($e->metadata, true) : $e->metadata;
+                    if (is_array($metadata) && isset($metadata['original_player_name'])) {
+                        $playerName = $metadata['original_player_name'];
+                    }
+                }
+
                 return [
                     'type' => $e->event_type,
-                    'player_name' => json_decode($e->metadata)->original_player_name ?? 'Desconhecido',
+                    'player_name' => $playerName,
                     'team_id' => $e->team_id,
                     'minute' => $e->game_time,
                     'period' => $e->period
