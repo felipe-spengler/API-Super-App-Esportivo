@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Calendar, Trophy, Save, Plus, Trash2, CheckCircle, AlertCircle, List, Edit2, X, MapPin, Clock as ClockIcon } from 'lucide-react';
+import { ArrowLeft, Calendar, Trophy, Save, Plus, Trash2, CheckCircle, AlertCircle, List, Edit2, X, MapPin, Clock as ClockIcon, Loader2 } from 'lucide-react';
 import api from '../../services/api';
 
 interface Match {
@@ -25,6 +25,11 @@ export function AdminMatchManager() {
     const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
     const [showEditModal, setShowEditModal] = useState(false);
     const [editData, setEditData] = useState({ start_time: '', location: '', round_number: 1 });
+
+    // Arbitration Modal State
+    const [isArbitrationOpen, setIsArbitrationOpen] = useState(false);
+    const [arbitrationData, setArbitrationData] = useState({ referee: '', assistant1: '', assistant2: '' });
+    const [savingArbitration, setSavingArbitration] = useState(false);
 
     useEffect(() => {
         loadData();
@@ -104,6 +109,54 @@ export function AdminMatchManager() {
             loadData();
         } catch (err) {
             alert('Erro ao atualizar jogo.');
+        }
+    };
+
+    const openArbitration = (match: any) => {
+        setSelectedMatch(match);
+        // Pre-fill if exists
+        const currentRef = match.match_details?.arbitration || {};
+        setArbitrationData({
+            referee: currentRef.referee || '',
+            assistant1: currentRef.assistant1 || '',
+            assistant2: currentRef.assistant2 || ''
+        });
+        setIsArbitrationOpen(true);
+    };
+
+    const handleConfirmArbitration = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedMatch) return;
+
+        try {
+            setSavingArbitration(true);
+            // Save to backend
+            await api.put(`/admin/matches/${selectedMatch.id}`, {
+                arbitration: arbitrationData
+            });
+
+            // Close and navigate
+            setIsArbitrationOpen(false);
+            const slug = championship?.sport?.slug;
+            let sumulaPath = `/admin/matches/${selectedMatch.id}/sumula`;
+
+            if (slug === 'volei') sumulaPath = `/admin/matches/${selectedMatch.id}/sumula-volei`;
+            else if (slug === 'futsal') sumulaPath = `/admin/matches/${selectedMatch.id}/sumula-futsal`;
+            else if (slug === 'basquete') sumulaPath = `/admin/matches/${selectedMatch.id}/sumula-basquete`;
+            else if (slug === 'handebol') sumulaPath = `/admin/matches/${selectedMatch.id}/sumula-handebol`;
+            else if (slug === 'beach-tennis') sumulaPath = `/admin/matches/${selectedMatch.id}/sumula-beach-tennis`;
+            else if (slug === 'futebol-7') sumulaPath = `/admin/matches/${selectedMatch.id}/sumula-futebol7`;
+            else if (slug === 'futevolei') sumulaPath = `/admin/matches/${selectedMatch.id}/sumula-futevolei`;
+            else if (slug === 'volei-de-praia') sumulaPath = `/admin/matches/${selectedMatch.id}/sumula-volei-praia`;
+            else if (slug === 'tenis-de-mesa') sumulaPath = `/admin/matches/${selectedMatch.id}/sumula-tenis-mesa`;
+            else if (slug === 'jiu-jitsu') sumulaPath = `/admin/matches/${selectedMatch.id}/sumula-jiu-jitsu`;
+
+            navigate(sumulaPath);
+        } catch (error) {
+            console.error("Erro ao salvar arbitragem", error);
+            alert("Erro ao salvar dados.");
+        } finally {
+            setSavingArbitration(false);
         }
     };
 
@@ -245,26 +298,13 @@ export function AdminMatchManager() {
 
                                                 {/* Actions */}
                                                 <div className="md:w-32 flex justify-end gap-1">
-                                                    <Link
-                                                        to={(() => {
-                                                            const slug = championship?.sport?.slug;
-                                                            if (slug === 'volei') return `/admin/matches/${match.id}/sumula-volei`;
-                                                            if (slug === 'futsal') return `/admin/matches/${match.id}/sumula-futsal`;
-                                                            if (slug === 'basquete') return `/admin/matches/${match.id}/sumula-basquete`;
-                                                            if (slug === 'handebol') return `/admin/matches/${match.id}/sumula-handebol`;
-                                                            if (slug === 'beach-tennis') return `/admin/matches/${match.id}/sumula-beach-tennis`;
-                                                            if (slug === 'futebol-7') return `/admin/matches/${match.id}/sumula-futebol7`;
-                                                            if (slug === 'futevolei') return `/admin/matches/${match.id}/sumula-futevolei`;
-                                                            if (slug === 'volei-de-praia') return `/admin/matches/${match.id}/sumula-volei-praia`;
-                                                            if (slug === 'tenis-de-mesa') return `/admin/matches/${match.id}/sumula-tenis-mesa`;
-                                                            if (slug === 'jiu-jitsu') return `/admin/matches/${match.id}/sumula-jiu-jitsu`;
-                                                            return `/admin/matches/${match.id}/sumula`;
-                                                        })()}
+                                                    <button
+                                                        onClick={() => openArbitration(match)}
                                                         className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-transparent hover:border-indigo-100"
                                                         title="Abrir Súmula"
                                                     >
                                                         <List className="w-5 h-5" />
-                                                    </Link>
+                                                    </button>
 
                                                     <button
                                                         onClick={() => openEditModal(match)}
@@ -340,6 +380,67 @@ export function AdminMatchManager() {
                             </button>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* Modal de Arbitragem */}
+            {isArbitrationOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <form onSubmit={handleConfirmArbitration} className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="bg-indigo-600 p-4 text-white">
+                            <h3 className="font-bold text-lg">Iniciar Súmula</h3>
+                            <p className="text-indigo-100 text-xs">Informe a equipe de arbitragem</p>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Árbitro Principal</label>
+                                <input
+                                    required
+                                    className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    value={arbitrationData.referee}
+                                    onChange={e => setArbitrationData({ ...arbitrationData, referee: e.target.value })}
+                                    placeholder="Nome do Árbitro"
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Assistente 1</label>
+                                    <input
+                                        className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                        value={arbitrationData.assistant1}
+                                        onChange={e => setArbitrationData({ ...arbitrationData, assistant1: e.target.value })}
+                                        placeholder="Opcional"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Assistente 2</label>
+                                    <input
+                                        className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                        value={arbitrationData.assistant2}
+                                        onChange={e => setArbitrationData({ ...arbitrationData, assistant2: e.target.value })}
+                                        placeholder="Opcional"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="bg-gray-50 p-4 flex justify-end gap-3 border-t border-gray-100">
+                            <button
+                                type="button"
+                                onClick={() => setIsArbitrationOpen(false)}
+                                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={savingArbitration}
+                                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
+                            >
+                                {savingArbitration ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                                {savingArbitration ? 'Salvando...' : 'Iniciar Partida'}
+                            </button>
+                        </div>
+                    </form>
                 </div>
             )}
         </div>
