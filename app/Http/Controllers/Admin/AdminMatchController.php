@@ -60,18 +60,19 @@ class AdminMatchController extends Controller
         $match = GameMatch::findOrFail($id);
 
         $validated = $request->validate([
-            'home_team_id' => 'exists:teams,id',
-            'away_team_id' => 'exists:teams,id|different:home_team_id',
-            'start_time' => 'date',
-            'location' => 'nullable|string',
-            'round_name' => 'nullable|string',
-            'phase' => 'nullable|string',
+            'home_team_id' => 'sometimes|exists:teams,id',
+            'away_team_id' => 'sometimes|exists:teams,id|different:home_team_id',
+            'start_time' => 'sometimes|date_format:Y-m-d\TH:i|after_or_equal:2020-01-01',
+            'location' => 'nullable|string|max:255',
+            'round_name' => 'nullable|string|max:100',
+            'round_number' => 'nullable|integer|min:1',
+            'phase' => 'nullable|string|max:100',
             'home_score' => 'nullable|integer|min:0',
             'away_score' => 'nullable|integer|min:0',
-            'status' => 'in:scheduled,live,finished,cancelled',
-            'category_id' => 'nullable|exists:categories,id',
+            'status' => 'sometimes|in:scheduled,live,finished,cancelled',
+            'category_id' => 'nullable|integer|exists:categories,id',
             'match_details' => 'nullable|array',
-            'arbitration' => 'nullable|array', // { referee: string, assistant1: string, ... }
+            'arbitration' => 'nullable|array',
         ]);
 
         // Merge arbitration into match_details if provided
@@ -84,7 +85,7 @@ class AdminMatchController extends Controller
 
         $match->update($validated);
 
-        return response()->json($match->load(['homeTeam', 'awayTeam']));
+        return response()->json($match->load(['homeTeam', 'awayTeam', 'category']));
     }
 
     // Finish match and set final score
