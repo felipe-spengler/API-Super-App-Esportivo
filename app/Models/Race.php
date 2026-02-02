@@ -26,4 +26,24 @@ class Race extends Model
     {
         return $this->hasMany(RaceResult::class);
     }
+
+    /**
+     * Accessor: Garante que map_image_url sempre retorne URL absoluta
+     */
+    public function getMapImageUrlAttribute($value)
+    {
+        if (!$value) {
+            return null;
+        }
+
+        if (filter_var($value, FILTER_VALIDATE_URL)) {
+            return $value;
+        }
+
+        if (str_starts_with($value, '/')) {
+            return rtrim(config('app.url'), '/') . $value;
+        }
+
+        return $value;
+    }
 }

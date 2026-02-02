@@ -90,4 +90,23 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Team::class, 'team_players')->withPivot(['position', 'number', 'is_approved']);
     }
+
+    /**
+     * Accessor: Gera photo_url a partir de photo_path
+     */
+    public function getPhotoUrlAttribute()
+    {
+        if (!$this->photo_path) {
+            return null;
+        }
+
+        $url = \Storage::url($this->photo_path);
+
+        // Se for URL relativa, converte para absoluta
+        if (str_starts_with($url, '/')) {
+            return rtrim(config('app.url'), '/') . $url;
+        }
+
+        return $url;
+    }
 }
