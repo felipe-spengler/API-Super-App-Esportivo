@@ -15,6 +15,7 @@ class StoreTeamRequest extends FormRequest
     {
         return [
             'name' => 'required|string|max:255',
+            'city' => 'nullable|string|max:255',
             'logo' => 'nullable|image|max:2048',
             'primary_color' => 'nullable|string|regex:/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/',
             'secondary_color' => 'nullable|string|regex:/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/',

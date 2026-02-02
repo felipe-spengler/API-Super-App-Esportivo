@@ -74,6 +74,8 @@ class AdminTeamController extends Controller
 
         $validated = $request->validate([
             'name' => 'string|max:255',
+            'city' => 'nullable|string|max:255',
+            'captain_id' => 'nullable|integer|exists:users,id',
             'short_name' => 'nullable|string|max:50',
             'logo_url' => 'nullable|url',
             'primary_color' => 'nullable|string|max:7',

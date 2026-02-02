@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Save, ArrowLeft, Shield, User } from 'lucide-react';
 import api from '../../services/api';
 
@@ -10,16 +10,23 @@ interface UserOption {
 }
 
 export function TeamForm() {
+    const { id } = useParams();
     const navigate = useNavigate();
     const [name, setName] = useState('');
     const [city, setCity] = useState('');
     const [captainId, setCaptainId] = useState('');
     const [users, setUsers] = useState<UserOption[]>([]);
     const [loading, setLoading] = useState(false);
+    const [fetching, setFetching] = useState(false);
+
+    const isEditing = Boolean(id);
 
     useEffect(() => {
         loadUsers();
-    }, []);
+        if (isEditing) {
+            loadTeam();
+        }
+    }, [id]);
 
     async function loadUsers() {
         try {
@@ -31,21 +38,55 @@ export function TeamForm() {
         }
     }
 
+    async function loadTeam() {
+        try {
+            setFetching(true);
+            const response = await api.get(`/admin/teams/${id}`);
+            const team = response.data;
+            setName(team.name || '');
+            setCity(team.city || '');
+            setCaptainId(team.captain_id ? String(team.captain_id) : '');
+        } catch (error) {
+            console.error('Erro ao carregar equipe', error);
+            alert('Erro ao carregar dados da equipe.');
+            navigate('/admin/teams');
+        } finally {
+            setFetching(false);
+        }
+    }
+
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         setLoading(true);
         try {
-            await api.post('/admin/teams', {
+            const payload = {
                 name,
                 city,
                 captain_id: captainId ? Number(captainId) : null
-            });
+            };
+
+            if (isEditing) {
+                await api.put(`/admin/teams/${id}`, payload);
+                alert('Equipe atualizada com sucesso!');
+            } else {
+                await api.post('/admin/teams', payload);
+                alert('Equipe criada com sucesso!');
+            }
             navigate('/admin/teams');
         } catch (error) {
-            alert('Erro ao criar equipe');
+            console.error(error);
+            alert(isEditing ? 'Erro ao atualizar equipe' : 'Erro ao criar equipe');
         } finally {
             setLoading(false);
         }
+    }
+
+    if (fetching) {
+        return (
+            <div className="flex items-center justify-center p-20">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            </div>
+        );
     }
 
     return (
@@ -60,8 +101,12 @@ export function TeamForm() {
                         <Shield className="w-8 h-8" />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900">Nova Equipe</h1>
-                        <p className="text-gray-500">Cadastre um novo time para os campeonatos.</p>
+                        <h1 className="text-2xl font-bold text-gray-900">
+                            {isEditing ? 'Editar Equipe' : 'Nova Equipe'}
+                        </h1>
+                        <p className="text-gray-500">
+                            {isEditing ? 'Atualize os dados da equipe.' : 'Cadastre um novo time para os campeonatos.'}
+                        </p>
                     </div>
                 </div>
 
@@ -119,7 +164,7 @@ export function TeamForm() {
                             className="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 flex items-center justify-center gap-2 disabled:opacity-70"
                         >
                             <Save className="w-5 h-5" />
-                            {loading ? 'Salvando...' : 'Cadastrar Equipe'}
+                            {loading ? 'Salvando...' : (isEditing ? 'Salvar Alterações' : 'Cadastrar Equipe')}
                         </button>
                     </div>
                 </form>

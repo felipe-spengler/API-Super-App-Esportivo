@@ -144,7 +144,14 @@ export function TeamDetails() {
                 >
                     <ArrowLeft className="w-5 h-5 text-gray-600" />
                 </button>
-                <h1 className="text-2xl font-bold text-gray-800">Detalhes da equipe</h1>
+                <h1 className="text-2xl font-bold text-gray-800 flex-1">Detalhes da equipe</h1>
+                <button
+                    onClick={() => navigate(`/admin/teams/${id}/edit`)}
+                    className="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium flex items-center gap-2 shadow-sm"
+                >
+                    <Shield className="w-4 h-4 text-indigo-500" />
+                    Editar Dados
+                </button>
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center gap-6">
