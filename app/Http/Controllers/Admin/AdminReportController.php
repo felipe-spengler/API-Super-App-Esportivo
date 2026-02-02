@@ -42,7 +42,7 @@ class AdminReportController extends Controller
             'total_championships' => $totalChampionships,
             'active_championships' => (clone $championshipsQuery)->whereIn('status', ['active', 'in_progress'])->count(),
             'total_matches' => $totalMatches,
-            'finished_matches' => (clone $matchesQuery)->where('status', 'Finalizado')->count(),
+            'finished_matches' => (clone $matchesQuery)->where('status', 'finished')->count(),
             'total_teams' => $teamsQuery->count(),
             'total_players' => $playersQuery->count(),
         ];
@@ -81,7 +81,7 @@ class AdminReportController extends Controller
         // Upcoming matches
         $upcomingMatches = (clone $matchesQuery)
             ->with(['homeTeam', 'awayTeam', 'championship'])
-            ->where('status', 'Agendado')
+            ->where('status', 'scheduled')
             ->where('start_time', '>', now())
             ->orderBy('start_time', 'asc')
             ->limit(10)
@@ -142,8 +142,8 @@ class AdminReportController extends Controller
 
         // Matches statistics
         $totalMatches = $matches->count();
-        $finishedMatches = $matches->where('status', 'Finalizado')->count();
-        $scheduledMatches = $matches->where('status', 'Agendado')->count();
+        $finishedMatches = $matches->where('status', 'finished')->count();
+        $scheduledMatches = $matches->where('status', 'scheduled')->count();
 
         // Goals statistics
         $totalGoals = MatchEvent::whereIn('game_match_id', $matches->pluck('id'))
@@ -163,8 +163,8 @@ class AdminReportController extends Controller
         // Team standings (wins, draws, losses)
         $standings = [];
         foreach ($teams as $team) {
-            $homeMatches = $matches->where('home_team_id', $team->id)->where('status', 'Finalizado');
-            $awayMatches = $matches->where('away_team_id', $team->id)->where('status', 'Finalizado');
+            $homeMatches = $matches->where('home_team_id', $team->id)->where('status', 'finished');
+            $awayMatches = $matches->where('away_team_id', $team->id)->where('status', 'finished');
 
             $wins = 0;
             $draws = 0;

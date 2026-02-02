@@ -138,8 +138,8 @@ class AdminMatchController extends Controller
         $validated = $request->validate([
             'team_id' => 'required|exists:teams,id',
             'player_id' => 'nullable|integer',
-            'event_type' => 'required|in:goal,yellow_card,red_card,blue_card,assist,foul,mvp,substitution,point,ace,block,timeout',
-            'minute' => 'nullable|integer|min:0',
+            'event_type' => 'required|in:goal,yellow_card,red_card,blue_card,assist,foul,mvp,substitution,point,ace,block,timeout,period_start,period_end,match_start,match_end',
+            'minute' => 'nullable|string', // Change to string to support "00:00"
             'value' => 'nullable|integer|min:1',
             'metadata' => 'nullable|array',
         ]);
@@ -149,10 +149,15 @@ class AdminMatchController extends Controller
             'team_id' => $validated['team_id'],
             'player_id' => $validated['player_id'] ?? null,
             'event_type' => $validated['event_type'],
-            'minute' => $validated['minute'] ?? null,
+            'game_time' => $validated['minute'] ?? null, // Map minute from frontend to game_time in DB
             'value' => $validated['value'] ?? 1,
             'metadata' => $validated['metadata'] ?? null,
         ]);
+
+        // Auto-update match status to live if it was scheduled
+        if ($match->status === 'scheduled') {
+            $match->update(['status' => 'live']);
+        }
 
         return response()->json($event, 201);
     }

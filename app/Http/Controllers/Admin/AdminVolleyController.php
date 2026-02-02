@@ -99,7 +99,7 @@ class AdminVolleyController extends Controller
                 'history' => $existingHistory
             ];
             $match->match_details = $details;
-            $match->status = 'Em Andamento';
+            $match->status = 'live';
             $match->save();
         });
 
@@ -191,7 +191,7 @@ class AdminVolleyController extends Controller
         $match->away_score = $awaySets;
 
         if ($homeSets >= 3 || $awaySets >= 3) {
-            $match->status = 'Finalizado';
+            $match->status = 'finished';
         }
 
         $match->save();

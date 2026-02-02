@@ -127,9 +127,15 @@ export function SumulaFutebol() {
         let interval: any = null;
         if (isRunning) {
             interval = setInterval(() => setTime(t => t + 1), 1000);
+
+            // If match is still scheduled, set to live on first play
+            if (matchData && matchData.status === 'scheduled') {
+                registerSystemEvent('match_start', 'Início da Partida');
+                setMatchData((prev: any) => ({ ...prev, status: 'live' }));
+            }
         }
         return () => clearInterval(interval);
-    }, [isRunning]);
+    }, [isRunning, matchData]);
 
 
 
@@ -140,37 +146,76 @@ export function SumulaFutebol() {
     };
 
     const handlePeriodChange = () => {
+        const oldPeriod = currentPeriod;
+        let newPeriod = '';
+
         if (currentPeriod === '1º Tempo') {
             setIsRunning(false);
-            setCurrentPeriod('Intervalo');
+            newPeriod = 'Intervalo';
+            registerSystemEvent('period_end', `Fim do ${oldPeriod}`);
         } else if (currentPeriod === 'Intervalo') {
-            setCurrentPeriod('2º Tempo');
+            newPeriod = '2º Tempo';
             setIsRunning(true);
+            registerSystemEvent('period_start', `Início do ${newPeriod}`);
         } else if (currentPeriod === '2º Tempo') {
             setIsRunning(false);
-            setCurrentPeriod('Fim de Tempo Normal');
+            newPeriod = 'Fim de Tempo Normal';
+            registerSystemEvent('period_end', `Fim do ${oldPeriod}`);
         } else if (currentPeriod === 'Fim de Tempo Normal') {
             // Option to go to Extra Time or End
             if (window.confirm("Iniciar Prorrogação? Cancelar para ir direto para Pênaltis ou Encerrar.")) {
-                setCurrentPeriod('Prorrogação');
+                newPeriod = 'Prorrogação';
                 setIsRunning(true);
+                registerSystemEvent('period_start', `Início da ${newPeriod}`);
             } else {
                 if (window.confirm("Iniciar Pênaltis?")) {
-                    setCurrentPeriod('Pênaltis');
-                    setIsRunning(false); // Penalties usually not timed continuously like a game
+                    newPeriod = 'Pênaltis';
+                    setIsRunning(false);
+                    registerSystemEvent('period_start', `Início dos ${newPeriod}`);
                 } else {
-                    setCurrentPeriod('Fim de Jogo');
+                    newPeriod = 'Fim de Jogo';
                 }
             }
         } else if (currentPeriod === 'Prorrogação') {
             setIsRunning(false);
+            registerSystemEvent('period_end', `Fim da ${oldPeriod}`);
             if (window.confirm("Iniciar Pênaltis?")) {
-                setCurrentPeriod('Pênaltis');
+                newPeriod = 'Pênaltis';
+                registerSystemEvent('period_start', `Início dos Pênaltis`);
             } else {
-                setCurrentPeriod('Fim de Jogo');
+                newPeriod = 'Fim de Jogo';
             }
         } else if (currentPeriod === 'Pênaltis') {
-            setCurrentPeriod('Fim de Jogo');
+            newPeriod = 'Fim de Jogo';
+            registerSystemEvent('period_end', `Fim dos Pênaltis`);
+        }
+
+        if (newPeriod) setCurrentPeriod(newPeriod);
+    };
+
+    const registerSystemEvent = async (type: string, label: string) => {
+        if (!matchData) return;
+        const currentTime = formatTime(time);
+
+        try {
+            const response = await api.post(`/admin/matches/${id}/events`, {
+                event_type: type,
+                team_id: matchData.home_team_id, // Default to home team for system events
+                minute: currentTime,
+                period: currentPeriod,
+                metadata: { label }
+            });
+
+            setEvents(prev => [{
+                id: response.data.id,
+                type: type,
+                team: 'home',
+                time: currentTime,
+                period: currentPeriod,
+                player_name: label
+            }, ...prev]);
+        } catch (e) {
+            console.error(e);
         }
     };
 
@@ -286,10 +331,17 @@ export function SumulaFutebol() {
     const handleFinish = async () => {
         if (!window.confirm('Encerrar partida completamente?')) return;
         try {
+            // Record final event
+            await registerSystemEvent('match_end', 'Partida Finalizada');
+
             await api.post(`/admin/matches/${id}/finish`, {
                 home_score: matchData.scoreHome,
                 away_score: matchData.scoreAway
             });
+
+            // Clear local storage
+            localStorage.removeItem(STORAGE_KEY);
+
             navigate('/matches');
         } catch (e) {
             console.error(e);
