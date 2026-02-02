@@ -156,4 +156,13 @@ class AdminTeamController extends Controller
 
         return response()->json(['message' => 'Team removed from championship']);
     }
+
+    // Remove player from team
+    public function removePlayer($teamId, $playerId)
+    {
+        $team = Team::findOrFail($teamId);
+        $team->players()->detach($playerId);
+
+        return response()->json(['message' => 'Player removed from team']);
+    }
 }

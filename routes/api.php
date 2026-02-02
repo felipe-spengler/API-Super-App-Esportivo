@@ -114,6 +114,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/teams/{id}', [\App\Http\Controllers\Admin\AdminTeamController::class, 'destroy']);
         Route::post('/teams/{id}/add-to-championship', [\App\Http\Controllers\Admin\AdminTeamController::class, 'addToChampionship']);
         Route::post('/teams/{id}/remove-from-championship', [\App\Http\Controllers\Admin\AdminTeamController::class, 'removeFromChampionship']);
+        Route::delete('/teams/{id}/players/{playerId}', [\App\Http\Controllers\Admin\AdminTeamController::class, 'removePlayer']);
 
         // Gestão de Jogadores (NEW)
         Route::get('/players', [\App\Http\Controllers\Admin\AdminPlayerController::class, 'index']);

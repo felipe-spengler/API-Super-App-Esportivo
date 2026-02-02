@@ -123,6 +123,17 @@ export function TeamDetails() {
         setPhotoFile(null);
     }
 
+    async function handleRemovePlayer(playerId: number) {
+        if (!window.confirm('Remover jogador da equipe?')) return;
+        try {
+            await api.delete(`/admin/teams/${id}/players/${playerId}`);
+            loadTeam();
+        } catch (error) {
+            console.error(error);
+            alert('Erro ao remover jogador.');
+        }
+    }
+
     if (loading) {
         return (
             <div className="flex h-64 items-center justify-center">
@@ -204,8 +215,17 @@ export function TeamDetails() {
                                             <p className="text-xs text-gray-500">{player.position}</p>
                                         </div>
                                     </div>
-                                    <div className="text-sm font-bold text-gray-400">
-                                        #{player.number || '-'}
+                                    <div className="flex items-center gap-2">
+                                        <div className="text-sm font-bold text-gray-400 mr-2">
+                                            #{player.number || '-'}
+                                        </div>
+                                        <button
+                                            onClick={() => handleRemovePlayer(player.id)}
+                                            className="p-1.5 text-red-400 hover:bg-red-50 rounded-md transition-colors"
+                                            title="Remover Jogador"
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
                                     </div>
                                 </div>
                             ))
