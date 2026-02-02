@@ -14,114 +14,134 @@ class AdminDashboardController extends Controller
 {
     public function index()
     {
-        // Get total counts
-        $totalChampionships = Championship::count();
-        $activeChampionships = Championship::where('status', 'active')
-            ->orWhere(function ($q) {
-                $q->where('end_date', '>=', now());
-            })
-            ->count();
+        try {
+            // Get total counts
+            $totalChampionships = Championship::count();
+            $activeChampionships = Championship::where('status', 'active')
+                ->orWhere(function ($q) {
+                    $q->where('end_date', '>=', now());
+                })
+                ->count();
 
-        $totalTeams = Team::count();
-        $totalPlayers = User::where('user_type', 'player')->count();
-        $totalMatches = GameMatch::count();
-        $finishedMatches = GameMatch::where('status', 'finished')->count();
-        $upcomingMatches = GameMatch::where('status', 'scheduled')
-            ->where('start_time', '>=', now())
-            ->count();
+            $totalTeams = Team::count();
+            $totalPlayers = User::where('user_type', 'player')->count();
+            $totalMatches = GameMatch::count();
+            $finishedMatches = GameMatch::where('status', 'finished')->count();
+            $upcomingMatches = GameMatch::where('status', 'scheduled')
+                ->where('start_time', '>=', now())
+                ->count();
 
-        // Get recent activities (last 10 records)
-        $recentChampionships = Championship::orderBy('created_at', 'desc')
-            ->with('sport')
-            ->take(3)
-            ->get();
+            // Get recent activities (last 10 records)
+            $recentChampionships = Championship::orderBy('created_at', 'desc')
+                ->with('sport')
+                ->take(3)
+                ->get();
 
-        $recentTeams = Team::orderBy('created_at', 'desc')
-            ->take(3)
-            ->get();
+            $recentTeams = Team::orderBy('created_at', 'desc')
+                ->take(3)
+                ->get();
 
-        $recentPlayers = User::where('user_type', 'player')
-            ->orderBy('created_at', 'desc')
-            ->take(3)
-            ->get();
+            $recentPlayers = User::where('user_type', 'player')
+                ->orderBy('created_at', 'desc')
+                ->take(3)
+                ->get();
 
-        $recentMatches = GameMatch::where('status', 'finished')
-            ->orderBy('created_at', 'desc')
-            ->with(['homeTeam', 'awayTeam'])
-            ->take(3)
-            ->get();
+            $recentMatches = GameMatch::where('status', 'finished')
+                ->orderBy('created_at', 'desc')
+                ->with(['home_team', 'away_team'])
+                ->take(3)
+                ->get();
 
-        // Build activities timeline
-        $activities = [];
+            // Build activities timeline
+            $activities = [];
 
-        foreach ($recentChampionships as $championship) {
-            $activities[] = [
-                'id' => 'champ_' . $championship->id,
-                'type' => 'championship',
-                'title' => 'Novo Campeonato',
-                'description' => $championship->name,
-                'time' => $this->getTimeAgo($championship->created_at),
-                'created_at' => $championship->created_at,
-            ];
+            foreach ($recentChampionships as $championship) {
+                $activities[] = [
+                    'id' => 'champ_' . $championship->id,
+                    'type' => 'championship',
+                    'title' => 'Novo Campeonato',
+                    'description' => $championship->name,
+                    'time' => $this->getTimeAgo($championship->created_at),
+                    'created_at' => $championship->created_at,
+                ];
+            }
+
+            foreach ($recentTeams as $team) {
+                $activities[] = [
+                    'id' => 'team_' . $team->id,
+                    'type' => 'team',
+                    'title' => 'Nova Equipe',
+                    'description' => $team->name,
+                    'time' => $this->getTimeAgo($team->created_at),
+                    'created_at' => $team->created_at,
+                ];
+            }
+
+            foreach ($recentPlayers as $player) {
+                $activities[] = [
+                    'id' => 'player_' . $player->id,
+                    'type' => 'player',
+                    'title' => 'Novo Atleta',
+                    'description' => $player->name,
+                    'time' => $this->getTimeAgo($player->created_at),
+                    'created_at' => $player->created_at,
+                ];
+            }
+
+            foreach ($recentMatches as $match) {
+                $homeTeamName = $match->home_team->name ?? 'Time A';
+                $awayTeamName = $match->away_team->name ?? 'Time B';
+
+                $activities[] = [
+                    'id' => 'match_' . $match->id,
+                    'type' => 'match',
+                    'title' => 'Partida Finalizada',
+                    'description' => "{$homeTeamName} vs {$awayTeamName}",
+                    'time' => $this->getTimeAgo($match->created_at),
+                    'created_at' => $match->created_at,
+                ];
+            }
+
+            // Sort by most recent
+            usort($activities, function ($a, $b) {
+                return $b['created_at'] <=> $a['created_at'];
+            });
+
+            $activities = array_slice($activities, 0, 10);
+
+            // Remove created_at from final output (only used for sorting)
+            foreach ($activities as &$activity) {
+                unset($activity['created_at']);
+            }
+
+            return response()->json([
+                'stats' => [
+                    'total_championships' => $totalChampionships,
+                    'active_championships' => $activeChampionships,
+                    'total_teams' => $totalTeams,
+                    'total_players' => $totalPlayers,
+                    'total_matches' => $totalMatches,
+                    'finished_matches' => $finishedMatches,
+                    'upcoming_matches' => $upcomingMatches,
+                ],
+                'activities' => $activities,
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Dashboard error: ' . $e->getMessage());
+            return response()->json([
+                'stats' => [
+                    'total_championships' => 0,
+                    'active_championships' => 0,
+                    'total_teams' => 0,
+                    'total_players' => 0,
+                    'total_matches' => 0,
+                    'finished_matches' => 0,
+                    'upcoming_matches' => 0,
+                ],
+                'activities' => [],
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        foreach ($recentTeams as $team) {
-            $activities[] = [
-                'id' => 'team_' . $team->id,
-                'type' => 'team',
-                'title' => 'Nova Equipe',
-                'description' => $team->name,
-                'time' => $this->getTimeAgo($team->created_at),
-                'created_at' => $team->created_at,
-            ];
-        }
-
-        foreach ($recentPlayers as $player) {
-            $activities[] = [
-                'id' => 'player_' . $player->id,
-                'type' => 'player',
-                'title' => 'Novo Atleta',
-                'description' => $player->name,
-                'time' => $this->getTimeAgo($player->created_at),
-                'created_at' => $player->created_at,
-            ];
-        }
-
-        foreach ($recentMatches as $match) {
-            $activities[] = [
-                'id' => 'match_' . $match->id,
-                'type' => 'match',
-                'title' => 'Partida Finalizada',
-                'description' => ($match->homeTeam->name ?? 'Time A') . ' vs ' . ($match->awayTeam->name ?? 'Time B'),
-                'time' => $this->getTimeAgo($match->created_at),
-                'created_at' => $match->created_at,
-            ];
-        }
-
-        // Sort by most recent
-        usort($activities, function ($a, $b) {
-            return $b['created_at'] <=> $a['created_at'];
-        });
-
-        $activities = array_slice($activities, 0, 10);
-
-        // Remove created_at from final output (only used for sorting)
-        foreach ($activities as &$activity) {
-            unset($activity['created_at']);
-        }
-
-        return response()->json([
-            'stats' => [
-                'total_championships' => $totalChampionships,
-                'active_championships' => $activeChampionships,
-                'total_teams' => $totalTeams,
-                'total_players' => $totalPlayers,
-                'total_matches' => $totalMatches,
-                'finished_matches' => $finishedMatches,
-                'upcoming_matches' => $upcomingMatches,
-            ],
-            'activities' => $activities,
-        ]);
     }
 
     private function getTimeAgo($dateTime)
