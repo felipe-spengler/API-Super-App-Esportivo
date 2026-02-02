@@ -10,6 +10,17 @@ use App\Http\Controllers\InscriptionController;
 use App\Http\Controllers\VoteController;
 use App\Http\Controllers\WalletController;
 
+// Serve storage files (necessário para php artisan serve + Coolify proxy)
+Route::get('/storage/{path}', function ($path) {
+    $fullPath = storage_path('app/public/' . $path);
+
+    if (!file_exists($fullPath)) {
+        abort(404);
+    }
+
+    return response()->file($fullPath);
+})->where('path', '.*');
+
 // Rotas Públicas (Core do App)
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
