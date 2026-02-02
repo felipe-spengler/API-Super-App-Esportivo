@@ -55,4 +55,26 @@ class Team extends Model
         return $this->belongsToMany(Category::class, 'category_team')
             ->withTimestamps();
     }
+
+    /**
+     * Accessor: Garante que logo_url sempre retorne URL absoluta
+     */
+    public function getLogoUrlAttribute($value)
+    {
+        if (!$value) {
+            return null;
+        }
+
+        // Se já for uma URL completa, retorna como está
+        if (filter_var($value, FILTER_VALIDATE_URL)) {
+            return $value;
+        }
+
+        // Se for URL relativa, converte para absoluta
+        if (str_starts_with($value, '/')) {
+            return rtrim(config('app.url'), '/') . $value;
+        }
+
+        return $value;
+    }
 }

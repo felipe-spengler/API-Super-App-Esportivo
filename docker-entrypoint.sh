@@ -37,5 +37,8 @@ sleep 10
 echo "Rodando migrações..."
 php artisan migrate --force
 
+echo "Criando symlink do storage..."
+php artisan storage:link
+
 echo "Iniciando servidor..."
 php artisan serve --host=0.0.0.0 --port=8000

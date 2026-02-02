@@ -37,4 +37,48 @@ class Club extends Model
     {
         return $this->hasMany(Championship::class);
     }
+
+    /**
+     * Accessor: Garante que logo_url sempre retorne URL absoluta
+     */
+    public function getLogoUrlAttribute($value)
+    {
+        if (!$value) {
+            return null;
+        }
+
+        // Se já for uma URL completa, retorna como está
+        if (filter_var($value, FILTER_VALIDATE_URL)) {
+            return $value;
+        }
+
+        // Se for URL relativa, converte para absoluta
+        if (str_starts_with($value, '/')) {
+            return rtrim(config('app.url'), '/') . $value;
+        }
+
+        return $value;
+    }
+
+    /**
+     * Accessor: Garante que banner_url sempre retorne URL absoluta
+     */
+    public function getBannerUrlAttribute($value)
+    {
+        if (!$value) {
+            return null;
+        }
+
+        // Se já for uma URL completa, retorna como está
+        if (filter_var($value, FILTER_VALIDATE_URL)) {
+            return $value;
+        }
+
+        // Se for URL relativa, converte para absoluta
+        if (str_starts_with($value, '/')) {
+            return rtrim(config('app.url'), '/') . $value;
+        }
+
+        return $value;
+    }
 }
