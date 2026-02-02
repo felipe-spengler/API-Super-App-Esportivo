@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Calendar, Trophy, Save, Plus, Trash2, CheckCircle, AlertCircle, List } from 'lucide-react';
+import { ArrowLeft, Calendar, Trophy, Save, Plus, Trash2, CheckCircle, AlertCircle, List, Edit2, X, MapPin, Clock as ClockIcon } from 'lucide-react';
 import api from '../../services/api';
 
 interface Match {
@@ -11,7 +11,8 @@ interface Match {
     away_score: number | null;
     start_time: string;
     round_number: number;
-    status: 'scheduled' | 'finished';
+    status: 'scheduled' | 'finished' | 'live' | 'canceled';
+    location?: string;
 }
 
 export function AdminMatchManager() {
@@ -21,6 +22,9 @@ export function AdminMatchManager() {
     const [loading, setLoading] = useState(true);
     const [generating, setGenerating] = useState(false);
     const [championship, setChampionship] = useState<any>(null);
+    const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editData, setEditData] = useState({ start_time: '', location: '', round_number: 1 });
 
     useEffect(() => {
         loadData();
@@ -74,13 +78,47 @@ export function AdminMatchManager() {
         }
     }
 
-    // Group matches by round
+    const openEditModal = (match: Match) => {
+        setSelectedMatch(match);
+        // Format date for datetime-local input
+        const date = new Date(match.start_time);
+        const formattedDate = date.toISOString().slice(0, 16);
+        setEditData({
+            start_time: formattedDate,
+            location: match.location || '',
+            round_number: match.round_number || 1
+        });
+        setShowEditModal(true);
+    };
+
+    const handleSaveEdit = async () => {
+        if (!selectedMatch) return;
+        try {
+            await api.patch(`/admin/matches/${selectedMatch.id}`, {
+                start_time: editData.start_time,
+                location: editData.location,
+                round_number: editData.round_number
+            });
+            alert('Jogo atualizado com sucesso!');
+            setShowEditModal(false);
+            loadData();
+        } catch (err) {
+            alert('Erro ao atualizar jogo.');
+        }
+    };
+
+    // Group matches by round and sort them by date
     const rounds = matches.reduce((acc, match) => {
         const round = match.round_number || 1;
         if (!acc[round]) acc[round] = [];
         acc[round].push(match);
         return acc;
     }, {} as Record<number, Match[]>);
+
+    // Sort matches within each round
+    Object.keys(rounds).forEach(round => {
+        rounds[Number(round)].sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+    });
 
     if (loading) return <div className="p-8 text-center">Carregando...</div>;
 
@@ -155,9 +193,19 @@ export function AdminMatchManager() {
                                             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
 
                                                 {/* Date / Location */}
-                                                <div className="text-xs text-gray-500 w-full md:w-32 text-center md:text-left">
-                                                    <div>{new Date(match.start_time).toLocaleDateString()}</div>
-                                                    <div>{new Date(match.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                                                {/* Date / Location */}
+                                                <div className="w-full md:w-40 flex flex-col items-center md:items-start">
+                                                    <div className="text-[11px] font-bold text-indigo-600 flex items-center gap-1">
+                                                        <Calendar size={12} /> {new Date(match.start_time).toLocaleDateString('pt-BR')}
+                                                    </div>
+                                                    <div className="text-[10px] text-gray-500 flex items-center gap-1">
+                                                        <ClockIcon size={12} /> {new Date(match.start_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                                    </div>
+                                                    {match.location && (
+                                                        <div className="text-[10px] text-gray-400 flex items-center gap-1 truncate max-w-[150px]">
+                                                            <MapPin size={10} /> {match.location}
+                                                        </div>
+                                                    )}
                                                 </div>
 
                                                 {/* Scoreboard */}
@@ -173,20 +221,14 @@ export function AdminMatchManager() {
                                                         </div>
                                                     </div>
 
-                                                    <div className="flex items-center gap-3 bg-gray-50 md:bg-gray-100 rounded-xl md:rounded-lg p-2 md:p-1 border md:border-0">
-                                                        <input
-                                                            type="number"
-                                                            name={`home_${match.id}`}
-                                                            defaultValue={match.home_score ?? ''}
-                                                            className="w-14 md:w-12 text-center bg-white border border-gray-200 rounded-lg py-2 md:py-1 font-bold outline-none focus:ring-2 focus:ring-indigo-500 text-lg md:text-base"
-                                                        />
-                                                        <span className="text-gray-400 font-bold">VS</span>
-                                                        <input
-                                                            type="number"
-                                                            name={`away_${match.id}`}
-                                                            defaultValue={match.away_score ?? ''}
-                                                            className="w-14 md:w-12 text-center bg-white border border-gray-200 rounded-lg py-2 md:py-1 font-bold outline-none focus:ring-2 focus:ring-indigo-500 text-lg md:text-base"
-                                                        />
+                                                    <div className="flex items-center gap-4 bg-gray-50 px-6 py-2 rounded-2xl border border-gray-100">
+                                                        <span className={`text-2xl font-black ${match.status === 'finished' ? 'text-gray-900' : 'text-gray-300'}`}>
+                                                            {match.home_score ?? 0}
+                                                        </span>
+                                                        <span className="text-gray-400 font-bold text-xs">X</span>
+                                                        <span className={`text-2xl font-black ${match.status === 'finished' ? 'text-gray-900' : 'text-gray-300'}`}>
+                                                            {match.away_score ?? 0}
+                                                        </span>
                                                     </div>
 
                                                     <div className="flex items-center gap-3 text-left flex-1 justify-start w-full md:w-auto">
@@ -202,7 +244,7 @@ export function AdminMatchManager() {
                                                 </div>
 
                                                 {/* Actions */}
-                                                <div className="md:w-32 flex justify-end gap-2">
+                                                <div className="md:w-32 flex justify-end gap-1">
                                                     <Link
                                                         to={(() => {
                                                             const slug = championship?.sport?.slug;
@@ -218,25 +260,18 @@ export function AdminMatchManager() {
                                                             if (slug === 'jiu-jitsu') return `/admin/matches/${match.id}/sumula-jiu-jitsu`;
                                                             return `/admin/matches/${match.id}/sumula`;
                                                         })()}
-                                                        className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200"
+                                                        className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-transparent hover:border-indigo-100"
                                                         title="Abrir Súmula"
                                                     >
                                                         <List className="w-5 h-5" />
                                                     </Link>
 
                                                     <button
-                                                        onClick={(e) => {
-                                                            const row = e.currentTarget.closest('.flex-col');
-                                                            if (row) {
-                                                                const homeInput = row.querySelector(`input[name="home_${match.id}"]`) as HTMLInputElement;
-                                                                const awayInput = row.querySelector(`input[name="away_${match.id}"]`) as HTMLInputElement;
-                                                                updateScore(match.id, homeInput.value, awayInput.value);
-                                                            }
-                                                        }}
-                                                        className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-transparent hover:border-indigo-100"
-                                                        title="Salvar Placar Rápido"
+                                                        onClick={() => openEditModal(match)}
+                                                        className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors border border-transparent hover:border-gray-200"
+                                                        title="Editar Dados do Jogo"
                                                     >
-                                                        <Save className="w-5 h-5" />
+                                                        <Edit2 className="w-5 h-5" />
                                                     </button>
                                                 </div>
                                             </div>
@@ -248,6 +283,65 @@ export function AdminMatchManager() {
                     </div>
                 )}
             </div>
+
+            {/* Edit Modal */}
+            {showEditModal && selectedMatch && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+                        <div className="p-4 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
+                            <h3 className="font-bold text-gray-900">Editar Jogo</h3>
+                            <button onClick={() => setShowEditModal(false)} className="p-1 hover:bg-gray-200 rounded-full transition-colors">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Data e Hora</label>
+                                <input
+                                    type="datetime-local"
+                                    value={editData.start_time}
+                                    onChange={e => setEditData({ ...editData, start_time: e.target.value })}
+                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Local (Campo/Quadra)</label>
+                                <input
+                                    type="text"
+                                    value={editData.location}
+                                    placeholder="Ex: Arena 1, Campo B..."
+                                    onChange={e => setEditData({ ...editData, location: e.target.value })}
+                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Rodada (Número)</label>
+                                <input
+                                    type="number"
+                                    value={editData.round_number}
+                                    onChange={e => setEditData({ ...editData, round_number: parseInt(e.target.value) })}
+                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
+                                />
+                            </div>
+
+                            <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 flex gap-3">
+                                <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+                                <p className="text-xs text-amber-800 leading-relaxed">
+                                    O placar deve ser alterado através da <strong>Súmula Digital</strong> para garantir a consistência das estatísticas.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="p-4 bg-gray-50 border-t border-gray-100 flex gap-3">
+                            <button onClick={() => setShowEditModal(false)} className="flex-1 px-4 py-3 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all">
+                                Cancelar
+                            </button>
+                            <button onClick={handleSaveEdit} className="flex-1 px-4 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all">
+                                Salvar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
