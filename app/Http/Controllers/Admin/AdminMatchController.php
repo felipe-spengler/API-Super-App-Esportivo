@@ -138,7 +138,7 @@ class AdminMatchController extends Controller
         $validated = $request->validate([
             'team_id' => 'required|exists:teams,id',
             'player_id' => 'nullable|integer',
-            'event_type' => 'required|in:goal,yellow_card,red_card,substitution,point,ace,block,timeout',
+            'event_type' => 'required|in:goal,yellow_card,red_card,blue_card,assist,foul,mvp,substitution,point,ace,block,timeout',
             'minute' => 'nullable|integer|min:0',
             'value' => 'nullable|integer|min:1',
             'metadata' => 'nullable|array',
