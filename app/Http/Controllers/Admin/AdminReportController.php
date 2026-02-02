@@ -25,34 +25,34 @@ class AdminReportController extends Controller
         $championshipsQuery = Championship::query();
         $matchesQuery = GameMatch::query();
         $teamsQuery = Team::query();
-        $playersQuery = User::query(); // Change from Player to User model if Player model doesn't exist or is for something else
+        $playersQuery = User::query();
 
         if ($clubId) {
             $championshipsQuery->where('club_id', $clubId);
             $matchesQuery->whereHas('championship', fn($q) => $q->where('club_id', $clubId));
             $teamsQuery->where('club_id', $clubId);
-            $playersQuery->where('club_id', $clubId);
+            // Players that belong to teams of this club
+            $playersQuery->whereHas('teamsAsPlayer', fn($q) => $q->where('club_id', $clubId));
         }
 
         // Basic counts
-        $totalChampionships = $championshipsQuery->count();
-        $totalMatches = $matchesQuery->count();
+        $totalChampionships = (clone $championshipsQuery)->count();
+        $totalMatches = (clone $matchesQuery)->count();
 
         $stats = [
             'total_championships' => $totalChampionships,
-            'active_championships' => (clone $championshipsQuery)->whereIn('status', ['active', 'in_progress'])->count(),
+            'active_championships' => (clone $championshipsQuery)->whereIn('status', ['active', 'in_progress', 'Ativo', 'Em Andamento'])->count(),
             'total_matches' => $totalMatches,
-            'finished_matches' => (clone $matchesQuery)->where('status', 'finished')->count(),
-            'total_teams' => $teamsQuery->count(),
-            'total_players' => $playersQuery->count(),
+            'finished_matches' => (clone $matchesQuery)->whereIn('status', ['finished', 'Finalizado', 'Concluído'])->count(),
+            'total_teams' => (clone $teamsQuery)->count(),
+            'total_players' => (clone $playersQuery)->count(),
         ];
 
-        // Championships by sport
-        // Try to join with sports if sport column is not on championship table
+        // Championships by sport - Use leftJoin to avoid missing championships without sport_id
         $championshipsBySport = (clone $championshipsQuery)
-            ->join('sports', 'championships.sport_id', '=', 'sports.id')
-            ->select('sports.name as sport', DB::raw('count(*) as count'))
-            ->groupBy('sports.name')
+            ->leftJoin('sports', 'championships.sport_id', '=', 'sports.id')
+            ->select(DB::raw('COALESCE(sports.name, "Outro") as sport'), DB::raw('count(*) as count'))
+            ->groupBy('sport')
             ->get()
             ->pluck('count', 'sport');
 
@@ -67,7 +67,7 @@ class AdminReportController extends Controller
         $recentChampionships = (clone $championshipsQuery)
             ->with('sport')
             ->orderBy('created_at', 'desc')
-            ->limit(5)
+            ->limit(10)
             ->get()
             ->map(fn($c) => [
                 'id' => $c->id,
@@ -81,38 +81,20 @@ class AdminReportController extends Controller
         // Upcoming matches
         $upcomingMatches = (clone $matchesQuery)
             ->with(['homeTeam', 'awayTeam', 'championship'])
-            ->where('status', 'scheduled')
+            ->whereIn('status', ['scheduled', 'Agendado'])
             ->where('start_time', '>', now())
             ->orderBy('start_time', 'asc')
             ->limit(10)
             ->get();
 
-        // Top scorers (across all championships in club)
-        $topScorers = MatchEvent::query()
-            ->select('player_id', DB::raw('count(*) as goals'))
-            ->where('event_type', 'goal')
-            ->when($clubId, function ($q) use ($clubId) {
-                $q->whereHas('match.championship', fn($query) => $query->where('club_id', $clubId));
-            })
-            ->groupBy('player_id')
-            ->orderBy('goals', 'desc')
-            ->limit(10)
-            ->with('player')
-            ->get()
-            ->map(fn($e) => [
-                'player_id' => $e->player_id,
-                'player_name' => $e->player->name ?? 'Desconhecido',
-                'goals' => $e->goals
-            ]);
-
         // Cards statistics
         $yellowCards = MatchEvent::query()
-            ->where('event_type', 'yellow_card')
+            ->whereIn('event_type', ['yellow_card', 'yellow-card'])
             ->when($clubId, fn($q) => $q->whereHas('match.championship', fn($query) => $query->where('club_id', $clubId)))
             ->count();
 
         $redCards = MatchEvent::query()
-            ->where('event_type', 'red_card')
+            ->whereIn('event_type', ['red_card', 'red-card'])
             ->when($clubId, fn($q) => $q->whereHas('match.championship', fn($query) => $query->where('club_id', $clubId)))
             ->count();
 
@@ -122,7 +104,7 @@ class AdminReportController extends Controller
             'matches_by_status' => $matchesByStatus,
             'recent_championships' => $recentChampionships,
             'upcoming_matches' => $upcomingMatches,
-            'top_scorers' => $topScorers,
+            'top_scorers' => [], // Removed as requested for poly-sport logic
             'cards' => [
                 'yellow' => $yellowCards,
                 'red' => $redCards

@@ -73,7 +73,6 @@ export function Reports() {
     }
 
     const stats = dashboardData?.stats || {};
-    const topScorers = dashboardData?.top_scorers || [];
     const upcomingMatches = dashboardData?.upcoming_matches || [];
     const recentChampionships = dashboardData?.recent_championships || [];
     const championshipsBySport = dashboardData?.championships_by_sport || {};
@@ -219,53 +218,28 @@ export function Reports() {
                 </div>
             </div>
 
-            {/* Top Scorers & Cards */}
+            {/* Remaining stats or cards can go here if needed, but removing the row entirely */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-                {/* Top Scorers */}
-                <div className="lg:col-span-2 bg-gray-800 rounded-xl p-6 border border-gray-700">
-                    <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                        <Medal className="w-5 h-5 text-yellow-500" />
-                        Artilheiros
-                    </h2>
-                    <div className="space-y-2">
-                        {topScorers.slice(0, 10).map((scorer: any, idx: number) => (
-                            <div
-                                key={scorer.player_id}
-                                className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition-colors"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${idx === 0 ? 'bg-yellow-500 text-black' :
-                                            idx === 1 ? 'bg-gray-400 text-black' :
-                                                idx === 2 ? 'bg-orange-600 text-white' :
-                                                    'bg-gray-600 text-white'
-                                        }`}>
-                                        {idx + 1}
-                                    </div>
-                                    <span className="font-medium">{scorer.player_name}</span>
-                                </div>
-                                <span className="font-bold text-blue-400">{scorer.goals} gols</span>
-                            </div>
-                        ))}
-                        {topScorers.length === 0 && (
-                            <div className="text-center text-gray-500 py-8">Nenhum gol registrado ainda</div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Cards Stats */}
-                <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                {/* Cards Stats - Now Full Width in its row or adjusted */}
+                <div className="lg:col-span-3 bg-gray-800 rounded-xl p-6 border border-gray-700">
                     <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
                         <AlertCircle className="w-5 h-5 text-red-500" />
-                        Cartões
+                        Visão Geral de Disciplina (Cartões do Clube)
                     </h2>
-                    <div className="space-y-4">
-                        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
-                            <div className="text-yellow-500 text-sm font-bold mb-1">Cartões Amarelos</div>
-                            <div className="text-4xl font-black text-yellow-400">{cards.yellow}</div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 flex items-center justify-between">
+                            <div>
+                                <div className="text-yellow-500 text-sm font-bold mb-1 uppercase">Cartões Amarelos</div>
+                                <div className="text-4xl font-black text-yellow-400">{cards.yellow}</div>
+                            </div>
+                            <div className="w-12 h-16 bg-yellow-500 rounded-md shadow-lg shadow-yellow-500/20"></div>
                         </div>
-                        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
-                            <div className="text-red-500 text-sm font-bold mb-1">Cartões Vermelhos</div>
-                            <div className="text-4xl font-black text-red-400">{cards.red}</div>
+                        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 flex items-center justify-between">
+                            <div>
+                                <div className="text-red-500 text-sm font-bold mb-1 uppercase">Cartões Vermelhos</div>
+                                <div className="text-4xl font-black text-red-400">{cards.red}</div>
+                            </div>
+                            <div className="w-12 h-16 bg-red-500 rounded-md shadow-lg shadow-red-500/20"></div>
                         </div>
                     </div>
                 </div>
@@ -322,8 +296,8 @@ export function Reports() {
                             <div className="flex items-start justify-between mb-2">
                                 <h3 className="font-bold text-sm">{championship.name}</h3>
                                 <span className={`px-2 py-1 rounded text-xs font-bold ${championship.status === 'active' ? 'bg-green-500/20 text-green-400' :
-                                        championship.status === 'finished' ? 'bg-blue-500/20 text-blue-400' :
-                                            'bg-gray-500/20 text-gray-400'
+                                    championship.status === 'finished' ? 'bg-blue-500/20 text-blue-400' :
+                                        'bg-gray-500/20 text-gray-400'
                                     }`}>
                                     {championship.status}
                                 </span>
