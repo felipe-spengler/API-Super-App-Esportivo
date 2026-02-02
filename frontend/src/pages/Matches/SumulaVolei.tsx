@@ -133,11 +133,28 @@ export function SumulaVolei() {
                 event_type: 'timeout',
                 team_id: teamId,
                 minute: 0,
+                period: `${volleyState.current_set}º Set`,
                 metadata: {
-                    period: `${volleyState.current_set}º Set`
+                    label: 'Pedido de Tempo'
                 }
             });
             alert("Tempo registrado!");
+            fetchState();
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const registerSystemEvent = async (type: string, label: string) => {
+        if (!matchData) return;
+        try {
+            await api.post(`/admin/matches/${id}/events`, {
+                event_type: type,
+                team_id: matchData.home_team_id,
+                minute: 0,
+                period: volleyState ? `${volleyState.current_set}º Set` : 'Pré-jogo',
+                metadata: { label }
+            });
         } catch (e) {
             console.error(e);
         }
@@ -194,6 +211,7 @@ export function SumulaVolei() {
     const startNextSet = async () => {
         try {
             const nextSet = (volleyState.current_set || 0) + 1;
+            registerSystemEvent('period_start', `Início do ${nextSet}º Set`);
             await api.post(`/admin/matches/${id}/volley/set-start`, {
                 set_number: nextSet,
                 serving_team_id: matchData.home_team_id,
@@ -213,6 +231,9 @@ export function SumulaVolei() {
         if (h < 6 || a < 6) {
             if (!window.confirm("Times incompletos (menos de 6). Deseja iniciar mesmo assim?")) return;
         }
+
+        registerSystemEvent('match_start', 'Início da Partida');
+        registerSystemEvent('period_start', 'Início do 1º Set');
 
         await api.post(`/admin/matches/${id}/volley/set-start`, {
             set_number: 1,
@@ -355,6 +376,22 @@ export function SumulaVolei() {
                     ))}
                 </div>
             </div>
+
+            {/* Finalize Button */}
+            {(matchData.home_score >= 3 || matchData.away_score >= 3) && (
+                <div className="px-4 pb-10 max-w-5xl mx-auto">
+                    <button
+                        onClick={async () => {
+                            if (!window.confirm('Encerrar partida e voltar?')) return;
+                            await registerSystemEvent('match_end', 'Partida Finalizada');
+                            navigate('/matches');
+                        }}
+                        className="w-full py-4 bg-red-600 hover:bg-red-500 rounded-xl font-bold text-xl shadow-lg uppercase"
+                    >
+                        Encerrar Súmula
+                    </button>
+                </div>
+            )}
 
             {/* Rotation Modal */}
             {rotationViewOpen && (

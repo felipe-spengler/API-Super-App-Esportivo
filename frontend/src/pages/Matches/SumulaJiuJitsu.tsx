@@ -67,16 +67,52 @@ export function SumulaJiuJitsu() {
         }
     };
 
+    // --- PERSISTENCE ---
+    const STORAGE_KEY = `match_state_jiujitsu_${id}`;
+
     useEffect(() => {
         if (id) {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    if (parsed.time) setTime(parsed.time);
+                    if (parsed.points) setPoints(parsed.points);
+                    if (parsed.advantages) setAdvantages(parsed.advantages);
+                    if (parsed.penalties) setPenalties(parsed.penalties);
+                    if (parsed.events) setEvents(parsed.events);
+                    if (parsed.finished) setFinished(parsed.finished);
+                } catch (e) {
+                    console.error("Failed to recover state", e);
+                }
+            }
             fetchMatchDetails();
         }
     }, [id]);
+
+    useEffect(() => {
+        if (!id || loading) return;
+        const stateToSave = {
+            time,
+            points,
+            advantages,
+            penalties,
+            events,
+            finished
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+    }, [id, loading, time, points, advantages, penalties, events, finished]);
 
     // Countdown Timer
     useEffect(() => {
         let interval: any = null;
         if (isRunning && time > 0) {
+            // Set match to live on start
+            if (matchData && (matchData.status === 'scheduled' || matchData.status === 'Agendado')) {
+                registerSystemEvent('match_start', 'Início da Partida');
+                setMatchData((prev: any) => ({ ...prev, status: 'live' }));
+            }
+
             interval = setInterval(() => setTime(t => {
                 if (t <= 1) {
                     setIsRunning(false);
@@ -122,7 +158,7 @@ export function SumulaJiuJitsu() {
 
             try {
                 await api.post(`/admin/matches/${id}/events`, {
-                    type: 'submission',
+                    event_type: 'submission',
                     team_id: teamId,
                     minute: currentTime,
                     value: 0
@@ -170,7 +206,7 @@ export function SumulaJiuJitsu() {
 
         try {
             await api.post(`/admin/matches/${id}/events`, {
-                type: eventType,
+                event_type: eventType,
                 team_id: teamId,
                 minute: currentTime,
                 value: pointsValue
@@ -183,11 +219,29 @@ export function SumulaJiuJitsu() {
     const handleFinish = async () => {
         if (!window.confirm('Encerrar luta e salvar resultado?')) return;
         try {
+            await registerSystemEvent('match_end', 'Partida Finalizada');
+
             await api.post(`/admin/matches/${id}/finish`, {
                 home_score: points.home,
                 away_score: points.away
             });
+
+            localStorage.removeItem(STORAGE_KEY);
             navigate('/matches');
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const registerSystemEvent = async (type: string, label: string) => {
+        if (!matchData) return;
+        try {
+            await api.post(`/admin/matches/${id}/events`, {
+                event_type: type,
+                team_id: matchData.home_team_id,
+                minute: formatTime(time),
+                metadata: { label }
+            });
         } catch (e) {
             console.error(e);
         }

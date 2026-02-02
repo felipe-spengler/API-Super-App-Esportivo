@@ -127,11 +127,17 @@ export function SumulaBasquete() {
         let interval: any = null;
         if (isRunning && time > 0) {
             interval = setInterval(() => setTime(t => Math.max(0, t - 1)), 1000);
+
+            // If match is still scheduled, set to live on first play
+            if (matchData && matchData.status === 'scheduled') {
+                registerSystemEvent('match_start', 'Início da Partida');
+                setMatchData((prev: any) => ({ ...prev, status: 'live' }));
+            }
         } else if (time === 0 && isRunning) {
             setIsRunning(false); // Auto-pause ao chegar a 0
         }
         return () => clearInterval(interval);
-    }, [isRunning, time]);
+    }, [isRunning, time, matchData]);
 
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
@@ -140,40 +146,79 @@ export function SumulaBasquete() {
     };
 
     const handleQuarterChange = () => {
+        const oldPeriod = currentQuarter;
+        let newPeriod: Quarter | '' = '';
+
         if (currentQuarter === '1º Quarto') {
             setIsRunning(false);
-            setCurrentQuarter('2º Quarto');
+            newPeriod = '2º Quarto';
             setTime(quarterDuration);
-            // Reset team fouls for new quarter
             setTeamFouls({ home: 0, away: 0 });
+            registerSystemEvent('period_end', `Fim do ${oldPeriod}`);
+            registerSystemEvent('period_start', `Início do ${newPeriod}`);
         } else if (currentQuarter === '2º Quarto') {
-            setCurrentQuarter('Intervalo');
+            newPeriod = 'Intervalo';
             setTime(0);
             setIsRunning(false);
+            registerSystemEvent('period_end', `Fim do ${oldPeriod}`);
         } else if (currentQuarter === 'Intervalo') {
-            setCurrentQuarter('3º Quarto');
+            newPeriod = '3º Quarto';
             setTime(quarterDuration);
             setTeamFouls({ home: 0, away: 0 });
+            registerSystemEvent('period_start', `Início do ${newPeriod}`);
         } else if (currentQuarter === '3º Quarto') {
             setIsRunning(false);
-            setCurrentQuarter('4º Quarto');
+            newPeriod = '4º Quarto';
             setTime(quarterDuration);
             setTeamFouls({ home: 0, away: 0 });
+            registerSystemEvent('period_end', `Fim do ${oldPeriod}`);
+            registerSystemEvent('period_start', `Início do ${newPeriod}`);
         } else if (currentQuarter === '4º Quarto') {
             setIsRunning(false);
+            registerSystemEvent('period_end', `Fim do ${oldPeriod}`);
             if (matchData.scoreHome === matchData.scoreAway) {
                 if (window.confirm("Placar empatado. Iniciar Prorrogação (5 min)?")) {
-                    setCurrentQuarter('Prorrogação');
-                    setTime(300); // 5min
+                    newPeriod = 'Prorrogação';
+                    setTime(300);
                     setTeamFouls({ home: 0, away: 0 });
+                    registerSystemEvent('period_start', `Início da ${newPeriod}`);
                 } else {
-                    setCurrentQuarter('Fim de Jogo');
+                    newPeriod = 'Fim de Jogo';
                 }
             } else {
-                setCurrentQuarter('Fim de Jogo');
+                newPeriod = 'Fim de Jogo';
             }
         } else if (currentQuarter === 'Prorrogação') {
-            setCurrentQuarter('Fim de Jogo');
+            newPeriod = 'Fim de Jogo';
+            registerSystemEvent('period_end', `Fim da ${oldPeriod}`);
+        }
+
+        if (newPeriod) setCurrentQuarter(newPeriod);
+    };
+
+    const registerSystemEvent = async (type: string, label: string) => {
+        if (!matchData) return;
+        const currentTime = formatTime(time);
+
+        try {
+            const response = await api.post(`/admin/matches/${id}/events`, {
+                event_type: type,
+                team_id: matchData.home_team_id,
+                minute: currentTime,
+                period: currentQuarter,
+                metadata: { label }
+            });
+
+            setEvents(prev => [{
+                id: response.data.id,
+                type: type,
+                team: 'home',
+                time: currentTime,
+                period: currentQuarter,
+                player_name: label
+            }, ...prev]);
+        } catch (e) {
+            console.error(e);
         }
     };
 
@@ -314,10 +359,14 @@ export function SumulaBasquete() {
     const handleFinish = async () => {
         if (!window.confirm('Encerrar partida completamente?')) return;
         try {
+            await registerSystemEvent('match_end', 'Partida Finalizada');
+
             await api.post(`/admin/matches/${id}/finish`, {
                 home_score: matchData.scoreHome,
                 away_score: matchData.scoreAway
             });
+
+            localStorage.removeItem(STORAGE_KEY);
             navigate('/matches');
         } catch (e) {
             console.error(e);

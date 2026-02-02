@@ -49,14 +49,46 @@ export function SumulaFutevolei() {
         }
     };
 
+    // --- PERSISTENCE ---
+    const STORAGE_KEY = `match_state_futevolei_${id}`;
+
     useEffect(() => {
         if (id) {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    if (parsed.sets) setSets(parsed.sets);
+                    if (parsed.currentSet) setCurrentSet(parsed.currentSet);
+                    if (parsed.score) setScore(parsed.score);
+                    if (parsed.matchFinished) setMatchFinished(parsed.matchFinished);
+                } catch (e) {
+                    console.error("Failed to recover state", e);
+                }
+            }
             fetchMatchDetails();
         }
     }, [id]);
 
+    useEffect(() => {
+        if (!id || loading) return;
+        const stateToSave = {
+            sets,
+            currentSet,
+            score,
+            matchFinished
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+    }, [id, loading, sets, currentSet, score, matchFinished]);
+
     const addPoint = async (team: 'home' | 'away') => {
         if (matchFinished) return;
+
+        // If match is still scheduled, set to live on first point
+        if (matchData && (matchData.status === 'scheduled' || matchData.status === 'Agendado')) {
+            registerSystemEvent('match_start', 'Início da Partida');
+            setMatchData((prev: any) => ({ ...prev, status: 'live' }));
+        }
 
         const newScore = { ...score };
         newScore[team]++;
@@ -70,7 +102,7 @@ export function SumulaFutevolei() {
         // Save point event
         try {
             await api.post(`/admin/matches/${id}/events`, {
-                type: 'point',
+                event_type: 'point',
                 team_id: team === 'home' ? matchData.home_team_id : matchData.away_team_id,
                 period: `Set ${currentSet}`,
                 value: 1
@@ -132,11 +164,30 @@ export function SumulaFutevolei() {
     const handleFinish = async () => {
         if (!window.confirm('Encerrar e salvar partida?')) return;
         try {
+            await registerSystemEvent('match_end', 'Partida Finalizada');
+
             await api.post(`/admin/matches/${id}/finish`, {
                 home_score: matchData.scoreHome,
                 away_score: matchData.scoreAway
             });
+
+            localStorage.removeItem(STORAGE_KEY);
             navigate('/matches');
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const registerSystemEvent = async (type: string, label: string) => {
+        if (!matchData) return;
+        try {
+            await api.post(`/admin/matches/${id}/events`, {
+                event_type: type,
+                team_id: matchData.home_team_id,
+                minute: 0,
+                period: `Set ${currentSet}`,
+                metadata: { label }
+            });
         } catch (e) {
             console.error(e);
         }

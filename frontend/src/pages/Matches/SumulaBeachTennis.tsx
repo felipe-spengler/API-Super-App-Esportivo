@@ -47,17 +47,51 @@ export function SumulaBeachTennis() {
         }
     };
 
+    // --- PERSISTENCE ---
+    const STORAGE_KEY = `match_state_beach_tennis_${id}`;
+
     useEffect(() => {
         if (id) {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    if (parsed.sets) setSets(parsed.sets);
+                    if (parsed.currentSet) setCurrentSet(parsed.currentSet);
+                    if (parsed.gameScore) setGameScore(parsed.gameScore);
+                    if (parsed.gamesWon) setGamesWon(parsed.gamesWon);
+                    if (parsed.matchFinished) setMatchFinished(parsed.matchFinished);
+                } catch (e) {
+                    console.error("Failed to recover state", e);
+                }
+            }
             fetchMatchDetails();
         }
     }, [id]);
+
+    useEffect(() => {
+        if (!id || loading) return;
+        const stateToSave = {
+            sets,
+            currentSet,
+            gameScore,
+            gamesWon,
+            matchFinished
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+    }, [id, loading, sets, currentSet, gameScore, gamesWon, matchFinished]);
 
     // Scoring system: 0, 15, 30, 40, Game (Simplified, no deuce)
     const pointLabels = ['0', '15', '30', '40'];
 
     const addPoint = async (team: 'home' | 'away') => {
         if (matchFinished) return;
+
+        // If match is still scheduled, set to live on first point
+        if (matchData && matchData.status === 'scheduled') {
+            registerSystemEvent('match_start', 'Início da Partida');
+            setMatchData((prev: any) => ({ ...prev, status: 'live' }));
+        }
 
         const newScore = { ...gameScore };
         newScore[team]++;
@@ -140,11 +174,30 @@ export function SumulaBeachTennis() {
     const handleFinish = async () => {
         if (!window.confirm('Encerrar e salvar partida?')) return;
         try {
+            await registerSystemEvent('match_end', 'Partida Finalizada');
+
             await api.post(`/admin/matches/${id}/finish`, {
                 home_score: matchData.scoreHome,
                 away_score: matchData.scoreAway
             });
+
+            localStorage.removeItem(STORAGE_KEY);
             navigate('/matches');
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const registerSystemEvent = async (type: string, label: string) => {
+        if (!matchData) return;
+        try {
+            await api.post(`/admin/matches/${id}/events`, {
+                event_type: type,
+                team_id: matchData.home_team_id,
+                minute: 0,
+                period: `Set ${currentSet}`,
+                metadata: { label }
+            });
         } catch (e) {
             console.error(e);
         }
