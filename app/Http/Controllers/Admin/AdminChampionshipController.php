@@ -99,7 +99,13 @@ class AdminChampionshipController extends Controller
 
         $championship = Championship::create($validated);
 
-        return response()->json($championship->load(['sport', 'club']), 201);
+        // Cria uma categoria padrão automaticamente para evitar que o campeonato fique vazio
+        $championship->categories()->create([
+            'name' => 'Principal',
+            'gender' => 'mixed'
+        ]);
+
+        return response()->json($championship->load(['sport', 'club', 'categories']), 201);
     }
 
     // Update championship

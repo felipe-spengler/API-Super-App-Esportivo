@@ -134,9 +134,18 @@ class AdminTeamController extends Controller
             }
         }
 
+        // Se não informou categoria e o campeonato tem categorias, pega a primeira
+        $categoryId = $validated['category_id'] ?? null;
+        if (!$categoryId) {
+            $firstCategory = $championship->categories()->first();
+            if ($firstCategory) {
+                $categoryId = $firstCategory->id;
+            }
+        }
+
         // Attach team to championship
         $championship->teams()->syncWithoutDetaching([
-            $teamId => ['category_id' => $validated['category_id'] ?? null]
+            $teamId => ['category_id' => $categoryId]
         ]);
 
         return response()->json(['message' => 'Team added to championship']);
