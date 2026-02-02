@@ -121,17 +121,27 @@ export function ChampionshipForm() {
 
         try {
             const endpoint = isLogo ? `/admin/upload/championship-logo/${id}` : `/admin/upload/championship-banner/${id}`;
+            console.log(`[UPLOAD] Uploading ${type} to ${endpoint}`, { fileType: file.type, fileSize: file.size });
+
             const response = await api.post(endpoint, formDataUpload, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
 
-            if (isLogo) setLogoUrl(response.data.logo_url);
-            else setCoverImageUrl(response.data.banner_url); // Backend still returns banner_url in JSON but saves to cover_image_url. Fixed that too actually below.
+            console.log(`[UPLOAD] Response:`, response.data);
+
+            if (isLogo) {
+                setLogoUrl(response.data.logo_url);
+                console.log('[UPLOAD] Logo URL set to:', response.data.logo_url);
+            } else {
+                setCoverImageUrl(response.data.banner_url || response.data.cover_image_url);
+                console.log('[UPLOAD] Cover URL set to:', response.data.banner_url || response.data.cover_image_url);
+            }
 
             alert(`${isLogo ? 'Logo' : 'Capa'} atualizada com sucesso!`);
-        } catch (err) {
-            console.error(err);
-            alert('Erro ao fazer upload do arquivo.');
+        } catch (err: any) {
+            console.error('[UPLOAD] Error:', err);
+            console.error('[UPLOAD] Error response:', err.response?.data);
+            alert(`Erro ao fazer upload do arquivo: ${err.response?.data?.message || err.message}`);
         } finally {
             if (isLogo) setUploadingLogo(false);
             else setUploadingBanner(false);
