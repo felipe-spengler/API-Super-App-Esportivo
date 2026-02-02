@@ -140,7 +140,7 @@ class ImageUploadController extends Controller
     public function uploadChampionshipLogo(Request $request, $championshipId)
     {
         $request->validate([
-            'logo' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'logo' => 'required|image|mimes:jpeg,png,jpg,gif,svg,webp|max:5120', // 5MB
         ]);
 
         $championship = Championship::findOrFail($championshipId);
@@ -153,26 +153,28 @@ class ImageUploadController extends Controller
             ], 403);
         }
 
-        // Remove logo antigo se existir
-        if ($championship->logo_url && !str_starts_with($championship->logo_url, 'http')) {
-            if (Storage::disk('public')->exists($championship->logo_url)) {
-                Storage::disk('public')->delete($championship->logo_url);
+        // Remove logo antigo se existir (extraindo path do URL)
+        if ($championship->logo_url) {
+            $oldPath = str_replace('/storage/', '', parse_url($championship->logo_url, PHP_URL_PATH));
+            if (Storage::disk('public')->exists($oldPath)) {
+                Storage::disk('public')->delete($oldPath);
             }
         }
 
-        // Salva novo logo
+        // Salva novo logo em pasta organizada: championships/{id}/logo.ext
         $file = $request->file('logo');
-        $filename = 'championships/logo-' . $championship->id . '-' . time() . '.' . $file->getClientOriginalExtension();
-        $path = $file->storeAs('championships', $filename, 'public');
+        $extension = $file->getClientOriginalExtension();
+        $filename = 'logo.' . $extension;
+        $path = $file->storeAs("championships/{$championshipId}", $filename, 'public');
+        $url = Storage::url($path);
 
-        // Atualiza no banco (salvamos o path relativo para facilitar manipulação de arquivos)
-        $championship->logo_url = $path;
+        // Atualiza no banco com URL completo
+        $championship->logo_url = $url;
         $championship->save();
 
         return response()->json([
             'message' => 'Logo atualizado com sucesso!',
-            'logo_url' => Storage::url($path),
-            'logo_path' => $path
+            'logo_url' => $url
         ]);
     }
 
@@ -182,7 +184,7 @@ class ImageUploadController extends Controller
     public function uploadChampionshipBanner(Request $request, $championshipId)
     {
         $request->validate([
-            'banner' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:5120',
+            'banner' => 'required|image|mimes:jpeg,png,jpg,gif,svg,webp|max:5120', // 5MB
         ]);
 
         $championship = Championship::findOrFail($championshipId);
@@ -195,26 +197,29 @@ class ImageUploadController extends Controller
             ], 403);
         }
 
-        // Remove banner antigo se existir
-        if ($championship->cover_image_url && !str_starts_with($championship->cover_image_url, 'http')) {
-            if (Storage::disk('public')->exists($championship->cover_image_url)) {
-                Storage::disk('public')->delete($championship->cover_image_url);
+        // Remove banner antigo se existir (extraindo path do URL)
+        if ($championship->cover_image_url) {
+            $oldPath = str_replace('/storage/', '', parse_url($championship->cover_image_url, PHP_URL_PATH));
+            if (Storage::disk('public')->exists($oldPath)) {
+                Storage::disk('public')->delete($oldPath);
             }
         }
 
-        // Salva novo banner
+        // Salva novo banner em pasta organizada: championships/{id}/banner.ext
         $file = $request->file('banner');
-        $filename = 'championships/banner-' . $championship->id . '-' . time() . '.' . $file->getClientOriginalExtension();
-        $path = $file->storeAs('championships', $filename, 'public');
+        $extension = $file->getClientOriginalExtension();
+        $filename = 'banner.' . $extension;
+        $path = $file->storeAs("championships/{$championshipId}", $filename, 'public');
+        $url = Storage::url($path);
 
-        // Atualiza no banco
-        $championship->cover_image_url = $path;
+        // Atualiza no banco com URL completo
+        $championship->cover_image_url = $url;
         $championship->save();
 
         return response()->json([
             'message' => 'Capa atualizada com sucesso!',
-            'banner_url' => Storage::url($path),
-            'banner_path' => $path
+            'banner_url' => $url,
+            'cover_image_url' => $url // Compatibilidade
         ]);
     }
 
