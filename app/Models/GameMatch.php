@@ -6,6 +6,33 @@ use Illuminate\Database\Eloquent\Model;
 
 class GameMatch extends Model
 {
+    protected static function booted()
+    {
+        static::creating(function ($match) {
+            if (!$match->category_id && $match->home_team_id && $match->away_team_id) {
+                // Tenta encontrar uma categoria comum aos dois times no campeonato
+                $homeCategories = \DB::table('championship_team')
+                    ->where('championship_id', $match->championship_id)
+                    ->where('team_id', $match->home_team_id)
+                    ->whereNotNull('category_id')
+                    ->pluck('category_id')
+                    ->toArray();
+
+                $awayCategories = \DB::table('championship_team')
+                    ->where('championship_id', $match->championship_id)
+                    ->where('team_id', $match->away_team_id)
+                    ->whereNotNull('category_id')
+                    ->pluck('category_id')
+                    ->toArray();
+
+                $common = array_intersect($homeCategories, $awayCategories);
+
+                if (count($common) > 0) {
+                    $match->category_id = reset($common);
+                }
+            }
+        });
+    }
     protected $fillable = [
         'championship_id',
         'category_id',

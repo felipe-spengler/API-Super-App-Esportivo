@@ -13,13 +13,30 @@ class MatchOperationController extends Controller
     // RETORNA DADOS COMPLETOS PARA A SÚMULA (Players, histórico, sets, etc)
     public function show($id)
     {
-        $match = GameMatch::with(['homeTeam.players', 'awayTeam.players', 'championship.sport'])->findOrFail($id);
+        $match = GameMatch::with(['homeTeam.players', 'awayTeam.players', 'championship.sport', 'events.player'])->findOrFail($id);
 
         $details = $match->match_details ?? [];
 
-        // Garante estrutura mínima
-        if (!isset($details['events']))
+        if (!isset($details['events'])) {
             $details['events'] = [];
+        }
+
+        // Se houver eventos na tabela MatchEvent, eles são a fonte de verdade
+        if ($match->events->count() > 0) {
+            $tableEvents = $match->events->map(function ($e) {
+                return [
+                    'id' => $e->id,
+                    'type' => $e->event_type,
+                    'team_id' => $e->team_id,
+                    'player_id' => $e->player_id,
+                    'player_name' => $e->player?->name ?? '?',
+                    'minute' => $e->game_time ?? '00:00',
+                    'period' => $e->metadata['period'] ?? ($e->metadata['label'] ?? '1º Tempo'),
+                    'value' => $e->value
+                ];
+            });
+            $details['events'] = $tableEvents;
+        }
         if (!isset($details['sets']))
             $details['sets'] = [];
         if (!isset($details['positions']))

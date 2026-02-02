@@ -31,6 +31,10 @@ class AdminMatchController extends Controller
             $query->where('championship_id', $request->championship_id);
         }
 
+        if ($request->has('category_id') && $request->category_id != 'null') {
+            $query->where('category_id', $request->category_id);
+        }
+
         if ($request->has('status')) {
             $query->where('status', $request->status);
         }
@@ -65,6 +69,7 @@ class AdminMatchController extends Controller
             'home_score' => 'nullable|integer|min:0',
             'away_score' => 'nullable|integer|min:0',
             'status' => 'in:scheduled,live,finished,cancelled',
+            'category_id' => 'nullable|exists:categories,id',
             'match_details' => 'nullable|array',
             'arbitration' => 'nullable|array', // { referee: string, assistant1: string, ... }
         ]);

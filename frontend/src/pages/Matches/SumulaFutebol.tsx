@@ -220,12 +220,20 @@ export function SumulaFutebol() {
     };
 
     const openEventModal = (team: 'home' | 'away', type: 'goal' | 'yellow_card' | 'red_card' | 'blue_card' | 'assist' | 'foul' | 'mvp') => {
+        if (!isRunning) {
+            alert('Atenção: Inicie o cronômetro para poder lançar eventos!');
+            return;
+        }
         setSelectedTeam(team);
         setEventType(type);
         setShowEventModal(true);
     };
 
     const registerSimpleEvent = async (team: 'home' | 'away', type: 'foul' | 'timeout') => {
+        if (!isRunning) {
+            alert('Atenção: Inicie o cronômetro para poder lançar eventos!');
+            return;
+        }
         if (!matchData) return;
         const teamId = team === 'home' ? matchData.home_team_id : matchData.away_team_id;
         const currentTime = formatTime(time);

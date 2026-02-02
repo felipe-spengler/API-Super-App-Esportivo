@@ -223,12 +223,20 @@ export function SumulaBasquete() {
     };
 
     const openEventModal = (team: 'home' | 'away', type: '1_point' | '2_points' | '3_points' | 'foul') => {
+        if (!isRunning) {
+            alert('Atenção: Inicie o cronômetro para poder lançar eventos!');
+            return;
+        }
         setSelectedTeam(team);
         setEventType(type);
         setShowEventModal(true);
     };
 
     const registerTimeout = async (team: 'home' | 'away') => {
+        if (!isRunning) {
+            alert('Atenção: Inicie o cronômetro para poder lançar eventos!');
+            return;
+        }
         if (timeouts[team] <= 0) {
             alert('Sem pedidos de tempo restantes!');
             return;

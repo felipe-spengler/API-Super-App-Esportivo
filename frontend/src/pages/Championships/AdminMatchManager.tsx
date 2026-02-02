@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Calendar, Trophy, Save, Plus, Trash2, CheckCircle, AlertCircle, List, Edit2, X, MapPin, Clock as ClockIcon, Loader2 } from 'lucide-react';
+import { ArrowLeft, Calendar, Trophy, Save, Plus, Trash2, CheckCircle, AlertCircle, List, Edit2, X, MapPin, Clock as ClockIcon, Loader2, Play, Printer } from 'lucide-react';
 import api from '../../services/api';
 
 interface Match {
@@ -24,12 +24,16 @@ export function AdminMatchManager() {
     const [championship, setChampionship] = useState<any>(null);
     const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
     const [showEditModal, setShowEditModal] = useState(false);
-    const [editData, setEditData] = useState({ start_time: '', location: '', round_number: 1 });
+    const [editData, setEditData] = useState({ start_time: '', location: '', round_number: 1, category_id: null as number | null });
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [newData, setNewData] = useState({ home_team_id: '', away_team_id: '', start_time: '', location: '', round_number: 1 });
 
     // Arbitration Modal State
     const [isArbitrationOpen, setIsArbitrationOpen] = useState(false);
+    const [isSummaryOpen, setIsSummaryOpen] = useState(false);
     const [arbitrationData, setArbitrationData] = useState({ referee: '', assistant1: '', assistant2: '' });
     const [savingArbitration, setSavingArbitration] = useState(false);
+    const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
 
     useEffect(() => {
         loadData();
@@ -37,16 +41,39 @@ export function AdminMatchManager() {
 
     async function loadData() {
         try {
-            const [campRes, matchesRes] = await Promise.all([
-                api.get(`/championships/${id}`),
-                api.get(`/admin/matches?championship_id=${id}`) // Using admin filter
-            ]);
-            setChampionship(campRes.data);
+            const campRes = await api.get(`/championships/${id}`);
+            const champ = campRes.data;
+            setChampionship(champ);
+
+            // Auto-select first category if not selected
+            let categoryToUse = selectedCategoryId;
+            if (!categoryToUse && champ.categories && champ.categories.length > 0) {
+                categoryToUse = champ.categories[0].id;
+                setSelectedCategoryId(categoryToUse);
+            }
+
+            const matchesRes = await api.get(`/admin/matches?championship_id=${id}${categoryToUse ? `&category_id=${categoryToUse}` : ''}`);
             setMatches(matchesRes.data);
         } catch (error) {
             console.error(error);
         } finally {
             setLoading(false);
+        }
+    }
+
+    // Effect to reload matches when category changes
+    useEffect(() => {
+        if (id && championship) {
+            loadMatches();
+        }
+    }, [selectedCategoryId]);
+
+    async function loadMatches() {
+        try {
+            const res = await api.get(`/admin/matches?championship_id=${id}${selectedCategoryId ? `&category_id=${selectedCategoryId}` : ''}`);
+            setMatches(res.data);
+        } catch (error) {
+            console.error(error);
         }
     }
 
@@ -58,7 +85,8 @@ export function AdminMatchManager() {
             await api.post(`/admin/championships/${id}/bracket/generate`, {
                 format: format, // 'league', 'knockout'
                 start_date: championship.start_date,
-                match_interval_days: 7
+                match_interval_days: 7,
+                category_id: selectedCategoryId
             });
             alert('Tabela gerada com sucesso!');
             loadData();
@@ -91,9 +119,29 @@ export function AdminMatchManager() {
         setEditData({
             start_time: formattedDate,
             location: match.location || '',
-            round_number: match.round_number || 1
+            round_number: match.round_number || 1,
+            category_id: (match as any).category_id || null
         });
         setShowEditModal(true);
+    };
+
+    const handleSaveAdd = async () => {
+        if (!newData.home_team_id || !newData.away_team_id || !newData.start_time) {
+            alert('Preencha os campos obrigatórios.');
+            return;
+        }
+        try {
+            await api.post('/admin/matches', {
+                ...newData,
+                championship_id: id,
+                category_id: selectedCategoryId
+            });
+            alert('Jogo criado com sucesso!');
+            setShowAddModal(false);
+            loadMatches();
+        } catch (err) {
+            alert('Erro ao criar jogo.');
+        }
     };
 
     const handleSaveEdit = async () => {
@@ -102,7 +150,8 @@ export function AdminMatchManager() {
             await api.patch(`/admin/matches/${selectedMatch.id}`, {
                 start_time: editData.start_time,
                 location: editData.location,
-                round_number: editData.round_number
+                round_number: editData.round_number,
+                category_id: editData.category_id
             });
             alert('Jogo atualizado com sucesso!');
             setShowEditModal(false);
@@ -137,27 +186,46 @@ export function AdminMatchManager() {
 
             // Close and navigate
             setIsArbitrationOpen(false);
-            const slug = championship?.sport?.slug;
-            let sumulaPath = `/admin/matches/${selectedMatch.id}/sumula`;
-
-            if (slug === 'volei') sumulaPath = `/admin/matches/${selectedMatch.id}/sumula-volei`;
-            else if (slug === 'futsal') sumulaPath = `/admin/matches/${selectedMatch.id}/sumula-futsal`;
-            else if (slug === 'basquete') sumulaPath = `/admin/matches/${selectedMatch.id}/sumula-basquete`;
-            else if (slug === 'handebol') sumulaPath = `/admin/matches/${selectedMatch.id}/sumula-handebol`;
-            else if (slug === 'beach-tennis') sumulaPath = `/admin/matches/${selectedMatch.id}/sumula-beach-tennis`;
-            else if (slug === 'futebol-7') sumulaPath = `/admin/matches/${selectedMatch.id}/sumula-futebol7`;
-            else if (slug === 'futevolei') sumulaPath = `/admin/matches/${selectedMatch.id}/sumula-futevolei`;
-            else if (slug === 'volei-de-praia') sumulaPath = `/admin/matches/${selectedMatch.id}/sumula-volei-praia`;
-            else if (slug === 'tenis-de-mesa') sumulaPath = `/admin/matches/${selectedMatch.id}/sumula-tenis-mesa`;
-            else if (slug === 'jiu-jitsu') sumulaPath = `/admin/matches/${selectedMatch.id}/sumula-jiu-jitsu`;
-
-            navigate(sumulaPath);
+            navigateToSumula(selectedMatch.id, championship?.sport?.slug);
         } catch (error) {
             console.error("Erro ao salvar arbitragem", error);
             alert("Erro ao salvar dados.");
         } finally {
             setSavingArbitration(false);
         }
+    };
+
+    const navigateToSumula = (matchId: number, sportSlug: string) => {
+        let sumulaPath = `/admin/matches/${matchId}/sumula`;
+
+        if (sportSlug === 'volei') sumulaPath = `/admin/matches/${matchId}/sumula-volei`;
+        else if (sportSlug === 'futsal') sumulaPath = `/admin/matches/${matchId}/sumula-futsal`;
+        else if (sportSlug === 'basquete') sumulaPath = `/admin/matches/${matchId}/sumula-basquete`;
+        else if (sportSlug === 'handebol') sumulaPath = `/admin/matches/${matchId}/sumula-handebol`;
+        else if (sportSlug === 'beach-tennis') sumulaPath = `/admin/matches/${matchId}/sumula-beach-tennis`;
+        else if (sportSlug === 'futebol-7') sumulaPath = `/admin/matches/${matchId}/sumula-futebol7`;
+        else if (sportSlug === 'futevolei') sumulaPath = `/admin/matches/${matchId}/sumula-futevolei`;
+        else if (sportSlug === 'volei-de-praia') sumulaPath = `/admin/matches/${matchId}/sumula-volei-praia`;
+        else if (sportSlug === 'tenis-de-mesa') sumulaPath = `/admin/matches/${matchId}/sumula-tenis-mesa`;
+        else if (sportSlug === 'jiu-jitsu') sumulaPath = `/admin/matches/${matchId}/sumula-jiu-jitsu`;
+
+        navigate(sumulaPath);
+    };
+
+    const openMatchSumula = (match: any) => {
+        setSelectedMatch(match);
+        if (match.status === 'finished') {
+            setIsSummaryOpen(true);
+            return;
+        }
+
+        // Se já tem árbitro, vai direto
+        if (match.match_details?.arbitration?.referee) {
+            navigateToSumula(match.id, championship?.sport?.slug);
+            return;
+        }
+
+        openArbitration(match);
     };
 
     // Group matches by round and sort them by date
@@ -190,7 +258,19 @@ export function AdminMatchManager() {
                         </div>
                     </div>
                     {matches.length > 0 && (
-                        <button className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                        <button
+                            onClick={() => {
+                                setNewData({
+                                    home_team_id: '',
+                                    away_team_id: '',
+                                    start_time: new Date().toISOString().slice(0, 16),
+                                    location: championship?.location || '',
+                                    round_number: 1
+                                });
+                                setShowAddModal(true);
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                        >
                             <Plus className="w-4 h-4" /> Novo Jogo Avulso
                         </button>
                     )}
@@ -198,6 +278,32 @@ export function AdminMatchManager() {
             </div>
 
             <div className="max-w-5xl mx-auto p-6">
+                {/* Category Selector */}
+                {championship?.categories && championship.categories.length > 0 && (
+                    <div className="flex gap-2 overflow-x-auto pb-6">
+                        <button
+                            onClick={() => setSelectedCategoryId(null)}
+                            className={`px-5 py-2.5 rounded-xl text-sm font-bold uppercase whitespace-nowrap transition-all border-2 ${selectedCategoryId === null
+                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-100'
+                                : 'bg-white text-gray-400 border-gray-100 hover:border-gray-300 hover:text-gray-600'
+                                }`}
+                        >
+                            Todas / Sem Categoria
+                        </button>
+                        {championship.categories.map((cat: any) => (
+                            <button
+                                key={cat.id}
+                                onClick={() => setSelectedCategoryId(cat.id)}
+                                className={`px-5 py-2.5 rounded-xl text-sm font-bold uppercase whitespace-nowrap transition-all border-2 ${selectedCategoryId === cat.id
+                                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-100'
+                                    : 'bg-white text-gray-400 border-gray-100 hover:border-gray-300 hover:text-gray-600'
+                                    }`}
+                            >
+                                {cat.name}
+                            </button>
+                        ))}
+                    </div>
+                )}
 
 
                 {/* Empty State / Generator */}
@@ -299,11 +405,11 @@ export function AdminMatchManager() {
                                                 {/* Actions */}
                                                 <div className="md:w-32 flex justify-end gap-1">
                                                     <button
-                                                        onClick={() => openArbitration(match)}
-                                                        className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-transparent hover:border-indigo-100"
-                                                        title="Abrir Súmula"
+                                                        onClick={() => openMatchSumula(match)}
+                                                        className={`p-2 rounded-lg transition-colors border border-transparent ${match.status === 'finished' ? 'text-green-600 hover:bg-green-50 hover:border-green-100' : 'text-indigo-600 hover:bg-indigo-50 hover:border-indigo-100'}`}
+                                                        title={match.status === 'finished' ? 'Resumo da Partida' : 'Abrir Súmula'}
                                                     >
-                                                        <List className="w-5 h-5" />
+                                                        {match.status === 'finished' ? <CheckCircle className="w-5 h-5" /> : <List className="w-5 h-5" />}
                                                     </button>
 
                                                     <button
@@ -363,6 +469,22 @@ export function AdminMatchManager() {
                                     className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
                                 />
                             </div>
+
+                            {championship?.categories && championship.categories.length > 0 && (
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Categoria</label>
+                                    <select
+                                        value={editData.category_id || ''}
+                                        onChange={e => setEditData({ ...editData, category_id: e.target.value ? parseInt(e.target.value) : null })}
+                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
+                                    >
+                                        <option value="">Sem Categoria</option>
+                                        {championship.categories.map((cat: any) => (
+                                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
 
                             <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 flex gap-3">
                                 <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
@@ -436,11 +558,165 @@ export function AdminMatchManager() {
                                 disabled={savingArbitration}
                                 className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
                             >
-                                {savingArbitration ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                                {savingArbitration ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
                                 {savingArbitration ? 'Salvando...' : 'Iniciar Partida'}
                             </button>
                         </div>
                     </form>
+                </div>
+            )}
+
+            {/* Modal de Resumo (Finished) */}
+            {isSummaryOpen && selectedMatch && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-4 bg-green-600 text-white flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <CheckCircle className="w-5 h-5" />
+                                <h3 className="font-bold">Resumo da Partida</h3>
+                            </div>
+                            <button onClick={() => setIsSummaryOpen(false)} className="p-1 hover:bg-green-700 rounded-full">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="p-8">
+                            <div className="flex items-center justify-between mb-8">
+                                <div className="text-center flex-1">
+                                    <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-2 border">
+                                        {selectedMatch.home_team?.logo_url ? <img src={selectedMatch.home_team.logo_url} className="w-12 h-12" /> : <Trophy className="text-gray-300" />}
+                                    </div>
+                                    <div className="font-bold text-gray-900 leading-tight">{selectedMatch.home_team?.name}</div>
+                                </div>
+                                <div className="flex items-center gap-4 px-6">
+                                    <span className="text-5xl font-black text-gray-900">{selectedMatch.home_score || 0}</span>
+                                    <span className="text-gray-300 font-bold">X</span>
+                                    <span className="text-5xl font-black text-gray-900">{selectedMatch.away_score || 0}</span>
+                                </div>
+                                <div className="text-center flex-1">
+                                    <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-2 border">
+                                        {selectedMatch.away_team?.logo_url ? <img src={selectedMatch.away_team.logo_url} className="w-12 h-12" /> : <Trophy className="text-gray-300" />}
+                                    </div>
+                                    <div className="font-bold text-gray-900 leading-tight">{selectedMatch.away_team?.name}</div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4 border-t pt-6">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 text-center">
+                                        <div className="text-[10px] text-gray-400 font-bold uppercase mb-1">Status</div>
+                                        <div className="text-sm font-bold text-green-600 self-center">Finalizado</div>
+                                    </div>
+                                    <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 text-center">
+                                        <div className="text-[10px] text-gray-400 font-bold uppercase mb-1">Data</div>
+                                        <div className="text-sm font-bold text-gray-900">{new Date(selectedMatch.start_time).toLocaleDateString('pt-BR')}</div>
+                                    </div>
+                                </div>
+                                <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                                    <div className="text-[10px] text-indigo-400 font-bold uppercase mb-2">Equipe de Arbitragem</div>
+                                    <div className="text-sm font-medium text-indigo-900">
+                                        {/* @ts-ignore */}
+                                        <b>Árbitro:</b> {selectedMatch.match_details?.arbitration?.referee || 'Não informado'}
+                                    </div>
+                                    {(selectedMatch as any).match_details?.arbitration?.assistant1 && (
+                                        <div className="text-sm text-indigo-700 mt-1">
+                                            {/* @ts-ignore */}
+                                            <b>Assistentes:</b> {(selectedMatch as any).match_details?.arbitration?.assistant1} {(selectedMatch as any).match_details?.arbitration?.assistant2 ? ` / ${(selectedMatch as any).match_details?.arbitration?.assistant2}` : ''}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="p-4 bg-gray-50 border-t border-gray-100 flex gap-3">
+                            <button
+                                onClick={() => navigate(`/admin/matches/${selectedMatch.id}/sumula-print`)}
+                                className="flex-1 px-4 py-3 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
+                            >
+                                <Printer className="w-5 h-5" /> Imprimir Súmula
+                            </button>
+                            <button
+                                onClick={() => navigateToSumula(selectedMatch.id, championship?.sport?.slug)}
+                                className="flex-1 px-4 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all"
+                            >
+                                Ver Detalhes Completos
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Add Modal */}
+            {showAddModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+                        <div className="p-4 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
+                            <h3 className="font-bold text-gray-900">Novo Jogo Avulso</h3>
+                            <button onClick={() => setShowAddModal(false)} className="p-1 hover:bg-gray-200 rounded-full transition-colors">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Time Mandante</label>
+                                    <select
+                                        value={newData.home_team_id}
+                                        onChange={e => setNewData({ ...newData, home_team_id: e.target.value })}
+                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
+                                    >
+                                        <option value="">Selecione...</option>
+                                        {(championship?.teams || []).map((t: any) => (
+                                            <option key={t.id} value={t.id}>{t.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Time Visitante</label>
+                                    <select
+                                        value={newData.away_team_id}
+                                        onChange={e => setNewData({ ...newData, away_team_id: e.target.value })}
+                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
+                                    >
+                                        <option value="">Selecione...</option>
+                                        {(championship?.teams || []).map((t: any) => (
+                                            <option key={t.id} value={t.id}>{t.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Data e Hora</label>
+                                <input
+                                    type="datetime-local"
+                                    value={newData.start_time}
+                                    onChange={e => setNewData({ ...newData, start_time: e.target.value })}
+                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Local</label>
+                                <input
+                                    type="text"
+                                    value={newData.location}
+                                    placeholder="Campo 1, Ginásio..."
+                                    onChange={e => setNewData({ ...newData, location: e.target.value })}
+                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
+                                />
+                            </div>
+                            <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                                <p className="text-xs text-indigo-800">
+                                    O jogo será criado na categoria: <strong>{championship?.categories?.find((c: any) => c.id === selectedCategoryId)?.name || 'Sem Categoria'}</strong>
+                                </p>
+                            </div>
+                        </div>
+                        <div className="p-4 bg-gray-50 border-t border-gray-100 flex gap-3">
+                            <button onClick={() => setShowAddModal(false)} className="flex-1 px-4 py-3 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all">
+                                Cancelar
+                            </button>
+                            <button onClick={handleSaveAdd} className="flex-1 px-4 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all">
+                                Criar Jogo
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

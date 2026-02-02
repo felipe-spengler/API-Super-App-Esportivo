@@ -181,12 +181,20 @@ export function SumulaHandebol() {
     };
 
     const openEventModal = (team: 'home' | 'away', type: 'goal' | 'yellow_card' | 'suspension_2min' | 'red_card' | 'assist' | 'mvp') => {
+        if (!isRunning) {
+            alert('Atenção: Inicie o cronômetro para poder lançar eventos!');
+            return;
+        }
         setSelectedTeam(team);
         setEventType(type);
         setShowEventModal(true);
     };
 
     const registerTimeout = async (team: 'home' | 'away') => {
+        if (!isRunning) {
+            alert('Atenção: Inicie o cronômetro para poder lançar eventos!');
+            return;
+        }
         if (!matchData) return;
         const teamId = team === 'home' ? matchData.home_team_id : matchData.away_team_id;
         const currentTime = formatTime(time);
