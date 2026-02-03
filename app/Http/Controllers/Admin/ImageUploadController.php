@@ -61,6 +61,9 @@ class ImageUploadController extends Controller
             'photo' => 'required|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
+        // Aumenta o tempo de execução para evitar timeout durante o processamento da IA (rembg pode demorar no 1º uso)
+        set_time_limit(300);
+
         $player = User::findOrFail($playerId);
 
         // Verifica permissão de clube
