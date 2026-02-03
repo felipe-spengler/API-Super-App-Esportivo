@@ -280,21 +280,40 @@ export function AdminMatchManager() {
                         </div>
                     </div>
                     {matches.length > 0 && (
-                        <button
-                            onClick={() => {
-                                setNewData({
-                                    home_team_id: '',
-                                    away_team_id: '',
-                                    start_time: new Date().toISOString().slice(0, 16),
-                                    location: championship?.location || '',
-                                    round_number: 1
-                                });
-                                setShowAddModal(true);
-                            }}
-                            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-                        >
-                            <Plus className="w-4 h-4" /> Novo Jogo Avulso
-                        </button>
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => {
+                                    const maxRound = matches.length > 0 ? Math.max(...matches.map(m => m.round_number || 1)) : 0;
+                                    setNewData({
+                                        home_team_id: '',
+                                        away_team_id: '',
+                                        start_time: new Date().toISOString().slice(0, 16),
+                                        location: championship?.location || '',
+                                        round_number: maxRound + 1
+                                    });
+                                    setShowAddModal(true);
+                                }}
+                                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 shadow-sm transition-all active:scale-95"
+                            >
+                                <Plus className="w-4 h-4" /> Nova Rodada (+{matches.length > 0 ? Math.max(...matches.map(m => m.round_number || 1)) + 1 : 1})
+                            </button>
+
+                            <button
+                                onClick={() => {
+                                    setNewData({
+                                        home_team_id: '',
+                                        away_team_id: '',
+                                        start_time: new Date().toISOString().slice(0, 16),
+                                        location: championship?.location || '',
+                                        round_number: 1
+                                    });
+                                    setShowAddModal(true);
+                                }}
+                                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-sm transition-all active:scale-95"
+                            >
+                                <Plus className="w-4 h-4" /> Novo Jogo Avulso
+                            </button>
+                        </div>
                     )}
                 </div>
             </div>
@@ -375,8 +394,25 @@ export function AdminMatchManager() {
                         {Object.entries(rounds).sort((a, b) => Number(a[0]) - Number(b[0])).map(([round, roundMatches]) => (
                             <div key={round} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                                 <div className="bg-gray-50 px-6 py-3 border-b border-gray-200 flex justify-between items-center">
-                                    <h3 className="font-bold text-gray-800">Rodada {round}</h3>
-                                    <span className="text-xs font-medium text-gray-500">{roundMatches.length} jogos</span>
+                                    <div className="flex items-center gap-3">
+                                        <h3 className="font-bold text-gray-800 text-lg">Rodada {round}</h3>
+                                        <span className="text-[10px] font-bold text-gray-500 bg-gray-200 px-2 py-1 rounded-full uppercase tracking-wider">{roundMatches.length} JOGOS</span>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            setNewData({
+                                                home_team_id: '',
+                                                away_team_id: '',
+                                                start_time: new Date().toISOString().slice(0, 16),
+                                                location: championship?.location || '',
+                                                round_number: Number(round)
+                                            });
+                                            setShowAddModal(true);
+                                        }}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-indigo-200 text-indigo-600 rounded-lg hover:bg-indigo-50 hover:border-indigo-300 text-xs font-bold uppercase transition-all shadow-sm"
+                                    >
+                                        <Plus className="w-3 h-3" /> Adicionar Jogo Nesta Rodada
+                                    </button>
                                 </div>
                                 <div>
                                     {roundMatches.map((match) => (

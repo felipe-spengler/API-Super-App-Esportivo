@@ -12,43 +12,72 @@ use Illuminate\Support\Facades\DB;
 
 class AdminDashboardController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         try {
+            $user = $request->user();
+            $clubId = $user->club_id;
+
+            // Helper for scoping
+            $scopeClub = function ($query, $column = 'club_id') use ($clubId) {
+                if ($clubId) {
+                    $query->where($column, $clubId);
+                }
+            };
+
             // Get total counts
-            $totalChampionships = Championship::count();
-            $activeChampionships = Championship::where('status', 'active')
-                ->orWhere(function ($q) {
-                    $q->where('end_date', '>=', now());
+            $totalChampionships = Championship::when($clubId, fn($q) => $q->where('club_id', $clubId))->count();
+
+            $activeChampionships = Championship::when($clubId, fn($q) => $q->where('club_id', $clubId))
+                ->where(function ($q) {
+                    $q->where('status', 'active')
+                        ->orWhere(function ($sub) {
+                            $sub->where('end_date', '>=', now());
+                        });
                 })
                 ->count();
 
-            $totalTeams = Team::count();
-            $totalPlayers = User::where('user_type', 'player')->count();
-            $totalMatches = GameMatch::count();
-            $finishedMatches = GameMatch::where('status', 'finished')->count();
+            $totalTeams = Team::when($clubId, fn($q) => $q->where('club_id', $clubId))->count();
+
+            // Adjust player count based on club
+            $totalPlayers = User::where('user_type', 'player')
+                ->when($clubId, fn($q) => $q->whereHas('teamsAsPlayer', fn($t) => $t->where('club_id', $clubId))) // Assuming players are linked to club via teams
+                ->count();
+
+            $totalMatches = GameMatch::when($clubId, fn($q) => $q->whereHas('championship', fn($c) => $c->where('club_id', $clubId)))->count();
+
+            $finishedMatches = GameMatch::where('status', 'finished')
+                ->when($clubId, fn($q) => $q->whereHas('championship', fn($c) => $c->where('club_id', $clubId)))
+                ->count();
+
             $upcomingMatches = GameMatch::where('status', 'scheduled')
                 ->where('start_time', '>=', now())
+                ->when($clubId, fn($q) => $q->whereHas('championship', fn($c) => $c->where('club_id', $clubId)))
                 ->count();
 
             // Get recent activities (last 10 records)
-            $recentChampionships = Championship::orderBy('created_at', 'desc')
+            $recentChampionships = Championship::when($clubId, fn($q) => $q->where('club_id', $clubId))
+                ->orderBy('created_at', 'desc')
                 ->with('sport')
                 ->take(3)
                 ->get();
 
-            $recentTeams = Team::orderBy('created_at', 'desc')
+            $recentTeams = Team::when($clubId, fn($q) => $q->where('club_id', $clubId))
+                ->orderBy('created_at', 'desc')
                 ->take(3)
                 ->get();
 
             $recentPlayers = User::where('user_type', 'player')
+                ->when($clubId, fn($q) => $q->whereHas('teamsAsPlayer', fn($t) => $t->where('club_id', $clubId)))
                 ->orderBy('created_at', 'desc')
                 ->take(3)
                 ->get();
 
+            // Fix: Use correct relationship names homeTeam and awayTeam
             $recentMatches = GameMatch::where('status', 'finished')
+                ->when($clubId, fn($q) => $q->whereHas('championship', fn($c) => $c->where('club_id', $clubId)))
                 ->orderBy('created_at', 'desc')
-                ->with(['home_team', 'away_team'])
+                ->with(['homeTeam', 'awayTeam'])
                 ->take(3)
                 ->get();
 
@@ -89,8 +118,9 @@ class AdminDashboardController extends Controller
             }
 
             foreach ($recentMatches as $match) {
-                $homeTeamName = $match->home_team->name ?? 'Time A';
-                $awayTeamName = $match->away_team->name ?? 'Time B';
+                // Fix: Use homeTeam and awayTeam relations
+                $homeTeamName = $match->homeTeam->name ?? 'Time A';
+                $awayTeamName = $match->awayTeam->name ?? 'Time B';
 
                 $activities[] = [
                     'id' => 'match_' . $match->id,
@@ -127,7 +157,7 @@ class AdminDashboardController extends Controller
                 'activities' => $activities,
             ]);
         } catch (\Exception $e) {
-            \Log::error('Dashboard error: ' . $e->getMessage());
+            \Log::error('Dashboard error: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
             return response()->json([
                 'stats' => [
                     'total_championships' => 0,

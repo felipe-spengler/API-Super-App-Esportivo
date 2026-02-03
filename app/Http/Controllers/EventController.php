@@ -59,178 +59,184 @@ class EventController extends Controller
     // 4. Tabela de Classificação
     public function leaderboard(Request $request, $championshipId)
     {
-        $champ = Championship::with('sport')->findOrFail($championshipId);
-        $sportSlug = $champ->sport->slug ?? 'futebol';
-        // Normalize for logic (Volei uses sets, others use goals)
-        if (strpos($sportSlug, 'volei') !== false) {
-            $sportSlug = 'volei';
-        }
+        try {
+            $champ = Championship::with(['sport', 'teams'])->findOrFail($championshipId);
+            $sportSlug = $champ->sport ? $champ->sport->slug : 'futebol';
 
-        $query = GameMatch::where('championship_id', $championshipId)
-            ->with(['homeTeam', 'awayTeam'])
-            ->where('status', 'finished');
-
-        if ($request->has('category_id') && $request->category_id != 'null') {
-            $query->where('category_id', $request->category_id);
-        }
-
-        $matches = $query->get();
-        // ... (rest of function)
-
-        $teamsData = [];
-
-        // Helper para inicializar estrutura
-        $initStats = function ($name, $logo = null) {
-            return [
-                'name' => $name,
-                'logo' => $logo,
-                'stats' => [ //...
-                    'points' => 0,
-                    'played' => 0,
-                    'wins' => 0,
-                    'draws' => 0,
-                    'losses' => 0,
-                    'goals_for' => 0,
-                    'goals_against' => 0,
-                    'sets_won' => 0,
-                    'sets_lost' => 0
-                ]
-            ];
-        };
-
-        foreach ($matches as $m) {
-            $homeId = $m->home_team_id;
-            $awayId = $m->away_team_id;
-            if (!$homeId || !$awayId)
-                continue; // Ignora jogos sem definição
-
-            $groupName = $m->group_name ?? 'Geral';
-
-            if (!isset($teamsData[$homeId])) {
-                $teamsData[$homeId] = $initStats($m->homeTeam->name ?? 'Time A', $m->homeTeam->logo_url ?? null);
-                $teamsData[$homeId]['group_name'] = $groupName;
-            }
-            if (!isset($teamsData[$awayId])) {
-                $teamsData[$awayId] = $initStats($m->awayTeam->name ?? 'Time B', $m->awayTeam->logo_url ?? null);
-                $teamsData[$awayId]['group_name'] = $groupName;
+            // Normalize for logic (Volei uses sets, others use goals)
+            if (strpos($sportSlug, 'volei') !== false) {
+                $sportSlug = 'volei';
             }
 
-            // Lógica de Pontuação
-            $teamsData[$homeId]['stats']['played']++;
-            $teamsData[$awayId]['stats']['played']++;
+            $query = GameMatch::where('championship_id', $championshipId)
+                ->with(['homeTeam', 'awayTeam'])
+                ->where('status', 'finished');
 
-            $hScore = (int) $m->home_score;
-            $aScore = (int) $m->away_score;
+            if ($request->has('category_id') && $request->category_id != 'null') {
+                $query->where('category_id', $request->category_id);
+            }
 
-            // Vôlei
-            if ($sportSlug == 'volei') {
-                $teamsData[$homeId]['stats']['sets_won'] += $hScore;
-                $teamsData[$homeId]['stats']['sets_lost'] += $aScore;
-                $teamsData[$awayId]['stats']['sets_won'] += $aScore;
-                $teamsData[$awayId]['stats']['sets_lost'] += $hScore;
+            $matches = $query->get();
+            $teamsData = [];
 
-                // Regra Simplificada: 3 pontos por vitória, 0 derrota, independente do placar de sets
-                if ($hScore > $aScore) {
-                    $teamsData[$homeId]['stats']['wins']++;
-                    $teamsData[$awayId]['stats']['losses']++;
-                    $teamsData[$homeId]['stats']['points'] += 3;
+            // Helper para inicializar estrutura
+            $initStats = function ($name, $logo = null) {
+                return [
+                    'name' => $name,
+                    'logo' => $logo,
+                    'stats' => [ //...
+                        'points' => 0,
+                        'played' => 0,
+                        'wins' => 0,
+                        'draws' => 0,
+                        'losses' => 0,
+                        'goals_for' => 0,
+                        'goals_against' => 0,
+                        'sets_won' => 0,
+                        'sets_lost' => 0
+                    ]
+                ];
+            };
+
+            foreach ($matches as $m) {
+                $homeId = $m->home_team_id;
+                $awayId = $m->away_team_id;
+                if (!$homeId || !$awayId)
+                    continue; // Ignora jogos sem definição
+
+                $groupName = $m->group_name ?? 'Geral';
+
+                if (!isset($teamsData[$homeId])) {
+                    $teamsData[$homeId] = $initStats($m->homeTeam->name ?? 'Time A', $m->homeTeam->logo_url ?? null);
+                    $teamsData[$homeId]['group_name'] = $groupName;
+                }
+                if (!isset($teamsData[$awayId])) {
+                    $teamsData[$awayId] = $initStats($m->awayTeam->name ?? 'Time B', $m->awayTeam->logo_url ?? null);
+                    $teamsData[$awayId]['group_name'] = $groupName;
+                }
+
+                // Lógica de Pontuação
+                $teamsData[$homeId]['stats']['played']++;
+                $teamsData[$awayId]['stats']['played']++;
+
+                $hScore = (int) $m->home_score;
+                $aScore = (int) $m->away_score;
+
+                // Vôlei
+                if ($sportSlug == 'volei') {
+                    $teamsData[$homeId]['stats']['sets_won'] += $hScore;
+                    $teamsData[$homeId]['stats']['sets_lost'] += $aScore;
+                    $teamsData[$awayId]['stats']['sets_won'] += $aScore;
+                    $teamsData[$awayId]['stats']['sets_lost'] += $hScore;
+
+                    // Regra Simplificada: 3 pontos por vitória, 0 derrota, independente do placar de sets
+                    if ($hScore > $aScore) {
+                        $teamsData[$homeId]['stats']['wins']++;
+                        $teamsData[$awayId]['stats']['losses']++;
+                        $teamsData[$homeId]['stats']['points'] += 3;
+                    } else {
+                        $teamsData[$awayId]['stats']['wins']++;
+                        $teamsData[$homeId]['stats']['losses']++;
+                        $teamsData[$awayId]['stats']['points'] += 3;
+                    }
+
+                    // Mapeia Sets para "Gols" para exibir na tabela genérica
+                    $teamsData[$homeId]['stats']['goals_for'] = $teamsData[$homeId]['stats']['sets_won'];
+                    $teamsData[$homeId]['stats']['goals_against'] = $teamsData[$homeId]['stats']['sets_lost'];
+                    $teamsData[$awayId]['stats']['goals_for'] = $teamsData[$awayId]['stats']['sets_won'];
+                    $teamsData[$awayId]['stats']['goals_against'] = $teamsData[$awayId]['stats']['sets_lost'];
+
                 } else {
-                    $teamsData[$awayId]['stats']['wins']++;
-                    $teamsData[$homeId]['stats']['losses']++;
-                    $teamsData[$awayId]['stats']['points'] += 3;
+                    // Futebol / Futsal / Padrão
+                    $teamsData[$homeId]['stats']['goals_for'] += $hScore;
+                    $teamsData[$homeId]['stats']['goals_against'] += $aScore;
+                    $teamsData[$awayId]['stats']['goals_for'] += $aScore;
+                    $teamsData[$awayId]['stats']['goals_against'] += $hScore;
+
+                    if ($hScore > $aScore) {
+                        $teamsData[$homeId]['stats']['wins']++;
+                        $teamsData[$awayId]['stats']['losses']++;
+                        $teamsData[$homeId]['stats']['points'] += 3;
+                    } elseif ($hScore < $aScore) {
+                        $teamsData[$awayId]['stats']['wins']++;
+                        $teamsData[$homeId]['stats']['losses']++;
+                        $teamsData[$awayId]['stats']['points'] += 3;
+                    } else {
+                        $teamsData[$homeId]['stats']['draws']++;
+                        $teamsData[$awayId]['stats']['draws']++;
+                        $teamsData[$homeId]['stats']['points'] += 1;
+                        $teamsData[$awayId]['stats']['points'] += 1;
+                    }
                 }
+            }
 
-                // Mapeia Sets para "Gols" para exibir na tabela genérica
-                $teamsData[$homeId]['stats']['goals_for'] = $teamsData[$homeId]['stats']['sets_won'];
-                $teamsData[$homeId]['stats']['goals_against'] = $teamsData[$homeId]['stats']['sets_lost'];
-                $teamsData[$awayId]['stats']['goals_for'] = $teamsData[$awayId]['stats']['sets_won'];
-                $teamsData[$awayId]['stats']['goals_against'] = $teamsData[$awayId]['stats']['sets_lost'];
+            // Garante que TODOS os times do campeonato apareçam, mesmo com 0 jogos
+            $teamsQuery = $champ->teams();
+            if ($request->has('category_id') && $request->category_id != 'null') {
+                $teamsQuery->wherePivot('category_id', $request->category_id);
+            }
+            $allTeams = $teamsQuery->get();
 
-            } else {
-                // Futebol / Futsal / Padrão
-                $teamsData[$homeId]['stats']['goals_for'] += $hScore;
-                $teamsData[$homeId]['stats']['goals_against'] += $aScore;
-                $teamsData[$awayId]['stats']['goals_for'] += $aScore;
-                $teamsData[$awayId]['stats']['goals_against'] += $hScore;
-
-                if ($hScore > $aScore) {
-                    $teamsData[$homeId]['stats']['wins']++;
-                    $teamsData[$awayId]['stats']['losses']++;
-                    $teamsData[$homeId]['stats']['points'] += 3;
-                } elseif ($hScore < $aScore) {
-                    $teamsData[$awayId]['stats']['wins']++;
-                    $teamsData[$homeId]['stats']['losses']++;
-                    $teamsData[$awayId]['stats']['points'] += 3;
+            foreach ($allTeams as $team) {
+                if (!isset($teamsData[$team->id])) {
+                    $teamsData[$team->id] = $initStats($team->name, $team->logo_url);
+                    $teamsData[$team->id]['id'] = $team->id;
+                    $teamsData[$team->id]['group_name'] = 'Geral';
                 } else {
-                    $teamsData[$homeId]['stats']['draws']++;
-                    $teamsData[$awayId]['stats']['draws']++;
-                    $teamsData[$homeId]['stats']['points'] += 1;
-                    $teamsData[$awayId]['stats']['points'] += 1;
+                    // Ensure ID is set
+                    $teamsData[$team->id]['id'] = $team->id;
                 }
             }
-        }
 
-        // Se nenhum jogo ocorreu, precisamos listar os times inscritos com 0 pontos
-        if (empty($teamsData)) {
-            $participants = Team::whereHas('homeMatches', function ($q) use ($championshipId) {
-                $q->where('championship_id', $championshipId);
-            })->orWhereHas('awayMatches', function ($q) use ($championshipId) {
-                $q->where('championship_id', $championshipId);
-            })->get();
-
-            foreach ($participants as $p) {
-                if (!isset($teamsData[$p->id])) {
-                    $teamsData[$p->id] = $initStats($p->name, $p->logo_url ?? null);
-                    $teamsData[$p->id]['id'] = $p->id;
+            // Ordenação
+            usort($teamsData, function ($a, $b) {
+                // Sort by Group
+                $groupA = $a['group_name'] ?? 'Geral';
+                $groupB = $b['group_name'] ?? 'Geral';
+                if ($groupA !== $groupB) {
+                    return strcmp($groupA, $groupB);
                 }
-            }
-        }
 
-        // Ordenação
-        usort($teamsData, function ($a, $b) {
-            // Sort by Group
-            $groupA = $a['group_name'] ?? 'Geral';
-            $groupB = $b['group_name'] ?? 'Geral';
-            if ($groupA !== $groupB) {
-                return strcmp($groupA, $groupB);
-            }
-
-            if ($a['stats']['points'] === $b['stats']['points']) {
-                if ($a['stats']['wins'] === $b['stats']['wins']) {
-                    // Saldo
-                    $balA = $a['stats']['goals_for'] - $a['stats']['goals_against'];
-                    $balB = $b['stats']['goals_for'] - $b['stats']['goals_against'];
-                    return $balB <=> $balA;
+                if ($a['stats']['points'] === $b['stats']['points']) {
+                    if ($a['stats']['wins'] === $b['stats']['wins']) {
+                        // Saldo
+                        $balA = $a['stats']['goals_for'] - $a['stats']['goals_against'];
+                        $balB = $b['stats']['goals_for'] - $b['stats']['goals_against'];
+                        return $balB <=> $balA;
+                    }
+                    return $b['stats']['wins'] <=> $a['stats']['wins'];
                 }
-                return $b['stats']['wins'] <=> $a['stats']['wins'];
+                return $b['stats']['points'] <=> $a['stats']['points'];
+            });
+
+            // Adiciona ID e posição, e transforma para o formato esperado pelo frontend
+            $position = 1;
+            $formatted = [];
+            foreach ($teamsData as $tid => &$t) {
+                if (!isset($t['id']))
+                    $t['id'] = $tid;
+
+                // Transformar estrutura para frontend
+                $formatted[] = [
+                    'id' => $t['id'],
+                    'team_name' => $t['name'],
+                    'team_logo' => $t['logo'] ?? null,
+                    'position' => $position++,
+                    'points' => $t['stats']['points'],
+                    'played' => $t['stats']['played'],
+                    'won' => $t['stats']['wins'],
+                    'drawn' => $t['stats']['draws'],
+                    'lost' => $t['stats']['losses'],
+                    'goal_difference' => $t['stats']['goals_for'] - $t['stats']['goals_against'],
+                    'group_name' => $t['group_name'] ?? 'Geral'
+                ];
             }
-            return $b['stats']['points'] <=> $a['stats']['points'];
-        });
 
-        // Adiciona ID e posição, e transforma para o formato esperado pelo frontend
-        $position = 1;
-        $formatted = [];
-        foreach ($teamsData as $tid => &$t) {
-            if (!isset($t['id']))
-                $t['id'] = $tid;
-
-            // Transformar estrutura para frontend
-            $formatted[] = [
-                'id' => $t['id'],
-                'team_name' => $t['name'],
-                'team_logo' => $t['logo'] ?? null,
-                'position' => $position++,
-                'points' => $t['stats']['points'],
-                'played' => $t['stats']['played'],
-                'won' => $t['stats']['wins'],
-                'drawn' => $t['stats']['draws'],
-                'lost' => $t['stats']['losses'],
-                'goal_difference' => $t['stats']['goals_for'] - $t['stats']['goals_against'],
-                'group_name' => $t['group_name'] ?? 'Geral'
-            ];
+            return response()->json($formatted);
+        } catch (\Exception $e) {
+            \Log::error("Leaderboard Error: " . $e->getMessage());
+            return response()->json(['message' => 'Erro ao carregar classificação'], 500);
         }
-
-        return response()->json($formatted);
     }
 
     // 4.5. Chaveamento Mata-Mata (Knockout Bracket)

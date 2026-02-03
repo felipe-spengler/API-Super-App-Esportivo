@@ -17,39 +17,45 @@ class ImageUploadController extends Controller
      */
     public function uploadTeamLogo(Request $request, $teamId)
     {
-        $request->validate([
-            'logo' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-        ]);
+        try {
+            $request->validate([
+                'logo' => 'required|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
+            ]);
 
-        $team = Team::findOrFail($teamId);
+            $team = Team::findOrFail($teamId);
 
-        // Verifica permissão de clube
-        $user = $request->user();
-        if ($user->club_id !== null && $team->club_id !== $user->club_id) {
+            // Verifica permissão de clube
+            $user = $request->user();
+            if ($user->club_id !== null && $team->club_id !== $user->club_id) {
+                return response()->json([
+                    'message' => 'Você não tem permissão para editar esta equipe.'
+                ], 403);
+            }
+
+            // Remove logo antigo se existir
+            if ($team->logo && Storage::disk('public')->exists($team->logo)) {
+                Storage::disk('public')->delete($team->logo);
+            }
+
+            // Salva novo logo
+            $file = $request->file('logo');
+            // Fix: Don't add 'teams/' prefix here, storeAs adds it based on first arg
+            $filename = Str::slug($team->name) . '-' . time() . '.' . $file->getClientOriginalExtension();
+            $path = $file->storeAs('teams', $filename, 'public');
+
+            // Atualiza no banco
+            $team->logo = $path;
+            $team->save();
+
             return response()->json([
-                'message' => 'Você não tem permissão para editar esta equipe.'
-            ], 403);
+                'message' => 'Logo atualizado com sucesso!',
+                'logo_url' => Storage::url($path),
+                'logo_path' => $path
+            ]);
+        } catch (\Exception $e) {
+            \Log::error("Upload Team Logo Error: " . $e->getMessage());
+            return response()->json(['message' => 'Erro ao fazer upload do logo.'], 500);
         }
-
-        // Remove logo antigo se existir
-        if ($team->logo && Storage::disk('public')->exists($team->logo)) {
-            Storage::disk('public')->delete($team->logo);
-        }
-
-        // Salva novo logo
-        $file = $request->file('logo');
-        $filename = 'teams/' . Str::slug($team->name) . '-' . time() . '.' . $file->getClientOriginalExtension();
-        $path = $file->storeAs('teams', $filename, 'public');
-
-        // Atualiza no banco
-        $team->logo = $path;
-        $team->save();
-
-        return response()->json([
-            'message' => 'Logo atualizado com sucesso!',
-            'logo_url' => Storage::url($path),
-            'logo_path' => $path
-        ]);
     }
 
     /**
@@ -57,84 +63,86 @@ class ImageUploadController extends Controller
      */
     public function uploadPlayerPhoto(Request $request, $playerId)
     {
-        $request->validate([
-            'photo' => 'required|image|mimes:jpeg,png,jpg|max:2048',
-        ]);
+        try {
+            $request->validate([
+                'photo' => 'required|image|mimes:jpeg,png,jpg,webp|max:4096',
+            ]);
 
-        // Aumenta o tempo de execução para evitar timeout durante o processamento da IA (rembg pode demorar no 1º uso)
-        set_time_limit(300);
+            // Aumenta o tempo de execução para evitar timeout durante o processamento da IA (rembg pode demorar no 1º uso)
+            set_time_limit(300);
 
-        $player = User::findOrFail($playerId);
+            $player = User::findOrFail($playerId);
 
-        // Verifica permissão de clube
-        $user = $request->user();
-        if ($user->club_id !== null && $player->club_id !== $user->club_id) {
-            return response()->json([
-                'message' => 'Você não tem permissão para editar este jogador.'
-            ], 403);
-        }
-
-        // Remove foto antiga se existir
-        if ($player->photo && Storage::disk('public')->exists($player->photo)) {
-            Storage::disk('public')->delete($player->photo);
-        }
-
-        // Salva nova foto
-        $file = $request->file('photo');
-        $filename = 'players/' . Str::slug($player->name) . '-' . time() . '.' . $file->getClientOriginalExtension();
-        $path = $file->storeAs('players', $filename, 'public'); // Retorna players/nome.jpg
-
-        $responseData = [
-            'message' => 'Foto atualizada com sucesso!',
-            'photo_url' => Storage::url($path),
-            'photo_path' => $path
-        ];
-
-        // PROCESSAMENTO DE IA: REMOVER FUNDO
-        if ($request->boolean('remove_bg')) {
-            try {
-                // Caminhos absolutos para o script Python
-                $inputAbsPath = storage_path('app/public/' . $path);
-                $filenameNobg = str_replace('.', '_nobg.', $filename);
-                // Força PNG para suportar transparência
-                $filenameNobg = preg_replace('/\.(jpg|jpeg)$/i', '.png', $filenameNobg);
-
-                $outputAbsPath = storage_path('app/public/' . $filenameNobg); // Caminho absoluto para o output
-
-                // Script em: backend/scripts/remove_bg.py
-                $scriptPath = base_path('scripts/remove_bg.py');
-
-                // Executa comando (python precisa estar no PATH do servidor)
-                $command = "python \"{$scriptPath}\" \"{$inputAbsPath}\" \"{$outputAbsPath}\"";
-
-                // Logging para debug
-                // \Log::info("Executando remove_bg: $command");
-
-                $output = [];
-                $returnVar = 0;
-                exec($command, $output, $returnVar);
-
-                if ($returnVar === 0 && file_exists($outputAbsPath)) {
-                    // Se sucesso, atualiza o path principal para a versão sem fundo
-                    $path = $filenameNobg;
-
-                    $responseData['photo_nobg_url'] = Storage::url($filenameNobg);
-                    $responseData['photo_nobg_path'] = $filenameNobg;
-                    $responseData['ai_processed'] = true;
-                } else {
-                    $responseData['ai_error'] = 'Falha ao processar IA. Código: ' . $returnVar;
-                    $responseData['ai_output'] = $output;
-                }
-            } catch (\Exception $e) {
-                $responseData['ai_error'] = $e->getMessage();
+            // Verifica permissão de clube
+            $user = $request->user();
+            if ($user->club_id !== null && $player->club_id !== $user->club_id) {
+                return response()->json([
+                    'message' => 'Você não tem permissão para editar este jogador.'
+                ], 403);
             }
+
+            // Remove foto antiga se existir
+            if ($player->photo && Storage::disk('public')->exists($player->photo)) {
+                Storage::disk('public')->delete($player->photo);
+            }
+
+            // Salva nova foto
+            $file = $request->file('photo');
+            $filename = Str::slug($player->name) . '-' . time() . '.' . $file->getClientOriginalExtension();
+            $path = $file->storeAs('players', $filename, 'public'); // Retorna players/nome.jpg
+
+            $responseData = [
+                'message' => 'Foto atualizada com sucesso!',
+                'photo_url' => Storage::url($path),
+                'photo_path' => $path
+            ];
+
+            // PROCESSAMENTO DE IA: REMOVER FUNDO
+            if ($request->boolean('remove_bg')) {
+                try {
+                    // Caminhos absolutos para o script Python
+                    $inputAbsPath = storage_path('app/public/' . $path);
+                    $filenameNobg = str_replace('.', '_nobg.', $filename);
+                    // Força PNG para suportar transparência
+                    $filenameNobg = preg_replace('/\.(jpg|jpeg)$/i', '.png', $filenameNobg);
+
+                    $outputAbsPath = storage_path('app/public/players/' . $filenameNobg); // Caminho absoluto para o output
+
+                    // Script em: backend/scripts/remove_bg.py
+                    $scriptPath = base_path('scripts/remove_bg.py');
+
+                    // Executa comando (python precisa estar no PATH do servidor)
+                    $command = "python \"{$scriptPath}\" \"{$inputAbsPath}\" \"{$outputAbsPath}\"";
+
+                    $output = [];
+                    $returnVar = 0;
+                    exec($command, $output, $returnVar);
+
+                    if ($returnVar === 0 && file_exists($outputAbsPath)) {
+                        // Se sucesso, atualiza o path principal para a versão sem fundo
+                        $path = 'players/' . $filenameNobg;
+
+                        $responseData['photo_nobg_url'] = Storage::url($path);
+                        $responseData['photo_nobg_path'] = $path;
+                        $responseData['ai_processed'] = true;
+                    } else {
+                        $responseData['ai_error'] = 'Falha ao processar IA. Código: ' . $returnVar;
+                        $responseData['ai_output'] = $output;
+                    }
+                } catch (\Exception $e) {
+                    $responseData['ai_error'] = $e->getMessage();
+                }
+            }
+
+            // Atualiza no banco
+            $player->photo_path = $path;
+            $player->save();
+
+            return response()->json($responseData);
+        } catch (\Exception $e) {
+            \Log::error("Upload Player Photo Error: " . $e->getMessage());
+            return response()->json(['message' => 'Erro ao fazer upload da foto.'], 500);
         }
-
-        // Atualiza no banco
-        $player->photo_path = $path;
-        $player->save();
-
-        return response()->json($responseData);
     }
 
     /**
@@ -142,43 +150,48 @@ class ImageUploadController extends Controller
      */
     public function uploadChampionshipLogo(Request $request, $championshipId)
     {
-        $request->validate([
-            'logo' => 'required|image|mimes:jpeg,png,jpg,gif,svg,webp|max:5120', // 5MB
-        ]);
+        try {
+            $request->validate([
+                'logo' => 'required|image|mimes:jpeg,png,jpg,gif,svg,webp|max:5120', // 5MB
+            ]);
 
-        $championship = Championship::findOrFail($championshipId);
+            $championship = Championship::findOrFail($championshipId);
 
-        // Verifica permissão de clube
-        $user = $request->user();
-        if ($user->club_id !== null && $championship->club_id !== $user->club_id) {
-            return response()->json([
-                'message' => 'Você não tem permissão para editar este campeonato.'
-            ], 403);
-        }
-
-        // Remove logo antigo se existir (extraindo path do URL)
-        if ($championship->logo_url) {
-            $oldPath = str_replace('/storage/', '', parse_url($championship->logo_url, PHP_URL_PATH));
-            if (Storage::disk('public')->exists($oldPath)) {
-                Storage::disk('public')->delete($oldPath);
+            // Verifica permissão de clube
+            $user = $request->user();
+            if ($user->club_id !== null && $championship->club_id !== $user->club_id) {
+                return response()->json([
+                    'message' => 'Você não tem permissão para editar este campeonato.'
+                ], 403);
             }
+
+            // Remove logo antigo se existir (extraindo path do URL)
+            if ($championship->logo_url) {
+                $oldPath = str_replace('/storage/', '', parse_url($championship->logo_url, PHP_URL_PATH));
+                if (Storage::disk('public')->exists($oldPath)) {
+                    Storage::disk('public')->delete($oldPath);
+                }
+            }
+
+            // Salva novo logo em pasta organizada: championships/{id}/logo.ext
+            $file = $request->file('logo');
+            $extension = $file->getClientOriginalExtension();
+            $filename = 'logo.' . $extension;
+            $path = $file->storeAs("championships/{$championshipId}", $filename, 'public');
+            $url = Storage::url($path);
+
+            // Atualiza no banco com URL completo
+            $championship->logo_url = $url;
+            $championship->save();
+
+            return response()->json([
+                'message' => 'Logo atualizado com sucesso!',
+                'logo_url' => $url
+            ]);
+        } catch (\Exception $e) {
+            \Log::error("Upload Champ Logo Error: " . $e->getMessage());
+            return response()->json(['message' => 'Erro ao fazer upload do logo.'], 500);
         }
-
-        // Salva novo logo em pasta organizada: championships/{id}/logo.ext
-        $file = $request->file('logo');
-        $extension = $file->getClientOriginalExtension();
-        $filename = 'logo.' . $extension;
-        $path = $file->storeAs("championships/{$championshipId}", $filename, 'public');
-        $url = Storage::url($path);
-
-        // Atualiza no banco com URL completo
-        $championship->logo_url = $url;
-        $championship->save();
-
-        return response()->json([
-            'message' => 'Logo atualizado com sucesso!',
-            'logo_url' => $url
-        ]);
     }
 
     /**

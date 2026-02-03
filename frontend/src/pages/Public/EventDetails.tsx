@@ -191,19 +191,25 @@ export function EventDetails() {
 
     return (
         <div className="min-h-screen bg-gray-50 pb-20">
-            {/* Header com gradiente azul */}
-            <div className="bg-gradient-to-br from-indigo-600 via-blue-700 to-indigo-900 pt-8 pb-6 px-4 shadow-2xl relative">
+            {/* Header com gradiente azul ou imagem de capa */}
+            <div
+                className={`pt-8 pb-6 px-4 shadow-2xl relative ${!champ.cover_image_url ? 'bg-gradient-to-br from-indigo-600 via-blue-700 to-indigo-900' : 'bg-cover bg-center bg-no-repeat'}`}
+                style={champ.cover_image_url ? { backgroundImage: `url(${champ.cover_image_url})` } : {}}
+            >
+                {/* Overlay se tiver chave para contraste */}
+                {champ.cover_image_url && <div className="absolute inset-0 bg-black/60 z-0"></div>}
+
                 <button
                     onClick={() => navigate(-1)}
-                    className="absolute top-8 left-4 p-2 bg-black/20 rounded-full hover:bg-black/30 transition-colors"
+                    className="absolute top-8 left-4 p-2 bg-black/20 rounded-full hover:bg-black/30 transition-colors z-20"
                 >
                     <ArrowLeft className="w-5 h-5 text-white" />
                 </button>
 
-                <div className="max-w-6xl mx-auto mt-4">
+                <div className="max-w-6xl mx-auto mt-4 relative z-10">
                     <div className="text-center mb-4">
-                        <h1 className="text-white text-3xl font-bold mb-1">{champ.name}</h1>
-                        <p className="text-blue-200 text-sm uppercase tracking-wide">{champ.sport?.name}</p>
+                        <h1 className="text-white text-3xl font-bold mb-1 drop-shadow-md">{champ.name}</h1>
+                        <p className="text-blue-200 text-sm uppercase tracking-wide font-semibold">{champ.sport?.name}</p>
                     </div>
 
                     {/* Info Row */}
@@ -228,14 +234,14 @@ export function EventDetails() {
 
                     {/* Category Selector */}
                     {champ.categories && champ.categories.length > 0 && (
-                        <div className="mt-4 flex gap-2 overflow-x-auto pb-2">
+                        <div className="mt-4 flex gap-2 overflow-x-auto pb-2 justify-center">
                             {champ.categories.map((cat: any) => (
                                 <button
                                     key={cat.id}
                                     onClick={() => setSelectedCategory(cat)}
                                     className={`px-4 py-2 rounded-full text-xs font-bold uppercase whitespace-nowrap transition-all ${selectedCategory?.id === cat.id
                                         ? 'bg-white text-indigo-900 shadow-md'
-                                        : 'bg-blue-800/50 text-blue-100 border border-blue-700 hover:bg-blue-700/50'
+                                        : 'bg-blue-800/80 text-blue-100 border border-blue-600 hover:bg-blue-700/80 backdrop-blur-sm'
                                         }`}
                                 >
                                     {cat.name}
