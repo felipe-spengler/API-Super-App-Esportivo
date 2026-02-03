@@ -150,8 +150,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/players/{id}', [\App\Http\Controllers\Admin\AdminPlayerController::class, 'destroy']);
 
         // Upload de Imagens (NEW)
-        Route::post('/upload/team-logo', [\App\Http\Controllers\Admin\ImageUploadController::class, 'uploadTeamLogo']);
-        Route::post('/upload/player-photo', [\App\Http\Controllers\Admin\ImageUploadController::class, 'uploadPlayerPhoto']);
+        Route::post('/upload/team-logo/{id}', [\App\Http\Controllers\Admin\ImageUploadController::class, 'uploadTeamLogo']);
+        Route::post('/upload/player-photo/{id}', [\App\Http\Controllers\Admin\ImageUploadController::class, 'uploadPlayerPhoto']);
         Route::post('/upload/championship-image', [\App\Http\Controllers\Admin\ImageUploadController::class, 'uploadChampionshipImage']);
         Route::post('/upload/championship-logo/{id}', [\App\Http\Controllers\Admin\ImageUploadController::class, 'uploadChampionshipLogo']);
         Route::post('/upload/championship-banner/{id}', [\App\Http\Controllers\Admin\ImageUploadController::class, 'uploadChampionshipBanner']);
