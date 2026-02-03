@@ -3,6 +3,105 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Save, ArrowLeft, User, Mail, FileText, Phone, Lock, Loader2 } from 'lucide-react';
 import api from '../../services/api';
 
+function PhotoUploadSection({ playerId, currentPhoto }: { playerId: string, currentPhoto?: string }) {
+    const [file, setFile] = useState<File | null>(null);
+    const [removeBg, setRemoveBg] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [preview, setPreview] = useState<string | null>(currentPhoto ? `${import.meta.env.VITE_API_URL?.replace('/api', '')}/storage/${currentPhoto}` : null);
+    const [nobgPreview, setNobgPreview] = useState<string | null>(null);
+
+    async function handleUpload() {
+        if (!file) return;
+        setLoading(true);
+        const formData = new FormData();
+        formData.append('photo', file);
+        if (removeBg) {
+            formData.append('remove_bg', '1');
+        }
+
+        try {
+            const res = await api.post(`/admin/upload/player-photo/${playerId}`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
+            if (res.data.photo_url) {
+                setPreview(`${import.meta.env.VITE_API_URL?.replace('/api', '')}${res.data.photo_url}`);
+            }
+            if (res.data.photo_nobg_url) {
+                setNobgPreview(`${import.meta.env.VITE_API_URL?.replace('/api', '')}${res.data.photo_nobg_url}`);
+                alert('Fundo removido com sucesso!');
+            } else {
+                alert('Foto atualizada com sucesso!');
+            }
+
+            setFile(null);
+        } catch (error) {
+            console.error(error);
+            alert('Erro ao enviar foto');
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    return (
+        <div className="flex flex-col md:flex-row gap-6 items-start">
+            <div className="flex gap-4">
+                {preview && (
+                    <div className="text-center">
+                        <p className="text-xs font-bold mb-1 text-gray-500">Original</p>
+                        <img src={preview} alt="Atual" className="w-32 h-32 object-cover rounded-lg border border-gray-200" />
+                    </div>
+                )}
+                {nobgPreview && (
+                    <div className="text-center">
+                        <p className="text-xs font-bold mb-1 text-green-600">Sem Fundo (IA)</p>
+                        <img src={nobgPreview} alt="Recortada" className="w-32 h-32 object-contain bg-checkered rounded-lg border border-green-200" />
+                    </div>
+                )}
+            </div>
+
+            <div className="flex-1 space-y-3">
+                <input
+                    type="file"
+                    accept="image/*"
+                    onChange={e => {
+                        setFile(e.target.files?.[0] || null);
+                        if (e.target.files?.[0]) {
+                            setPreview(URL.createObjectURL(e.target.files[0]));
+                            setNobgPreview(null);
+                        }
+                    }}
+                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                />
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                        type="checkbox"
+                        checked={removeBg}
+                        onChange={e => setRemoveBg(e.target.checked)}
+                        className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700">Remover fundo com IA</span>
+                </label>
+
+                <button
+                    type="button"
+                    onClick={handleUpload}
+                    disabled={!file || loading}
+                    className="px-4 py-2 bg-indigo-600 text-white text-sm font-bold rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2"
+                >
+                    {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+                    {loading ? 'Processando...' : 'Enviar Foto'}
+                </button>
+
+                <p className="text-xs text-gray-400">
+                    Formatos: JPG, PNG. Máx 2MB. Use fotos com bom contraste para melhor recorte.
+                </p>
+            </div>
+        </div>
+    );
+}
+
 export function PlayerForm() {
     const navigate = useNavigate();
     const { id } = useParams();
@@ -25,131 +124,7 @@ export function PlayerForm() {
     });
     const [loading, setLoading] = useState(false);
 
-    function PhotoUploadSection({ playerId, currentPhoto }: { playerId: string, currentPhoto?: string }) {
-        const [file, setFile] = useState<File | null>(null);
-        const [removeBg, setRemoveBg] = useState(false);
-        const [loading, setLoading] = useState(false);
-        const [preview, setPreview] = useState<string | null>(currentPhoto ? `${import.meta.env.VITE_API_URL?.replace('/api', '')}/storage/${currentPhoto}` : null);
-        const [nobgPreview, setNobgPreview] = useState<string | null>(null);
 
-        async function handleUpload() {
-            if (!file) return;
-            setLoading(true);
-            const formData = new FormData();
-            formData.append('photo', file);
-            if (removeBg) {
-                formData.append('remove_bg', '1');
-            }
-
-            try {
-                // NOTE: The endpoint needs to be mapped to /admin/upload/player-photo in UI
-                // Assuming endpoint is: /admin/upload/player-photo/{playerId} OR /admin/upload/player-photo with Id in body?
-                // Backend Controller: public function uploadPlayerPhoto(Request $request, $playerId)
-                // So Route should be POST /upload/player-photo/{playerId}
-                // But api.php says: Route::post('/upload/player-photo', ...); 
-                // WAIT! In api.php: Route::post('/upload/player-photo', [\App\Http\Controllers\Admin\ImageUploadController::class, 'uploadPlayerPhoto']);
-                // But Controller method signature is `uploadPlayerPhoto(Request $request, $playerId)`
-                // This is a mismatch in Laravel if route parameter is not in URL.
-                // Let's re-read api.php carefully.
-
-                // api.php line 154: Route::post('/upload/player-photo', ...);
-                // Controller line 58: public function uploadPlayerPhoto(Request $request, $playerId)
-                // If the route doesn't have {playerId}, Laravel dependency injection fails or assumes it's in request? 
-                // Actually, if it's not in route, Laravel might error.
-                // UNLESS the user mistakenly defined it without param in route file but controller expects it.
-
-                // I will try to pass it as query param or check if I need to fix the backend route first.
-                // Controller expects $playerId as second argument. This usually comes from Route parameter.
-                // If I send POST /admin/upload/player-photo?playerId=123, it won't work automatically as $playerId argument unless explicitly bound.
-
-                // I SHOULD FIX THE BACKEND ROUTE to be /upload/player-photo/{id} OR change controller to get ID from request.
-                // Given I cannot easily verify run-time error without trying, I'll assume I need to fix backend route too.
-                // For now, I will write the frontend code assuming the route will be fixed to `/admin/upload/player-photo/${playerId}`
-
-                await api.post(`/admin/upload/player-photo/${playerId}`, formData);
-
-                // Wait, I need to fix the backend route in the next step. I'll write the frontend code to match the PLANNED fix.
-
-                // Actually, let's look at the response to update previews
-                const res = await api.post(`/admin/upload/player-photo/${playerId}`, formData);
-
-                if (res.data.photo_url) {
-                    setPreview(`${import.meta.env.VITE_API_URL?.replace('/api', '')}${res.data.photo_url}`);
-                }
-                if (res.data.photo_nobg_url) {
-                    setNobgPreview(`${import.meta.env.VITE_API_URL?.replace('/api', '')}${res.data.photo_nobg_url}`);
-                    alert('Fundo removido com sucesso!');
-                } else {
-                    alert('Foto atualizada com sucesso!');
-                }
-
-                setFile(null);
-            } catch (error) {
-                console.error(error);
-                alert('Erro ao enviar foto');
-            } finally {
-                setLoading(false);
-            }
-        }
-
-        return (
-            <div className="flex flex-col md:flex-row gap-6 items-start">
-                <div className="flex gap-4">
-                    {preview && (
-                        <div className="text-center">
-                            <p className="text-xs font-bold mb-1 text-gray-500">Original</p>
-                            <img src={preview} alt="Atual" className="w-32 h-32 object-cover rounded-lg border border-gray-200" />
-                        </div>
-                    )}
-                    {nobgPreview && (
-                        <div className="text-center">
-                            <p className="text-xs font-bold mb-1 text-green-600">Sem Fundo (IA)</p>
-                            <img src={nobgPreview} alt="Recortada" className="w-32 h-32 object-contain bg-checkered rounded-lg border border-green-200" />
-                        </div>
-                    )}
-                </div>
-
-                <div className="flex-1 space-y-3">
-                    <input
-                        type="file"
-                        accept="image/*"
-                        onChange={e => {
-                            setFile(e.target.files?.[0] || null);
-                            if (e.target.files?.[0]) {
-                                setPreview(URL.createObjectURL(e.target.files[0]));
-                                setNobgPreview(null);
-                            }
-                        }}
-                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-                    />
-
-                    <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                            type="checkbox"
-                            checked={removeBg}
-                            onChange={e => setRemoveBg(e.target.checked)}
-                            className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
-                        />
-                        <span className="text-sm font-medium text-gray-700">Remover fundo com IA</span>
-                    </label>
-
-                    <button
-                        type="button"
-                        onClick={handleUpload}
-                        disabled={!file || loading}
-                        className="px-4 py-2 bg-indigo-600 text-white text-sm font-bold rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2"
-                    >
-                        {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                        {loading ? 'Processando...' : 'Enviar Foto'}
-                    </button>
-
-                    <p className="text-xs text-gray-400">
-                        Formatos: JPG, PNG. Máx 2MB. Use fotos com bom contraste para melhor recorte.
-                    </p>
-                </div>
-            </div>
-        );
-    }
 
     export function PlayerForm() {
 
