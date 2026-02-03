@@ -1,7 +1,7 @@
 FROM php:8.4-cli
 
 # 1. Instalar dependências do sistema
-# ADICIONADO: libzip-dev para a extensão zip
+# ADICIONADO: libzip-dev para a extensão zip e deps do Python
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -11,7 +11,18 @@ RUN apt-get update && apt-get install -y \
     zip \
     libicu-dev \
     libsqlite3-dev \
-    libzip-dev
+    libzip-dev \
+    python3 \
+    python3-pip \
+    python3-venv
+
+# Criar ambiente virtual para Python (Best Practice)
+ENV VIRTUAL_ENV=/opt/venv
+RUN python3 -m venv $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+# Instalar dependências Python (rembg)
+RUN pip install --no-cache-dir rembg[cli] pillow onnxruntime
 
 # 2. Limpar cache
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
