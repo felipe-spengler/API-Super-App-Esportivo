@@ -41,8 +41,9 @@ class Post extends Model
             return $value;
         }
 
-        if (str_starts_with($value, '/')) {
-            return rtrim(config('app.url'), '/') . $value;
+        // Se for URL relativa, converte para absoluta com /api
+        if (str_starts_with($value, '/storage')) {
+            return rtrim(config('app.url'), '/') . '/api' . $value;
         }
 
         return $value;

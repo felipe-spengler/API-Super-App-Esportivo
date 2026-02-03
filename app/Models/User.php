@@ -102,9 +102,9 @@ class User extends Authenticatable
 
         $url = \Storage::url($this->photo_path);
 
-        // Se for URL relativa, converte para absoluta
-        if (str_starts_with($url, '/')) {
-            return rtrim(config('app.url'), '/') . $url;
+        // Se for URL relativa, converte para absoluta com /api
+        if (str_starts_with($url, '/storage')) {
+            return rtrim(config('app.url'), '/') . '/api' . $url;
         }
 
         return $url;
