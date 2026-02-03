@@ -21,6 +21,15 @@ Route::get('/storage/{path}', function ($path) {
     return response()->file($fullPath);
 })->where('path', '.*');
 
+// Serve default templates (visualização no admin)
+Route::get('/assets-templates/{filename}', function ($filename) {
+    $path = public_path('assets/templates/' . $filename);
+    if (!file_exists($path)) {
+        abort(404);
+    }
+    return response()->file($path);
+});
+
 // Rotas Públicas (Core do App)
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -61,6 +70,8 @@ Route::get('/products/{id}', [ShopController::class, 'productDetails']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::put('/me', [AuthController::class, 'update']);
+
+    Route::post('/me/photo', [\App\Http\Controllers\Admin\ImageUploadController::class, 'uploadMyPhoto']);
     Route::post('/logout', [AuthController::class, 'logout']);
 
     // Checkout e Cupons
@@ -149,6 +160,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // Let's assume uploadGeneric can handle it or use UploadController for championship if distinct.
         // Given I want to consolidate, I will map the new route listImages.
         Route::post('/upload/award-photo', [\App\Http\Controllers\Admin\ImageUploadController::class, 'uploadAwardPhoto']);
+        Route::post('/upload/generic', [\App\Http\Controllers\Admin\ImageUploadController::class, 'uploadGeneric']);
         Route::get('/upload/list', [\App\Http\Controllers\Admin\ImageUploadController::class, 'listImages']);
         Route::delete('/upload/delete', [\App\Http\Controllers\Admin\ImageUploadController::class, 'deleteImage']);
 
@@ -190,8 +202,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // Gerador de Artes (NEW)
         Route::get('/art/match/{matchId}/faceoff', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'matchFaceoff']);
         Route::get('/art/match/{matchId}/mvp', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'mvpArt']);
-        Route::get('/art/championship/{championshipId}/top-scorer', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'topScorerArt']);
-        Route::get('/art/championship/{championshipId}/best-goalkeeper', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'bestGoalkeeperArt']);
+        Route::get('/art/championship/{championshipId}/award/{category}', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'championshipAwardArt']);
         Route::get('/art/championship/{championshipId}/standings', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'standingsArt']);
 
         // Rodízio de Vôlei (NEW)

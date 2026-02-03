@@ -20,11 +20,13 @@ class Club extends Model
         'secondary_font',
         'contact_email',
         'active_modalities',
+        'art_settings',
         'is_active'
     ];
 
     protected $casts = [
         'active_modalities' => 'array',
+        'art_settings' => 'array',
         'is_active' => 'boolean',
     ];
 

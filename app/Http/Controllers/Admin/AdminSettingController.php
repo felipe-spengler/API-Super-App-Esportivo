@@ -50,6 +50,7 @@ class AdminSettingController extends Controller
             'primary_font' => 'nullable|string',
             'secondary_font' => 'nullable|string',
             'active_modalities' => 'nullable|array',
+            'art_settings' => 'nullable|array',
         ]);
 
         $club->update($data);

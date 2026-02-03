@@ -183,21 +183,10 @@ class AdminChampionshipController extends Controller
         $championship = Championship::findOrFail($championshipId);
 
         $validated = $request->validate([
-            'awards' => 'required|array',
-            'awards.*.category' => 'required|string',
-            'awards.*.player_id' => 'required|integer',
-            'awards.*.photo_id' => 'nullable|integer',
+            'awards' => 'nullable', // Allow any structure (array or object)
         ]);
 
-        $awards = [];
-        foreach ($validated['awards'] as $award) {
-            $awards[$award['category']] = [
-                'player_id' => $award['player_id'],
-                'photo_id' => $award['photo_id'] ?? null,
-            ];
-        }
-
-        $championship->update(['awards' => $awards]);
+        $championship->update(['awards' => $validated['awards']]);
 
         return response()->json($championship);
     }

@@ -17,6 +17,7 @@ interface AuthContextData {
     loading: boolean;
     signIn: (email: string, pass: string) => Promise<User>;
     signOut: () => void;
+    updateUser: (user: User) => void;
 }
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
@@ -66,8 +67,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
     }
 
+    function updateUser(userData: User) {
+        localStorage.setItem('@AppEsportivo:user', JSON.stringify(userData));
+        setUser(userData);
+    }
+
     return (
-        <AuthContext.Provider value={{ signed: !!user, user, loading, signIn, signOut }}>
+        <AuthContext.Provider value={{ signed: !!user, user, loading, signIn, signOut, updateUser }}>
             {children}
         </AuthContext.Provider>
     );

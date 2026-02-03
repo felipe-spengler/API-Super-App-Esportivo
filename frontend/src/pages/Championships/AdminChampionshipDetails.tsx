@@ -164,37 +164,49 @@ export function AdminChampionshipDetails() {
                             </h3>
                             <span className="text-sm text-gray-400 group-hover:text-yellow-500 transition-colors">Ver →</span>
                         </div>
-                        <p className="text-sm text-gray-500">
-                            Acompanhe a tabela de classificação atualizada automaticamente conforme os resultados.
-                        </p>
-                    </Link>
+                    </p>
+                </Link>
 
-                    {/* Card Personalização */}
-                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                                <ImageIcon className="w-5 h-5 text-pink-500" />
-                                Personalização
-                            </h3>
-                        </div>
-                        <div className="space-y-2">
-                            <button
-                                onClick={() => navigate(`/admin/championships/${id}/edit`)}
-                                className="w-full text-left text-sm text-gray-600 hover:bg-gray-50 p-2 rounded flex items-center gap-2"
-                            >
-                                <Edit className="w-4 h-4" /> Alterar Logo/Capa
-                            </button>
-                            <button
-                                onClick={() => navigate(`/events/${id}`)}
-                                className="w-full text-left text-sm text-gray-600 hover:bg-gray-50 p-2 rounded flex items-center gap-2"
-                            >
-                                <Tv className="w-4 h-4" /> Ver Página Pública
-                            </button>
-                        </div>
+                {/* Card Premiações */}
+                <Link to={`/admin/championships/${id}/awards`} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow group">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                            <Trophy className="w-5 h-5 text-purple-500" />
+                            Premiações
+                        </h3>
+                        <span className="text-sm text-gray-400 group-hover:text-purple-500 transition-colors">Gerenciar →</span>
                     </div>
+                    <p className="text-sm text-gray-500">
+                        Defina os melhores do campeonato (Goleiro, Artilheiro, MVP) e gere as artes automaticamente.
+                    </p>
+                </Link>
 
+                {/* Card Personalização */}
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                            <ImageIcon className="w-5 h-5 text-pink-500" />
+                            Personalização
+                        </h3>
+                    </div>
+                    <div className="space-y-2">
+                        <button
+                            onClick={() => navigate(`/admin/championships/${id}/edit`)}
+                            className="w-full text-left text-sm text-gray-600 hover:bg-gray-50 p-2 rounded flex items-center gap-2"
+                        >
+                            <Edit className="w-4 h-4" /> Alterar Logo/Capa
+                        </button>
+                        <button
+                            onClick={() => navigate(`/events/${id}`)}
+                            className="w-full text-left text-sm text-gray-600 hover:bg-gray-50 p-2 rounded flex items-center gap-2"
+                        >
+                            <Tv className="w-4 h-4" /> Ver Página Pública
+                        </button>
+                    </div>
                 </div>
+
             </div>
+        </div>
         </div >
     );
 }

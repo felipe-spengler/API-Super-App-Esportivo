@@ -112,8 +112,8 @@ class ImageUploadController extends Controller
                 exec($command, $output, $returnVar);
 
                 if ($returnVar === 0 && file_exists($outputAbsPath)) {
-                    // Atualiza no banco o campo de foto sem fundo (se existir)
-                    // $player->photo_nobg = $filenameNobg; 
+                    // Se sucesso, atualiza o path principal para a versão sem fundo
+                    $path = $filenameNobg;
 
                     $responseData['photo_nobg_url'] = Storage::url($filenameNobg);
                     $responseData['photo_nobg_path'] = $filenameNobg;
@@ -128,7 +128,7 @@ class ImageUploadController extends Controller
         }
 
         // Atualiza no banco
-        $player->photo = $path;
+        $player->photo_path = $path;
         $player->save();
 
         return response()->json($responseData);
@@ -318,5 +318,13 @@ class ImageUploadController extends Controller
         }
 
         return response()->json($images);
+    }
+    /**
+     * Upload de foto do próprio perfil (Authenticated User)
+     */
+    public function uploadMyPhoto(Request $request)
+    {
+        $user = $request->user();
+        return $this->uploadPlayerPhoto($request, $user->id);
     }
 }

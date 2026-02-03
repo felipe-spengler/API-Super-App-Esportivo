@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, Bell, Shield, Lock, CreditCard, Loader2, Trophy, MessageSquare, Type } from 'lucide-react';
+import { Save, Bell, Shield, Lock, CreditCard, Loader2, Trophy, MessageSquare, Type, Palette, Upload, Trash2, Eye } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
@@ -20,8 +20,43 @@ export function Settings() {
         secondary_color: '#ffffff',
         primary_font: 'Inter',
         secondary_font: 'Inter',
-        active_modalities: [] as string[]
+        active_modalities: [] as string[],
+        art_settings: {} as any
     });
+
+    const artConfig: any = {
+        futebol: {
+            name: "Futebol",
+            positions: [
+                { key: 'confronto', label: 'Confronto (Faceoff)', defaultFile: 'fundo_confronto.jpg' },
+                { key: 'craque', label: 'Craque do Jogo (MVP)', defaultFile: 'fundo_craque_do_jogo.jpg' },
+                { key: 'goleiro', label: 'Melhor Goleiro', defaultFile: 'fundo_melhor_goleiro.jpg' },
+                { key: 'zagueiro', label: 'Melhor Zagueiro', defaultFile: 'fundo_melhor_zagueiro.jpg' },
+                { key: 'lateral', label: 'Melhor Lateral', defaultFile: 'fundo_melhor_lateral.jpg' },
+                { key: 'volante', label: 'Melhor Volante', defaultFile: 'fundo_melhor_volante.jpg' },
+                { key: 'meia', label: 'Melhor Meia', defaultFile: 'fundo_melhor_meia.jpg' },
+                { key: 'atacante', label: 'Melhor Atacante', defaultFile: 'fundo_melhor_atacante.jpg' },
+                { key: 'artilheiro', label: 'Artilheiro', defaultFile: 'fundo_melhor_artilheiro.jpg' },
+                { key: 'assistencia', label: 'Rei das Assistências', defaultFile: 'fundo_melhor_assistencia.jpg' },
+                { key: 'estreante', label: 'Estreante', defaultFile: 'fundo_melhor_estreiante.jpg' },
+            ]
+        },
+        volei: {
+            name: "Vôlei",
+            positions: [
+                { key: 'confronto', label: 'Confronto (Faceoff)', defaultFile: 'volei_confronto.jpg' },
+                { key: 'melhor_quadra', label: 'Melhor em Quadra', defaultFile: 'volei_melhor_quadra.jpg' },
+                { key: 'levantador', label: 'Melhor Levantador(a)', defaultFile: 'volei_melhor_levantadora.jpg' },
+                { key: 'ponteira', label: 'Melhor Ponteiro(a)', defaultFile: 'volei_melhor_ponteira.jpg' },
+                { key: 'central', label: 'Melhor Central', defaultFile: 'volei_melhor_central.jpg' },
+                { key: 'oposta', label: 'Melhor Oposto(a)', defaultFile: 'volei_melhor_oposta.jpg' },
+                { key: 'libero', label: 'Melhor Líbero', defaultFile: 'volei_melhor_libero.jpg' },
+                { key: 'maior_pontuadora', label: 'Maior Pontuador(a)', defaultFile: 'volei_maior_pontuadora_geral.jpg' },
+                { key: 'bloqueadora', label: 'Melhor Bloqueador(a)', defaultFile: 'volei_maior_bloqueadora.jpg' },
+                { key: 'estreante', label: 'Estreante', defaultFile: 'volei_melhor_estreante.jpg' },
+            ]
+        }
+    };
 
     const [allSports, setAllSports] = useState<any[]>([]);
     const [activeTab, setActiveTab] = useState('general');
@@ -53,7 +88,8 @@ export function Settings() {
                         secondary_color: response.data.secondary_color || '#ffffff',
                         primary_font: response.data.primary_font || 'Inter',
                         secondary_font: response.data.secondary_font || 'Inter',
-                        active_modalities: response.data.active_modalities || []
+                        active_modalities: response.data.active_modalities || [],
+                        art_settings: response.data.art_settings || {}
                     });
                     setAllSports(response.data.all_sports || []);
                 }
@@ -80,7 +116,7 @@ export function Settings() {
     async function handleSave() {
         setSaving(true);
         try {
-            if (activeTab === 'general' || activeTab === 'modalities') {
+            if (activeTab === 'general' || activeTab === 'modalities' || activeTab === 'art') {
                 await api.put('/admin/settings', settings);
             } else if (activeTab === 'email' && isSuperAdmin) {
                 await api.put('/admin/system-settings', { settings: emailSettings });
@@ -167,6 +203,50 @@ export function Settings() {
         }
     }
 
+    async function handleArtUpload(e: React.ChangeEvent<HTMLInputElement>, sportKey: string, posKey: string) {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Limit 5MB
+        if (file.size > 5 * 1024 * 1024) {
+            alert('A imagem deve ter no máximo 5MB');
+            return;
+        }
+
+        try {
+            const formData = new FormData();
+            formData.append('image', file);
+            formData.append('folder', 'backgrounds');
+
+            const response = await api.post('/admin/upload/generic', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
+            const newSettings = { ...settings };
+            if (!newSettings.art_settings) newSettings.art_settings = {};
+            if (!newSettings.art_settings[sportKey]) newSettings.art_settings[sportKey] = {};
+
+            newSettings.art_settings[sportKey][posKey] = response.data.path; // Save relative path or full URL if preferred. Controller uses initImage which handles explicit paths. 
+            // Note: Controller initImage logic needs to be robust for path. The controller saves 'backgrounds/xxxx.jpg'.
+            // AdminSettingController expects art_settings.
+
+            setSettings(newSettings);
+            alert('Imagem enviada com sucesso! Não esqueça de Salvar.');
+
+        } catch (error) {
+            console.error(error);
+            alert('Erro no upload.');
+        }
+    }
+
+    const removeArt = (sportKey: string, posKey: string) => {
+        const newSettings = { ...settings };
+        if (newSettings.art_settings && newSettings.art_settings[sportKey]) {
+            delete newSettings.art_settings[sportKey][posKey];
+            setSettings(newSettings);
+        }
+    };
+
     const toggleModality = (sportSlug: string) => {
         const current = [...settings.active_modalities];
         if (current.includes(sportSlug)) {
@@ -220,6 +300,13 @@ export function Settings() {
                     >
                         <Trophy className="w-5 h-5" />
                         Modalidades
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('art')}
+                        className={`w-full text-left px-4 py-3 rounded-xl font-bold text-sm flex items-center gap-3 transition-all ${activeTab === 'art' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-gray-600 hover:bg-white hover:shadow-sm'}`}
+                    >
+                        <Palette className="w-5 h-5" />
+                        Artes & Fundos
                     </button>
                     {isSuperAdmin && (
                         <button
@@ -525,6 +612,126 @@ export function Settings() {
                                     <p className="text-sm text-amber-800 leading-relaxed">As modalidades que não estão habilitadas exigem autorização da equipe técnica do App Esportivo. Clique em "Solicitar" para enviar uma mensagem via WhatsApp.</p>
                                 </div>
                             </div>
+                        </div>
+                    )}
+
+
+                    {activeTab === 'art' && (
+                        <div className="space-y-10">
+                            <header>
+                                <h2 className="text-xl font-bold text-gray-900 mb-2 flex items-center gap-2">
+                                    <Palette className="w-6 h-6 text-indigo-500" />
+                                    Fundos Personalizados
+                                </h2>
+                                <p className="text-sm text-gray-500">
+                                    Faça upload de imagens de fundo para cada tipo de premiação.
+                                    O sistema usará estas imagens ao gerar os cards dos atletas.
+                                    Formatos recomendados: JPG ou PNG (1080x1350 ou similar).
+                                </p>
+                            </header>
+
+                            {Object.entries(artConfig).map(([sportKey, config]: [string, any]) => (
+                                <section key={sportKey} className="space-y-6">
+                                    <h3 className="text-lg font-bold text-gray-800 border-b pb-2 capitalize">{config.name}</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {config.positions.map((pos: any) => {
+                                            const currentBg = settings.art_settings?.[sportKey]?.[pos.key];
+
+                                            // Resolve URL
+                                            // If custom: /api/storage/...
+                                            // If default: /api/assets-templates/...
+                                            let displayUrl = null;
+
+                                            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+                                            if (currentBg) {
+                                                displayUrl = currentBg.startsWith('http') ? currentBg : `${apiUrl}/storage/${currentBg}`;
+                                            } else if (pos.defaultFile) {
+                                                // Fallback to system default served via generic route
+                                                displayUrl = `${apiUrl}/assets-templates/${pos.defaultFile}`;
+                                            }
+
+                                            return (
+                                                <div key={pos.key} className="bg-gray-50 rounded-xl p-4 border border-gray-100 flex flex-col gap-3 transition-hover hover:shadow-md">
+                                                    <div className="flex justify-between items-start">
+                                                        <span className="font-bold text-sm text-gray-700">{pos.label}</span>
+                                                        {currentBg ? (
+                                                            <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full font-medium border border-green-100">Personalizado</span>
+                                                        ) : (
+                                                            <span className="text-xs text-gray-500 bg-white px-2 py-0.5 rounded-full border border-gray-200">Padrão do Sistema</span>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="relative w-full aspect-[4/5] bg-gray-200 rounded-lg overflow-hidden group border border-gray-200">
+                                                        {displayUrl ? (
+                                                            <img
+                                                                src={displayUrl}
+                                                                className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                                                                alt="Preview"
+                                                                onError={(e) => {
+                                                                    // Fallback visual if image fails to load
+                                                                    e.currentTarget.style.display = 'none';
+                                                                    e.currentTarget.parentElement?.classList.add('flex', 'items-center', 'justify-center');
+                                                                    if (e.currentTarget.nextElementSibling) {
+                                                                        e.currentTarget.nextElementSibling.classList.remove('hidden');
+                                                                    }
+                                                                }}
+                                                            />
+                                                        ) : null}
+
+                                                        {/* Fallback element (hidden by default unless image fails or is missing) */}
+                                                        <div className={`absolute inset-0 flex flex-col items-center justify-center text-gray-400 p-4 text-center bg-gray-100 ${displayUrl ? 'hidden' : ''}`}>
+                                                            <Palette className="w-8 h-8 mb-2 opacity-20" />
+                                                            <span className="text-xs">Visualização indisponível</span>
+                                                        </div>
+
+                                                        {/* Hover Actions */}
+                                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3 backdrop-blur-sm">
+                                                            {displayUrl && (
+                                                                <a
+                                                                    href={displayUrl}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="text-white hover:text-indigo-200 flex items-center gap-1 text-xs font-medium mb-1"
+                                                                >
+                                                                    <Eye className="w-3 h-3" /> Ver em tela cheia
+                                                                </a>
+                                                            )}
+
+                                                            <div className="flex gap-2">
+                                                                <input
+                                                                    type="file"
+                                                                    id={`upload-${sportKey}-${pos.key}`}
+                                                                    className="hidden"
+                                                                    accept="image/*"
+                                                                    onChange={(e) => handleArtUpload(e, sportKey, pos.key)}
+                                                                />
+                                                                <label
+                                                                    htmlFor={`upload-${sportKey}-${pos.key}`}
+                                                                    className="bg-white text-indigo-600 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer hover:bg-indigo-50 flex items-center gap-2 shadow-sm"
+                                                                >
+                                                                    <Upload className="w-3 h-3" />
+                                                                    {currentBg ? 'Trocar' : 'Enviar Novo'}
+                                                                </label>
+
+                                                                {currentBg && (
+                                                                    <button
+                                                                        onClick={() => removeArt(sportKey, pos.key)}
+                                                                        className="bg-red-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer hover:bg-red-600 flex items-center gap-2 shadow-sm"
+                                                                    >
+                                                                        <Trash2 className="w-3 h-3" />
+                                                                        {/* Remover */}
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </section>
+                            ))}
                         </div>
                     )}
 

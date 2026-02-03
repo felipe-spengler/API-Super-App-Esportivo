@@ -10,43 +10,112 @@ use Illuminate\Support\Str;
 class ArtGeneratorController extends Controller
 {
     private $fontPath;
+    private $secondaryFontPath;
     private $templatesPath;
 
     public function __construct()
     {
-        $this->fontPath = public_path('assets/fonts/Roboto-Bold.ttf');
+        $this->fontPath = public_path('assets/fonts/Roboto-Bold.ttf'); // Default
+        $this->secondaryFontPath = $this->fontPath;
         $this->templatesPath = public_path('assets/templates/');
+    }
+    /**
+     * Gera Arte de Confronto (Faceoff)
+     */
+    public function matchFaceoff($matchId)
+    {
+        $match = GameMatch::with(['homeTeam', 'awayTeam', 'championship.club'])->findOrFail($matchId);
+        $club = $match->championship->club;
+        $this->loadClubResources($club);
+
+        return $this->generateConfrontationArt($match, $club);
     }
 
     /**
-     * Gera Arte Dinâmica
-     * Rota: /public/art/match/{matchId}/download?type={mvp|confrontation|player}&category={goleiro|levatadora|etc}
+     * Gera Arte de MVP da Partida
+     */
+    public function mvpArt($matchId, Request $request)
+    {
+        $match = GameMatch::with(['homeTeam', 'awayTeam', 'mvpPlayer', 'championship', 'championship.sport'])->findOrFail($matchId);
+        $category = $request->query('category', 'craque');
+
+        return $this->generatePlayerArt($match->mvpPlayer, $match, $category);
+    }
+
+    /**
+     * Gera Arte de Premiação do Campeonato (Melhor Goleiro, Artilheiro, etc.)
+     */
+    /**
+     * Gera Arte de Premiação do Campeonato (Melhor Goleiro, Artilheiro, etc.)
+     * Rota: /art/championship/{championshipId}/award/{awardType}?categoryId={id}
+     */
+    public function championshipAwardArt($championshipId, $awardType, Request $request)
+    {
+        $championship = \App\Models\Championship::with(['sport', 'club'])->findOrFail($championshipId);
+        $this->loadClubResources($championship->club);
+
+        $categoryId = $request->query('categoryId'); // ID da Categoria do Campeonato (ex: id da Sub-20)
+
+        $awards = $championship->awards ?? [];
+
+        $targetAward = null;
+
+        // 1. Tenta buscar específico da categoria ID
+        if ($categoryId && isset($awards[$categoryId]) && isset($awards[$categoryId][$awardType])) {
+            $targetAward = $awards[$categoryId][$awardType];
+        }
+        // 2. Tenta buscar no root (legado ou sem categoria)
+        elseif (isset($awards[$awardType]) && isset($awards[$awardType]['player_id'])) {
+            $targetAward = $awards[$awardType];
+        }
+        // 3. Tenta buscar em 'generic' (caso a UI salve assim para geral)
+        elseif (isset($awards['generic']) && isset($awards['generic'][$awardType])) {
+            $targetAward = $awards['generic'][$awardType];
+        }
+
+        if (!$targetAward || !isset($targetAward['player_id'])) {
+            return response("Premiação não definida para esta categoria: $awardType" . ($categoryId ? " (CatID: $categoryId)" : ""), 404);
+        }
+
+        $playerId = $targetAward['player_id'];
+        $player = \App\Models\User::findOrFail($playerId);
+
+        // Busca time
+        $team = null;
+        if (isset($targetAward['team_id'])) {
+            $team = \App\Models\Team::find($targetAward['team_id']);
+        }
+
+        // Se não tem team_id salvo, tenta inferir
+        if (!$team) {
+            $team = $championship->teams()->whereHas('players', function ($q) use ($playerId) {
+                $q->where('users.id', $playerId);
+            })->first();
+        }
+
+        return $this->generateAwardCard($player, $championship, $team, $awardType, $championship->club);
+    }
+
+    /**
+     * Legacy Wrapper (antigo downloadArt)
      */
     public function downloadArt($matchId, Request $request)
     {
-        $type = $request->query('type', 'mvp');
-        $category = $request->query('category', 'craque'); // Usado para selecionar fundo específico
-
-        $match = GameMatch::with(['homeTeam', 'awayTeam', 'mvpPlayer', 'championship', 'championship.sport'])->findOrFail($matchId);
-
-        // Define Layout e Fundo
-        if ($type === 'confrontation') {
-            return $this->generateConfrontationArt($match);
-        } else {
-            // Player Art (MVP ou Position Specific)
-            return $this->generatePlayerArt($match, $category);
-        }
+        return $this->mvpArt($matchId, $request);
     }
 
-    private function generateConfrontationArt($match)
+    private function generateConfrontationArt($match, $club = null)
     {
         // Fundo
-        $bgFile = 'fundo_confronto.jpg';
+        $bgFile = $this->getBackgroundFile($match->championship->sport->name ?? 'Futebol', 'confronto', $club);
         $img = $this->initImage($bgFile);
         if (!$img)
             return response("Erro fundo: $bgFile", 500);
 
         $width = imagesx($img);
+
+        // Auto Contrast for Default Colors (used if not passed explicitly)
+        // Mas para textos complexos, vamos deixar o drawCenteredText calcular
         $white = imagecolorallocate($img, 255, 255, 255);
         $black = imagecolorallocate($img, 30, 30, 30);
 
@@ -72,130 +141,195 @@ class ArtGeneratorController extends Controller
         $placarY = 1170 + 130;
         $placarSize = 80;
         list($scoreA, $scoreB) = explode(' x ', $placar);
-        // Ajuste fino de posição do legado
-        imagettftext($img, $placarSize, 0, -145 + ($width / 2) - 180, $placarY, $white, $this->fontPath, trim($scoreA));
-        imagettftext($img, $placarSize, 0, ($width / 2) + 180 + 80, $placarY, $white, $this->fontPath, trim($scoreB));
+        // Placar usa Fonte Primária
+        // Cor do placa: Tenta calcular contraste na região
+        $colorScore = $this->getAutoContrastColor($img, ($width / 2) - 180, $placarY - $placarSize, 360, $placarSize);
+
+        imagettftext($img, $placarSize, 0, -145 + ($width / 2) - 180, $placarY, $colorScore, $this->fontPath, trim($scoreA));
+        imagettftext($img, $placarSize, 0, ($width / 2) + 180 + 80, $placarY, $colorScore, $this->fontPath, trim($scoreB));
 
         // 3. Campeonato e Rodada
         $champName = mb_strtoupper($match->championship->name);
         $roundName = mb_strtoupper($match->round_name ?? 'Rodada');
 
-        $this->drawCenteredText($img, 40, 1700, $white, $champName);
-        $this->drawCenteredText($img, 30, 1750, $white, $roundName);
+        $this->drawCenteredText($img, 40, 1700, null, $champName, true); // Use Secondary Font
+        $this->drawCenteredText($img, 30, 1750, null, $roundName, true); // Use Secondary Font
 
         return $this->outputImage($img, 'confronto_' . $match->id);
     }
 
-    private function generatePlayerArt($match, $category)
+    private function generatePlayerArt($player, $match, $category)
     {
-        $player = $match->mvpPlayer;
-        // Se for MVP genérico e não tiver player definido, erro (ou fallback)
         if (!$player)
             return response('Jogador não definido.', 404);
 
-        // --- Seleção de Fundo Inteligente ---
-        $sport = strtolower($match->championship->sport->name ?? 'futebol'); // 'futebol', 'volei', etc
-        $bgFile = $this->getBackgroundFile($sport, $category);
+        $sport = strtolower($match->championship->sport->name ?? 'futebol');
+        return $this->createCard(
+            $player,
+            $match->championship,
+            $sport,
+            $category,
+            $match->round_name ?? 'Rodada',
 
+            $match, // Passa a partida para pegar placar e times se for MVP
+            null,
+            $match->championship->club
+        );
+    }
+
+    private function generateAwardCard($player, $championship, $team, $category, $club = null)
+    {
+        $sport = strtolower($championship->sport->name ?? 'futebol');
+        return $this->createCard(
+            $player,
+            $championship,
+            $sport,
+            $category,
+            null, // Sem rodada
+            null, // Sem partida (sem placar)
+            $team, // Time específico do jogador
+            $club
+        );
+    }
+
+    /**
+     * Função Genérica de Criação de Card de Jogador
+     */
+    private function createCard($player, $championship, $sport, $category, $roundName = null, $match = null, $playerTeam = null, $club = null)
+    {
+        // 1. Fundo
+        $bgFile = $this->getBackgroundFile($sport, $category, $club);
         $img = $this->initImage($bgFile);
         if (!$img)
             return response("Erro fundo: $bgFile", 500);
 
         $width = imagesx($img);
+        // Colors defined for fallback, but text calls will function with null for auto-contrast
         $white = imagecolorallocate($img, 255, 255, 255);
         $black = imagecolorallocate($img, 30, 30, 30);
 
-        // --- 1. Foto do Jogador ---
+        // 2. Foto do Jogador
         $this->drawPlayerPhoto($img, $player);
 
-        // --- 2. Textos (Nome, Camp, Rodada) ---
-        // Título da Categoria é parte do fundo ou desenhado? 
-        // No legado alguns scripts desenham, outros assumem que o fundo já tem.
-        // O script `gerar_melhor_goleiro` desenha o nome, mas comenta a categoria.
-        // O `craque_volei` desenha categoria. Vamos padronizar: Desenhar se não for 'craque' padrão.
+        // 3. Textos Principais
 
-        $playerName = mb_strtoupper($player->name);
-        $this->drawCenteredText($img, 70, 1230, $white, $playerName);
+        // Formatação de Nome (Smart Particle Logic)
+        $rawName = !empty($player->nickname) ? $player->nickname : $player->name;
+        $nameParts = explode(' ', trim($rawName));
+        $finalName = $nameParts[0];
 
-        $champName = mb_strtoupper($match->championship->name);
-        $this->drawCenteredText($img, 40, 1700, $white, $champName);
+        $exceptions = ['da', 'de', 'do', 'das', 'dos', 'e'];
 
-        $roundName = mb_strtoupper($match->round_name ?? 'Rodada');
-        $this->drawCenteredText($img, 30, 1750, $white, $roundName);
-
-        // Desenha categoria se for Volei (legado desenha)
-        if ($sport == 'volei' || $sport == 'volleyball') {
-            $catTitle = mb_strtoupper(str_replace('_', ' ', $category));
-            $this->drawCenteredText($img, 50, 1150, $white, $catTitle);
+        if (isset($nameParts[1])) {
+            $secondPart = strtolower($nameParts[1]);
+            if (in_array($secondPart, $exceptions) && isset($nameParts[2])) {
+                $finalName .= ' ' . $nameParts[1] . ' ' . $nameParts[2];
+            } else {
+                $finalName .= ' ' . $nameParts[1];
+            }
         }
 
+        $playerName = mb_strtoupper($finalName);
+        $this->drawCenteredText($img, 70, 1230, null, $playerName, false); // Primary Font, Auto Color
 
-        // --- 3. Layout Específico: Placar vs Só Brasão ---
-        // Se for "craque" ou "mvp", geralmente tem placar (Confronto Direto).
-        // Se for "Melhor Goleiro", "Levantadora", etc, geralmente é destaque individual (Só brasão do jogador).
+        $champName = mb_strtoupper($championship->name);
+        $this->drawCenteredText($img, 40, 1700, null, $champName, true); // Secondary Font, Auto Color
 
-        $isFullMatchStats = in_array($category, ['craque', 'mvp', 'melhor_jogador', 'melhor_quadra']);
+        if ($roundName) {
+            $this->drawCenteredText($img, 30, 1750, null, mb_strtoupper($roundName), true); // Secondary Font
+        }
 
-        if ($isFullMatchStats) {
-            // Layout MVP: 2 Brasões + Placar
+        // Título da Categoria para Vôlei (Legacy)
+        // Se for Futebol, geralmente o fundo já tem o texto escrito (ex: MELHOR GOLEIRO)
+        // Mas se quisermos forçar:
+        if (str_contains($sport, 'volei') || str_contains($sport, 'volley')) {
+            $catTitle = mb_strtoupper(str_replace('_', ' ', $category));
+            // Ajuste de tradução simples
+            $mapTitles = [
+                'levantador' => 'MELHOR LEVANTADORA', // ou LEVANTADOR, dependendo do genero
+                'ponteira' => 'MELHOR PONTEIRA',
+                // ...
+            ];
+            // Se não estiver no mapa, usa o category limpo
+            $title = $mapTitles[$category] ?? $catTitle;
+            $this->drawCenteredText($img, 50, 1150, null, $title, true);
+        }
+
+        // 4. Layout: MVP (com Placar) vs Award (sem Placar, só time)
+        // MVP geralmente tem placar se vier de uma partida
+        if ($match && in_array($category, ['craque', 'mvp', 'melhor_jogador', 'melhor_quadra'])) {
+
+            // Layout MVP com Placar
             $badgeSize = 150;
             $yBadges = 1535 - 280;
             $centerDist = 350;
 
-            // Team A
+            // Home Team
             $xA = 102 + ($width / 2) - $centerDist - ($badgeSize / 2);
             $this->drawTeamBadge($img, $match->homeTeam, $xA, $yBadges, $badgeSize, $black);
 
-            // Team B
+            // Away Team
             $xB = -94 + ($width / 2) + $centerDist - ($badgeSize / 2);
             $this->drawTeamBadge($img, $match->awayTeam, $xB, $yBadges, $badgeSize, $white);
 
-            // Score
+            // Placar
             $scoreY = 1535;
             $scoreA = $match->home_score ?? 0;
             $scoreB = $match->away_score ?? 0;
 
-            // Placar A
             $boxA = imagettfbbox(100, 0, $this->fontPath, $scoreA);
             $wA = $boxA[2] - $boxA[0];
-            imagettftext($img, 100, 0, ($width / 2) - 180 - $wA, $scoreY, $black, $this->fontPath, $scoreA);
 
-            // Placar B
-            imagettftext($img, 100, 0, ($width / 2) + 180 + 40, $scoreY, $black, $this->fontPath, $scoreB);
+            // Auto Color for Scores
+            $scoreColor = $this->getAutoContrastColor($img, ($width / 2) - 180, $scoreY - 100, 360, 100);
+
+            imagettftext($img, 100, 0, ($width / 2) - 180 - $wA, $scoreY, $scoreColor, $this->fontPath, $scoreA);
+            imagettftext($img, 100, 0, ($width / 2) + 180 + 40, $scoreY, $scoreColor, $this->fontPath, $scoreB);
 
         } else {
-            // Layout "Melhor Posição": Apenas Brasão da Equipe do Jogador no Centro
-            // Descobrir equipe do jogador (assumindo Home ou Away baseado na ID no pivot, 
-            // mas aqui simplificamos: pegamos a equipe A se home, B se away.
-            // Para maior precisão precisariamos saber em qual time ele jogou. Back-end simplified: homeTeam default or search.
+            // Layout Award: Apenas Brasão da Equipe do Jogador
+            $targetTeam = $playerTeam;
 
-            // Tenta achar time do jogador
-            $playerTeam = $match->homeTeam; // Default fallback
-            // Lógica ideal: verificar relação player_team.
+            // Se não veio time explícito, mas veio partida, tenta deduzir
+            if (!$targetTeam && $match) {
+                $targetTeam = $match->homeTeam; // Fallback to Home
+            }
 
-            $badgeSize = 150;
-            $yBadges = 1535 - 280;
-            $xCenter = ($width / 2) - ($badgeSize / 2);
+            if ($targetTeam) {
+                $badgeSize = 150;
+                $yBadges = 1535 - 280;
+                $xCenter = ($width / 2) - ($badgeSize / 2);
 
-            // Cor do texto fallback (sigla) pode ser preto ou branco dependendo do fundo. 
-            // Goleiro usa preto no legado. Volei usa branco.
-            $fallbackColor = ($sport == 'volei') ? $white : $black;
+                $fallbackColor = str_contains($sport, 'volei') ? $white : $black;
 
-            $this->drawTeamBadge($img, $playerTeam, $xCenter, $yBadges, $badgeSize, $fallbackColor);
+                $this->drawTeamBadge($img, $targetTeam, $xCenter, $yBadges, $badgeSize, $fallbackColor);
+            }
         }
 
-        return $this->outputImage($img, 'card_' . $player->id);
+        return $this->outputImage($img, 'card_' . $category . '_' . $player->id);
     }
 
     // --- Helpers ---
 
-    private function getBackgroundFile($sport, $category)
+    private function getBackgroundFile($sport, $category, $club = null)
     {
         $sport = strtolower($sport);
 
-        // Mapeamento Volei
+        // 1. Check Club Art Settings (Custom Backgrounds)
+        if ($club && !empty($club->art_settings)) {
+            $settings = $club->art_settings;
+            // Structure: art_settings[sport][category] = 'path/to/image.jpg'
+            if (isset($settings[$sport]) && isset($settings[$sport][$category])) {
+                return $settings[$sport][$category];
+            }
+            // Check fallback without sport key if structure is flat? User suggested "atrelado ao esporte".
+            // Implementation assumes nested: sport -> position
+        }
+
+        // Mapeamento Volei (Default)
         if (str_contains($sport, 'volei')) {
             $map = [
+                'confronto' => 'volei_confronto.jpg',
                 'craque' => 'volei_melhor_quadra.jpg', // Default MVP
                 'melhor_quadra' => 'volei_melhor_quadra.jpg',
                 'levantador' => 'volei_melhor_levantadora.jpg',
@@ -215,6 +349,7 @@ class ArtGeneratorController extends Controller
 
         // Mapeamento Futebol (e outros)
         $map = [
+            'confronto' => 'fundo_confronto.jpg',
             'craque' => 'fundo_craque_do_jogo.jpg', // ou bg_mvp.jpg
             'goleiro' => 'fundo_melhor_goleiro.jpg',
             'artilheiro' => 'fundo_melhor_artilheiro.jpg',
@@ -232,6 +367,23 @@ class ArtGeneratorController extends Controller
 
     private function initImage($filename)
     {
+        // Se filename vier com caminho completo (storage ou url), tentar carregar
+        if (str_contains($filename, '/') || str_contains($filename, '\\')) {
+            if (file_exists($filename)) {
+                return @imagecreatefromjpeg($filename);
+            }
+            // Tentar no public/storage se for relativo
+            $storagePath = storage_path('app/public/' . $filename);
+            if (file_exists($storagePath)) {
+                return @imagecreatefromjpeg($storagePath);
+            }
+            $publicPath = public_path('storage/' . $filename);
+            if (file_exists($publicPath)) {
+                return @imagecreatefromjpeg($publicPath);
+            }
+            // Tentar loading direto se for URL (cuidado com performance, por enquanto local files)
+        }
+
         $path = $this->templatesPath . $filename;
         if (!file_exists($path)) {
             // Tenta fallback para o bg_mvp padrão se específico falhar
@@ -240,6 +392,51 @@ class ArtGeneratorController extends Controller
                 return null;
         }
         return @imagecreatefromjpeg($path);
+    }
+
+    private function loadClubResources($club)
+    {
+        if (!$club)
+            return;
+
+        if ($club->primary_font) {
+            // Assume que font name pode ser arquivo em assets/fonts ou path no storage
+            $fontName = $club->primary_font;
+
+            // 1. Tenta path direto em assets/fonts
+            $candidate = public_path('assets/fonts/' . $fontName);
+            if (file_exists($candidate)) {
+                $this->fontPath = $candidate;
+            } elseif (file_exists($candidate . '.ttf')) {
+                $this->fontPath = $candidate . '.ttf';
+            } else {
+                // 2. Tenta storage
+                $candidate = storage_path('app/public/' . $fontName);
+                if (file_exists($candidate)) {
+                    $this->fontPath = $candidate;
+                }
+            }
+        }
+
+        // Carrega também a fonte secundária
+        if ($club->secondary_font) {
+            $fontName = $club->secondary_font;
+            $candidate = public_path('assets/fonts/' . $fontName);
+
+            if (file_exists($candidate)) {
+                $this->secondaryFontPath = $candidate;
+            } elseif (file_exists($candidate . '.ttf')) {
+                $this->secondaryFontPath = $candidate . '.ttf';
+            } else {
+                $candidate = storage_path('app/public/' . $fontName);
+                if (file_exists($candidate)) {
+                    $this->secondaryFontPath = $candidate;
+                }
+            }
+        } else {
+            // Se user não definiu secundária, usa a primária (ou padrão se primária falhou)
+            $this->secondaryFontPath = $this->fontPath;
+        }
     }
 
     private function drawPlayerPhoto($img, $player)
@@ -325,13 +522,70 @@ class ArtGeneratorController extends Controller
         $this->drawCenteredTextInBox($img, $size / 2, $x, $y, $size, $fallbackColor, $sigla);
     }
 
-    private function drawCenteredText($image, $size, $y, $color, $text)
+    private function drawCenteredText($image, $size, $y, $color, $text, $useSecondaryFont = false)
     {
-        $box = imagettfbbox($size, 0, $this->fontPath, $text);
+        $font = $useSecondaryFont ? $this->secondaryFontPath : $this->fontPath;
+        $box = imagettfbbox($size, 0, $font, $text);
         $textWidth = $box[2] - $box[0];
+        $textHeight = abs($box[7] - $box[1]); // Aprox height logic
+
         $width = imagesx($image);
         $x = ($width - $textWidth) / 2;
-        imagettftext($image, $size, 0, $x, $y, $color, $this->fontPath, $text);
+
+        // Auto Contrast Logic
+        if ($color === null) {
+            $color = $this->getAutoContrastColor($image, $x, $y - $size, $textWidth, $size);
+        }
+
+        imagettftext($image, $size, 0, $x, $y, $color, $font, $text);
+    }
+
+    private function getAutoContrastColor($img, $x, $y, $w, $h)
+    {
+        // Garante bounds
+        $imgW = imagesx($img);
+        $imgH = imagesy($img);
+        $x = max(0, $x);
+        $y = max(0, $y);
+        $w = min($w, $imgW - $x);
+        $h = min($h, $imgH - $y);
+
+        if ($w <= 0 || $h <= 0)
+            return imagecolorallocate($img, 255, 255, 255); // Fallback White
+
+        // Amostra 5 pontos: cantos e centro
+        $points = [
+            [$x, $y],
+            [$x + $w, $y],
+            [$x, $y + $h],
+            [$x + $w, $y + $h],
+            [$x + ($w / 2), $y + ($h / 2)]
+        ];
+
+        $totalLimunance = 0;
+        $samples = 0;
+
+        foreach ($points as $p) {
+            $rgb = imagecolorat($img, $p[0], $p[1]);
+            $r = ($rgb >> 16) & 0xFF;
+            $g = ($rgb >> 8) & 0xFF;
+            $b = $rgb & 0xFF;
+
+            // Formula de luminancia: 0.299*R + 0.587*G + 0.114*B
+            $lum = (0.299 * $r) + (0.587 * $g) + (0.114 * $b);
+            $totalLimunance += $lum;
+            $samples++;
+        }
+
+        $avgLum = $totalLimunance / $samples;
+
+        // Se for claro (> 128), texto deve ser escuro (Preto ou quase preto)
+        // Se for escuro, texto deve ser claro (Branco)
+        if ($avgLum > 130) {
+            return imagecolorallocate($img, 20, 20, 20); // Dark text
+        } else {
+            return imagecolorallocate($img, 255, 255, 255); // White text
+        }
     }
 
     private function drawCenteredTextInBox($image, $fontSize, $xBox, $yBox, $boxSize, $color, $text)
