@@ -11,18 +11,7 @@ RUN apt-get update && apt-get install -y \
     zip \
     libicu-dev \
     libsqlite3-dev \
-    libzip-dev \
-    python3 \
-    python3-pip \
-    python3-venv
-
-# Criar ambiente virtual para Python (Best Practice)
-ENV VIRTUAL_ENV=/opt/venv
-RUN python3 -m venv $VIRTUAL_ENV
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
-
-# Instalar dependências Python (rembg)
-RUN pip install --no-cache-dir rembg[cli] pillow onnxruntime
+    libzip-dev
 
 # 2. Limpar cache
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
