@@ -33,8 +33,14 @@ class ImageUploadController extends Controller
             }
 
             // Remove logo antigo se existir
-            if ($team->logo && Storage::disk('public')->exists($team->logo)) {
-                Storage::disk('public')->delete($team->logo);
+            // Verifica logo_path (preferencial) ou tenta inferir do logo_url
+            if (!empty($team->logo_path) && Storage::disk('public')->exists($team->logo_path)) {
+                Storage::disk('public')->delete($team->logo_path);
+            } elseif (!empty($team->logo_url)) {
+                $oldPath = str_replace('/storage/', '', parse_url($team->logo_url, PHP_URL_PATH));
+                if (Storage::disk('public')->exists($oldPath)) {
+                    Storage::disk('public')->delete($oldPath);
+                }
             }
 
             // Salva novo logo
@@ -43,18 +49,24 @@ class ImageUploadController extends Controller
             $filename = Str::slug($team->name) . '-' . time() . '.' . $file->getClientOriginalExtension();
             $path = $file->storeAs('teams', $filename, 'public');
 
-            // Atualiza no banco
-            $team->logo = $path;
+            // Atualiza no banco usando as colunas corretas
+            $team->logo_url = Storage::url($path);
+            $team->logo_path = $path;
+
+            // Remove a atribuição incorreta '$team->logo' que causava erro se a coluna não existisse
+            // $team->logo = $path; 
+
             $team->save();
 
             return response()->json([
                 'message' => 'Logo atualizado com sucesso!',
-                'logo_url' => Storage::url($path),
-                'logo_path' => $path
+                'logo_url' => $team->logo_url,
+                'logo_path' => $team->logo_path
             ]);
         } catch (\Exception $e) {
             \Log::error("Upload Team Logo Error: " . $e->getMessage());
-            return response()->json(['message' => 'Erro ao fazer upload do logo.'], 500);
+            // Retorna a mensagem de erro detalhada para facilitar o debug do usuário
+            return response()->json(['message' => 'Erro ao fazer upload do logo: ' . $e->getMessage()], 500);
         }
     }
 
