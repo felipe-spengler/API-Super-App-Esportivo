@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Save, ArrowLeft, Shield, User } from 'lucide-react';
+import { Save, ArrowLeft, Shield, User, Camera } from 'lucide-react';
 import api from '../../services/api';
 
 interface UserOption {
@@ -18,6 +18,10 @@ export function TeamForm() {
     const [users, setUsers] = useState<UserOption[]>([]);
     const [loading, setLoading] = useState(false);
     const [fetching, setFetching] = useState(false);
+
+    // Image Upload State
+    const [logoPreview, setLogoPreview] = useState<string | null>(null);
+    const [selectedLogo, setSelectedLogo] = useState<File | null>(null);
 
     const isEditing = Boolean(id);
 
@@ -46,12 +50,24 @@ export function TeamForm() {
             setName(team.name || '');
             setCity(team.city || '');
             setCaptainId(team.captain_id ? String(team.captain_id) : '');
+
+            if (team.logo_url) {
+                setLogoPreview(team.logo_url);
+            }
         } catch (error) {
             console.error('Erro ao carregar equipe', error);
             alert('Erro ao carregar dados da equipe.');
             navigate('/admin/teams');
         } finally {
             setFetching(false);
+        }
+    }
+
+    function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            setSelectedLogo(file);
+            setLogoPreview(URL.createObjectURL(file));
         }
     }
 
@@ -65,17 +81,30 @@ export function TeamForm() {
                 captain_id: captainId ? Number(captainId) : null
             };
 
+            let teamId = id;
+
             if (isEditing) {
                 await api.put(`/admin/teams/${id}`, payload);
-                alert('Equipe atualizada com sucesso!');
             } else {
-                await api.post('/admin/teams', payload);
-                alert('Equipe criada com sucesso!');
+                const response = await api.post('/admin/teams', payload);
+                teamId = response.data.id;
             }
+
+            // Upload Logo if selected
+            if (selectedLogo && teamId) {
+                const formData = new FormData();
+                formData.append('logo', selectedLogo);
+
+                await api.post(`/admin/upload/team-logo/${teamId}`, formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+            }
+
+            alert(isEditing ? 'Equipe atualizada com sucesso!' : 'Equipe criada com sucesso!');
             navigate('/admin/teams');
         } catch (error) {
             console.error(error);
-            alert(isEditing ? 'Erro ao atualizar equipe' : 'Erro ao criar equipe');
+            alert('Erro ao salvar equipe.');
         } finally {
             setLoading(false);
         }
@@ -96,16 +125,37 @@ export function TeamForm() {
             </button>
 
             <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
-                <div className="flex items-center gap-4 mb-6">
-                    <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600">
-                        <Shield className="w-8 h-8" />
+                <div className="flex items-center gap-6 mb-8">
+                    <div className="relative group">
+                        <div className="w-24 h-24 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600 border-2 border-indigo-100 overflow-hidden shadow-sm">
+                            {logoPreview ? (
+                                <img
+                                    src={logoPreview}
+                                    alt="Logo Preview"
+                                    className="w-full h-full object-cover"
+                                />
+                            ) : (
+                                <Shield className="w-10 h-10" />
+                            )}
+                        </div>
+
+                        <label className="absolute bottom-0 right-0 bg-indigo-600 text-white p-2 rounded-full cursor-pointer hover:bg-indigo-700 transition-colors shadow-md border-2 border-white">
+                            <Camera className="w-4 h-4" />
+                            <input
+                                type="file"
+                                className="hidden"
+                                accept="image/*"
+                                onChange={handleLogoChange}
+                            />
+                        </label>
                     </div>
+
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">
                             {isEditing ? 'Editar Equipe' : 'Nova Equipe'}
                         </h1>
                         <p className="text-gray-500">
-                            {isEditing ? 'Atualize os dados da equipe.' : 'Cadastre um novo time para os campeonatos.'}
+                            {isEditing ? 'Atualize os dados e o brasão da equipe.' : 'Cadastre um novo time para os campeonatos.'}
                         </p>
                     </div>
                 </div>

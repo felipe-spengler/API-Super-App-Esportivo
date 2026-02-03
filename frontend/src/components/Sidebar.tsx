@@ -36,7 +36,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             {/* Brand */}
             <div className="h-16 flex items-center justify-between px-6 border-b border-gray-800 bg-gray-950">
                 <span className="text-lg font-bold uppercase tracking-wider text-indigo-400">
-                    Admin <span className="text-white">Esportivo</span>
+                    Admin <span className="text-white">Esportes7</span>
                 </span>
                 <button
                     onClick={onClose}

@@ -642,13 +642,22 @@ export function Settings() {
                                             // If default: /api/assets-templates/...
                                             let displayUrl = null;
 
-                                            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+                                            // Use configured API URL or fallback to relative root (works for same-domain deployments)
+                                            const apiUrl = import.meta.env.VITE_API_URL || '';
 
                                             if (currentBg) {
-                                                displayUrl = currentBg.startsWith('http') ? currentBg : `${apiUrl}/storage/${currentBg}`;
+                                                if (currentBg.startsWith('http')) {
+                                                    displayUrl = currentBg;
+                                                } else {
+                                                    // Ensure we don't double slash if apiUrl has slash
+                                                    const base = apiUrl.replace(/\/$/, '');
+                                                    displayUrl = `${base}/api/storage/${currentBg.replace(/^\//, '')}`;
+                                                }
                                             } else if (pos.defaultFile) {
                                                 // Fallback to system default served via generic route
-                                                displayUrl = `${apiUrl}/assets-templates/${pos.defaultFile}`;
+                                                // Route defined in api.php as /assets-templates/{filename} with prefix 'api' => /api/assets-templates/...
+                                                const base = apiUrl.replace(/\/$/, '');
+                                                displayUrl = `${base}/api/assets-templates/${pos.defaultFile}`;
                                             }
 
                                             return (

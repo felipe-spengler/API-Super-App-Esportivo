@@ -20,7 +20,7 @@ export function PublicLayout() {
                                 <div className="bg-indigo-600 p-2 rounded-lg">
                                     <Trophy className="w-6 h-6 text-white" />
                                 </div>
-                                <span className="font-bold text-xl text-gray-900 tracking-tight">AppEsportivo</span>
+                                <span className="font-bold text-xl text-gray-900 tracking-tight">Esportes7</span>
                             </Link>
                         </div>
                         <div className="flex items-center gap-4">

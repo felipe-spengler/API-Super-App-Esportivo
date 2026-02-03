@@ -80,10 +80,11 @@ class EventController extends Controller
         $teamsData = [];
 
         // Helper para inicializar estrutura
-        $initStats = function ($name) {
+        $initStats = function ($name, $logo = null) {
             return [
                 'name' => $name,
-                'stats' => [
+                'logo' => $logo,
+                'stats' => [ //...
                     'points' => 0,
                     'played' => 0,
                     'wins' => 0,
@@ -106,11 +107,11 @@ class EventController extends Controller
             $groupName = $m->group_name ?? 'Geral';
 
             if (!isset($teamsData[$homeId])) {
-                $teamsData[$homeId] = $initStats($m->homeTeam->name ?? 'Time A');
+                $teamsData[$homeId] = $initStats($m->homeTeam->name ?? 'Time A', $m->homeTeam->logo_url ?? null);
                 $teamsData[$homeId]['group_name'] = $groupName;
             }
             if (!isset($teamsData[$awayId])) {
-                $teamsData[$awayId] = $initStats($m->awayTeam->name ?? 'Time B');
+                $teamsData[$awayId] = $initStats($m->awayTeam->name ?? 'Time B', $m->awayTeam->logo_url ?? null);
                 $teamsData[$awayId]['group_name'] = $groupName;
             }
 
@@ -179,7 +180,7 @@ class EventController extends Controller
 
             foreach ($participants as $p) {
                 if (!isset($teamsData[$p->id])) {
-                    $teamsData[$p->id] = $initStats($p->name);
+                    $teamsData[$p->id] = $initStats($p->name, $p->logo_url ?? null);
                     $teamsData[$p->id]['id'] = $p->id;
                 }
             }
@@ -217,7 +218,7 @@ class EventController extends Controller
             $formatted[] = [
                 'id' => $t['id'],
                 'team_name' => $t['name'],
-                'team_logo' => null, // TODO: adicionar logo se disponível
+                'team_logo' => $t['logo'] ?? null,
                 'position' => $position++,
                 'points' => $t['stats']['points'],
                 'played' => $t['stats']['played'],
@@ -325,7 +326,7 @@ class EventController extends Controller
                     $q->where('category_id', $request->category_id);
                 }
             })
-            ->with(['team', 'player']) // Load team and player
+            ->with(['team', 'player', 'gameMatch.homeTeam', 'gameMatch.awayTeam']) // Load team and player
             ->get();
 
         $playerStats = [];
@@ -335,8 +336,12 @@ class EventController extends Controller
             // Prefer player relation name, fallback to metadata name, fallback to Desconhecido
             // Since ImportOldData put 'player_id' as null often but 'original_player_name' in metadata
             $pName = $metadata['original_player_name'] ?? 'Desconhecido';
+            $pPhoto = null;
+
             if ($event->player) {
                 $pName = $event->player->name;
+                // Try to get photo if available (assuming accessor or column)
+                $pPhoto = $event->player->photo_url ?? $event->player->photo ?? null;
             }
 
             $teamName = $event->team->name ?? 'Time Desconhecido';
@@ -345,11 +350,26 @@ class EventController extends Controller
                 $playerStats[$pName] = [
                     'player_name' => $pName,
                     'team_name' => $teamName,
+                    'team_logo' => $event->team->logo_url ?? null,
                     'value' => 0,
-                    'photo_url' => null
+                    'photo_url' => $pPhoto,
+                    'details' => []
                 ];
             }
             $playerStats[$pName]['value'] += $event->value;
+
+            // Add detail
+            if ($event->gameMatch) {
+                $home = $event->gameMatch->homeTeam->name ?? 'TBA';
+                $away = $event->gameMatch->awayTeam->name ?? 'TBA';
+                $playerStats[$pName]['details'][] = [
+                    'match_id' => $event->gameMatch->id,
+                    'match_label' => "$home vs $away",
+                    'game_time' => $event->game_time,
+                    'period' => $event->period,
+                    'match_date' => $event->gameMatch->start_time
+                ];
+            }
         }
 
         usort($playerStats, function ($a, $b) {

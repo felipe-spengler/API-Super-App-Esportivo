@@ -10,21 +10,31 @@ class AdminSettingController extends Controller
 {
     public function show(Request $request)
     {
-        $user = $request->user();
-        $club = null;
+        try {
+            $user = $request->user();
+            $club = null;
 
-        if ($user->club_id) {
-            $club = Club::find($user->club_id);
-        } else {
-            $club = Club::first();
+            if ($user->club_id) {
+                $club = Club::find($user->club_id);
+            } else {
+                $club = Club::first();
+            }
+
+            if ($club) {
+                // Include all available sports for the modalities tab
+                try {
+                    $club->all_sports = \App\Models\Sport::all();
+                } catch (\Exception $e) {
+                    $club->all_sports = []; // Fallback if table missing or error
+                    \Log::error('Error loading sports: ' . $e->getMessage());
+                }
+            }
+
+            return response()->json($club);
+        } catch (\Exception $e) {
+            \Log::error('Settings Error: ' . $e->getMessage());
+            return response()->json(['message' => 'Erro ao carregar configurações'], 500);
         }
-
-        if ($club) {
-            // Include all available sports for the modalities tab
-            $club->all_sports = \App\Models\Sport::all();
-        }
-
-        return response()->json($club);
     }
 
     public function update(Request $request)

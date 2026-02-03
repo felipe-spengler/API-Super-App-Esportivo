@@ -18,98 +18,105 @@ class AdminReportController extends Controller
      */
     public function dashboard(Request $request)
     {
-        $user = $request->user();
-        $clubId = $user->club_id;
+        try {
+            $user = $request->user();
+            $clubId = $user->club_id;
 
-        // Apply club filter if not super admin
-        $championshipsQuery = Championship::query();
-        $matchesQuery = GameMatch::query();
-        $teamsQuery = Team::query();
-        $playersQuery = User::query();
+            // Apply club filter if not super admin
+            $championshipsQuery = Championship::query();
+            $matchesQuery = GameMatch::query();
+            $teamsQuery = Team::query();
+            $playersQuery = User::query();
 
-        if ($clubId) {
-            $championshipsQuery->where('club_id', $clubId);
-            $matchesQuery->whereHas('championship', fn($q) => $q->where('club_id', $clubId));
-            $teamsQuery->where('club_id', $clubId);
-            // Players that belong to teams of this club
-            $playersQuery->whereHas('teamsAsPlayer', fn($q) => $q->where('club_id', $clubId));
-        }
+            if ($clubId) {
+                $championshipsQuery->where('club_id', $clubId);
+                $matchesQuery->whereHas('championship', fn($q) => $q->where('club_id', $clubId));
+                $teamsQuery->where('club_id', $clubId);
+                // Players that belong to teams of this club
+                $playersQuery->whereHas('teamsAsPlayer', fn($q) => $q->where('club_id', $clubId));
+            }
 
-        // Basic counts
-        $totalChampionships = (clone $championshipsQuery)->count();
-        $totalMatches = (clone $matchesQuery)->count();
+            // Basic counts
+            $totalChampionships = (clone $championshipsQuery)->count();
+            $totalMatches = (clone $matchesQuery)->count();
 
-        $stats = [
-            'total_championships' => $totalChampionships,
-            'active_championships' => (clone $championshipsQuery)->whereIn('status', ['active', 'in_progress', 'Ativo', 'Em Andamento'])->count(),
-            'total_matches' => $totalMatches,
-            'finished_matches' => (clone $matchesQuery)->whereIn('status', ['finished', 'Finalizado', 'Concluído'])->count(),
-            'total_teams' => (clone $teamsQuery)->count(),
-            'total_players' => (clone $playersQuery)->count(),
-        ];
+            $stats = [
+                'total_championships' => $totalChampionships,
+                'active_championships' => (clone $championshipsQuery)->whereIn('status', ['active', 'in_progress', 'Ativo', 'Em Andamento'])->count(),
+                'total_matches' => $totalMatches,
+                'finished_matches' => (clone $matchesQuery)->whereIn('status', ['finished', 'Finalizado', 'Concluído'])->count(),
+                'total_teams' => (clone $teamsQuery)->count(),
+                'total_players' => (clone $playersQuery)->count(),
+            ];
 
-        // Championships by sport - Use leftJoin to avoid missing championships without sport_id
-        $championshipsBySport = (clone $championshipsQuery)
-            ->leftJoin('sports', 'championships.sport_id', '=', 'sports.id')
-            ->select(DB::raw('COALESCE(sports.name, "Outro") as sport'), DB::raw('count(*) as count'))
-            ->groupBy('sport')
-            ->get()
-            ->pluck('count', 'sport');
+            // Championships by sport - Use leftJoin to avoid missing championships without sport_id
+            $championshipsBySport = (clone $championshipsQuery)
+                ->leftJoin('sports', 'championships.sport_id', '=', 'sports.id')
+                ->select(DB::raw('COALESCE(sports.name, "Outro") as sport_name'), DB::raw('count(championships.id) as count'))
+                ->groupBy('sport_name')
+                ->get()
+                ->mapWithKeys(function ($item) {
+                    return [$item->sport_name => $item->count];
+                });
 
-        // Matches by status
-        $matchesByStatus = (clone $matchesQuery)
-            ->select('status', DB::raw('count(*) as count'))
-            ->groupBy('status')
-            ->get()
-            ->pluck('count', 'status');
+            // Matches by status
+            $matchesByStatus = (clone $matchesQuery)
+                ->select('status', DB::raw('count(*) as count'))
+                ->groupBy('status')
+                ->get()
+                ->pluck('count', 'status');
 
-        // Recent championships
-        $recentChampionships = (clone $championshipsQuery)
-            ->with('sport')
-            ->orderBy('created_at', 'desc')
-            ->limit(10)
-            ->get()
-            ->map(fn($c) => [
-                'id' => $c->id,
-                'name' => $c->name,
-                'sport' => $c->sport->name ?? 'Outro',
-                'status' => $c->status,
-                'start_date' => $c->start_date,
-                'end_date' => $c->end_date
+            // Recent championships
+            $recentChampionships = (clone $championshipsQuery)
+                ->with('sport')
+                ->orderBy('created_at', 'desc')
+                ->limit(10)
+                ->get()
+                ->map(fn($c) => [
+                    'id' => $c->id,
+                    'name' => $c->name,
+                    'sport' => $c->sport->name ?? 'Outro',
+                    'status' => $c->status,
+                    'start_date' => $c->start_date,
+                    'end_date' => $c->end_date
+                ]);
+
+            // Upcoming matches
+            $upcomingMatches = (clone $matchesQuery)
+                ->with(['homeTeam', 'awayTeam', 'championship'])
+                ->whereIn('status', ['scheduled', 'Agendado'])
+                ->where('start_time', '>', now())
+                ->orderBy('start_time', 'asc')
+                ->limit(10)
+                ->get();
+
+            // Cards statistics
+            $yellowCards = MatchEvent::query()
+                ->whereIn('event_type', ['yellow_card', 'yellow-card'])
+                ->when($clubId, fn($q) => $q->whereHas('gameMatch.championship', fn($query) => $query->where('club_id', $clubId)))
+                ->count();
+
+            $redCards = MatchEvent::query()
+                ->whereIn('event_type', ['red_card', 'red-card'])
+                ->when($clubId, fn($q) => $q->whereHas('gameMatch.championship', fn($query) => $query->where('club_id', $clubId)))
+                ->count();
+
+            return response()->json([
+                'stats' => $stats,
+                'championships_by_sport' => $championshipsBySport,
+                'matches_by_status' => $matchesByStatus,
+                'recent_championships' => $recentChampionships,
+                'upcoming_matches' => $upcomingMatches,
+                'top_scorers' => [], // Removed as requested for poly-sport logic
+                'cards' => [
+                    'yellow' => $yellowCards,
+                    'red' => $redCards
+                ]
             ]);
-
-        // Upcoming matches
-        $upcomingMatches = (clone $matchesQuery)
-            ->with(['homeTeam', 'awayTeam', 'championship'])
-            ->whereIn('status', ['scheduled', 'Agendado'])
-            ->where('start_time', '>', now())
-            ->orderBy('start_time', 'asc')
-            ->limit(10)
-            ->get();
-
-        // Cards statistics
-        $yellowCards = MatchEvent::query()
-            ->whereIn('event_type', ['yellow_card', 'yellow-card'])
-            ->when($clubId, fn($q) => $q->whereHas('match.championship', fn($query) => $query->where('club_id', $clubId)))
-            ->count();
-
-        $redCards = MatchEvent::query()
-            ->whereIn('event_type', ['red_card', 'red-card'])
-            ->when($clubId, fn($q) => $q->whereHas('match.championship', fn($query) => $query->where('club_id', $clubId)))
-            ->count();
-
-        return response()->json([
-            'stats' => $stats,
-            'championships_by_sport' => $championshipsBySport,
-            'matches_by_status' => $matchesByStatus,
-            'recent_championships' => $recentChampionships,
-            'upcoming_matches' => $upcomingMatches,
-            'top_scorers' => [], // Removed as requested for poly-sport logic
-            'cards' => [
-                'yellow' => $yellowCards,
-                'red' => $redCards
-            ]
-        ]);
+        } catch (\Exception $e) {
+            \Log::error('Dashboard Error: ' . $e->getMessage() . ' ' . $e->getTraceAsString());
+            return response()->json(['message' => 'Erro ao carregar dashboard: ' . $e->getMessage()], 500);
+        }
     }
 
     /**

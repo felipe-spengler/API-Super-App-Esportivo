@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Target, Shield, Hand, Star, AlertTriangle, AlertOctagon, Trophy } from 'lucide-react';
+import { ArrowLeft, Target, Shield, Hand, Star, AlertTriangle, AlertOctagon, Trophy, X } from 'lucide-react';
 import api from '../../services/api';
 
 export function EventStats() {
@@ -14,6 +14,7 @@ export function EventStats() {
 
     // Map 'cards' generic type to specific 'yellow_cards' default
     const [activeTab, setActiveTab] = useState(initialType === 'cards' ? 'yellow_cards' : initialType);
+    const [selectedStat, setSelectedStat] = useState<any | null>(null);
 
     const [stats, setStats] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -130,7 +131,7 @@ export function EventStats() {
                         </div>
 
                         {stats.map((item, index) => (
-                            <div key={index} className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 flex items-center">
+                            <div key={index} onClick={() => setSelectedStat(item)} className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 flex items-center cursor-pointer hover:bg-gray-50 transition-colors">
                                 {/* Rank */}
                                 <div className={`w-8 text-center font-bold text-lg ${index < 3 ? 'text-indigo-600' : 'text-gray-400'}`}>
                                     {index + 1}º
@@ -167,7 +168,60 @@ export function EventStats() {
                         ))}
                     </>
                 )}
+
             </div>
+
+            {/* Detail Modal */}
+            {selectedStat && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setSelectedStat(null)}>
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+                        <div className="bg-indigo-600 p-4 text-white flex justify-between items-start">
+                            <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center overflow-hidden border-2 border-white/30">
+                                    {selectedStat.photo_url ? (
+                                        <img src={selectedStat.photo_url} alt={selectedStat.player_name} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <span className="text-sm font-bold">{selectedStat.player_name?.substring(0, 2)}</span>
+                                    )}
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-lg leading-tight">{selectedStat.player_name}</h3>
+                                    <p className="text-indigo-200 text-sm">{selectedStat.team_name}</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setSelectedStat(null)} className="text-white/70 hover:text-white">
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        <div className="p-4 max-h-[60vh] overflow-y-auto">
+                            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
+                                Detalhamento ({selectedStat.value} {getValueLabel()})
+                            </h4>
+
+                            {!selectedStat.details || selectedStat.details.length === 0 ? (
+                                <p className="text-gray-500 text-sm text-center py-4">Detalhes não disponíveis.</p>
+                            ) : (
+                                <div className="space-y-3">
+                                    {selectedStat.details.map((detail: any, idx: number) => (
+                                        <div key={idx} className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 border border-gray-100">
+                                            <div className="bg-white p-2 rounded-md font-bold text-indigo-600 shadow-sm border border-gray-100 min-w-[3rem] text-center text-sm">
+                                                {detail.game_time || detail.minute || "-"}
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-[10px] text-gray-400 uppercase font-bold mb-0.5">
+                                                    {detail.match_date ? new Date(detail.match_date).toLocaleDateString('pt-BR') : ''} • {detail.period || 'Jogo'}
+                                                </p>
+                                                <p className="font-medium text-gray-800 text-sm">{detail.match_label || 'Partida'}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

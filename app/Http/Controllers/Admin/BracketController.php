@@ -27,7 +27,7 @@ class BracketController extends Controller
         }
 
         $validated = $request->validate([
-            'format' => 'required|in:league,knockout,groups',
+            'format' => 'required|in:league,knockout,groups,league_playoffs',
             'category_id' => 'nullable|exists:categories,id',
             'start_date' => 'required|date',
             'match_interval_days' => 'nullable|integer|min:1|max:30',
@@ -64,6 +64,7 @@ class BracketController extends Controller
                 break;
 
             case 'groups':
+            case 'league_playoffs': // Treat league_playoffs as groups initially
                 $customGroups = $request->input('custom_groups'); // Array of arrays of team IDs
                 $matches = $this->generateGroupsBracket($championship, $teams, $startDate, $intervalDays, $categoryId, $customGroups);
                 break;
@@ -77,39 +78,103 @@ class BracketController extends Controller
     }
 
     /**
+     * Gera e persiste partidas usando algoritmo Round Robin
+     */
+    private function generateScheduleFromTeams($championship, $teamsList, $startDate, $intervalDays, $categoryId, $groupName = null, $startRound = 1)
+    {
+        $createdMatches = [];
+        $schedule = $this->schedulerRoundRobin($teamsList);
+        $matchDate = $startDate->copy();
+
+        foreach ($schedule as $roundIndex => $matchPairs) {
+            $currentRound = $startRound + $roundIndex;
+
+            foreach ($matchPairs as $pair) {
+                // $pair is [homeTeam, awayTeam] objects/arrays
+                $home = $pair[0];
+                $away = $pair[1];
+
+                // skip dummy
+                if (!$home || !$away)
+                    continue;
+
+                $match = MatchModel::create([
+                    'championship_id' => $championship->id,
+                    'category_id' => $categoryId,
+                    'home_team_id' => $home['id'],
+                    'away_team_id' => $away['id'],
+                    'start_time' => $matchDate->format('Y-m-d H:i:s'),
+                    'location' => $championship->location ?? 'A definir',
+                    'status' => 'scheduled',
+                    'round_number' => $currentRound,
+                    'group_name' => $groupName
+                ]);
+
+                $createdMatches[] = $match;
+            }
+            // Advance date per round
+            $matchDate->addDays($intervalDays);
+        }
+        return $createdMatches;
+    }
+
+    /**
+     * Algoritmo Round Robin (Todos contra todos)
+     * Retorna array de Rodadas, onde cada Rodada é array de Pares [Home, Away]
+     */
+    private function schedulerRoundRobin($teams)
+    {
+        $teamsArray = $teams instanceof \Illuminate\Support\Collection ? $teams->values()->toArray() : array_values($teams);
+
+        if (count($teamsArray) % 2 != 0) {
+            $teamsArray[] = null; // Dummy team for bye
+        }
+
+        $numTeams = count($teamsArray);
+        $numRounds = $numTeams - 1;
+        $half = $numTeams / 2;
+        $rounds = [];
+
+        $indices = array_keys($teamsArray); // 0 to N-1
+
+        for ($r = 0; $r < $numRounds; $r++) {
+            $roundMatches = [];
+            for ($i = 0; $i < $half; $i++) {
+                $homeIdx = $indices[$i];
+                $awayIdx = $indices[$numTeams - 1 - $i];
+
+                $home = $teamsArray[$homeIdx];
+                $away = $teamsArray[$awayIdx];
+
+                if ($home !== null && $away !== null) {
+                    $roundMatches[] = [$home, $away];
+                }
+            }
+            $rounds[] = $roundMatches;
+
+            // Rotate indices for next round (keep index 0 fixed)
+            // [0, 1, 2, 3] -> fix 0, rotate 1,2,3 -> [0, 3, 1, 2] ?
+            // Standard algorithm: Keep first element fixed, rotate the rest clockwise
+            $moving = array_splice($indices, 1);
+            $last = array_pop($moving);
+            array_unshift($moving, $last);
+            $indices = array_merge([$indices[0]], $moving);
+        }
+
+        return $rounds;
+    }
+
+    /**
      * Gera chaveamento de liga (todos contra todos)
      */
     private function generateLeagueBracket($championship, $teams, $startDate, $intervalDays, $categoryId = null)
     {
-        $matches = [];
-        $teamsArray = $teams->toArray();
-        $totalTeams = count($teamsArray);
-        $matchDate = $startDate->copy();
-
-        // Todos contra todos
-        for ($i = 0; $i < $totalTeams; $i++) {
-            for ($j = $i + 1; $j < $totalTeams; $j++) {
-                $match = MatchModel::create([
-                    'championship_id' => $championship->id,
-                    'category_id' => $categoryId,
-                    'home_team_id' => $teamsArray[$i]['id'],
-                    'away_team_id' => $teamsArray[$j]['id'],
-                    'start_time' => $matchDate->format('Y-m-d H:i:s'),
-                    'location' => $championship->location ?? 'A definir',
-                    'status' => 'scheduled',
-                    'round_number' => 1,
-                ]);
-
-                $matches[] = $match;
-                $matchDate->addDays($intervalDays);
-            }
-        }
-
-        return $matches;
+        return $this->generateScheduleFromTeams($championship, $teams, $startDate, $intervalDays, $categoryId);
     }
 
     /**
      * Gera chaveamento de mata-mata
+     * (Mantido simples, pois mata-mata não é round robin clássico de liga)
      */
     private function generateKnockoutBracket($championship, $teams, $startDate, $intervalDays, $categoryId = null)
     {
@@ -117,12 +182,10 @@ class BracketController extends Controller
         $teamsArray = $teams->shuffle()->toArray();
         $totalTeams = count($teamsArray);
 
-        // Calcula número de rodadas (potência de 2 mais próxima)
-        $rounds = ceil(log($totalTeams, 2));
-        $matchDate = $startDate->copy();
-
         // Primeira rodada
         $round = 1;
+        $matchDate = $startDate->copy();
+
         for ($i = 0; $i < $totalTeams; $i += 2) {
             if (isset($teamsArray[$i + 1])) {
                 $match = MatchModel::create([
@@ -138,9 +201,10 @@ class BracketController extends Controller
                 ]);
 
                 $matches[] = $match;
-                $matchDate->addDays($intervalDays);
             }
         }
+        // No mata-mata inicial, assumimos todos jogos mesmo dia/hora base?
+        // Ou incrementamos? Geralmente mesma rodada é mesmo dia.
 
         return $matches;
     }
@@ -150,14 +214,12 @@ class BracketController extends Controller
      */
     private function generateGroupsBracket($championship, $teams, $startDate, $intervalDays, $categoryId = null, $customGroups = null)
     {
-        $matches = [];
-        $matchDate = $startDate->copy();
+        $allMatches = [];
 
         if ($customGroups && is_array($customGroups)) {
             // Use custom groups provided by frontend
             $groups = [];
             foreach ($customGroups as $groupTeamIds) {
-                // Filter teams that are in this group
                 $groupTeams = $teams->filter(function ($team) use ($groupTeamIds) {
                     return in_array($team->id, $groupTeamIds);
                 })->values()->toArray();
@@ -173,6 +235,8 @@ class BracketController extends Controller
 
             // Divide em 4 grupos (ou menos se houver poucas equipes)
             $numGroups = min(4, ceil($totalTeams / 3));
+            if ($numGroups < 1)
+                $numGroups = 1; // Safety
             $teamsPerGroup = ceil($totalTeams / $numGroups);
 
             $groups = array_chunk($teamsArray, $teamsPerGroup);
@@ -182,27 +246,20 @@ class BracketController extends Controller
         foreach ($groups as $groupIndex => $groupTeams) {
             $groupName = chr(65 + $groupIndex); // A, B, C, D...
 
-            for ($i = 0; $i < count($groupTeams); $i++) {
-                for ($j = $i + 1; $j < count($groupTeams); $j++) {
-                    $match = MatchModel::create([
-                        'championship_id' => $championship->id,
-                        'category_id' => $categoryId,
-                        'home_team_id' => $groupTeams[$i]['id'],
-                        'away_team_id' => $groupTeams[$j]['id'],
-                        'start_time' => $matchDate->format('Y-m-d H:i:s'),
-                        'location' => $championship->location ?? 'A definir',
-                        'status' => 'scheduled',
-                        'round_number' => 1,
-                        'group_name' => "Grupo {$groupName}",
-                    ]);
+            // Use Round Robin per group
+            $groupMatches = $this->generateScheduleFromTeams(
+                $championship,
+                $groupTeams,
+                $startDate,
+                $intervalDays,
+                $categoryId,
+                "Grupo {$groupName}"
+            );
 
-                    $matches[] = $match;
-                    $matchDate->addDays($intervalDays);
-                }
-            }
+            $allMatches = array_merge($allMatches, $groupMatches);
         }
 
-        return $matches;
+        return $allMatches;
     }
 
     /**
