@@ -65,8 +65,16 @@ class AdminSettingController extends Controller
             ]);
 
             // Handle Modalites format
-            if ($request->has('active_modalities') && is_string($request->active_modalities)) {
-                $data['active_modalities'] = json_decode($request->active_modalities, true);
+            $am = $request->input('active_modalities');
+            if ($am !== null) {
+                if (is_string($am)) {
+                    $decoded = json_decode($am, true);
+                    if (json_last_error() === JSON_ERROR_NONE) {
+                        $data['active_modalities'] = $decoded;
+                    }
+                } elseif (is_array($am)) {
+                    $data['active_modalities'] = $am;
+                }
             }
 
             // Handle Logo Upload
@@ -91,8 +99,11 @@ class AdminSettingController extends Controller
                 if (is_array($decoded)) {
                     $inputSettings = $decoded;
                 } else {
+                    // Se falhar decode ou nao for array, mantem vazio para nao quebrar array_replace
                     $inputSettings = [];
                 }
+            } elseif (!is_array($inputSettings)) {
+                $inputSettings = [];
             }
 
             // Recursive merge for settings structure
