@@ -167,16 +167,17 @@ class BracketController extends Controller
     {
         $teamsArray = $teams instanceof \Illuminate\Support\Collection ? $teams->values()->toArray() : array_values($teams);
 
-        \Log::info("Scheduler Round Robin Start", [
-            'count' => count($teamsArray),
-            'teams' => array_map(function ($t) {
-                return $t['id'] . ':' . ($t['name'] ?? 'unknown');
-            }, $teamsArray)
+        \Log::info("Scheduler Round Robin Debug", [
+            'count_initial' => count($teamsArray),
+            'names' => array_map(function ($t) {
+                return $t['name'] ?? 'NO_NAME'; }, $teamsArray),
+            'ids' => array_map(function ($t) {
+                return $t['id'] ?? 'NO_ID'; }, $teamsArray),
         ]);
 
         if (count($teamsArray) % 2 != 0) {
             $teamsArray[] = null; // Dummy team for bye
-            \Log::info("Added dummy team, new count: " . count($teamsArray));
+            \Log::info("Added dummy team due to odd count. New count: " . count($teamsArray));
         }
 
         $numTeams = count($teamsArray);
@@ -188,6 +189,8 @@ class BracketController extends Controller
 
         for ($r = 0; $r < $numRounds; $r++) {
             $roundMatches = [];
+            \Log::info("Generating Round $r");
+
             for ($i = 0; $i < $half; $i++) {
                 $homeIdx = $indices[$i];
                 $awayIdx = $indices[$numTeams - 1 - $i];
@@ -197,8 +200,9 @@ class BracketController extends Controller
 
                 if ($home !== null && $away !== null) {
                     $roundMatches[] = [$home, $away];
+                    \Log::info("  Pair Created: " . ($home['name'] ?? 'U') . " vs " . ($away['name'] ?? 'U'));
                 } else {
-                    \Log::info("Round $r Pair $i skipped (Dummy): " . ($home ? $home['name'] : 'NULL') . " vs " . ($away ? $away['name'] : 'NULL'));
+                    \Log::info("  Pair SKIPPED (Dummy): " . ($home ? ($home['name'] ?? 'U') : 'NULL') . " vs " . ($away ? ($away['name'] ?? 'U') : 'NULL'));
                 }
             }
             $rounds[] = $roundMatches;
@@ -208,11 +212,6 @@ class BracketController extends Controller
             $last = array_pop($moving);
             array_unshift($moving, $last);
             $indices = array_merge([$indices[0]], $moving);
-        }
-
-        \Log::info("Generated Rounds Count: " . count($rounds));
-        foreach ($rounds as $idx => $rnd) {
-            \Log::info("Round " . ($idx + 1) . " matches: " . count($rnd));
         }
 
         return $rounds;
