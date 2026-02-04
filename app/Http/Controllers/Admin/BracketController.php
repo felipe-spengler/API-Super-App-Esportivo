@@ -165,45 +165,57 @@ class BracketController extends Controller
      */
     private function schedulerRoundRobin($teams)
     {
+        // 1. Prepare Teams
         $teamsArray = $teams instanceof \Illuminate\Support\Collection ? $teams->values()->toArray() : array_values($teams);
 
-        \Log::info("Scheduler Round Robin Debug", [
-            'count_initial' => count($teamsArray),
-            'names' => array_map(function ($t) {
-                return $t['name'] ?? 'NO_NAME'; }, $teamsArray),
-            'ids' => array_map(function ($t) {
-                return $t['id'] ?? 'NO_ID'; }, $teamsArray),
-        ]);
+        // Remove invalid entries just in case
+        $teamsArray = array_filter($teamsArray, function ($t) {
+            return !is_null($t); });
+        $teamsArray = array_values($teamsArray);
 
-        if (count($teamsArray) % 2 != 0) {
-            $teamsArray[] = null; // Dummy team for bye
-            \Log::info("Added dummy team due to odd count. New count: " . count($teamsArray));
+        $totalTeams = count($teamsArray);
+
+        // 2. Handle Odd/Even count
+        // If Odd, we add a placeholder "BYE" to make it Even for the algorithm
+        $hasBye = false;
+        if ($totalTeams % 2 != 0) {
+            $teamsArray[] = "BYE"; // Placeholder
+            $hasBye = true;
+            $totalTeams++;
         }
 
-        $numTeams = count($teamsArray);
-        $numRounds = $numTeams - 1;
-        $half = $numTeams / 2;
+        $numRounds = $totalTeams - 1;
+        $matchesPerRound = $totalTeams / 2;
         $rounds = [];
+
+        // Log count for verification but keeping it clean
+        \Log::info("Gerando Tabela (Round Robin)", [
+            'total_teams' => count($teams),
+            'rounds_expected' => $numRounds
+        ]);
 
         $indices = array_keys($teamsArray); // 0 to N-1
 
+        // 3. Generate Rounds
         for ($r = 0; $r < $numRounds; $r++) {
             $roundMatches = [];
-            \Log::info("Generating Round $r");
 
-            for ($i = 0; $i < $half; $i++) {
+            for ($i = 0; $i < $matchesPerRound; $i++) {
                 $homeIdx = $indices[$i];
-                $awayIdx = $indices[$numTeams - 1 - $i];
+                $awayIdx = $indices[$totalTeams - 1 - $i];
 
                 $home = $teamsArray[$homeIdx];
                 $away = $teamsArray[$awayIdx];
 
-                if ($home !== null && $away !== null) {
-                    $roundMatches[] = [$home, $away];
-                    \Log::info("  Pair Created: " . ($home['name'] ?? 'U') . " vs " . ($away['name'] ?? 'U'));
-                } else {
-                    \Log::info("  Pair SKIPPED (Dummy): " . ($home ? ($home['name'] ?? 'U') : 'NULL') . " vs " . ($away ? ($away['name'] ?? 'U') : 'NULL'));
+                // If either team is "BYE", it's a rest day (Folga)
+                if ($home === "BYE" || $away === "BYE") {
+                    // Log safely without scaring the user with "Dummy" or "NULL"
+                    // $resting = ($home === "BYE") ? $away : $home;
+                    // \Log::info("  Team Bye: " . ($resting['name'] ?? 'Unknown'));
+                    continue;
                 }
+
+                $roundMatches[] = [$home, $away];
             }
             $rounds[] = $roundMatches;
 
