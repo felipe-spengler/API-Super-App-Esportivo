@@ -7,9 +7,11 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::table('clubs', function (Blueprint $table) {
-            $table->string('banner_url')->nullable()->after('logo_url');
-        });
+        if (!Schema::hasColumn('clubs', 'banner_url')) {
+            Schema::table('clubs', function (Blueprint $table) {
+                $table->string('banner_url')->nullable()->after('logo_url');
+            });
+        }
     }
 
     public function down(): void
