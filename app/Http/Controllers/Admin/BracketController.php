@@ -56,15 +56,11 @@ class BracketController extends Controller
 
         switch ($format) {
             case 'league':
+            case 'league_playoffs': // League Playoffs should act as a single league for the first phase
                 $matches = $this->generateLeagueBracket($championship, $teams, $startDate, $intervalDays, $categoryId);
                 break;
 
             case 'knockout':
-                $matches = $this->generateKnockoutBracket($championship, $teams, $startDate, $intervalDays, $categoryId);
-                break;
-
-            case 'groups':
-            case 'league_playoffs': // Treat league_playoffs as groups initially
                 $customGroups = $request->input('custom_groups'); // Array of arrays of team IDs
                 $matches = $this->generateGroupsBracket($championship, $teams, $startDate, $intervalDays, $categoryId, $customGroups);
                 break;
@@ -170,7 +166,8 @@ class BracketController extends Controller
 
         // Remove invalid entries just in case
         $teamsArray = array_filter($teamsArray, function ($t) {
-            return !is_null($t); });
+            return !is_null($t);
+        });
         $teamsArray = array_values($teamsArray);
 
         $totalTeams = count($teamsArray);
