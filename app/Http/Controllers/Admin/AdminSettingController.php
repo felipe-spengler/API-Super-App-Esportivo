@@ -123,4 +123,47 @@ class AdminSettingController extends Controller
             ], 500);
         }
     }
+    public function uploadLogo(Request $request)
+    {
+        try {
+            $user = $request->user();
+            $club = $user->club_id ? Club::find($user->club_id) : Club::first();
+
+            if (!$club)
+                return response()->json(['message' => 'Club not found'], 404);
+
+            if ($request->hasFile('logo')) {
+                $path = $request->file('logo')->store("clubs/{$club->id}", 'public');
+                $url = '/storage/' . $path;
+                $club->update(['logo_url' => $url]);
+                return response()->json(['url' => $url, 'message' => 'Logo atualizado']);
+            }
+            return response()->json(['message' => 'Nenhum arquivo enviado'], 400);
+        } catch (\Exception $e) {
+            \Log::error('Logo Upload Error: ' . $e->getMessage());
+            return response()->json(['message' => 'Erro no upload'], 500);
+        }
+    }
+
+    public function uploadBanner(Request $request)
+    {
+        try {
+            $user = $request->user();
+            $club = $user->club_id ? Club::find($user->club_id) : Club::first();
+
+            if (!$club)
+                return response()->json(['message' => 'Club not found'], 404);
+
+            if ($request->hasFile('banner')) {
+                $path = $request->file('banner')->store("clubs/{$club->id}", 'public');
+                $url = '/storage/' . $path;
+                $club->update(['banner_url' => $url]);
+                return response()->json(['url' => $url, 'message' => 'Banner atualizado']);
+            }
+            return response()->json(['message' => 'Nenhum arquivo enviado'], 400);
+        } catch (\Exception $e) {
+            \Log::error('Banner Upload Error: ' . $e->getMessage());
+            return response()->json(['message' => 'Erro no upload'], 500);
+        }
+    }
 }

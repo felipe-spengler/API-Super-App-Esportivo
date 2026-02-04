@@ -234,6 +234,8 @@ Route::middleware('auth:sanctum')->group(function () {
         // Configurações (NEW)
         Route::get('/settings', [\App\Http\Controllers\Admin\AdminSettingController::class, 'show']);
         Route::put('/settings', [\App\Http\Controllers\Admin\AdminSettingController::class, 'update']);
+        Route::post('/settings/logo', [\App\Http\Controllers\Admin\AdminSettingController::class, 'uploadLogo']);
+        Route::post('/settings/banner', [\App\Http\Controllers\Admin\AdminSettingController::class, 'uploadBanner']);
 
         // System Settings (SMTP)
         Route::get('/system-settings', [\App\Http\Controllers\Admin\AdminSystemSettingController::class, 'index']);
