@@ -18,7 +18,7 @@ class AdminMatchController extends Controller
     {
         $user = $request->user();
 
-        $query = GameMatch::with(['homeTeam', 'awayTeam', 'championship']);
+        $query = GameMatch::with(['homeTeam', 'awayTeam', 'championship.sport']);
 
         // Filter by club if not super admin
         if ($user->club_id) {

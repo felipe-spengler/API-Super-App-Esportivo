@@ -79,9 +79,27 @@ export function Matches() {
                 arbitration: arbitrationData
             });
 
+            // Determine the correct sumula URL based on sport
+            const sportSlug = selectedMatch.championship?.sport?.slug || 'futebol';
+            const sumulaRoutes: Record<string, string> = {
+                'futebol': '/sumula', // Rota legado ou padrão
+                'volei': '/sumula-volei',
+                'futsal': '/sumula-futsal',
+                'basquete': '/sumula-basquete',
+                'handebol': '/sumula-handebol',
+                'beach-tennis': '/sumula-beach-tennis',
+                'futebol7': '/sumula-futebol7',
+                'futevolei': '/sumula-futevolei',
+                'volei-praia': '/sumula-volei-praia',
+                'tenis-mesa': '/sumula-tenis-mesa',
+                'jiu-jitsu': '/sumula-jiu-jitsu'
+            };
+
+            const suffix = sumulaRoutes[sportSlug] || 'sumula'; // Fallback to standard
+
             // Close and navigate
             setIsArbitrationOpen(false);
-            window.location.href = `/admin/matches/${selectedMatch.id}/sumula`;
+            window.location.href = `/admin/matches/${selectedMatch.id}${suffix}`;
         } catch (error) {
             console.error("Erro ao salvar arbitragem", error);
             alert("Erro ao salvar dados.");
