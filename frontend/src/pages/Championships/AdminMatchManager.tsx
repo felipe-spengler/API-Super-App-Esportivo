@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Calendar, Trophy, Save, Plus, Trash2, CheckCircle, AlertCircle, List, Edit2, X, MapPin, Clock as ClockIcon, Loader2, Play, Printer } from 'lucide-react';
 import api from '../../services/api';
 
@@ -9,6 +9,8 @@ interface Match {
     away_team: { name: string; logo_url?: string };
     home_score: number | null;
     away_score: number | null;
+    home_penalty_score?: number | null;
+    away_penalty_score?: number | null;
     start_time: string;
     round_number: number;
     status: 'scheduled' | 'finished' | 'live' | 'canceled';
@@ -18,7 +20,9 @@ interface Match {
 export function AdminMatchManager() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const [matches, setMatches] = useState<Match[]>([]);
+    const [teams, setTeams] = useState<any[]>([]); // Added teams state
     const [loading, setLoading] = useState(true);
     const [generating, setGenerating] = useState(false);
     const [championship, setChampionship] = useState<any>(null);
@@ -42,16 +46,34 @@ export function AdminMatchManager() {
 
     async function loadData() {
         try {
-            const campRes = await api.get(`/championships/${id}`);
+            // Load championship and teams in parallel
+            const [campRes, teamsRes] = await Promise.all([
+                api.get(`/championships/${id}`),
+                api.get(`/championships/${id}/teams`)
+            ]);
+
             const champ = campRes.data;
             setChampionship(champ);
 
-            // Auto-select first category if not selected
+            // Handle teams response (could be array or paginated object)
+            const loadedTeams = Array.isArray(teamsRes.data) ? teamsRes.data : (teamsRes.data.data || []);
+            setTeams(loadedTeams);
+
+            // Determine category to use
             let categoryToUse = selectedCategoryId;
+
+            // 1. Try from URL
+            const urlCategoryId = searchParams.get('category_id');
+            if (urlCategoryId) {
+                categoryToUse = urlCategoryId === 'null' ? 'no-category' : parseInt(urlCategoryId);
+            }
+
+            // 2. If still null, default to first category if available
             if (!categoryToUse && champ.categories && champ.categories.length > 0) {
                 categoryToUse = champ.categories[0].id;
-                setSelectedCategoryId(categoryToUse);
             }
+
+            setSelectedCategoryId(categoryToUse);
 
             let url = `/admin/matches?championship_id=${id}`;
             if (categoryToUse === 'no-category') {
@@ -72,6 +94,17 @@ export function AdminMatchManager() {
     // Effect to reload matches when category changes
     useEffect(() => {
         if (id && championship) {
+            // Update URL without reloading page to reflect state (optional but good for UX)
+            const newUrl = new URL(window.location.href);
+            if (selectedCategoryId === 'no-category') {
+                newUrl.searchParams.set('category_id', 'null');
+            } else if (selectedCategoryId) {
+                newUrl.searchParams.set('category_id', selectedCategoryId.toString());
+            } else {
+                newUrl.searchParams.delete('category_id');
+            }
+            window.history.replaceState({}, '', newUrl.toString());
+
             loadMatches();
         }
     }, [selectedCategoryId]);
@@ -135,7 +168,12 @@ export function AdminMatchManager() {
         setSelectedMatch(match);
         // Format date for datetime-local input
         const date = new Date(match.start_time);
-        const formattedDate = date.toISOString().slice(0, 16);
+
+        // Adjust for timezone offset to show correct local time in input
+        const timezoneOffset = date.getTimezoneOffset() * 60000;
+        const localDate = new Date(date.getTime() - timezoneOffset);
+        const formattedDate = localDate.toISOString().slice(0, 16);
+
         setEditData({
             start_time: formattedDate,
             location: match.location || '',
@@ -180,6 +218,19 @@ export function AdminMatchManager() {
             loadData();
         } catch (err) {
             alert('Erro ao atualizar jogo.');
+        }
+    };
+
+    const handleDeleteMatch = async (matchId: number) => {
+        if (!confirm('Tem certeza que deseja excluir este confronto?')) return;
+
+        try {
+            await api.delete(`/admin/matches/${matchId}`);
+            alert('Confronto excluído com sucesso!');
+            loadMatches();
+        } catch (error) {
+            console.error(error);
+            alert('Erro ao excluir confronto.');
         }
     };
 
@@ -279,7 +330,7 @@ export function AdminMatchManager() {
                             <p className="text-gray-500">{championship?.name}</p>
                         </div>
                     </div>
-                    {matches.length > 0 && (
+                    {(matches.length > 0 || teams.length > 0) && (
                         <div className="flex items-center gap-3">
                             <button
                                 onClick={() => {
@@ -358,28 +409,37 @@ export function AdminMatchManager() {
                         <h2 className="text-xl font-bold text-gray-900 mb-2">Nenhum jogo criado ainda</h2>
                         <p className="text-gray-500 max-w-md mx-auto mb-8">
                             {championship?.format
-                                ? `O campeonato está configurado como "${championship.format}". Clique no botão abaixo para gerar a tabela de jogos automaticamente.`
-                                : "O campeonato ainda não possui partidas. Configure o formato nas configurações do campeonato."}
+                                ? `O campeonato está configurado como "${championship.format}". Clique no botão abaixo para gerar a tabela de jogos automaticamente ou crie jogos manualmente.`
+                                : "O campeonato ainda não possui partidas. Configure o formato nas configurações do campeonato ou adicione jogos manualmente."}
                         </p>
 
-                        {championship?.format && (
-                            <button
-                                onClick={() => handleGenerate(championship.format)}
-                                disabled={generating}
-                                className="px-8 py-4 bg-indigo-600 text-white font-bold text-lg rounded-lg hover:bg-indigo-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50"
-                            >
-                                {generating ? 'Gerando...' : 'Gerar Tabela de Jogos'}
-                            </button>
-                        )}
+                        <div className="flex flex-col md:flex-row gap-4 justify-center">
+                            {championship?.format && (
+                                <button
+                                    onClick={() => handleGenerate(championship.format)}
+                                    disabled={generating}
+                                    className="px-8 py-4 bg-indigo-600 text-white font-bold text-lg rounded-lg hover:bg-indigo-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50"
+                                >
+                                    {generating ? 'Gerando...' : 'Gerar Tabela de Jogos'}
+                                </button>
+                            )}
 
-                        {!championship?.format && (
                             <button
-                                onClick={() => navigate(`/admin/championships/${id}/edit`)}
-                                className="px-6 py-3 bg-white border-2 border-indigo-600 text-indigo-600 font-bold rounded-lg hover:bg-indigo-50 transition-all"
+                                onClick={() => {
+                                    setNewData({
+                                        home_team_id: '',
+                                        away_team_id: '',
+                                        start_time: new Date().toISOString().slice(0, 16),
+                                        location: championship?.location || '',
+                                        round_number: 1
+                                    });
+                                    setShowAddModal(true);
+                                }}
+                                className="px-8 py-4 bg-white border-2 border-indigo-600 text-indigo-600 font-bold text-lg rounded-lg hover:bg-indigo-50 transition-all"
                             >
-                                Configurar Campeonato
+                                Criar Primeiro Jogo
                             </button>
-                        )}
+                        </div>
                     </div>
                 ) : (
                     <div className="space-y-8">
@@ -445,14 +505,21 @@ export function AdminMatchManager() {
                                                     </div>
 
                                                     {/* Score */}
-                                                    <div className="flex items-center gap-2 md:gap-4 bg-white px-3 md:px-6 py-1.5 md:py-2 rounded-xl border border-gray-200 shadow-sm min-w-[90px] md:min-w-[120px] justify-center">
-                                                        <span className={`text-xl md:text-2xl font-black ${match.home_score !== null ? 'text-gray-900' : 'text-gray-300'}`}>
-                                                            {match.home_score ?? 0}
-                                                        </span>
-                                                        <span className="text-gray-300 font-bold text-[10px]">X</span>
-                                                        <span className={`text-xl md:text-2xl font-black ${match.away_score !== null ? 'text-gray-900' : 'text-gray-300'}`}>
-                                                            {match.away_score ?? 0}
-                                                        </span>
+                                                    <div className="flex flex-col items-center">
+                                                        <div className="flex items-center gap-2 md:gap-4 bg-white px-3 md:px-6 py-1.5 md:py-2 rounded-xl border border-gray-200 shadow-sm min-w-[90px] md:min-w-[120px] justify-center">
+                                                            <span className={`text-xl md:text-2xl font-black ${match.home_score !== null ? 'text-gray-900' : 'text-gray-300'}`}>
+                                                                {match.home_score ?? 0}
+                                                            </span>
+                                                            <span className="text-gray-300 font-bold text-[10px]">X</span>
+                                                            <span className={`text-xl md:text-2xl font-black ${match.away_score !== null ? 'text-gray-900' : 'text-gray-300'}`}>
+                                                                {match.away_score ?? 0}
+                                                            </span>
+                                                        </div>
+                                                        {(match.home_penalty_score != null || match.away_penalty_score != null) && (match.home_penalty_score > 0 || match.away_penalty_score > 0) && (
+                                                            <span className="text-[10px] font-bold text-gray-500 mt-1">
+                                                                ({match.home_penalty_score} x {match.away_penalty_score} Pen.)
+                                                            </span>
+                                                        )}
                                                     </div>
 
                                                     {/* Away Team */}
@@ -486,6 +553,15 @@ export function AdminMatchManager() {
                                                     >
                                                         <Edit2 className="w-4 h-4" />
                                                         <span className="text-[10px] font-bold uppercase md:hidden">Editar</span>
+                                                    </button>
+
+                                                    <button
+                                                        onClick={() => handleDeleteMatch(match.id)}
+                                                        className="flex-1 md:flex-none flex items-center justify-center gap-1 px-3 py-2 text-red-500 bg-red-50 border border-red-200 rounded-lg transition-all hover:bg-red-100"
+                                                        title="Excluir Confronto"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                        <span className="text-[10px] font-bold uppercase md:hidden">Excluir</span>
                                                     </button>
                                                 </div>
                                             </div>
@@ -641,10 +717,17 @@ export function AdminMatchManager() {
                                     </div>
                                     <div className="font-bold text-gray-900 leading-tight">{selectedMatch.home_team?.name}</div>
                                 </div>
-                                <div className="flex items-center gap-4 px-6">
-                                    <span className="text-5xl font-black text-gray-900">{selectedMatch.home_score || 0}</span>
-                                    <span className="text-gray-300 font-bold">X</span>
-                                    <span className="text-5xl font-black text-gray-900">{selectedMatch.away_score || 0}</span>
+                                <div className="flex flex-col items-center">
+                                    <div className="flex items-center gap-4 px-6">
+                                        <span className="text-5xl font-black text-gray-900">{selectedMatch.home_score || 0}</span>
+                                        <span className="text-gray-300 font-bold">X</span>
+                                        <span className="text-5xl font-black text-gray-900">{selectedMatch.away_score || 0}</span>
+                                    </div>
+                                    {(selectedMatch.home_penalty_score != null || selectedMatch.away_penalty_score != null) && (selectedMatch.home_penalty_score > 0 || selectedMatch.away_penalty_score > 0) && (
+                                        <span className="text-sm font-bold text-gray-500 mt-2">
+                                            ({selectedMatch.home_penalty_score} x {selectedMatch.away_penalty_score} Pênaltis)
+                                        </span>
+                                    )}
                                 </div>
                                 <div className="text-center flex-1">
                                     <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-2 border">
@@ -718,7 +801,7 @@ export function AdminMatchManager() {
                                         className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
                                     >
                                         <option value="">Selecione...</option>
-                                        {(championship?.teams || []).map((t: any) => (
+                                        {(teams || []).map((t: any) => (
                                             <option key={t.id} value={t.id}>{t.name}</option>
                                         ))}
                                     </select>
@@ -731,7 +814,7 @@ export function AdminMatchManager() {
                                         className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
                                     >
                                         <option value="">Selecione...</option>
-                                        {(championship?.teams || []).map((t: any) => (
+                                        {(teams || []).map((t: any) => (
                                             <option key={t.id} value={t.id}>{t.name}</option>
                                         ))}
                                     </select>

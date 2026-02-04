@@ -20,12 +20,15 @@ export function SumulaFutsal() {
 
     // Stats State (Optimistic)
     const [fouls, setFouls] = useState({ home: 0, away: 0 });
+    const [penaltyScore, setPenaltyScore] = useState({ home: 0, away: 0 });
     const [events, setEvents] = useState<any[]>([]);
 
     // Modal State
     const [showEventModal, setShowEventModal] = useState(false);
     const [selectedTeam, setSelectedTeam] = useState<'home' | 'away' | null>(null);
     const [eventType, setEventType] = useState<'goal' | 'yellow_card' | 'red_card' | 'blue_card' | 'assist' | 'foul' | 'mvp' | null>(null);
+    const [showShootoutOptions, setShowShootoutOptions] = useState(false);
+    const [selectedPlayer, setSelectedPlayer] = useState<any>(null);
 
     const fetchMatchDetails = async () => {
         try {
@@ -53,10 +56,16 @@ export function SumulaFutsal() {
                 // Only merge history if not already preserved by persistence or if empty
                 setEvents(history);
 
+
+
                 const homeFouls = history.filter((e: any) => e.team === 'home' && e.type === 'foul').length;
                 const awayFouls = history.filter((e: any) => e.team === 'away' && e.type === 'foul').length;
 
                 setFouls({ home: homeFouls, away: awayFouls });
+
+                const homePenalties = history.filter((e: any) => e.team === 'home' && e.type === 'shootout_goal').length;
+                const awayPenalties = history.filter((e: any) => e.team === 'away' && e.type === 'shootout_goal').length;
+                setPenaltyScore({ home: homePenalties, away: awayPenalties });
             }
         } catch (e) {
             console.error(e);
@@ -264,6 +273,14 @@ export function SumulaFutsal() {
         const teamId = selectedTeam === 'home' ? matchData.home_team_id : matchData.away_team_id;
         const currentTime = formatTime(time);
 
+        // Intercept Logic for Shootout
+        if (currentPeriod === 'Pênaltis' && eventType === 'goal') {
+            setSelectedPlayer(player);
+            setShowEventModal(false);
+            setShowShootoutOptions(true);
+            return;
+        }
+
         try {
             const response = await api.post(`/admin/matches/${id}/events`, {
                 event_type: eventType,
@@ -297,6 +314,53 @@ export function SumulaFutsal() {
         }
     };
 
+    const handleShootoutResult = async (outcome: 'score' | 'saved' | 'post' | 'out') => {
+        if (!selectedPlayer || !selectedTeam) return;
+
+        const type = outcome === 'score' ? 'shootout_goal' : 'shootout_miss';
+        const teamId = selectedTeam === 'home' ? matchData.home_team_id : matchData.away_team_id;
+        const currentTime = formatTime(time);
+
+        try {
+            const response = await api.post(`/admin/matches/${id}/events`, {
+                event_type: type,
+                team_id: teamId,
+                minute: currentTime,
+                period: currentPeriod,
+                player_id: selectedPlayer.id,
+                metadata: { outcome }
+            });
+
+            const newEvent = {
+                id: response.data.id,
+                type: type,
+                team: selectedTeam,
+                time: currentTime,
+                period: currentPeriod,
+                player_name: selectedPlayer.name
+            };
+            setEvents(prev => [newEvent, ...prev]);
+
+            // Update penalty score locally
+            if (outcome === 'score') {
+                setPenaltyScore(prev => ({
+                    ...prev,
+                    [selectedTeam]: prev[selectedTeam] + 1
+                }));
+            }
+
+            // Note: We deliberately do NOT update matchData.scoreHome/scoreAway
+            // because shootout goals should not count for stats/regular score.
+
+            setShowShootoutOptions(false);
+            setSelectedPlayer(null);
+
+        } catch (e) {
+            console.error(e);
+            alert('Erro ao registrar pênalti');
+        }
+    };
+
     const handleDeleteEvent = async (eventId: number, type: string, team: 'home' | 'away') => {
         if (!window.confirm('Excluir este evento?')) return;
 
@@ -319,6 +383,13 @@ export function SumulaFutsal() {
                     [team]: Math.max(0, prev[team] - 1)
                 }));
             }
+
+            if (type === 'shootout_goal') {
+                setPenaltyScore(prev => ({
+                    ...prev,
+                    [team]: Math.max(0, prev[team] - 1)
+                }));
+            }
         } catch (e) {
             console.error(e);
             alert('Erro ao excluir evento');
@@ -333,7 +404,9 @@ export function SumulaFutsal() {
 
             await api.post(`/admin/matches/${id}/finish`, {
                 home_score: matchData.scoreHome,
-                away_score: matchData.scoreAway
+                away_score: matchData.scoreAway,
+                home_penalty_score: penaltyScore.home,
+                away_penalty_score: penaltyScore.away
             });
 
             // Clear local storage
@@ -391,6 +464,11 @@ export function SumulaFutsal() {
                     {/* Home */}
                     <div className="text-center flex-1">
                         <div className="text-4xl sm:text-6xl font-black font-mono leading-none mb-1">{matchData.scoreHome}</div>
+                        {(currentPeriod === 'Pênaltis' || penaltyScore.home > 0 || penaltyScore.away > 0) && (
+                            <div className="text-sm font-bold text-yellow-400 mb-1">
+                                (Pên: {penaltyScore.home})
+                            </div>
+                        )}
                         <h2 className="font-bold text-xs sm:text-sm text-gray-400 truncate max-w-[100px] mx-auto">{matchData.home_team?.name}</h2>
                         <div className="mt-1 flex justify-center gap-1">
                             {renderFouls(fouls.home)}
@@ -412,6 +490,11 @@ export function SumulaFutsal() {
                     {/* Away */}
                     <div className="text-center flex-1">
                         <div className="text-4xl sm:text-6xl font-black font-mono leading-none mb-1">{matchData.scoreAway}</div>
+                        {(currentPeriod === 'Pênaltis' || penaltyScore.away > 0 || penaltyScore.home > 0) && (
+                            <div className="text-sm font-bold text-yellow-400 mb-1">
+                                (Pên: {penaltyScore.away})
+                            </div>
+                        )}
                         <h2 className="font-bold text-xs sm:text-sm text-gray-400 truncate max-w-[100px] mx-auto">{matchData.away_team?.name}</h2>
                         <div className="mt-1 flex justify-center gap-1">
                             {renderFouls(fouls.away)}
@@ -425,7 +508,7 @@ export function SumulaFutsal() {
                 {/* Home Controls */}
                 <div className="bg-blue-900/10 p-3 rounded-xl border border-blue-900/30 space-y-2">
                     <button onClick={() => openEventModal('home', 'goal')} className="w-full py-4 bg-blue-600 rounded-lg font-black text-xl border-b-4 border-blue-800 active:scale-95 transition-all text-shadow">
-                        GOL
+                        {currentPeriod === 'Pênaltis' ? 'PÊNALTI' : 'GOL'}
                     </button>
                     <div className="grid grid-cols-2 gap-2">
                         <button onClick={() => openEventModal('home', 'yellow_card')} className="py-3 bg-yellow-500 text-black rounded-lg font-bold border-b-4 border-yellow-700 active:scale-95 text-xs sm:text-sm">🟨 Amarelo</button>
@@ -451,7 +534,7 @@ export function SumulaFutsal() {
                 {/* Away Controls */}
                 <div className="bg-red-900/10 p-3 rounded-xl border border-red-900/30 space-y-2">
                     <button onClick={() => openEventModal('away', 'goal')} className="w-full py-4 bg-green-600 rounded-lg font-black text-xl border-b-4 border-green-800 active:scale-95 transition-all text-shadow">
-                        GOL
+                        {currentPeriod === 'Pênaltis' ? 'PÊNALTI' : 'GOL'}
                     </button>
                     <div className="grid grid-cols-2 gap-2">
                         <button onClick={() => openEventModal('away', 'yellow_card')} className="py-3 bg-yellow-500 text-black rounded-lg font-bold border-b-4 border-yellow-700 active:scale-95 text-xs sm:text-sm">🟨 Amarelo</button>
@@ -476,7 +559,7 @@ export function SumulaFutsal() {
             </div>
 
             {/* Timeline & Actions Footer */}
-            <div className="px-4 mt-2 max-w-4xl mx-auto">
+            <div className="px-4 mt-2 max-w-4xl mx-auto pb-20">
                 <div className="flex items-center justify-between mb-2">
                     <h3 className="text-xs font-bold text-gray-500 uppercase flex items-center gap-2">
                         <Clock size={14} /> Linha do Tempo
@@ -484,7 +567,7 @@ export function SumulaFutsal() {
                     <button onClick={handleFinish} className="text-xs text-red-500 underline font-bold">Encerrar Súmula</button>
                 </div>
 
-                <div className="space-y-2 pb-20">
+                <div className="space-y-2">
                     {events.map((ev, idx) => (
                         <div key={idx} className="bg-gray-800 p-2 sm:p-3 rounded-lg border border-gray-700 flex items-center justify-between shadow-sm">
                             <div className="flex items-center gap-3">
@@ -494,6 +577,8 @@ export function SumulaFutsal() {
                                 <div className="flex flex-col">
                                     <span className="font-bold text-sm flex items-center gap-2">
                                         {ev.type === 'goal' && '⚽ GOL'}
+                                        {ev.type === 'shootout_goal' && '⚽ GOL (Pênalti)'}
+                                        {ev.type === 'shootout_miss' && '❌ Pênalti Perdido'}
                                         {ev.type === 'yellow_card' && '🟨 Amarelo'}
                                         {ev.type === 'red_card' && '🟥 Vermelho'}
                                         {ev.type === 'blue_card' && '🟦 Azul'}
@@ -503,6 +588,11 @@ export function SumulaFutsal() {
                                         {ev.type === 'timeout' && '⏱ Pedido de Tempo'}
                                     </span>
                                     {ev.player_name && <span className="text-xs text-gray-400">{ev.player_name}</span>}
+                                    {ev.type === 'shootout_miss' && (
+                                        <span className="text-[10px] text-red-400 uppercase font-bold ml-1">
+                                            {/* Metadata detail if available */}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                             <div className="flex items-center gap-3">
@@ -517,47 +607,73 @@ export function SumulaFutsal() {
                 </div>
             </div>
 
-            {/* Player Selection Bottom Sheet/Modal */}
-            {
-                showEventModal && selectedTeam && (
-                    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-                        <div className="bg-gray-800 w-full max-w-md sm:rounded-xl rounded-t-3xl border-t border-gray-700 shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
-                            <div className="p-4 bg-gray-750 border-b border-gray-700 flex items-center justify-between sticky top-0 bg-gray-800 z-10">
-                                <div>
-                                    <h3 className="font-bold text-lg text-white">Selecione o Jogador</h3>
-                                    <p className="text-xs text-gray-400 uppercase">
-                                        {selectedTeam === 'home' ? matchData.home_team?.name : matchData.away_team?.name}
-                                    </p>
-                                </div>
-                                <button onClick={() => setShowEventModal(false)} className="p-2 bg-gray-700 rounded-full hover:bg-gray-600">
-                                    <X size={20} />
-                                </button>
-                            </div>
+            {/* Shootout Outcome Modal */}
+            {showShootoutOptions && selectedPlayer && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in zoom-in duration-200">
+                    <div className="bg-gray-800 w-full max-w-sm rounded-2xl border border-gray-700 shadow-2xl p-6 text-center">
+                        <h3 className="text-xl font-bold text-white mb-2">Resultado da Cobrança</h3>
+                        <p className="text-gray-400 mb-6">Jogador: <b className="text-indigo-400">{selectedPlayer.name}</b></p>
 
-                            <div className="overflow-y-auto p-2 space-y-1 custom-scrollbar flex-1">
-                                {(selectedTeam === 'home' ? rosters.home : rosters.away).length === 0 ? (
-                                    <p className="p-8 text-center text-gray-500">Nenhum jogador cadastrado.</p>
-                                ) : (
-                                    (selectedTeam === 'home' ? rosters.home : rosters.away).map((player: any) => (
-                                        <button
-                                            key={player.id}
-                                            onClick={() => confirmEvent(player)}
-                                            className="w-full flex items-center justify-between p-3 hover:bg-gray-700 rounded-xl transition-colors group mb-1 border border-transparent hover:border-gray-600"
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center font-bold text-sm text-gray-300 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                                                    {player.number || '#'}
-                                                </div>
-                                                <span className="font-medium text-left text-sm">{player.name}</span>
-                                            </div>
-                                        </button>
-                                    ))
-                                )}
+                        <div className="grid grid-cols-2 gap-3">
+                            <button onClick={() => handleShootoutResult('score')} className="col-span-2 py-4 bg-green-600 hover:bg-green-700 rounded-xl font-black text-white text-lg transition-colors border-b-4 border-green-800 active:scale-95">
+                                ⚽ GOL
+                            </button>
+                            <button onClick={() => handleShootoutResult('saved')} className="py-3 bg-indigo-600 hover:bg-indigo-700 rounded-xl font-bold text-white transition-colors border-b-4 border-indigo-800 active:scale-95">
+                                🧤 Defendeu
+                            </button>
+                            <button onClick={() => handleShootoutResult('post')} className="py-3 bg-yellow-600 hover:bg-yellow-700 rounded-xl font-bold text-white transition-colors border-b-4 border-yellow-800 active:scale-95">
+                                🥅 Na Trave
+                            </button>
+                            <button onClick={() => handleShootoutResult('out')} className="col-span-2 py-3 bg-red-600 hover:bg-red-700 rounded-xl font-bold text-white transition-colors border-b-4 border-red-800 active:scale-95">
+                                ❌ Pra Fora
+                            </button>
+                        </div>
+                        <button onClick={() => setShowShootoutOptions(false)} className="mt-6 text-gray-500 hover:text-gray-300 text-sm font-bold underline">
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Player Modal */}
+            {showEventModal && selectedTeam && (
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-gray-800 w-full max-w-md sm:rounded-xl rounded-t-3xl border-t border-gray-700 shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
+                        <div className="p-4 bg-gradient-to-r from-green-600 to-emerald-600 border-b border-green-700 flex items-center justify-between sticky top-0 z-10">
+                            <div>
+                                <h3 className="font-bold text-lg text-white">Selecione o Jogador</h3>
+                                <p className="text-xs text-green-200 uppercase">
+                                    {selectedTeam === 'home' ? matchData.home_team?.name : matchData.away_team?.name}
+                                </p>
                             </div>
+                            <button onClick={() => setShowEventModal(false)} className="p-2 bg-black/30 rounded-full hover:bg-black/50">
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="overflow-y-auto p-2 space-y-1 flex-1">
+                            {(selectedTeam === 'home' ? rosters.home : rosters.away).length === 0 ? (
+                                <p className="p-8 text-center text-gray-500">Nenhum jogador cadastrado.</p>
+                            ) : (
+                                (selectedTeam === 'home' ? rosters.home : rosters.away).map((player: any) => (
+                                    <button
+                                        key={player.id}
+                                        onClick={() => confirmEvent(player)}
+                                        className="w-full flex items-center justify-between p-3 hover:bg-gray-700 rounded-xl transition-colors group mb-1 border border-transparent hover:border-green-500"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-green-600 flex items-center justify-center font-bold text-sm text-white group-hover:bg-green-500 transition-colors">
+                                                {player.number || '#'}
+                                            </div>
+                                            <span className="font-medium text-left text-sm">{player.name}</span>
+                                        </div>
+                                    </button>
+                                ))
+                            )}
                         </div>
                     </div>
-                )
-            }
-        </div >
+                </div>
+            )}
+        </div>
     );
 }

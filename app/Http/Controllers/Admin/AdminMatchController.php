@@ -69,6 +69,8 @@ class AdminMatchController extends Controller
             'phase' => 'nullable|string|max:100',
             'home_score' => 'nullable|integer|min:0',
             'away_score' => 'nullable|integer|min:0',
+            'home_penalty_score' => 'nullable|integer|min:0',
+            'away_penalty_score' => 'nullable|integer|min:0',
             'status' => 'sometimes|in:scheduled,live,finished,cancelled',
             'category_id' => 'nullable|integer|exists:categories,id',
             'match_details' => 'nullable|array',
@@ -96,13 +98,22 @@ class AdminMatchController extends Controller
         $validated = $request->validate([
             'home_score' => 'required|integer|min:0',
             'away_score' => 'required|integer|min:0',
+            'home_penalty_score' => 'nullable|integer|min:0',
+            'away_penalty_score' => 'nullable|integer|min:0',
         ]);
 
-        $match->update([
+        $updateData = [
             'home_score' => $validated['home_score'],
             'away_score' => $validated['away_score'],
             'status' => 'finished',
-        ]);
+        ];
+
+        if (array_key_exists('home_penalty_score', $validated))
+            $updateData['home_penalty_score'] = $validated['home_penalty_score'];
+        if (array_key_exists('away_penalty_score', $validated))
+            $updateData['away_penalty_score'] = $validated['away_penalty_score'];
+
+        $match->update($updateData);
 
         // Send Notification Hook
         // (new NotificationController)->sendInternal(...)
@@ -144,7 +155,7 @@ class AdminMatchController extends Controller
         $validated = $request->validate([
             'team_id' => 'required|exists:teams,id',
             'player_id' => 'nullable|integer',
-            'event_type' => 'required|in:goal,yellow_card,red_card,blue_card,assist,foul,mvp,substitution,point,ace,block,timeout,period_start,period_end,match_start,match_end',
+            'event_type' => 'required|in:goal,yellow_card,red_card,blue_card,assist,foul,mvp,substitution,point,ace,block,timeout,period_start,period_end,match_start,match_end,shootout_goal,shootout_miss',
             'minute' => 'nullable|string', // Change to string to support "00:00"
             'value' => 'nullable|integer|min:1',
             'metadata' => 'nullable|array',

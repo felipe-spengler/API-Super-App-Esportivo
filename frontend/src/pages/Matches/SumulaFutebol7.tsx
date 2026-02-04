@@ -17,14 +17,16 @@ export function SumulaFutebol7() {
     const [isRunning, setIsRunning] = useState(false);
     const [currentPeriod, setCurrentPeriod] = useState<string>('1º Tempo');
 
-    // Stats State
     const [fouls, setFouls] = useState({ home: 0, away: 0 });
+    const [penaltyScore, setPenaltyScore] = useState({ home: 0, away: 0 });
     const [events, setEvents] = useState<any[]>([]);
 
     // Modal State
     const [showEventModal, setShowEventModal] = useState(false);
     const [selectedTeam, setSelectedTeam] = useState<'home' | 'away' | null>(null);
     const [eventType, setEventType] = useState<'goal' | 'yellow_card' | 'red_card' | 'blue_card' | 'assist' | 'foul' | 'mvp' | null>(null);
+    const [showShootoutOptions, setShowShootoutOptions] = useState(false);
+    const [selectedPlayer, setSelectedPlayer] = useState<any>(null);
 
     const fetchMatchDetails = async () => {
         try {
@@ -53,6 +55,10 @@ export function SumulaFutebol7() {
                 const homeFouls = history.filter((e: any) => e.team === 'home' && e.type === 'foul').length;
                 const awayFouls = history.filter((e: any) => e.team === 'away' && e.type === 'foul').length;
                 setFouls({ home: homeFouls, away: awayFouls });
+
+                const homePenalties = history.filter((e: any) => e.team === 'home' && e.type === 'shootout_goal').length;
+                const awayPenalties = history.filter((e: any) => e.team === 'away' && e.type === 'shootout_goal').length;
+                setPenaltyScore({ home: homePenalties, away: awayPenalties });
             }
         } catch (e) {
             console.error(e);
@@ -242,6 +248,14 @@ export function SumulaFutebol7() {
         const teamId = selectedTeam === 'home' ? matchData.home_team_id : matchData.away_team_id;
         const currentTime = formatTime(time);
 
+        // Intercept Logic for Shootout
+        if (currentPeriod === 'Pênaltis' && eventType === 'goal') {
+            setSelectedPlayer(player);
+            setShowEventModal(false);
+            setShowShootoutOptions(true); // Open specific modal
+            return;
+        }
+
         try {
             const response = await api.post(`/admin/matches/${id}/events`, {
                 event_type: eventType,
@@ -275,6 +289,54 @@ export function SumulaFutebol7() {
         }
     };
 
+    const handleShootoutResult = async (outcome: 'score' | 'saved' | 'post' | 'out') => {
+        if (!selectedPlayer || !selectedTeam) return;
+
+        const type = outcome === 'score' ? 'shootout_goal' : 'shootout_miss';
+        const teamId = selectedTeam === 'home' ? matchData.home_team_id : matchData.away_team_id;
+        const currentTime = formatTime(time);
+
+        try {
+            const response = await api.post(`/admin/matches/${id}/events`, {
+                event_type: type,
+                team_id: teamId,
+                minute: currentTime,
+                period: currentPeriod,
+                player_id: selectedPlayer.id,
+                metadata: { outcome }
+            });
+
+            const newEvent = {
+                id: response.data.id,
+                type: type,
+                team: selectedTeam,
+                time: currentTime,
+
+                period: currentPeriod,
+                player_name: selectedPlayer.name
+            };
+            setEvents(prev => [newEvent, ...prev]);
+
+            // Update penalty score locally
+            if (outcome === 'score') {
+                setPenaltyScore(prev => ({
+                    ...prev,
+                    [selectedTeam]: prev[selectedTeam] + 1
+                }));
+            }
+
+            // Note: We deliberately do NOT update matchData.scoreHome/scoreAway
+            // because shootout goals should not count for stats/regular score.
+
+            setShowShootoutOptions(false);
+            setSelectedPlayer(null);
+
+        } catch (e) {
+            console.error(e);
+            alert('Erro ao registrar pênalti');
+        }
+    };
+
     const handleDeleteEvent = async (eventId: number, type: string, team: 'home' | 'away') => {
         if (!window.confirm('Excluir este evento?')) return;
 
@@ -297,6 +359,13 @@ export function SumulaFutebol7() {
                     [team]: Math.max(0, prev[team] - 1)
                 }));
             }
+
+            if (type === 'shootout_goal') {
+                setPenaltyScore(prev => ({
+                    ...prev,
+                    [team]: Math.max(0, prev[team] - 1)
+                }));
+            }
         } catch (e) {
             console.error(e);
             alert('Erro ao excluir evento');
@@ -310,7 +379,9 @@ export function SumulaFutebol7() {
 
             await api.post(`/admin/matches/${id}/finish`, {
                 home_score: matchData.scoreHome,
-                away_score: matchData.scoreAway
+                away_score: matchData.scoreAway,
+                home_penalty_score: penaltyScore.home,
+                away_penalty_score: penaltyScore.away
             });
 
             localStorage.removeItem(STORAGE_KEY);
@@ -352,6 +423,11 @@ export function SumulaFutebol7() {
                 <div className="flex items-center justify-center gap-2 px-2">
                     <div className="text-center flex-1">
                         <div className="text-5xl sm:text-7xl font-black font-mono leading-none mb-1 text-green-100">{matchData.scoreHome}</div>
+                        {(currentPeriod === 'Pênaltis' || penaltyScore.home > 0 || penaltyScore.away > 0) && (
+                            <div className="text-sm font-bold text-yellow-400 mb-1">
+                                (Pên: {penaltyScore.home})
+                            </div>
+                        )}
                         <h2 className="font-bold text-xs sm:text-sm text-green-200 truncate max-w-[100px] mx-auto">{matchData.home_team?.name}</h2>
                         <div className="text-[10px] text-gray-400 mt-1">Faltas: {fouls.home}</div>
                     </div>
@@ -369,6 +445,11 @@ export function SumulaFutebol7() {
 
                     <div className="text-center flex-1">
                         <div className="text-5xl sm:text-7xl font-black font-mono leading-none mb-1 text-green-100">{matchData.scoreAway}</div>
+                        {(currentPeriod === 'Pênaltis' || penaltyScore.away > 0 || penaltyScore.home > 0) && (
+                            <div className="text-sm font-bold text-yellow-400 mb-1">
+                                (Pên: {penaltyScore.away})
+                            </div>
+                        )}
                         <h2 className="font-bold text-xs sm:text-sm text-green-200 truncate max-w-[100px] mx-auto">{matchData.away_team?.name}</h2>
                         <div className="text-[10px] text-gray-400 mt-1">Faltas: {fouls.away}</div>
                     </div>
@@ -379,7 +460,7 @@ export function SumulaFutebol7() {
             <div className="p-2 sm:p-4 grid grid-cols-2 gap-2 sm:gap-4 max-w-4xl mx-auto">
                 <div className="bg-blue-900/10 p-3 rounded-xl border border-blue-900/30 space-y-2">
                     <button onClick={() => openEventModal('home', 'goal')} className="w-full py-4 bg-blue-600 rounded-lg font-black text-xl border-b-4 border-blue-800 active:scale-95 transition-all">
-                        GOL
+                        {currentPeriod === 'Pênaltis' ? 'PÊNALTI' : 'GOL'}
                     </button>
                     <div className="grid grid-cols-2 gap-2">
                         <button onClick={() => openEventModal('home', 'yellow_card')} className="py-3 bg-yellow-500 text-black rounded-lg font-bold border-b-4 border-yellow-700 active:scale-95 text-xs sm:text-sm">🟨 Amarelo</button>
@@ -406,7 +487,7 @@ export function SumulaFutebol7() {
 
                 <div className="bg-red-900/10 p-3 rounded-xl border border-red-900/30 space-y-2">
                     <button onClick={() => openEventModal('away', 'goal')} className="w-full py-4 bg-green-600 rounded-lg font-black text-xl border-b-4 border-green-800 active:scale-95 transition-all">
-                        GOL
+                        {currentPeriod === 'Pênaltis' ? 'PÊNALTI' : 'GOL'}
                     </button>
                     <div className="grid grid-cols-2 gap-2">
                         <button onClick={() => openEventModal('away', 'yellow_card')} className="py-3 bg-yellow-500 text-black rounded-lg font-bold border-b-4 border-yellow-700 active:scale-95 text-xs sm:text-sm">🟨 Amarelo</button>
@@ -433,7 +514,7 @@ export function SumulaFutebol7() {
             </div>
 
             {/* Timeline */}
-            <div className="px-4 mt-2 max-w-4xl mx-auto">
+            <div className="px-4 mt-2 max-w-4xl mx-auto pb-20">
                 <div className="flex items-center justify-between mb-2">
                     <h3 className="text-xs font-bold text-green-400 uppercase flex items-center gap-2">
                         <Clock size={14} /> Linha do Tempo
@@ -441,7 +522,7 @@ export function SumulaFutebol7() {
                     <button onClick={handleFinish} className="text-xs text-red-500 underline font-bold">Encerrar Súmula</button>
                 </div>
 
-                <div className="space-y-2 pb-20">
+                <div className="space-y-2">
                     {events.map((ev, idx) => (
                         <div key={idx} className="bg-gray-800 p-2 sm:p-3 rounded-lg border border-gray-700 flex items-center justify-between shadow-sm">
                             <div className="flex items-center gap-3">
@@ -451,6 +532,8 @@ export function SumulaFutebol7() {
                                 <div className="flex flex-col">
                                     <span className="font-bold text-sm flex items-center gap-2">
                                         {ev.type === 'goal' && '⚽ GOL'}
+                                        {ev.type === 'shootout_goal' && '⚽ GOL (Pênalti)'}
+                                        {ev.type === 'shootout_miss' && '❌ Pênalti Perdido'}
                                         {ev.type === 'yellow_card' && '🟨 Amarelo'}
                                         {ev.type === 'red_card' && '🟥 Vermelho'}
                                         {ev.type === 'blue_card' && '🟦 Azul'}
@@ -460,6 +543,11 @@ export function SumulaFutebol7() {
                                         {ev.type === 'timeout' && '⏱ Pedido de Tempo'}
                                     </span>
                                     {ev.player_name && <span className="text-xs text-gray-400">{ev.player_name}</span>}
+                                    {ev.type === 'shootout_miss' && (
+                                        <span className="text-[10px] text-red-400 uppercase font-bold ml-1">
+                                            {/* Note if available */}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                             <div className="flex items-center gap-3">
@@ -473,6 +561,34 @@ export function SumulaFutebol7() {
                     {events.length === 0 && <div className="text-center text-gray-600 py-8 text-sm">Nenhum evento registrado ainda.</div>}
                 </div>
             </div>
+
+            {/* Shootout Outcome Modal */}
+            {showShootoutOptions && selectedPlayer && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in zoom-in duration-200">
+                    <div className="bg-gray-800 w-full max-w-sm rounded-2xl border border-gray-700 shadow-2xl p-6 text-center">
+                        <h3 className="text-xl font-bold text-white mb-2">Resultado da Cobrança</h3>
+                        <p className="text-gray-400 mb-6">Jogador: <b className="text-green-400">{selectedPlayer.name}</b></p>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <button onClick={() => handleShootoutResult('score')} className="col-span-2 py-4 bg-green-600 hover:bg-green-700 rounded-xl font-black text-white text-lg transition-colors border-b-4 border-green-800 active:scale-95">
+                                ⚽ GOL
+                            </button>
+                            <button onClick={() => handleShootoutResult('saved')} className="py-3 bg-indigo-600 hover:bg-indigo-700 rounded-xl font-bold text-white transition-colors border-b-4 border-indigo-800 active:scale-95">
+                                🧤 Defendeu
+                            </button>
+                            <button onClick={() => handleShootoutResult('post')} className="py-3 bg-yellow-600 hover:bg-yellow-700 rounded-xl font-bold text-white transition-colors border-b-4 border-yellow-800 active:scale-95">
+                                🥅 Na Trave
+                            </button>
+                            <button onClick={() => handleShootoutResult('out')} className="col-span-2 py-3 bg-red-600 hover:bg-red-700 rounded-xl font-bold text-white transition-colors border-b-4 border-red-800 active:scale-95">
+                                ❌ Pra Fora
+                            </button>
+                        </div>
+                        <button onClick={() => setShowShootoutOptions(false)} className="mt-6 text-gray-500 hover:text-gray-300 text-sm font-bold underline">
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Player Modal */}
             {showEventModal && selectedTeam && (

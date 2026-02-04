@@ -327,6 +327,11 @@ export function Matches() {
                                         <span className="text-2xl md:text-3xl font-black text-indigo-900 font-mono">
                                             {match.home_score ?? '-'} : {match.away_score ?? '-'}
                                         </span>
+                                        {(match.home_penalty_score != null || match.away_penalty_score != null) && (match.home_penalty_score > 0 || match.away_penalty_score > 0) && (
+                                            <span className="text-[10px] text-gray-500 font-bold">
+                                                ({match.home_penalty_score} x {match.away_penalty_score} Pen.)
+                                            </span>
+                                        )}
                                         <span className="text-[10px] md:text-xs text-gray-400 uppercase font-bold mt-1">Placar</span>
                                     </div>
 
