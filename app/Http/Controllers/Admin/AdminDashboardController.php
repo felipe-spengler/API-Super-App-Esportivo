@@ -40,8 +40,8 @@ class AdminDashboardController extends Controller
             $totalTeams = Team::when($clubId, fn($q) => $q->where('club_id', $clubId))->count();
 
             // Adjust player count based on club
-            $totalPlayers = User::where('user_type', 'player')
-                ->when($clubId, fn($q) => $q->whereHas('teamsAsPlayer', fn($t) => $t->where('club_id', $clubId))) // Assuming players are linked to club via teams
+            $totalPlayers = User::where('is_admin', false)
+                ->when($clubId, fn($q) => $q->whereHas('teamsAsPlayer', fn($t) => $t->where('club_id', $clubId))) 
                 ->count();
 
             $totalMatches = GameMatch::when($clubId, fn($q) => $q->whereHas('championship', fn($c) => $c->where('club_id', $clubId)))->count();
@@ -67,7 +67,7 @@ class AdminDashboardController extends Controller
                 ->take(3)
                 ->get();
 
-            $recentPlayers = User::where('user_type', 'player')
+            $recentPlayers = User::where('is_admin', false)
                 ->when($clubId, fn($q) => $q->whereHas('teamsAsPlayer', fn($t) => $t->where('club_id', $clubId)))
                 ->orderBy('created_at', 'desc')
                 ->take(3)

@@ -86,39 +86,41 @@ export function Teams() {
                     <h3 className="text-lg font-medium text-gray-900">Nenhuma equipe encontrada</h3>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
                     {filtered.map(team => (
-                        <div key={team.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all text-center group relative">
-                            <div className="w-20 h-20 mx-auto mb-4 relative rounded-full bg-gray-50 flex items-center justify-center overflow-hidden border border-gray-100 group-hover:border-indigo-200 transition-colors">
+                        <div key={team.id} className="bg-white p-3 md:p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all text-center group relative">
+                            <div className="w-14 h-14 md:w-20 md:h-20 mx-auto mb-3 md:mb-4 relative rounded-full bg-gray-50 flex items-center justify-center overflow-hidden border border-gray-100 group-hover:border-indigo-200 transition-colors">
                                 {team.logo_url ? (
                                     <img src={team.logo_url} alt={team.name} className="w-full h-full object-cover" />
                                 ) : (
-                                    <Shield className="w-8 h-8 text-gray-400 group-hover:text-indigo-400 transition-colors" />
+                                    <Shield className="w-6 h-6 md:w-8 md:h-8 text-gray-400 group-hover:text-indigo-400 transition-colors" />
                                 )}
                             </div>
-                            <h3 className="text-lg font-bold text-gray-900 mb-1">{team.name}</h3>
-                            <p className="text-sm text-gray-500 mb-4">{team.city || 'Sem cidade definida'}</p>
+                            <h3 className="text-sm md:text-lg font-bold text-gray-900 mb-1 truncate">{team.name}</h3>
+                            <p className="text-xs md:text-sm text-gray-500 mb-3 md:mb-4 truncate">{team.city || 'Sem cidade'}</p>
 
                             <div className="flex gap-2">
                                 <Link
                                     to={`/admin/teams/${team.id}`}
-                                    className="flex-1 py-2 px-3 rounded-lg bg-gray-50 text-indigo-600 font-bold text-xs hover:bg-indigo-50 transition-colors flex items-center justify-center gap-1"
+                                    className="flex-1 py-1.5 md:py-2 px-2 md:px-3 rounded-lg bg-gray-50 text-indigo-600 font-bold text-[10px] md:text-xs hover:bg-indigo-50 transition-colors flex items-center justify-center gap-1"
                                 >
-                                    <Shield className="w-3.5 h-3.5" />
-                                    Detalhes
+                                    <Shield className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                                    <span className="hidden md:inline">Detalhes</span>
+                                    <span className="md:hidden">Ver</span>
                                 </Link>
                                 <Link
                                     to={`/admin/teams/${team.id}/edit`}
-                                    className="p-2 rounded-lg bg-gray-50 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                                    className="p-1.5 md:p-2 rounded-lg bg-gray-50 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
                                     title="Editar Equipe"
                                 >
-                                    <Edit2 className="w-4 h-4" />
+                                    <Edit2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
                                 </Link>
                             </div>
                         </div>
                     ))}
                 </div>
-            )}
-        </div>
+            )
+            }
+        </div >
     );
 }

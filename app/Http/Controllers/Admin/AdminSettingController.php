@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Club;
+use Illuminate\Support\Facades\Schema;
 
 class AdminSettingController extends Controller
 {
@@ -93,18 +94,21 @@ class AdminSettingController extends Controller
             $inputSettings = $request->input('art_settings');
 
             if ($inputSettings !== null) {
-                if (is_string($inputSettings)) {
-                    $decoded = json_decode($inputSettings, true);
-                    if (json_last_error() === JSON_ERROR_NONE) {
-                        $inputSettings = $decoded;
-                    } else {
-                        $inputSettings = [];
+                // Check if column exists to avoid SQL error if migration missing
+                if (Schema::hasColumn('clubs', 'art_settings')) {
+                    if (is_string($inputSettings)) {
+                        $decoded = json_decode($inputSettings, true);
+                        if (json_last_error() === JSON_ERROR_NONE) {
+                            $inputSettings = $decoded;
+                        } else {
+                            $inputSettings = [];
+                        }
                     }
-                }
 
-                if (is_array($inputSettings)) {
-                    $currentSettings = $club->art_settings ?? [];
-                    $data['art_settings'] = array_replace_recursive($currentSettings, $inputSettings);
+                    if (is_array($inputSettings)) {
+                        $currentSettings = $club->art_settings ?? [];
+                        $data['art_settings'] = array_replace_recursive($currentSettings, $inputSettings);
+                    }
                 }
             }
 

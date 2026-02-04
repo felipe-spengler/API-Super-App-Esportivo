@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, Bell, Shield, Lock, CreditCard, Loader2, Trophy, MessageSquare, Type, Palette, Upload, Trash2, Eye } from 'lucide-react';
+import { Save, Bell, Shield, Lock, CreditCard, Loader2, Trophy, MessageSquare, Type, Palette, Upload, Trash2, Eye, ChevronDown, ChevronRight } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
@@ -60,6 +60,7 @@ export function Settings() {
 
     const [allSports, setAllSports] = useState<any[]>([]);
     const [activeTab, setActiveTab] = useState('general');
+    const [expandedSports, setExpandedSports] = useState<string[]>(['futebol']); // Default open football
     const [emailSettings, setEmailSettings] = useState({
         smtp_host: '',
         smtp_port: '',
@@ -268,6 +269,14 @@ export function Settings() {
         window.open(`https://wa.me/554599736078?text=${message}`, '_blank');
     };
 
+    const toggleSportSection = (sportKey: string) => {
+        if (expandedSports.includes(sportKey)) {
+            setExpandedSports(expandedSports.filter(s => s !== sportKey));
+        } else {
+            setExpandedSports([...expandedSports, sportKey]);
+        }
+    };
+
     if (loading) {
         return (
             <div className="p-12 flex flex-col items-center justify-center space-y-4">
@@ -286,24 +295,24 @@ export function Settings() {
 
             <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden flex flex-col md:flex-row">
                 {/* Sidebar Navigation */}
-                <aside className="w-full md:w-72 bg-gray-50 border-r border-gray-100 p-6 space-y-2">
+                <aside className="w-full md:w-72 bg-slate-900 md:bg-gray-50 border-b md:border-b-0 md:border-r border-gray-100 p-4 md:p-6 flex md:flex-col overflow-x-auto gap-2 md:gap-2 no-scrollbar">
                     <button
                         onClick={() => setActiveTab('general')}
-                        className={`w-full text-left px-4 py-3 rounded-xl font-bold text-sm flex items-center gap-3 transition-all ${activeTab === 'general' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-gray-600 hover:bg-white hover:shadow-sm'}`}
+                        className={`whitespace-nowrap flex-shrink-0 w-auto md:w-full text-left px-4 py-3 rounded-xl font-bold text-sm flex items-center gap-3 transition-all ${activeTab === 'general' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/50 md:shadow-indigo-200' : 'text-gray-400 md:text-gray-600 hover:bg-slate-800 md:hover:bg-white md:hover:shadow-sm'}`}
                     >
                         <Shield className="w-5 h-5" />
                         Geral
                     </button>
                     <button
                         onClick={() => setActiveTab('modalities')}
-                        className={`w-full text-left px-4 py-3 rounded-xl font-bold text-sm flex items-center gap-3 transition-all ${activeTab === 'modalities' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-gray-600 hover:bg-white hover:shadow-sm'}`}
+                        className={`whitespace-nowrap flex-shrink-0 w-auto md:w-full text-left px-4 py-3 rounded-xl font-bold text-sm flex items-center gap-3 transition-all ${activeTab === 'modalities' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/50 md:shadow-indigo-200' : 'text-gray-400 md:text-gray-600 hover:bg-slate-800 md:hover:bg-white md:hover:shadow-sm'}`}
                     >
                         <Trophy className="w-5 h-5" />
                         Modalidades
                     </button>
                     <button
                         onClick={() => setActiveTab('art')}
-                        className={`w-full text-left px-4 py-3 rounded-xl font-bold text-sm flex items-center gap-3 transition-all ${activeTab === 'art' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-gray-600 hover:bg-white hover:shadow-sm'}`}
+                        className={`whitespace-nowrap flex-shrink-0 w-auto md:w-full text-left px-4 py-3 rounded-xl font-bold text-sm flex items-center gap-3 transition-all ${activeTab === 'art' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/50 md:shadow-indigo-200' : 'text-gray-400 md:text-gray-600 hover:bg-slate-800 md:hover:bg-white md:hover:shadow-sm'}`}
                     >
                         <Palette className="w-5 h-5" />
                         Artes & Fundos
@@ -311,7 +320,7 @@ export function Settings() {
                     {isSuperAdmin && (
                         <button
                             onClick={() => setActiveTab('email')}
-                            className={`w-full text-left px-4 py-3 rounded-xl font-bold text-sm flex items-center gap-3 transition-all ${activeTab === 'email' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-gray-600 hover:bg-white hover:shadow-sm'}`}
+                            className={`whitespace-nowrap flex-shrink-0 w-auto md:w-full text-left px-4 py-3 rounded-xl font-bold text-sm flex items-center gap-3 transition-all ${activeTab === 'email' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/50 md:shadow-indigo-200' : 'text-gray-400 md:text-gray-600 hover:bg-slate-800 md:hover:bg-white md:hover:shadow-sm'}`}
                         >
                             <Bell className="w-5 h-5" />
                             Servidor de Email
@@ -630,117 +639,137 @@ export function Settings() {
                                 </p>
                             </header>
 
-                            {Object.entries(artConfig).map(([sportKey, config]: [string, any]) => (
-                                <section key={sportKey} className="space-y-6">
-                                    <h3 className="text-lg font-bold text-gray-800 border-b pb-2 capitalize">{config.name}</h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                        {config.positions.map((pos: any) => {
-                                            const currentBg = settings.art_settings?.[sportKey]?.[pos.key];
+                            {Object.entries(artConfig).map(([sportKey, config]: [string, any]) => {
+                                const isOpen = expandedSports.includes(sportKey);
+                                return (
+                                    <section key={sportKey} className="border border-gray-200 rounded-2xl overflow-hidden shadow-sm bg-white">
+                                        <div
+                                            onClick={() => toggleSportSection(sportKey)}
+                                            className="bg-gray-50 p-4 flex justify-between items-center cursor-pointer hover:bg-gray-100 transition-colors"
+                                        >
+                                            <h3 className="text-lg font-bold text-gray-800 capitalize flex items-center gap-2">
+                                                {sportKey === 'futebol' && <div className="w-2 h-2 rounded-full bg-green-500"></div>}
+                                                {sportKey === 'volei' && <div className="w-2 h-2 rounded-full bg-orange-500"></div>}
+                                                {config.name}
+                                            </h3>
+                                            {isOpen ? <ChevronDown className="w-5 h-5 text-gray-400" /> : <ChevronRight className="w-5 h-5 text-gray-400" />}
+                                        </div>
 
-                                            // Resolve URL
-                                            // If custom: /api/storage/...
-                                            // If default: /api/assets-templates/...
-                                            let displayUrl = null;
+                                        {isOpen && (
+                                            <div className="p-4 md:p-6 bg-white border-t border-gray-100">
+                                                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
+                                                    {config.positions.map((pos: any) => {
+                                                        const currentBg = settings.art_settings?.[sportKey]?.[pos.key];
 
-                                            // Use configured API URL or fallback to relative root (works for same-domain deployments)
-                                            const apiUrl = import.meta.env.VITE_API_URL || '';
+                                                        // Resolve URL
+                                                        // If custom: /api/storage/...
+                                                        // If default: /api/assets-templates/...
+                                                        let displayUrl = null;
 
-                                            if (currentBg) {
-                                                if (currentBg.startsWith('http')) {
-                                                    displayUrl = currentBg;
-                                                } else {
-                                                    // Ensure we don't double slash if apiUrl has slash
-                                                    const base = apiUrl.replace(/\/$/, '');
-                                                    displayUrl = `${base}/api/storage/${currentBg.replace(/^\//, '')}`;
-                                                }
-                                            } else if (pos.defaultFile) {
-                                                // Fallback to system default served via generic route
-                                                // Route defined in api.php as /assets-templates/{filename} with prefix 'api' => /api/assets-templates/...
-                                                const base = apiUrl.replace(/\/$/, '');
-                                                displayUrl = `${base}/api/assets-templates/${pos.defaultFile}`;
-                                            }
+                                                        // Use configured API URL or fallback to relative root (works for same-domain deployments)
+                                                        const apiUrl = import.meta.env.VITE_API_URL || '';
 
-                                            return (
-                                                <div key={pos.key} className="bg-gray-50 rounded-xl p-4 border border-gray-100 flex flex-col gap-3 transition-hover hover:shadow-md">
-                                                    <div className="flex justify-between items-start">
-                                                        <span className="font-bold text-sm text-gray-700">{pos.label}</span>
-                                                        {currentBg ? (
-                                                            <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full font-medium border border-green-100">Personalizado</span>
-                                                        ) : (
-                                                            <span className="text-xs text-gray-500 bg-white px-2 py-0.5 rounded-full border border-gray-200">Padrão do Sistema</span>
-                                                        )}
-                                                    </div>
+                                                        if (currentBg) {
+                                                            if (currentBg.startsWith('http')) {
+                                                                displayUrl = currentBg;
+                                                            } else {
+                                                                // Ensure we don't double slash if apiUrl has slash
+                                                                const base = apiUrl.replace(/\/$/, '');
+                                                                displayUrl = `${base}/api/storage/${currentBg.replace(/^\//, '')}`;
+                                                            }
+                                                        } else if (pos.defaultFile) {
+                                                            // Fallback to system default served via generic route
+                                                            // Route defined in api.php as /assets-templates/{filename} with prefix 'api' => /api/assets-templates/...
+                                                            const base = apiUrl.replace(/\/$/, '');
+                                                            displayUrl = `${base}/api/assets-templates/${pos.defaultFile}`;
+                                                        }
 
-                                                    <div className="relative w-full aspect-[4/5] bg-gray-200 rounded-lg overflow-hidden group border border-gray-200">
-                                                        {displayUrl ? (
-                                                            <img
-                                                                src={displayUrl}
-                                                                className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                                                                alt="Preview"
-                                                                onError={(e) => {
-                                                                    // Fallback visual if image fails to load
-                                                                    e.currentTarget.style.display = 'none';
-                                                                    e.currentTarget.parentElement?.classList.add('flex', 'items-center', 'justify-center');
-                                                                    if (e.currentTarget.nextElementSibling) {
-                                                                        e.currentTarget.nextElementSibling.classList.remove('hidden');
-                                                                    }
-                                                                }}
-                                                            />
-                                                        ) : null}
+                                                        return (
+                                                            <div key={pos.key} className="bg-gray-50 rounded-xl p-3 md:p-4 border border-gray-100 flex flex-col gap-3 transition-hover hover:shadow-md">
+                                                                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-1">
+                                                                    <span className="font-bold text-xs md:text-sm text-gray-700 leading-tight">{pos.label}</span>
+                                                                    {currentBg ? (
+                                                                        <span className="text-[10px] text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full font-medium border border-green-100 whitespace-nowrap">Personalizado</span>
+                                                                    ) : (
+                                                                        <span className="text-[10px] text-gray-500 bg-white px-1.5 py-0.5 rounded-full border border-gray-200 whitespace-nowrap">Padrão</span>
+                                                                    )}
+                                                                </div>
 
-                                                        {/* Fallback element (hidden by default unless image fails or is missing) */}
-                                                        <div className={`absolute inset-0 flex flex-col items-center justify-center text-gray-400 p-4 text-center bg-gray-100 ${displayUrl ? 'hidden' : ''}`}>
-                                                            <Palette className="w-8 h-8 mb-2 opacity-20" />
-                                                            <span className="text-xs">Visualização indisponível</span>
-                                                        </div>
+                                                                <div className="relative w-full aspect-[4/5] bg-gray-200 rounded-lg overflow-hidden group border border-gray-200">
+                                                                    {displayUrl ? (
+                                                                        <img
+                                                                            src={displayUrl}
+                                                                            className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                                                                            alt="Preview"
+                                                                            onError={(e) => {
+                                                                                // Fallback visual if image fails to load
+                                                                                e.currentTarget.style.display = 'none';
+                                                                                e.currentTarget.parentElement?.classList.add('flex', 'items-center', 'justify-center');
+                                                                                if (e.currentTarget.nextElementSibling) {
+                                                                                    e.currentTarget.nextElementSibling.classList.remove('hidden');
+                                                                                }
+                                                                            }}
+                                                                        />
+                                                                    ) : null}
 
-                                                        {/* Hover Actions */}
-                                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3 backdrop-blur-sm">
-                                                            {displayUrl && (
-                                                                <a
-                                                                    href={displayUrl}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    className="text-white hover:text-indigo-200 flex items-center gap-1 text-xs font-medium mb-1"
-                                                                >
-                                                                    <Eye className="w-3 h-3" /> Ver em tela cheia
-                                                                </a>
-                                                            )}
+                                                                    {/* Fallback element (hidden by default unless image fails or is missing) */}
+                                                                    <div className={`absolute inset-0 flex flex-col items-center justify-center text-gray-400 p-4 text-center bg-gray-100 ${displayUrl ? 'hidden' : ''}`}>
+                                                                        <Palette className="w-8 h-8 mb-2 opacity-20" />
+                                                                        <span className="text-xs">Visualização indisponível</span>
+                                                                    </div>
 
-                                                            <div className="flex gap-2">
-                                                                <input
-                                                                    type="file"
-                                                                    id={`upload-${sportKey}-${pos.key}`}
-                                                                    className="hidden"
-                                                                    accept="image/*"
-                                                                    onChange={(e) => handleArtUpload(e, sportKey, pos.key)}
-                                                                />
-                                                                <label
-                                                                    htmlFor={`upload-${sportKey}-${pos.key}`}
-                                                                    className="bg-white text-indigo-600 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer hover:bg-indigo-50 flex items-center gap-2 shadow-sm"
-                                                                >
-                                                                    <Upload className="w-3 h-3" />
-                                                                    {currentBg ? 'Trocar' : 'Enviar Novo'}
-                                                                </label>
+                                                                    {/* Hover Actions */}
+                                                                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3 backdrop-blur-sm p-4">
+                                                                        {displayUrl && (
+                                                                            <a
+                                                                                href={displayUrl}
+                                                                                target="_blank"
+                                                                                rel="noopener noreferrer"
+                                                                                className="text-white hover:text-indigo-200 flex items-center gap-1 text-xs font-medium mb-1"
+                                                                            >
+                                                                                <Eye className="w-3 h-3" /> Ver
+                                                                            </a>
+                                                                        )}
 
-                                                                {currentBg && (
-                                                                    <button
-                                                                        onClick={() => removeArt(sportKey, pos.key)}
-                                                                        className="bg-red-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer hover:bg-red-600 flex items-center gap-2 shadow-sm"
-                                                                    >
-                                                                        <Trash2 className="w-3 h-3" />
-                                                                        {/* Remover */}
-                                                                    </button>
-                                                                )}
+                                                                        <div className="flex flex-col w-full gap-2">
+                                                                            <div className="flex gap-2 justify-center">
+                                                                                <input
+                                                                                    type="file"
+                                                                                    id={`upload-${sportKey}-${pos.key}`}
+                                                                                    className="hidden"
+                                                                                    accept="image/*"
+                                                                                    onChange={(e) => handleArtUpload(e, sportKey, pos.key)}
+                                                                                />
+                                                                                <label
+                                                                                    htmlFor={`upload-${sportKey}-${pos.key}`}
+                                                                                    className="bg-white text-indigo-600 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer hover:bg-indigo-50 flex items-center justify-center gap-2 shadow-sm flex-1"
+                                                                                >
+                                                                                    <Upload className="w-3 h-3" />
+                                                                                    {currentBg ? 'Trocar' : 'Enviar'}
+                                                                                </label>
+                                                                            </div>
+
+                                                                            {currentBg && (
+                                                                                <button
+                                                                                    onClick={() => removeArt(sportKey, pos.key)}
+                                                                                    className="bg-red-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer hover:bg-red-600 flex items-center justify-center gap-2 shadow-sm w-full"
+                                                                                >
+                                                                                    <Trash2 className="w-3 h-3" />
+                                                                                    Remover
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                    </div>
+                                                        );
+                                                    })}
                                                 </div>
-                                            );
-                                        })}
-                                    </div>
-                                </section>
-                            ))}
+                                            </div>
+                                        )}
+                                    </section>
+                                );
+                            })}
                         </div>
                     )}
 

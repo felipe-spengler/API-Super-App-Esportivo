@@ -178,29 +178,29 @@ export function Matches() {
                 </div>
 
                 {/* Filtros de Data */}
-                <div className="flex items-center bg-white p-1 rounded-lg border border-gray-200 shadow-sm">
+                <div className="flex items-center bg-white p-1 rounded-lg border border-gray-200 shadow-sm overflow-x-auto max-w-full no-scrollbar">
                     <button
                         onClick={() => setFilterPeriod('all')}
-                        className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${filterPeriod === 'all' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-50'}`}
+                        className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${filterPeriod === 'all' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-50'}`}
                     >
                         Todas
                     </button>
-                    <div className="w-px h-4 bg-gray-200 mx-1"></div>
+                    <div className="w-px h-4 bg-gray-200 mx-1 flex-shrink-0"></div>
                     <button
                         onClick={() => setFilterPeriod('today')}
-                        className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${filterPeriod === 'today' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-50'}`}
+                        className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${filterPeriod === 'today' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-50'}`}
                     >
                         Hoje
                     </button>
                     <button
                         onClick={() => setFilterPeriod('yesterday')}
-                        className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${filterPeriod === 'yesterday' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-50'}`}
+                        className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${filterPeriod === 'yesterday' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-50'}`}
                     >
                         Ontem
                     </button>
                     <button
                         onClick={() => setFilterPeriod('week')}
-                        className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${filterPeriod === 'week' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-50'}`}
+                        className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${filterPeriod === 'week' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-50'}`}
                     >
                         Esta Semana
                     </button>
@@ -235,22 +235,22 @@ export function Matches() {
                                 </div>
 
                                 {/* Placar */}
-                                <div className="flex-1 flex items-center justify-center gap-8">
-                                    <div className="text-right flex-1">
-                                        <h3 className="text-lg font-bold text-gray-900">{match.home_team?.name}</h3>
-                                        <span className="text-xs text-gray-400">Mandante</span>
+                                <div className="flex-1 flex items-center justify-center gap-3 md:gap-8 w-full md:w-auto">
+                                    <div className="text-right flex-1 min-w-0">
+                                        <h3 className="text-sm md:text-lg font-bold text-gray-900 truncate">{match.home_team?.name}</h3>
+                                        <span className="text-[10px] md:text-xs text-gray-400">Mandante</span>
                                     </div>
 
-                                    <div className="flex flex-col items-center px-4 bg-gray-50 rounded-lg py-2">
-                                        <span className="text-3xl font-black text-indigo-900 font-mono">
+                                    <div className="flex flex-col items-center px-4 bg-gray-50 rounded-lg py-2 shrink-0">
+                                        <span className="text-2xl md:text-3xl font-black text-indigo-900 font-mono">
                                             {match.home_score ?? '-'} : {match.away_score ?? '-'}
                                         </span>
-                                        <span className="text-xs text-gray-400 uppercase font-bold mt-1">Placar</span>
+                                        <span className="text-[10px] md:text-xs text-gray-400 uppercase font-bold mt-1">Placar</span>
                                     </div>
 
-                                    <div className="text-left flex-1">
-                                        <h3 className="text-lg font-bold text-gray-900">{match.away_team?.name}</h3>
-                                        <span className="text-xs text-gray-400">Visitante</span>
+                                    <div className="text-left flex-1 min-w-0">
+                                        <h3 className="text-sm md:text-lg font-bold text-gray-900 truncate">{match.away_team?.name}</h3>
+                                        <span className="text-[10px] md:text-xs text-gray-400">Visitante</span>
                                     </div>
                                 </div>
 
