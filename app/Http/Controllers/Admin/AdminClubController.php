@@ -88,4 +88,64 @@ class AdminClubController extends Controller
             return response()->json(['error' => 'Erro ao criar clube: ' . $e->getMessage()], 500);
         }
     }
+    /**
+     * Obter detalhes do clube (Super Admin ou o próprio admin do clube)
+     */
+    public function show(Request $request, $id)
+    {
+        $user = $request->user();
+
+        // Se for Super Admin, pode ver qualquer um.
+        // Se for Admin de Clube, só pode ver o seu.
+        if (!$user->isSuperAdmin()) {
+            if ($user->club_id != $id) {
+                return response()->json(['message' => 'Unauthorized'], 403);
+            }
+        }
+
+        $club = Club::with(['city'])->findOrFail($id);
+        return response()->json($club);
+    }
+
+    /**
+     * Atualizar Clube
+     */
+    public function update(Request $request, $id)
+    {
+        $user = $request->user();
+
+        if (!$user->isSuperAdmin()) {
+            // Permitir que o admin do clube edite seus próprios dados?
+            // Geralmente sim, mas algumas coisas como 'actives' talvez não.
+            // Por enquanto, vamos manter restrito ou checar club_id.
+            if ($user->club_id != $id) {
+                return response()->json(['message' => 'Unauthorized'], 403);
+            }
+        }
+
+        $club = Club::findOrFail($id);
+
+        $data = $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'slug' => 'sometimes|string|unique:clubs,slug,' . $id,
+            'city_id' => 'sometimes|exists:cities,id',
+            'primary_color' => 'nullable|string',
+            'secondary_color' => 'nullable|string',
+            'primary_font' => 'nullable|string',
+            'secondary_font' => 'nullable|string',
+            // 'active_modalities' => 'array' // Se quiser editar daqui
+            'is_active' => 'boolean'
+        ]);
+
+        if (isset($data['slug'])) {
+            $data['slug'] = Str::slug($data['slug']);
+        }
+
+        $club->update($data);
+
+        return response()->json([
+            'message' => 'Clube atualizado com sucesso!',
+            'club' => $club
+        ]);
+    }
 }

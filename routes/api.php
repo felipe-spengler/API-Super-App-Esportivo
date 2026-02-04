@@ -249,6 +249,8 @@ Route::middleware('auth:sanctum')->group(function () {
         // Gestão de Clubes (Super Admin)
         Route::get('/clubs-manage', [\App\Http\Controllers\Admin\AdminClubController::class, 'index']);
         Route::post('/clubs-manage', [\App\Http\Controllers\Admin\AdminClubController::class, 'store']);
+        Route::get('/clubs-manage/{id}', [\App\Http\Controllers\Admin\AdminClubController::class, 'show']);
+        Route::put('/clubs-manage/{id}', [\App\Http\Controllers\Admin\AdminClubController::class, 'update']);
     });
 });
 

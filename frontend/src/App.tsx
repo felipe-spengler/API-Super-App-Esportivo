@@ -24,6 +24,8 @@ import { SumulaFutebol } from './pages/Matches/SumulaFutebol';
 import { CreateRaceWizard } from './pages/Corridas/CreateRaceWizard';
 import { RaceResults } from './pages/Corridas/RaceResults';
 import { NewEventSelection } from './pages/EventWizard/NewEventSelection';
+import { ClubList } from './pages/SuperAdmin/ClubList';
+import { SystemSettings } from './pages/SuperAdmin/SystemSettings';
 
 import { Explore } from './pages/Public/Explore';
 import { EventDetails } from './pages/Public/EventDetails';
@@ -127,6 +129,8 @@ function App() {
               <Route path="players/:id/edit" element={<PlayerForm />} />
               <Route path="reports" element={<Reports />} />
               <Route path="settings" element={<Settings />} />
+              <Route path="clubs-manage" element={<ClubList />} />
+              <Route path="system-settings" element={<SystemSettings />} />
 
               <Route path="matches" element={<Matches />} />
             </Route>

@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Trophy, List, BarChart3, Settings, Users, UserPlus, X } from 'lucide-react';
+import { Home, Trophy, List, BarChart3, Settings, Users, UserPlus, X, Building2, Settings2 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useAuth } from '../context/AuthContext';
@@ -27,6 +27,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         { label: 'Relatórios', path: '/admin/reports', icon: BarChart3 },
         { label: 'Configurações', path: '/admin/settings', icon: Settings },
     ];
+
+    // Super Admin Items
+    if (user?.is_admin && !user.club_id) {
+        menuItems.push(
+            { label: 'Gerenciar Clubes', path: '/admin/clubs-manage', icon: Building2 }, // Building2 needs import
+            { label: 'Sistema', path: '/admin/system-settings', icon: Settings2 } // Settings2 needs import
+        );
+    }
 
     return (
         <aside className={cn(

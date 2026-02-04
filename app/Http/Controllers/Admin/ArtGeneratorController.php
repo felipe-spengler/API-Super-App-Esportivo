@@ -326,6 +326,14 @@ class ArtGeneratorController extends Controller
             // Implementation assumes nested: sport -> position
         }
 
+        // 2. Check Global System Defaults (SystemSetting)
+        // Key format: default_art_{sport}_{category}
+        $sysKey = 'default_art_' . $sport . '_' . $category;
+        $sysSetting = \App\Models\SystemSetting::where('key', $sysKey)->first();
+        if ($sysSetting && $sysSetting->value) {
+            return $sysSetting->value;
+        }
+
         // Mapeamento Volei (Default)
         if (str_contains($sport, 'volei')) {
             $map = [
