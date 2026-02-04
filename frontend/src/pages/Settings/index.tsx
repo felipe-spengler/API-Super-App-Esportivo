@@ -55,6 +55,20 @@ export function Settings() {
                 { key: 'bloqueadora', label: 'Melhor Bloqueador(a)', defaultFile: 'volei_maior_bloqueadora.jpg' },
                 { key: 'estreante', label: 'Estreante', defaultFile: 'volei_melhor_estreante.jpg' },
             ]
+        },
+        futebol7: {
+            name: "Futebol 7",
+            positions: [
+                { key: 'confronto', label: 'Confronto (Faceoff)', defaultFile: 'confronto_futebol.jpg' },
+                { key: 'craque', label: 'Craque do Jogo (MVP)', defaultFile: 'fundo_craque_do_jogo.jpg' },
+                { key: 'goleiro', label: 'Melhor Goleiro', defaultFile: 'fundo_melhor_goleiro.jpg' },
+                { key: 'fixo', label: 'Melhor Fixo', defaultFile: 'fundo_melhor_zagueiro.jpg' },
+                { key: 'ala', label: 'Melhor Ala', defaultFile: 'fundo_melhor_lateral.jpg' },
+                { key: 'pivo', label: 'Melhor Pivô', defaultFile: 'fundo_melhor_atacante.jpg' },
+                { key: 'artilheiro', label: 'Artilheiro', defaultFile: 'fundo_melhor_artilheiro.jpg' },
+                { key: 'assistencia', label: 'Rei das Assistências', defaultFile: 'fundo_melhor_assistencia.jpg' },
+                { key: 'estreante', label: 'Estreante', defaultFile: 'fundo_melhor_estreiante.jpg' },
+            ]
         }
     };
 
