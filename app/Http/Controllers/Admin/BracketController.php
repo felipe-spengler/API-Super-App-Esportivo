@@ -73,6 +73,8 @@ class BracketController extends Controller
         return response()->json([
             'message' => 'Chaveamento gerado com sucesso!',
             'matches_created' => count($matches),
+            'teams_count' => $teams->count(),
+            'teams_list' => $teams->pluck('name')->toArray(),
             'matches' => $matches
         ]);
     }

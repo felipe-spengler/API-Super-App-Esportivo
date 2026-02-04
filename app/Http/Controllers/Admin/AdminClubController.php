@@ -37,8 +37,10 @@ class AdminClubController extends Controller
 
         $request->validate([
             'name' => 'required|string|max:255',
-            'slug' => 'required|string|unique:clubs,slug',
-            'city_id' => 'required|exists:cities,id',
+            'slug' => 'nullable|string|unique:clubs,slug',
+            'city_id' => 'required_without:new_city_name|nullable|exists:cities,id',
+            'new_city_name' => 'required_without:city_id|nullable|string',
+            'new_city_state' => 'required_with:new_city_name|nullable|string|size:2',
             'primary_color' => 'nullable|string',
             'secondary_color' => 'nullable|string',
             // Admin User Data
@@ -50,11 +52,31 @@ class AdminClubController extends Controller
         try {
             DB::beginTransaction();
 
+            // Handle City (Create or Use Existing)
+            $cityId = $request->city_id;
+            if (!$cityId && $request->new_city_name) {
+                $city = City::firstOrCreate(
+                    [
+                        'name' => $request->new_city_name,
+                        'state' => strtoupper($request->new_city_state)
+                    ],
+                    ['slug' => Str::slug($request->new_city_name . '-' . $request->new_city_state)]
+                );
+                $cityId = $city->id;
+            }
+
+            // Handle Slug
+            $slug = $request->slug ? Str::slug($request->slug) : Str::slug($request->name);
+            // Ensure unique slug if auto-generated (simple collision check)
+            if (Club::where('slug', $slug)->exists()) {
+                $slug = $slug . '-' . uniqid();
+            }
+
             // 1. Criar Clube
             $club = Club::create([
                 'name' => $request->name,
-                'slug' => Str::slug($request->slug), // Ensure slug format
-                'city_id' => $request->city_id,
+                'slug' => $slug,
+                'city_id' => $cityId,
                 'primary_color' => $request->primary_color ?? '#000000',
                 'secondary_color' => $request->secondary_color ?? '#ffffff',
                 'is_active' => true,
@@ -69,10 +91,6 @@ class AdminClubController extends Controller
                 'role' => 'admin', // Role string legacy check
                 'is_admin' => true,
                 'club_id' => $club->id, // VINCULO ESSENCIAL
-                // Campos obrigatórios do User (conforme User.php ou DB defaults)
-                // Se o DB exigir CPF, etc, precisamos tratar. 
-                // Assumindo que nullable ou não validados aqui pra admin rápido.
-                // Mas vamos checar o User Factory ou migration se der erro.
             ]);
 
             DB::commit();

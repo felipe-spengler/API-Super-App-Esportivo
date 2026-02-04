@@ -29,6 +29,10 @@ export function ClubForm() {
     const [cities, setCities] = useState<City[]>([]);
     const [sports, setSports] = useState<Sport[]>([]);
 
+    // New City Form State
+    const [isNewCity, setIsNewCity] = useState(false);
+    const [newCity, setNewCity] = useState({ name: '', state: '' });
+
     // Form Data
     const [formData, setFormData] = useState({
         name: '',
@@ -88,26 +92,42 @@ export function ClubForm() {
         setLoading(true);
         setError('');
 
+        const payload: any = {
+            name: formData.name,
+            slug: formData.slug,
+            primary_color: formData.primary_color,
+            secondary_color: formData.secondary_color,
+            active_modalities: formData.active_modalities,
+            is_active: formData.is_active
+        };
+
+        if (isNewCity) {
+            payload.new_city_name = newCity.name;
+            payload.new_city_state = newCity.state;
+        } else {
+            payload.city_id = formData.city_id;
+        }
+
         try {
             if (isEditing) {
-                await api.put(`/admin/clubs-manage/${id}`, {
-                    name: formData.name,
-                    slug: formData.slug,
-                    city_id: formData.city_id,
-                    primary_color: formData.primary_color,
-                    secondary_color: formData.secondary_color,
-                    active_modalities: formData.active_modalities,
-                    is_active: formData.is_active
-                });
+                await api.put(`/admin/clubs-manage/${id}`, payload);
                 alert('Clube atualizado!');
             } else {
-                await api.post('/admin/clubs-manage', formData);
+                // Add admin fields for new creation
+                payload.admin_name = formData.admin_name;
+                payload.admin_email = formData.admin_email;
+                payload.admin_password = formData.admin_password;
+
+                await api.post('/admin/clubs-manage', payload);
                 alert('Clube criado com sucesso!');
                 navigate('/admin/clubs-manage');
             }
         } catch (err: any) {
             console.error(err);
-            setError(err.response?.data?.message || 'Erro ao salvar clube.');
+            const msg = err.response?.data?.errors
+                ? Object.values(err.response.data.errors).flat().join('\n')
+                : (err.response?.data?.message || 'Erro ao salvar clube.');
+            setError(msg);
         } finally {
             setLoading(false);
         }
@@ -159,43 +179,92 @@ export function ClubForm() {
                                 type="text"
                                 className="w-full p-2 border rounded-lg"
                                 value={formData.name}
-                                onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                onChange={e => {
+                                    const name = e.target.value;
+                                    // Auto-generate slug if creating new
+                                    const slug = name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
+                                    setFormData({ ...formData, name, slug: isEditing ? formData.slug : slug });
+                                }}
                             />
+                            {!isEditing && (
+                                <p className="text-xs text-gray-400 mt-1">Slug gerado: {formData.slug}</p>
+                            )}
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Slug (URL)</label>
-                            <input
-                                required
-                                type="text"
-                                className="w-full p-2 border rounded-lg"
-                                value={formData.slug}
-                                onChange={e => setFormData({ ...formData, slug: e.target.value })}
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Cidade</label>
-                            <select
-                                required
-                                className="w-full p-2 border rounded-lg"
-                                value={formData.city_id}
-                                onChange={e => setFormData({ ...formData, city_id: e.target.value })}
-                            >
-                                <option value="">Selecione...</option>
-                                {cities.map(city => (
-                                    <option key={city.id} value={city.id}>{city.name} - {city.state}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="flex items-center gap-4 mt-6">
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    className="w-4 h-4 text-indigo-600 rounded"
-                                    checked={formData.is_active}
-                                    onChange={e => setFormData({ ...formData, is_active: e.target.checked })}
-                                />
-                                <span className="text-sm font-medium text-gray-700">Clube Ativo</span>
-                            </label>
+
+                        <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {!isNewCity ? (
+                                <div>
+                                    <div className="flex justify-between items-center mb-1">
+                                        <label className="block text-sm font-medium text-gray-700">Cidade</label>
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsNewCity(true)}
+                                            className="text-xs text-indigo-600 font-bold hover:underline"
+                                        >
+                                            + Nova Cidade
+                                        </button>
+                                    </div>
+                                    <select
+                                        required
+                                        className="w-full p-2 border rounded-lg"
+                                        value={formData.city_id}
+                                        onChange={e => setFormData({ ...formData, city_id: e.target.value })}
+                                    >
+                                        <option value="">Selecione...</option>
+                                        {cities.map(city => (
+                                            <option key={city.id} value={city.id}>{city.name} - {city.state}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-2 gap-4 bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+                                    <div className="col-span-2 flex justify-between items-center mb-2">
+                                        <span className="text-xs font-bold text-indigo-700 uppercase">Cadastrando Nova Cidade</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsNewCity(false)}
+                                            className="text-xs text-red-500 font-bold hover:underline"
+                                        >
+                                            Cancelar
+                                        </button>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">Nome da Cidade</label>
+                                        <input
+                                            required
+                                            type="text"
+                                            className="w-full p-2 border rounded-lg bg-white"
+                                            value={newCity.name}
+                                            onChange={e => setNewCity({ ...newCity, name: e.target.value })}
+                                            placeholder="Ex: Cascavel"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">Estado (UF)</label>
+                                        <input
+                                            required
+                                            type="text"
+                                            maxLength={2}
+                                            className="w-full p-2 border rounded-lg bg-white uppercase"
+                                            value={newCity.state}
+                                            onChange={e => setNewCity({ ...newCity, state: e.target.value.toUpperCase() })}
+                                            placeholder="PR"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="flex items-center gap-4 mt-6">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        className="w-4 h-4 text-indigo-600 rounded"
+                                        checked={formData.is_active}
+                                        onChange={e => setFormData({ ...formData, is_active: e.target.checked })}
+                                    />
+                                    <span className="text-sm font-medium text-gray-700">Clube Ativo</span>
+                                </label>
+                            </div>
                         </div>
                     </div>
                 </div>

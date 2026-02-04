@@ -136,14 +136,15 @@ export function AdminMatchManager() {
 
         setGenerating(true);
         try {
-            await api.post(`/admin/championships/${id}/bracket/generate`, {
+            const data = await api.post(`/admin/championships/${id}/bracket/generate`, {
                 format: format, // 'league', 'knockout'
                 start_date: championship.start_date,
                 match_interval_days: 7,
                 category_id: selectedCategoryId,
                 legs: legs
             });
-            alert('Tabela gerada com sucesso!');
+            const res = data.data;
+            alert(`Tabela gerada com sucesso!\n\nForam criados ${res.matches_created} jogos para ${res.teams_count} equipes:\n${res.teams_list?.join(', ') || ''}`);
             loadData();
         } catch (err: any) {
             console.error(err);
