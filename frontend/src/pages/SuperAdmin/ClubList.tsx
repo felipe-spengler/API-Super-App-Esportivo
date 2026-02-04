@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Search, Building2, Loader2, AlertCircle, Edit2, LogIn, Trash2 } from 'lucide-react';
 import api from '../../services/api';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 interface Club {
     id: number;
@@ -33,6 +34,24 @@ export function ClubList() {
             setError('Falha ao carregar clubes.');
         } finally {
             setLoading(false);
+        }
+    }
+
+    const { impersonate } = useAuth();
+
+    async function handleImpersonate(id: number, name: string) {
+        try {
+            const response = await api.post(`/admin/clubs-manage/${id}/impersonate`);
+            const { access_token, user } = response.data;
+
+            impersonate(access_token, user);
+            alert(`Acessando como admin do ${name}...`);
+            // Redirect to dashboard (will reload sidebar as club admin)
+            // Force reload might be safer for sidebar state, but React context update should trigger it.
+            window.location.href = '/admin';
+        } catch (err: any) {
+            console.error(err);
+            alert(err.response?.data?.message || 'Erro ao acessar clube.');
         }
     }
 
@@ -118,7 +137,7 @@ export function ClubList() {
                                 </p>
                                 <div className="flex gap-2 mt-3">
                                     <button
-                                        onClick={() => alert('Feature de Login Como não implementada')}
+                                        onClick={() => handleImpersonate(club.id, club.name)}
                                         className="text-xs bg-indigo-50 text-indigo-700 px-2 py-1 rounded hover:bg-indigo-100 transition-colors flex items-center gap-1"
                                     >
                                         <LogIn className="w-3 h-3" /> Acessar

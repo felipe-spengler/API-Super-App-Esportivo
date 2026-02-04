@@ -175,4 +175,29 @@ class AdminClubController extends Controller
 
         return response()->json(['message' => 'Clube e administradores excluídos com sucesso.']);
     }
+
+    /**
+     * Impersonate Club Admin (Login as)
+     */
+    public function impersonate(Request $request, $id)
+    {
+        if (!$request->user()->isSuperAdmin()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        // Find an admin user for this club
+        $targetUser = User::where('club_id', $id)->where('is_admin', true)->first();
+
+        if (!$targetUser) {
+            return response()->json(['message' => 'Este clube não possui um administrador configurado.'], 404);
+        }
+
+        // Generate Token (Sanctum)
+        $token = $targetUser->createToken('ImpersonationToken')->plainTextToken;
+
+        return response()->json([
+            'user' => $targetUser,
+            'access_token' => $token
+        ]);
+    }
 }

@@ -252,6 +252,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/clubs-manage/{id}', [\App\Http\Controllers\Admin\AdminClubController::class, 'show']);
         Route::put('/clubs-manage/{id}', [\App\Http\Controllers\Admin\AdminClubController::class, 'update']);
         Route::delete('/clubs-manage/{id}', [\App\Http\Controllers\Admin\AdminClubController::class, 'destroy']);
+        Route::post('/clubs-manage/{id}/impersonate', [\App\Http\Controllers\Admin\AdminClubController::class, 'impersonate']);
     });
 });
 

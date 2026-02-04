@@ -18,6 +18,9 @@ interface AuthContextData {
     signIn: (email: string, pass: string) => Promise<User>;
     signOut: () => void;
     updateUser: (user: User) => void;
+    impersonate: (token: string, user: User) => void;
+    stopImpersonation: () => void;
+    isImpersonating: boolean;
 }
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
@@ -25,6 +28,7 @@ const AuthContext = createContext<AuthContextData>({} as AuthContextData);
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
+    const [isImpersonating, setIsImpersonating] = useState(false);
 
     useEffect(() => {
         async function loadStorageData() {
@@ -36,6 +40,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setUser(JSON.parse(storedUser));
                 api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
             }
+
+            if (localStorage.getItem('@AppEsportivo:sa_token')) {
+                setIsImpersonating(true);
+            }
+
             setLoading(false);
         }
 
@@ -64,7 +73,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     function signOut() {
         localStorage.removeItem('@AppEsportivo:user');
         localStorage.removeItem('@AppEsportivo:token');
+        localStorage.removeItem('@AppEsportivo:sa_token');
+        localStorage.removeItem('@AppEsportivo:sa_user');
         setUser(null);
+        setIsImpersonating(false);
     }
 
     function updateUser(userData: User) {
@@ -72,8 +84,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(userData);
     }
 
+    function impersonate(token: string, newUser: User) {
+        const currentToken = localStorage.getItem('@AppEsportivo:token');
+        const currentUser = localStorage.getItem('@AppEsportivo:user');
+
+        // Only save if we are not already impersonating (nested impersonation avoided)
+        if (!localStorage.getItem('@AppEsportivo:sa_token')) {
+            localStorage.setItem('@AppEsportivo:sa_token', currentToken || '');
+            localStorage.setItem('@AppEsportivo:sa_user', currentUser || '');
+        }
+
+        localStorage.setItem('@AppEsportivo:user', JSON.stringify(newUser));
+        localStorage.setItem('@AppEsportivo:token', token);
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        setUser(newUser);
+        setIsImpersonating(true);
+    }
+
+    function stopImpersonation() {
+        const saToken = localStorage.getItem('@AppEsportivo:sa_token');
+        const saUser = localStorage.getItem('@AppEsportivo:sa_user');
+
+        if (saToken && saUser) {
+            localStorage.setItem('@AppEsportivo:token', saToken);
+            localStorage.setItem('@AppEsportivo:user', saUser);
+            api.defaults.headers.common['Authorization'] = `Bearer ${saToken}`;
+            setUser(JSON.parse(saUser));
+
+            localStorage.removeItem('@AppEsportivo:sa_token');
+            localStorage.removeItem('@AppEsportivo:sa_user');
+            setIsImpersonating(false);
+            window.location.href = '/admin'; // Force reload to refresh sidebar cleanly
+        }
+    }
+
     return (
-        <AuthContext.Provider value={{ signed: !!user, user, loading, signIn, signOut, updateUser }}>
+        <AuthContext.Provider value={{ signed: !!user, user, loading, signIn, signOut, updateUser, impersonate, stopImpersonation, isImpersonating }}>
             {children}
         </AuthContext.Provider>
     );

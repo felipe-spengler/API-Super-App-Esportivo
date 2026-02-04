@@ -15,25 +15,35 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
     const location = useLocation();
-    const { user } = useAuth();
+    const { user, isImpersonating, stopImpersonation } = useAuth();
     const isActive = (path: string) => location.pathname === path || (path !== '/' && location.pathname.startsWith(path));
 
-    const menuItems = [
-        { label: 'Dashboard', path: '/admin', icon: Home },
-        { label: 'Campeonatos', path: '/admin/championships', icon: Trophy },
-        { label: 'Partidas', path: '/admin/matches', icon: List },
-        { label: 'Equipes', path: '/admin/teams', icon: Users },
-        { label: 'Jogadores', path: '/admin/players', icon: UserPlus },
-        { label: 'Relatórios', path: '/admin/reports', icon: BarChart3 },
-        { label: 'Configurações', path: '/admin/settings', icon: Settings },
-    ];
+    let menuItems = [];
 
-    // Super Admin Items
-    if (user?.is_admin && !user.club_id) {
-        menuItems.push(
-            { label: 'Gerenciar Clubes', path: '/admin/clubs-manage', icon: Building2 }, // Building2 needs import
-            { label: 'Sistema', path: '/admin/system-settings', icon: Settings2 } // Settings2 needs import
-        );
+    // Is Super Admin AND NOT Impersonating?
+    // user.is_admin is true for both SA and Club Admin (usually).
+    // user.club_id is null for SA.
+
+    const isSuperAdmin = user?.is_admin && !user?.club_id;
+
+    if (isSuperAdmin) {
+        menuItems = [
+            { label: 'Dashboard', path: '/admin', icon: Home },
+            { label: 'Gerenciar Clubes', path: '/admin/clubs-manage', icon: Building2 },
+            { label: 'Sistema', path: '/admin/system-settings', icon: Settings2 },
+            { label: 'Relatórios', path: '/admin/reports', icon: BarChart3 },
+        ];
+    } else {
+        // Club Admin (Standard) OR Impersonating
+        menuItems = [
+            { label: 'Dashboard', path: '/admin', icon: Home },
+            { label: 'Campeonatos', path: '/admin/championships', icon: Trophy },
+            { label: 'Partidas', path: '/admin/matches', icon: List },
+            { label: 'Equipes', path: '/admin/teams', icon: Users },
+            { label: 'Jogadores', path: '/admin/players', icon: UserPlus },
+            { label: 'Relatórios', path: '/admin/reports', icon: BarChart3 },
+            { label: 'Configurações', path: '/admin/settings', icon: Settings },
+        ];
     }
 
     return (
@@ -86,13 +96,22 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
             {/* Footer / User Info */}
             <div className="p-4 border-t border-gray-800 bg-gray-950">
+                {isImpersonating && (
+                    <button
+                        onClick={stopImpersonation}
+                        className="w-full mb-4 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold py-2 px-3 rounded flex items-center justify-center gap-2"
+                    >
+                        <Settings2 className="w-3 h-3" />
+                        Voltar para Super Admin
+                    </button>
+                )}
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-sm font-bold shadow-inner ring-2 ring-gray-800">
                         {user?.name?.substring(0, 2).toUpperCase() || 'AD'}
                     </div>
                     <div className="overflow-hidden">
-                        <p className="text-sm font-bold text-white truncate">{user?.name || 'Administrador'}</p>
-                        <p className="text-[10px] text-gray-500 truncate uppercase tracking-tighter">{user?.email || 'admin@sistema.com'}</p>
+                        <p className="text-sm font-bold text-white truncate text-left">{user?.name || 'Administrador'}</p>
+                        <p className="text-[10px] text-gray-500 truncate uppercase tracking-tighter text-left">{user?.email || 'admin@sistema.com'}</p>
                     </div>
                 </div>
             </div>
