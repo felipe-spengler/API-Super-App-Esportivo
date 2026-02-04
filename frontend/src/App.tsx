@@ -25,6 +25,7 @@ import { CreateRaceWizard } from './pages/Corridas/CreateRaceWizard';
 import { RaceResults } from './pages/Corridas/RaceResults';
 import { NewEventSelection } from './pages/EventWizard/NewEventSelection';
 import { ClubList } from './pages/SuperAdmin/ClubList';
+import { ClubForm } from './pages/SuperAdmin/ClubForm';
 import { SystemSettings } from './pages/SuperAdmin/SystemSettings';
 
 import { Explore } from './pages/Public/Explore';
@@ -130,6 +131,8 @@ function App() {
               <Route path="reports" element={<Reports />} />
               <Route path="settings" element={<Settings />} />
               <Route path="clubs-manage" element={<ClubList />} />
+              <Route path="clubs-manage/new" element={<ClubForm />} />
+              <Route path="clubs-manage/:id/edit" element={<ClubForm />} />
               <Route path="system-settings" element={<SystemSettings />} />
 
               <Route path="matches" element={<Matches />} />

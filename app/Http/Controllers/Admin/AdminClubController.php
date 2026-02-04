@@ -133,7 +133,7 @@ class AdminClubController extends Controller
             'secondary_color' => 'nullable|string',
             'primary_font' => 'nullable|string',
             'secondary_font' => 'nullable|string',
-            // 'active_modalities' => 'array' // Se quiser editar daqui
+            'active_modalities' => 'array',
             'is_active' => 'boolean'
         ]);
 
