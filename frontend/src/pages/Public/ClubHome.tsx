@@ -11,6 +11,7 @@ const ALL_SPORTS = [
     { id: 'lutas', name: 'Lutas', icon: 'hand-fist', color: 'bg-red-600' },
     { id: 'natacao', name: 'Natação', icon: 'waves', color: 'bg-cyan-500' },
     { id: 'padel', name: 'Padel', icon: 'table-tennis', color: 'bg-blue-400' },
+    { id: 'futebol-7', name: 'Futebol 7', icon: 'futbol', color: 'bg-green-500' },
 ];
 
 export function ClubHome() {
@@ -97,7 +98,7 @@ export function ClubHome() {
                         <div className="relative z-10 flex flex-col items-center">
                             {/* Club Logo/Brasão */}
                             {club.logo_url ? (
-                                <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-white/20 backdrop-blur-sm border-4 border-white/30 flex items-center justify-center p-4 shadow-2xl mb-4">
+                                <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-white flex items-center justify-center p-4 shadow-2xl mb-4">
                                     <img src={club.logo_url} alt={club.name} className="w-full h-full object-contain" />
                                 </div>
                             ) : (
