@@ -38,6 +38,7 @@ export function AdminMatchManager() {
     const [arbitrationData, setArbitrationData] = useState({ referee: '', assistant1: '', assistant2: '' });
     const [savingArbitration, setSavingArbitration] = useState(false);
     const [selectedCategoryId, setSelectedCategoryId] = useState<number | 'no-category' | null>(null);
+    const [legs, setLegs] = useState(1); // Number of times teams play each other (1 = single round, 2 = home & away)
 
 
     useEffect(() => {
@@ -139,7 +140,8 @@ export function AdminMatchManager() {
                 format: format, // 'league', 'knockout'
                 start_date: championship.start_date,
                 match_interval_days: 7,
-                category_id: selectedCategoryId
+                category_id: selectedCategoryId,
+                legs: legs
             });
             alert('Tabela gerada com sucesso!');
             loadData();
@@ -183,6 +185,12 @@ export function AdminMatchManager() {
         setShowEditModal(true);
     };
 
+    const toUTCString = (localDateString: string) => {
+        if (!localDateString) return '';
+        const date = new Date(localDateString);
+        return date.toISOString().slice(0, 16);
+    };
+
     const handleSaveAdd = async () => {
         if (!newData.home_team_id || !newData.away_team_id || !newData.start_time) {
             alert('Preencha os campos obrigatórios.');
@@ -191,6 +199,7 @@ export function AdminMatchManager() {
         try {
             await api.post('/admin/matches', {
                 ...newData,
+                start_time: toUTCString(newData.start_time),
                 championship_id: id,
                 category_id: selectedCategoryId
             });
@@ -205,10 +214,9 @@ export function AdminMatchManager() {
     const handleSaveEdit = async () => {
         if (!selectedMatch) return;
         try {
-            // Using PUT to match common Laravel convention if PATCH isn't available, 
-            // but I also added PATCH to the backend. Using PUT here for robustness.
+            // Using PUT to match common Laravel convention
             await api.put(`/admin/matches/${selectedMatch.id}`, {
-                start_time: editData.start_time,
+                start_time: toUTCString(editData.start_time),
                 location: editData.location,
                 round_number: editData.round_number,
                 category_id: editData.category_id
@@ -338,7 +346,7 @@ export function AdminMatchManager() {
                                     setNewData({
                                         home_team_id: '',
                                         away_team_id: '',
-                                        start_time: new Date().toISOString().slice(0, 16),
+                                        start_time: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
                                         location: championship?.location || '',
                                         round_number: maxRound + 1
                                     });
@@ -354,7 +362,7 @@ export function AdminMatchManager() {
                                     setNewData({
                                         home_team_id: '',
                                         away_team_id: '',
-                                        start_time: new Date().toISOString().slice(0, 16),
+                                        start_time: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
                                         location: championship?.location || '',
                                         round_number: 1
                                     });
@@ -415,13 +423,28 @@ export function AdminMatchManager() {
 
                         <div className="flex flex-col md:flex-row gap-4 justify-center">
                             {championship?.format && (
-                                <button
-                                    onClick={() => handleGenerate(championship.format)}
-                                    disabled={generating}
-                                    className="px-8 py-4 bg-indigo-600 text-white font-bold text-lg rounded-lg hover:bg-indigo-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50"
-                                >
-                                    {generating ? 'Gerando...' : 'Gerar Tabela de Jogos'}
-                                </button>
+                                <div className="flex flex-col items-center gap-4">
+                                    <div className="flex items-center gap-3 bg-gray-50 p-2 rounded-lg border border-gray-200">
+                                        <label className="text-sm font-bold text-gray-600">Confrontos por adversário:</label>
+                                        <select
+                                            value={legs}
+                                            onChange={(e) => setLegs(parseInt(e.target.value))}
+                                            className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 font-bold"
+                                        >
+                                            <option value={1}>1 (Turno Único)</option>
+                                            <option value={2}>2 (Ida e Volta)</option>
+                                            <option value={3}>3 Turnos</option>
+                                            <option value={4}>4 Turnos</option>
+                                        </select>
+                                    </div>
+                                    <button
+                                        onClick={() => handleGenerate(championship.format)}
+                                        disabled={generating}
+                                        className="px-8 py-4 bg-indigo-600 text-white font-bold text-lg rounded-lg hover:bg-indigo-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50"
+                                    >
+                                        {generating ? 'Gerando...' : 'Gerar Tabela de Jogos'}
+                                    </button>
+                                </div>
                             )}
 
                             <button
@@ -429,7 +452,7 @@ export function AdminMatchManager() {
                                     setNewData({
                                         home_team_id: '',
                                         away_team_id: '',
-                                        start_time: new Date().toISOString().slice(0, 16),
+                                        start_time: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
                                         location: championship?.location || '',
                                         round_number: 1
                                     });
@@ -455,7 +478,7 @@ export function AdminMatchManager() {
                                             setNewData({
                                                 home_team_id: '',
                                                 away_team_id: '',
-                                                start_time: new Date().toISOString().slice(0, 16),
+                                                start_time: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
                                                 location: championship?.location || '',
                                                 round_number: Number(round)
                                             });
