@@ -51,7 +51,9 @@ export function ChampionshipForm() {
             // Filter if restrictions exist
             if (allowedIds && Array.isArray(allowedIds) && allowedIds.length > 0) {
                 availableSports = availableSports.filter((s: any) =>
-                    allowedIds.includes(s.id) || allowedIds.includes(String(s.id))
+                    allowedIds.includes(s.id) ||
+                    allowedIds.includes(String(s.id)) ||
+                    (s.slug && allowedIds.includes(s.slug))
                 );
             }
 

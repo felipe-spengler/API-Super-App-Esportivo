@@ -56,7 +56,7 @@ export function Settings() {
                 { key: 'estreante', label: 'Estreante', defaultFile: 'volei_melhor_estreante.jpg' },
             ]
         },
-        futebol7: {
+        "futebol-7": {
             name: "Futebol 7",
             positions: [
                 { key: 'confronto', label: 'Confronto (Faceoff)', defaultFile: 'confronto_futebol.jpg' },
