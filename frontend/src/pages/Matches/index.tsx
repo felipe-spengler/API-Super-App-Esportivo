@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Trash2, Edit, Loader2, Filter, Printer } from 'lucide-react';
+import { Calendar, Trash2, Edit, Loader2, Filter, Printer, ClipboardList, X, MapPin, Clock as ClockIcon } from 'lucide-react';
 import api from '../../services/api';
 import { Link } from 'react-router-dom';
 import { isSameDay, isYesterday, isThisWeek, parseISO } from 'date-fns';
@@ -15,6 +15,10 @@ export function Matches() {
     const [selectedMatch, setSelectedMatch] = useState<any>(null);
     const [arbitrationData, setArbitrationData] = useState({ referee: '', assistant1: '', assistant2: '' });
     const [saving, setSaving] = useState(false);
+
+    // Edit Modal State
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editData, setEditData] = useState({ start_time: '', location: '' });
 
     useEffect(() => {
         loadMatches();
@@ -39,8 +43,10 @@ export function Matches() {
         try {
             setLoading(true);
             const response = await api.get('/admin/matches');
-            setMatches(response.data);
-            setFilteredMatches(response.data);
+            // Sort by start_time ascending
+            const sorted = response.data.sort((a: any, b: any) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+            setMatches(sorted);
+            setFilteredMatches(sorted); // Initial filter state logic handles filtering from 'matches' state anyway
         } catch (error) {
             console.error("Erro ao carregar partidas", error);
         } finally {
@@ -95,7 +101,7 @@ export function Matches() {
                 'jiu-jitsu': '/sumula-jiu-jitsu'
             };
 
-            const suffix = sumulaRoutes[sportSlug] || 'sumula'; // Fallback to standard
+            const suffix = sumulaRoutes[sportSlug] || 'sumula';
 
             // Close and navigate
             setIsArbitrationOpen(false);
@@ -105,6 +111,39 @@ export function Matches() {
             alert("Erro ao salvar dados.");
         } finally {
             setSaving(false);
+        }
+    };
+
+    const openEditModal = (match: any) => {
+        setSelectedMatch(match);
+        const date = new Date(match.start_time);
+        // Adjust for timezone offset for datetime-local input? 
+        // Actually, match.start_time is usually ISO UTC. 
+        // To show in input, we need YYYY-MM-DDTHH:MM local.
+        // Simple trick for local time input:
+        const localIso = new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+
+        setEditData({
+            start_time: localIso,
+            location: match.location || ''
+        });
+        setShowEditModal(true);
+    };
+
+    const handleSaveEdit = async () => {
+        if (!selectedMatch) return;
+        try {
+            await api.put(`/admin/matches/${selectedMatch.id}`, {
+                start_time: editData.start_time,
+                location: editData.location
+            });
+            setShowEditModal(false);
+            // Reload to reorder and update UI
+            loadMatches();
+            alert('Partida atualizada!');
+        } catch (error) {
+            console.error('Erro ao atualizar partida', error);
+            alert('Erro ao atualizar.');
         }
     };
 
@@ -168,6 +207,49 @@ export function Matches() {
                             </button>
                         </div>
                     </form>
+                </div>
+            )}
+
+            {/* Modal de Edição (Hora/Local) */}
+            {showEditModal && selectedMatch && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+                        <div className="p-4 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
+                            <h3 className="font-bold text-gray-900">Editar Detalhes da Partida</h3>
+                            <button onClick={() => setShowEditModal(false)} className="p-1 hover:bg-gray-200 rounded-full transition-colors">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Data e Hora</label>
+                                <input
+                                    type="datetime-local"
+                                    value={editData.start_time}
+                                    onChange={e => setEditData({ ...editData, start_time: e.target.value })}
+                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Local (Campo/Quadra)</label>
+                                <input
+                                    type="text"
+                                    value={editData.location}
+                                    placeholder="Ex: Arena 1, Campo B..."
+                                    onChange={e => setEditData({ ...editData, location: e.target.value })}
+                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
+                                />
+                            </div>
+                        </div>
+                        <div className="p-4 bg-gray-50 border-t border-gray-100 flex gap-3">
+                            <button onClick={() => setShowEditModal(false)} className="flex-1 px-4 py-3 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all">
+                                Cancelar
+                            </button>
+                            <button onClick={handleSaveEdit} className="flex-1 px-4 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all">
+                                Salvar Alterações
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -257,6 +339,14 @@ export function Matches() {
                                 {/* Ações */}
                                 <div className="flex items-center gap-2 min-w-[150px] justify-end">
 
+                                    <button
+                                        onClick={() => openEditModal(match)}
+                                        className="p-2 text-gray-400 hover:bg-gray-100 rounded-lg transition-colors"
+                                        title="Editar horário/local"
+                                    >
+                                        <Edit className="w-4 h-4" />
+                                    </button>
+
                                     {match.status === 'finished' ? (
                                         <Link
                                             to={`/admin/matches/${match.id}/sumula-print`}
@@ -270,9 +360,9 @@ export function Matches() {
                                         <button
                                             onClick={() => openArbitration(match)}
                                             className="p-2 rounded-lg flex items-center gap-2 font-medium text-sm transition-colors text-indigo-600 hover:bg-indigo-50"
-                                            title="Editar Súmula"
+                                            title="Abrir Súmula"
                                         >
-                                            <Edit className="w-4 h-4" />
+                                            <ClipboardList className="w-4 h-4" />
                                             Súmula
                                         </button>
                                     )}
