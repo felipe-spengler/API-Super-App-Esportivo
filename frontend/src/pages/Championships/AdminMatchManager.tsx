@@ -331,15 +331,7 @@ export function AdminMatchManager() {
                         >
                             Todos
                         </button>
-                        <button
-                            onClick={() => setSelectedCategoryId('no-category' as any)}
-                            className={`px-5 py-2.5 rounded-xl text-sm font-bold uppercase whitespace-nowrap transition-all border-2 ${selectedCategoryId === 'no-category'
-                                ? 'bg-orange-500 text-white border-orange-500 shadow-lg shadow-orange-100'
-                                : 'bg-white text-orange-400 border-orange-100 hover:border-orange-300 hover:text-orange-600'
-                                }`}
-                        >
-                            Sem Categoria
-                        </button>
+
                         {championship.categories.map((cat: any) => (
                             <button
                                 key={cat.id}
@@ -546,21 +538,7 @@ export function AdminMatchManager() {
                                 />
                             </div>
 
-                            {championship?.categories && championship.categories.length > 0 && (
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Categoria</label>
-                                    <select
-                                        value={editData.category_id || ''}
-                                        onChange={e => setEditData({ ...editData, category_id: e.target.value ? parseInt(e.target.value) : null })}
-                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
-                                    >
-                                        <option value="">Sem Categoria</option>
-                                        {championship.categories.map((cat: any) => (
-                                            <option key={cat.id} value={cat.id}>{cat.name}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            )}
+                            {/* Category selection removed as per user request (teams belong to categories) */}
 
                             <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 flex gap-3">
                                 <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
