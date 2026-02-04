@@ -90,66 +90,26 @@ class AdminSettingController extends Controller
             }
 
             // Handle Art Settings
-            // 1. Merge Text Data
-            $currentSettings = $club->art_settings ?? [];
-            $inputSettings = $request->input('art_settings', []);
+            $inputSettings = $request->input('art_settings');
 
             if (is_string($inputSettings)) {
                 $decoded = json_decode($inputSettings, true);
-                if (is_array($decoded)) {
+                if (json_last_error() === JSON_ERROR_NONE) {
                     $inputSettings = $decoded;
                 } else {
-                    // Se falhar decode ou nao for array, mantem vazio para nao quebrar array_replace
                     $inputSettings = [];
                 }
-            } elseif (!is_array($inputSettings)) {
-                $inputSettings = [];
             }
 
-            // Recursive merge for settings structure
-            $currentSettings = array_replace_recursive($currentSettings, $inputSettings);
+            if (is_array($inputSettings)) {
+                // We use array_replace_recursive to ensure we don't lose other keys if partial update 
+                // but usually frontend sends full object. 
+                // If the frontend sends the full object, just assigning is fine. 
+                // Let's trust the input if it has content, merging with defaults if needed.
+                $currentSettings = $club->art_settings ?? [];
 
-            // 2. Handle Art Files Uploads
-            // Expecting: art_files[sport_slug][position_key] = File
-            if ($request->file('art_files')) {
-                foreach ($request->file('art_files') as $sportSlug => $positions) {
-                    if (!is_array($positions))
-                        continue;
-
-                    foreach ($positions as $posKey => $file) {
-                        if ($file) {
-                            $filename = "bg_{$sportSlug}_{$posKey}_" . time() . '.' . $file->getClientOriginalExtension();
-                            $path = $file->storeAs("clubs/{$club->id}/art", $filename, 'public');
-
-                            // Initialize sport key if missed
-                            if (!isset($currentSettings[$sportSlug])) {
-                                $currentSettings[$sportSlug] = ['positions' => []];
-                            }
-
-                            // Update specific position URL
-                            // We need to find the matching position in the array or create it
-                            $found = false;
-                            if (isset($currentSettings[$sportSlug]['positions'])) {
-                                foreach ($currentSettings[$sportSlug]['positions'] as &$p) {
-                                    if (($p['key'] ?? '') === $posKey) {
-                                        $p['customFile'] = '/storage/' . $path;
-                                        $found = true;
-                                        break;
-                                    }
-                                }
-                            } else {
-                                $currentSettings[$sportSlug]['positions'] = [];
-                            }
-
-                            if (!$found) {
-                                $currentSettings[$sportSlug]['positions'][] = [
-                                    'key' => $posKey,
-                                    'customFile' => '/storage/' . $path
-                                ];
-                            }
-                        }
-                    }
-                }
+                // Merge logic: Input overrides Current
+                $data['art_settings'] = array_replace_recursive($currentSettings, $inputSettings);
             }
 
             $data['art_settings'] = $currentSettings;
