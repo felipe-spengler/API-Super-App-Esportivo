@@ -238,7 +238,6 @@ export function PlayerForm() {
                                 <label className="block text-sm font-bold text-gray-700 mb-2">CPF</label>
                                 <input
                                     type="text"
-                                    required
                                     value={form.cpf}
                                     onChange={e => setForm({ ...form, cpf: e.target.value })}
                                     className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
@@ -250,7 +249,6 @@ export function PlayerForm() {
                                 <label className="block text-sm font-bold text-gray-700 mb-2">RG</label>
                                 <input
                                     type="text"
-                                    required
                                     value={form.rg}
                                     onChange={e => setForm({ ...form, rg: e.target.value })}
                                     className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
@@ -262,7 +260,6 @@ export function PlayerForm() {
                                 <label className="block text-sm font-bold text-gray-700 mb-2">Data de Nascimento</label>
                                 <input
                                     type="date"
-                                    required
                                     value={form.birth_date}
                                     onChange={e => setForm({ ...form, birth_date: e.target.value })}
                                     className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
@@ -272,7 +269,6 @@ export function PlayerForm() {
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-2">Gênero</label>
                                 <select
-                                    required
                                     value={form.gender}
                                     onChange={e => setForm({ ...form, gender: e.target.value })}
                                     className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all bg-white"
@@ -288,7 +284,6 @@ export function PlayerForm() {
                                 <label className="block text-sm font-bold text-gray-700 mb-2">Nome da Mãe</label>
                                 <input
                                     type="text"
-                                    required
                                     value={form.mother_name}
                                     onChange={e => setForm({ ...form, mother_name: e.target.value })}
                                     className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
@@ -321,7 +316,6 @@ export function PlayerForm() {
                                 <label className="block text-sm font-bold text-gray-700 mb-2">Email</label>
                                 <input
                                     type="email"
-                                    required
                                     value={form.email}
                                     onChange={e => setForm({ ...form, email: e.target.value })}
                                     className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
@@ -346,7 +340,6 @@ export function PlayerForm() {
                                         <label className="block text-sm font-bold text-gray-700 mb-2">{isEditing ? 'Nova Senha (opcional)' : 'Senha'}</label>
                                         <input
                                             type="password"
-                                            required={!isEditing}
                                             value={form.password}
                                             onChange={e => setForm({ ...form, password: e.target.value })}
                                             className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
@@ -357,7 +350,7 @@ export function PlayerForm() {
                                         <label className="block text-sm font-bold text-gray-700 mb-2">Confirmar Senha</label>
                                         <input
                                             type="password"
-                                            required={!isEditing || !!form.password}
+                                            required={!!form.password}
                                             value={form.password_confirmation}
                                             onChange={e => setForm({ ...form, password_confirmation: e.target.value })}
                                             className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"

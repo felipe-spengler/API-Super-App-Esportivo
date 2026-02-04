@@ -52,8 +52,13 @@ class AdminPlayerController extends Controller
         $validated = $request->validated();
 
         $validated['club_id'] = $user->club_id ?? $request->club_id;
-        // Senha padrão se não enviada (ou lógica customizada)
+        // Senha padrão se não enviada
         $validated['password'] = bcrypt($request->input('password', 'mudar123'));
+
+        // Handle missing email if allowed by validation but required by DB
+        if (empty($validated['email'])) {
+            $validated['email'] = 'temp_' . uniqid() . '@temp.local';
+        }
 
         $player = User::create($validated);
 
