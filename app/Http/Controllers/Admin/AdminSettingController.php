@@ -92,27 +92,21 @@ class AdminSettingController extends Controller
             // Handle Art Settings
             $inputSettings = $request->input('art_settings');
 
-            if (is_string($inputSettings)) {
-                $decoded = json_decode($inputSettings, true);
-                if (json_last_error() === JSON_ERROR_NONE) {
-                    $inputSettings = $decoded;
-                } else {
-                    $inputSettings = [];
+            if ($inputSettings !== null) {
+                if (is_string($inputSettings)) {
+                    $decoded = json_decode($inputSettings, true);
+                    if (json_last_error() === JSON_ERROR_NONE) {
+                        $inputSettings = $decoded;
+                    } else {
+                        $inputSettings = [];
+                    }
+                }
+
+                if (is_array($inputSettings)) {
+                    $currentSettings = $club->art_settings ?? [];
+                    $data['art_settings'] = array_replace_recursive($currentSettings, $inputSettings);
                 }
             }
-
-            if (is_array($inputSettings)) {
-                // We use array_replace_recursive to ensure we don't lose other keys if partial update 
-                // but usually frontend sends full object. 
-                // If the frontend sends the full object, just assigning is fine. 
-                // Let's trust the input if it has content, merging with defaults if needed.
-                $currentSettings = $club->art_settings ?? [];
-
-                // Merge logic: Input overrides Current
-                $data['art_settings'] = array_replace_recursive($currentSettings, $inputSettings);
-            }
-
-            $data['art_settings'] = $currentSettings;
 
             $club->update($data);
 
