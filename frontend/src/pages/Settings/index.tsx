@@ -262,20 +262,7 @@ export function Settings() {
         }
     };
 
-    const toggleModality = (sportSlug: string) => {
-        const current = [...settings.active_modalities];
-        if (current.includes(sportSlug)) {
-            setSettings({
-                ...settings,
-                active_modalities: current.filter(s => s !== sportSlug)
-            });
-        } else {
-            setSettings({
-                ...settings,
-                active_modalities: [...current, sportSlug]
-            });
-        }
-    };
+
 
     const handleRequestModality = (sportName: string) => {
         const clubName = settings.name || 'Meu Clube';
@@ -598,8 +585,7 @@ export function Settings() {
                                     return (
                                         <div
                                             key={sport.id}
-                                            className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between group ${isActive ? 'border-indigo-500 bg-indigo-50 shadow-md transform -translate-y-1' : 'border-gray-100 bg-white hover:border-gray-200'}`}
-                                            onClick={() => isActive ? toggleModality(sport.slug) : null}
+                                            className={`p-4 rounded-2xl border-2 transition-all flex items-center justify-between group ${isActive ? 'border-indigo-500 bg-indigo-50 shadow-md transform -translate-y-1' : 'border-gray-100 bg-white'}`}
                                         >
                                             <div className="flex items-center gap-3">
                                                 <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isActive ? 'bg-indigo-500 text-white' : 'bg-gray-100 text-gray-400 group-hover:bg-gray-200'}`}>
