@@ -49,12 +49,16 @@ export function ChampionshipForm() {
             let availableSports = sportsResponse.data;
 
             // Filter if restrictions exist
+            console.log('DEBUG: AllowedIDs:', allowedIds);
+            console.log('DEBUG: Sports:', availableSports);
+
             if (allowedIds && Array.isArray(allowedIds) && allowedIds.length > 0) {
                 availableSports = availableSports.filter((s: any) =>
                     allowedIds.includes(s.id) ||
                     allowedIds.includes(String(s.id)) ||
                     (s.slug && allowedIds.includes(s.slug))
                 );
+                console.log('DEBUG: Filtered:', availableSports);
             }
 
             setSports(availableSports.sort((a: any, b: any) => a.name.localeCompare(b.name)));

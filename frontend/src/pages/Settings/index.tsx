@@ -309,7 +309,7 @@ export function Settings() {
 
             <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden flex flex-col md:flex-row">
                 {/* Sidebar Navigation */}
-                <aside className="w-full md:w-72 bg-slate-900 md:bg-gray-50 border-b md:border-b-0 md:border-r border-gray-100 p-4 md:p-6 flex md:flex-col overflow-x-auto gap-2 md:gap-2 no-scrollbar">
+                <aside className="w-full md:w-72 bg-slate-900 md:bg-gray-50 border-b md:border-b-0 md:border-r border-gray-100 p-4 md:p-6 flex md:flex-col overflow-x-auto gap-2 md:gap-2">
                     <button
                         onClick={() => setActiveTab('general')}
                         className={`whitespace-nowrap flex-shrink-0 w-auto md:w-full text-left px-4 py-3 rounded-xl font-bold text-sm flex items-center gap-3 transition-all ${activeTab === 'general' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/50 md:shadow-indigo-200' : 'text-gray-400 md:text-gray-600 hover:bg-slate-800 md:hover:bg-white md:hover:shadow-sm'}`}
