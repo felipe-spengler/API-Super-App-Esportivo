@@ -40,9 +40,22 @@ export function ChampionshipForm() {
 
     async function loadInitialData() {
         try {
-            // Fetch Sports first
+            // Fetch Club Settings for restrictions
+            const settingsResponse = await api.get('/admin/settings');
+            const allowedIds = settingsResponse.data.active_modalities;
+
+            // Fetch Sports
             const sportsResponse = await api.get('/sports');
-            setSports(sportsResponse.data.sort((a: any, b: any) => a.name.localeCompare(b.name)));
+            let availableSports = sportsResponse.data;
+
+            // Filter if restrictions exist
+            if (allowedIds && Array.isArray(allowedIds) && allowedIds.length > 0) {
+                availableSports = availableSports.filter((s: any) =>
+                    allowedIds.includes(s.id) || allowedIds.includes(String(s.id))
+                );
+            }
+
+            setSports(availableSports.sort((a: any, b: any) => a.name.localeCompare(b.name)));
 
             if (id) {
                 const response = await api.get(`/championships/${id}`);
