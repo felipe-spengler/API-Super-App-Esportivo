@@ -148,4 +148,31 @@ class AdminClubController extends Controller
             'club' => $club
         ]);
     }
+    /**
+     * Excluir Clube
+     */
+    public function destroy(Request $request, $id)
+    {
+        if (!$request->user()->isSuperAdmin()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $club = Club::findOrFail($id);
+
+        // Opção 1: Soft Delete (apenas inativar)
+        // Opção 2: Hard Delete (excluir tudo)
+
+        // Vamos fazer Hard Delete mas removendo admins antes para evitar orfãos se não houver cascade
+        User::where('club_id', $club->id)->delete();
+
+        // Excluir o clube (O banco deve rejeitar se tiver campeonatos vinculados sem cascade)
+        // Idealmente usar try/catch
+        try {
+            $club->delete();
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Não foi possível excluir. O clube possui dados vinculados (campeonatos, etc). Tente inativá-lo.'], 400);
+        }
+
+        return response()->json(['message' => 'Clube e administradores excluídos com sucesso.']);
+    }
 }

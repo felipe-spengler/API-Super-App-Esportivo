@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Building2, Loader2, AlertCircle, Edit2, LogIn } from 'lucide-react';
+import { Plus, Search, Building2, Loader2, AlertCircle, Edit2, LogIn, Trash2 } from 'lucide-react';
 import api from '../../services/api';
 import { Link } from 'react-router-dom';
 
@@ -33,6 +33,19 @@ export function ClubList() {
             setError('Falha ao carregar clubes.');
         } finally {
             setLoading(false);
+        }
+    }
+
+    async function handleDelete(id: number, name: string) {
+        if (!confirm(`Tem certeza que deseja excluir o clube "${name}"? Isso também excluirá os administradores vinculados.`)) return;
+
+        try {
+            await api.delete(`/admin/clubs-manage/${id}`);
+            setClubs(clubs.filter(c => c.id !== id));
+            alert('Clube excluído com sucesso.');
+        } catch (err: any) {
+            console.error(err);
+            alert(err.response?.data?.message || 'Erro ao excluir clube.');
         }
     }
 
@@ -116,6 +129,12 @@ export function ClubList() {
                                     >
                                         <Edit2 className="w-3 h-3" /> Editar
                                     </Link>
+                                    <button
+                                        onClick={() => handleDelete(club.id, club.name)}
+                                        className="text-xs bg-red-50 text-red-600 px-2 py-1 rounded hover:bg-red-100 transition-colors flex items-center gap-1"
+                                    >
+                                        <Trash2 className="w-3 h-3" /> Excluir
+                                    </button>
                                 </div>
                             </div>
                         </div>
