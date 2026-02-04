@@ -279,22 +279,32 @@ class ImageUploadController extends Controller
      */
     public function uploadGeneric(Request $request)
     {
-        $request->validate([
-            'image' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:5120',
-            'folder' => 'nullable|string',
-        ]);
+        try {
+            $request->validate([
+                'image' => 'required|image|mimes:jpeg,png,jpg,gif,svg,webp|max:5120',
+                'folder' => 'nullable|string',
+            ]);
 
-        $folder = $request->input('folder', 'uploads');
-        $file = $request->file('image');
+            $folder = $request->input('folder', 'uploads');
+            $file = $request->file('image');
 
-        $filename = $folder . '/' . Str::random(20) . '-' . time() . '.' . $file->getClientOriginalExtension();
-        $path = $file->storeAs($folder, basename($filename), 'public');
+            // Prevent path traversal
+            if (str_contains($folder, '..')) {
+                throw new \Exception("Invalid folder path");
+            }
 
-        return response()->json([
-            'message' => 'Imagem enviada com sucesso!',
-            'url' => Storage::url($path),
-            'path' => $path
-        ]);
+            $filename = $folder . '/' . Str::random(20) . '-' . time() . '.' . $file->getClientOriginalExtension();
+            $path = $file->storeAs($folder, basename($filename), 'public');
+
+            return response()->json([
+                'message' => 'Imagem enviada com sucesso!',
+                'url' => Storage::url($path),
+                'path' => $path
+            ]);
+        } catch (\Exception $e) {
+            \Log::error("Upload Generic Error: " . $e->getMessage());
+            return response()->json(['message' => 'Erro ao fazer upload da imagem: ' . $e->getMessage()], 500);
+        }
     }
 
     /**
