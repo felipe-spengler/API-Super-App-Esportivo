@@ -28,7 +28,7 @@ export function Settings() {
         futebol: {
             name: "Futebol",
             positions: [
-                { key: 'confronto', label: 'Confronto (Faceoff)', defaultFile: 'fundo_confronto.jpg' },
+                { key: 'confronto', label: 'Confronto (Faceoff)', defaultFile: 'confronto_futebol.jpg' },
                 { key: 'craque', label: 'Craque do Jogo (MVP)', defaultFile: 'fundo_craque_do_jogo.jpg' },
                 { key: 'goleiro', label: 'Melhor Goleiro', defaultFile: 'fundo_melhor_goleiro.jpg' },
                 { key: 'zagueiro', label: 'Melhor Zagueiro', defaultFile: 'fundo_melhor_zagueiro.jpg' },
@@ -44,7 +44,7 @@ export function Settings() {
         volei: {
             name: "Vôlei",
             positions: [
-                { key: 'confronto', label: 'Confronto (Faceoff)', defaultFile: 'volei_confronto.jpg' },
+                { key: 'confronto', label: 'Confronto (Faceoff)', defaultFile: 'confronto_volei.jpg' },
                 { key: 'melhor_quadra', label: 'Melhor em Quadra', defaultFile: 'volei_melhor_quadra.jpg' },
                 { key: 'levantador', label: 'Melhor Levantador(a)', defaultFile: 'volei_melhor_levantadora.jpg' },
                 { key: 'ponteira', label: 'Melhor Ponteiro(a)', defaultFile: 'volei_melhor_ponteira.jpg' },
