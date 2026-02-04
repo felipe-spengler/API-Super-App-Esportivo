@@ -97,6 +97,21 @@ class BracketController extends Controller
         $createdMatches = [];
         $baseSchedule = $this->schedulerRoundRobin($teamsList); // Returns array of rounds, each round is array of [home, away]
 
+        // Debugging
+        $debug = [
+            'teams_count_in' => count($teamsList),
+            'rounds_generated' => count($baseSchedule),
+            'pairs_per_round' => count($baseSchedule[0] ?? []),
+            'first_round_pairs' => [],
+        ];
+
+        foreach ($baseSchedule[0] ?? [] as $p) {
+            $debug['first_round_pairs'][] = [
+                'home' => $p[0] ? $p[0]['name'] : 'NULL',
+                'away' => $p[1] ? $p[1]['name'] : 'NULL'
+            ];
+        }
+
         $matchDate = $startDate->copy();
         $currentRoundNumber = $startRound;
 
@@ -133,6 +148,12 @@ class BracketController extends Controller
                 $currentRoundNumber++;
             }
         }
+
+        // Attach debug info to array (hacky but effective for JSON return if we merge)
+        // Ideally we return an object, but caller expects array of matches. 
+        // We will log it instead.
+        \Log::info("Bracket Generation Debug", $debug);
+
         return $createdMatches;
     }
 
