@@ -48,7 +48,7 @@ export function TemporaryAccess() {
         if (!confirm('Tem certeza que deseja revogar este acesso imediatamente?')) return;
 
         try {
-            await api.delete(`/ admin / temporary - access / ${id} `);
+            await api.delete(`/admin/temporary-access/${id}`);
             loadData();
         } catch (error) {
             console.error("Erro ao revogar acesso", error);
@@ -75,16 +75,23 @@ export function TemporaryAccess() {
     const handleCreateOrUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
+            // Converter data local do input para ISO String (UTC)
+            // Isso evita que o servidor interprete 16:00 Local como 16:00 UTC (que seria passado)
+            const payload = {
+                ...formData,
+                expires_at: new Date(formData.expires_at).toISOString()
+            };
+
             if (editingId) {
                 // Update (Renovar)
-                await api.put(`/ admin / temporary - access / ${editingId} `, {
-                    expires_at: formData.expires_at,
+                await api.put(`/admin/temporary-access/${editingId}`, {
+                    expires_at: payload.expires_at,
                     password: formData.password || undefined
                 });
                 alert('Acesso renovado com sucesso!');
             } else {
                 // Create
-                const response = await api.post('/admin/temporary-access', formData);
+                const response = await api.post('/admin/temporary-access', payload);
                 setGeneratedPassword(response.data.plain_password);
             }
 
@@ -137,7 +144,55 @@ export function TemporaryAccess() {
             )}
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="overflow-x-auto">
+                {/* Mobile View: Cards */}
+                <div className="md:hidden divide-y divide-gray-100">
+                    {tempUsers.length === 0 ? (
+                        <div className="p-6 text-center text-gray-400">Nenhum acesso temporário ativo.</div>
+                    ) : (
+                        tempUsers.map((u) => {
+                            const expiry = parseISO(u.expires_at);
+                            const isExpired = new Date() > expiry;
+                            return (
+                                <div key={u.id} className="p-4 space-y-3">
+                                    <div className="flex justify-between items-start">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
+                                                <User size={18} />
+                                            </div>
+                                            <div className="overflow-hidden">
+                                                <h3 className="font-bold text-gray-900 truncate">{u.name}</h3>
+                                                <div className="flex items-center gap-1 text-sm text-gray-500 truncate">
+                                                    <Mail size={12} /> {u.email}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold border ${isExpired ? 'bg-red-50 text-red-600 border-red-100' : 'bg-green-50 text-green-600 border-green-100'}`}>
+                                            {isExpired ? 'EXPIRADO' : 'ATIVO'}
+                                        </span>
+                                    </div>
+
+                                    <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded-lg">
+                                        <Clock size={14} className={isExpired ? 'text-red-500' : 'text-orange-500'} />
+                                        <span className="font-medium">Expira:</span>
+                                        {format(expiry, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                                    </div>
+
+                                    <div className="flex gap-2 pt-1">
+                                        <button onClick={() => handleEdit(u)} className="flex-1 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg flex items-center justify-center gap-2 transition-colors">
+                                            <RefreshCw size={14} /> Renovar
+                                        </button>
+                                        <button onClick={() => handleDelete(u.id)} className="flex-1 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg flex items-center justify-center gap-2 transition-colors">
+                                            <Trash size={14} /> Revogar
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })
+                    )}
+                </div>
+
+                {/* Desktop View: Table */}
+                <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-left text-sm">
                         <thead className="bg-gray-50 text-gray-500 uppercase font-semibold">
                             <tr>
@@ -175,13 +230,13 @@ export function TemporaryAccess() {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <div className={`flex items - center gap - 2 ${isExpired ? 'text-red-500 font-bold' : 'text-orange-600'} `}>
+                                                <div className={`flex items-center gap-2 ${isExpired ? 'text-red-500 font-bold' : 'text-orange-600'} `}>
                                                     <Clock size={16} />
                                                     {format(expiry, "dd 'de' MMMM 'às' HH:mm", { locale: ptBR })}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <span className={`px - 2 py - 1 rounded - full text - xs font - bold border ${isExpired
+                                                <span className={`px-2 py-1 rounded-full text-xs font-bold border ${isExpired
                                                     ? 'bg-red-50 text-red-600 border-red-100'
                                                     : 'bg-green-50 text-green-600 border-green-100'
                                                     } `}>

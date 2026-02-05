@@ -136,20 +136,20 @@ export function AdminProductManager() {
                     <p className="mt-4 text-gray-500">Carregando catálogo...</p>
                 </div>
             ) : products.length === 0 ? (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 md:p-12 text-center">
                     <div className="w-16 h-16 bg-indigo-50 text-indigo-500 rounded-full flex items-center justify-center mx-auto mb-4">
                         <Package size={32} />
                     </div>
                     <h3 className="text-lg font-bold text-gray-800">Nenhum produto cadastrado</h3>
-                    <p className="text-gray-500 mb-6">Comece adicionando itens para vender na loja do clube.</p>
+                    <p className="text-gray-500 mb-6 max-w-sm mx-auto">Comece adicionando itens para vender na loja do clube.</p>
                     <button onClick={handleOpenCreate} className="text-indigo-600 font-medium hover:underline">
                         Adicionar primeiro produto
                     </button>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
                     {products.map(product => (
-                        <div key={product.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow group">
+                        <div key={product.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow group flex flex-col">
                             <div className="aspect-square bg-gray-100 relative overflow-hidden">
                                 {product.image_url ? (
                                     <img
@@ -162,7 +162,7 @@ export function AdminProductManager() {
                                         <ImageIcon size={48} />
                                     </div>
                                 )}
-                                <div className="absolute top-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="absolute top-2 right-2 flex flex-col gap-2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                                     <button
                                         onClick={() => handleEdit(product)}
                                         className="p-2 bg-white/90 rounded-lg text-indigo-600 hover:text-indigo-800 shadow-sm backdrop-blur-sm"
@@ -177,16 +177,16 @@ export function AdminProductManager() {
                                     </button>
                                 </div>
                             </div>
-                            <div className="p-4">
-                                <h3 className="font-bold text-gray-800 truncate" title={product.name}>{product.name}</h3>
-                                <p className="text-sm text-gray-500 line-clamp-2 h-10 mb-2">{product.description}</p>
-                                <div className="flex justify-between items-end">
+                            <div className="p-4 flex-1 flex flex-col">
+                                <h3 className="font-bold text-gray-800 truncate text-lg" title={product.name}>{product.name}</h3>
+                                <p className="text-sm text-gray-500 line-clamp-2 mb-3 flex-1">{product.description}</p>
+                                <div className="flex justify-between items-center mt-auto">
                                     <span className="text-lg font-bold text-indigo-600">
                                         R$ {product.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                     </span>
                                     <span className="text-xs font-semibold px-2 py-1 bg-gray-100 text-gray-600 rounded-full flex items-center gap-1">
                                         <Box size={12} />
-                                        Estoque: {product.stock_quantity}
+                                        {product.stock_quantity}
                                     </span>
                                 </div>
                             </div>
