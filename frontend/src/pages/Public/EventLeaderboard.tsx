@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import api from '../../services/api';
+import { TournamentBracket } from '../../components/TournamentBracket';
+import type { BracketMatch } from '../../components/TournamentBracket';
 
 // Icons/Indicators for top 3
 const getMedalClass = (position: number) => {
@@ -22,20 +24,9 @@ interface Standing {
     drawn: number;
     lost: number;
     goal_difference: number;
+    goals_for: number;
+    goals_against: number;
     group_name?: string;
-}
-
-interface Match {
-    id: number;
-    team1_name: string;
-    team2_name: string;
-    team1_logo?: string;
-    team2_logo?: string;
-    team1_score?: number;
-    team2_score?: number;
-    round: string; // 'final', 'semi', 'quarter', 'round_of_16'
-    match_date?: string;
-    winner_team_id?: number;
 }
 
 export function EventLeaderboard() {
@@ -45,9 +36,10 @@ export function EventLeaderboard() {
     const navigate = useNavigate();
 
     const [standings, setStandings] = useState<Standing[]>([]);
-    const [knockoutMatches, setKnockoutMatches] = useState<Match[]>([]);
+    const [knockoutMatches, setKnockoutMatches] = useState<BracketMatch[]>([]);
     const [championshipFormat, setChampionshipFormat] = useState('league');
     const [loading, setLoading] = useState(true);
+
     const [champName, setChampName] = useState('');
 
     useEffect(() => {
@@ -56,14 +48,17 @@ export function EventLeaderboard() {
             try {
                 const champRes = await api.get(`/championships/${id}`);
                 setChampName(champRes.data.name);
-                setChampionshipFormat(champRes.data.format || 'league');
+                const format = champRes.data.format || 'league';
+                setChampionshipFormat(format);
 
-                if (champRes.data.format === 'knockout') {
-                    // Load bracket matches
+                // Load Bracket if applicable
+                if (['knockout', 'group_knockout'].includes(format)) {
                     const matchesRes = await api.get(`/championships/${id}/knockout-bracket${categoryId ? `?category_id=${categoryId}` : ''}`);
                     setKnockoutMatches(matchesRes.data);
-                } else {
-                    // Load standings (for league or groups)
+                }
+
+                // Load Standings if applicable
+                if (['league', 'groups', 'group_knockout', 'racing'].includes(format)) {
                     const response = await api.get(`/championships/${id}/leaderboard${categoryId ? `?category_id=${categoryId}` : ''}`);
                     setStandings(response.data);
                 }
@@ -90,6 +85,8 @@ export function EventLeaderboard() {
                             <th className="px-4 py-3 font-bold text-center" title="Vitórias">V</th>
                             <th className="px-4 py-3 font-bold text-center hidden sm:table-cell" title="Empates">E</th>
                             <th className="px-4 py-3 font-bold text-center hidden sm:table-cell" title="Derrotas">D</th>
+                            <th className="px-4 py-3 font-bold text-center hidden md:table-cell" title="Gols Pró">GP</th>
+                            <th className="px-4 py-3 font-bold text-center hidden md:table-cell" title="Gols Contra">GC</th>
                             <th className="px-4 py-3 font-bold text-center hidden sm:table-cell" title="Saldo de Gols">SG</th>
                         </tr>
                     </thead>
@@ -112,6 +109,8 @@ export function EventLeaderboard() {
                                 <td className="px-4 py-3 text-center text-gray-600">{team.won}</td>
                                 <td className="px-4 py-3 text-center text-gray-600 hidden sm:table-cell">{team.drawn}</td>
                                 <td className="px-4 py-3 text-center text-gray-600 hidden sm:table-cell">{team.lost}</td>
+                                <td className="px-4 py-3 text-center text-gray-600 hidden md:table-cell">{team.goals_for}</td>
+                                <td className="px-4 py-3 text-center text-gray-600 hidden md:table-cell">{team.goals_against}</td>
                                 <td className="px-4 py-3 text-center text-gray-600 hidden sm:table-cell">{team.goal_difference}</td>
                             </tr>
                         ))}
@@ -148,6 +147,8 @@ export function EventLeaderboard() {
                                         <th className="px-3 py-2 font-bold text-center hidden sm:table-cell" title="Vitórias">V</th>
                                         <th className="px-3 py-2 font-bold text-center hidden sm:table-cell" title="Empates">E</th>
                                         <th className="px-3 py-2 font-bold text-center hidden sm:table-cell" title="Derrotas">D</th>
+                                        <th className="px-3 py-2 font-bold text-center hidden md:table-cell" title="Gols Pró">GP</th>
+                                        <th className="px-3 py-2 font-bold text-center hidden md:table-cell" title="Gols Contra">GC</th>
                                         <th className="px-3 py-2 font-bold text-center hidden sm:table-cell" title="Saldo">SG</th>
                                     </tr>
                                 </thead>
@@ -166,6 +167,8 @@ export function EventLeaderboard() {
                                             <td className="px-3 py-2 text-center text-gray-600 hidden sm:table-cell">{team.won}</td>
                                             <td className="px-3 py-2 text-center text-gray-600 hidden sm:table-cell">{team.drawn}</td>
                                             <td className="px-3 py-2 text-center text-gray-600 hidden sm:table-cell">{team.lost}</td>
+                                            <td className="px-3 py-2 text-center text-gray-600 hidden md:table-cell">{team.goals_for}</td>
+                                            <td className="px-3 py-2 text-center text-gray-600 hidden md:table-cell">{team.goals_against}</td>
                                             <td className="px-3 py-2 text-center text-gray-600 hidden sm:table-cell">{team.goal_difference}</td>
                                         </tr>
                                     ))}
@@ -174,74 +177,6 @@ export function EventLeaderboard() {
                         </div>
                     </div>
                 ))}
-            </div>
-        );
-    };
-
-    const renderKnockoutBracket = () => {
-        // Organizar partidas por rodada
-        const rounds: { [key: string]: Match[] } = {
-            final: [],
-            semi: [],
-            quarter: [],
-            round_of_16: []
-        };
-
-        knockoutMatches.forEach((match) => {
-            if (rounds[match.round]) {
-                rounds[match.round].push(match);
-            }
-        });
-
-        const roundLabels: { [key: string]: string } = {
-            round_of_16: 'Oitavas',
-            quarter: 'Quartas',
-            semi: 'Semifinais',
-            final: 'Final'
-        };
-
-        return (
-            <div className="overflow-x-auto pb-6">
-                <div className="min-w-[800px] flex gap-4 justify-center items-start">
-                    {['round_of_16', 'quarter', 'semi', 'final'].map((roundKey) => {
-                        const matchesInRound = rounds[roundKey];
-                        if (!matchesInRound || matchesInRound.length === 0) return null;
-
-                        return (
-                            <div key={roundKey} className="flex flex-col gap-3">
-                                <h3 className="text-sm font-bold text-center text-indigo-600 uppercase tracking-wide mb-2">
-                                    {roundLabels[roundKey]}
-                                </h3>
-                                {matchesInRound.map((match) => (
-                                    <div key={match.id} className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden w-48">
-                                        {/* Team 1 */}
-                                        <div className={`flex items-center justify-between px-3 py-2 ${match.winner_team_id === match.id ? 'bg-green-50 border-l-4 border-green-500' : 'hover:bg-gray-50'}`}>
-                                            <div className="flex items-center gap-2 flex-1 min-w-0">
-                                                {match.team1_logo && <img src={match.team1_logo} alt="" className="w-5 h-5 rounded-full object-cover" />}
-                                                <span className="font-semibold text-gray-800 text-xs truncate">{match.team1_name}</span>
-                                            </div>
-                                            <span className="font-bold text-gray-900 text-sm ml-2">{match.team1_score ?? '-'}</span>
-                                        </div>
-                                        <div className="h-px bg-gray-200"></div>
-                                        {/* Team 2 */}
-                                        <div className={`flex items-center justify-between px-3 py-2 ${match.winner_team_id !== match.id && match.team2_score !== undefined && match.team2_score > (match.team1_score ?? 0) ? 'bg-green-50 border-l-4 border-green-500' : 'hover:bg-gray-50'}`}>
-                                            <div className="flex items-center gap-2 flex-1 min-w-0">
-                                                {match.team2_logo && <img src={match.team2_logo} alt="" className="w-5 h-5 rounded-full object-cover" />}
-                                                <span className="font-semibold text-gray-800 text-xs truncate">{match.team2_name}</span>
-                                            </div>
-                                            <span className="font-bold text-gray-900 text-sm ml-2">{match.team2_score ?? '-'}</span>
-                                        </div>
-                                        {match.match_date && (
-                                            <div className="bg-gray-50 px-3 py-1 text-center">
-                                                <span className="text-[10px] text-gray-500">{new Date(match.match_date).toLocaleDateString('pt-BR')}</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        );
-                    })}
-                </div>
             </div>
         );
     };
@@ -265,12 +200,11 @@ export function EventLeaderboard() {
                     </div>
                 ) : (
                     <>
-                        {championshipFormat === 'knockout' && knockoutMatches.length === 0 && (
-                            <div className="text-center py-10 bg-white rounded-xl shadow-sm border border-gray-100">
-                                <p className="text-gray-500">Chaveamento não disponível.</p>
+                        {championshipFormat === 'knockout' && (
+                            <div className="mb-8">
+                                <TournamentBracket matches={knockoutMatches} />
                             </div>
                         )}
-                        {championshipFormat === 'knockout' && knockoutMatches.length > 0 && renderKnockoutBracket()}
 
                         {(championshipFormat === 'league' || championshipFormat === 'racing') && standings.length === 0 && (
                             <div className="text-center py-10 bg-white rounded-xl shadow-sm border border-gray-100">
@@ -284,7 +218,17 @@ export function EventLeaderboard() {
                                 <p className="text-gray-500">Classificação dos grupos não disponível.</p>
                             </div>
                         )}
-                        {championshipFormat === 'group_knockout' && standings.length > 0 && renderGroupStage()}
+                        {championshipFormat === 'group_knockout' && standings.length > 0 && (
+                            <>
+                                {renderGroupStage()}
+                                {knockoutMatches.length > 0 && (
+                                    <div className="mt-8">
+                                        <h3 className="text-xl font-bold text-gray-800 mb-4 px-2 border-l-4 border-indigo-600">Fase Final</h3>
+                                        <TournamentBracket matches={knockoutMatches} />
+                                    </div>
+                                )}
+                            </>
+                        )}
                     </>
                 )}
             </div>

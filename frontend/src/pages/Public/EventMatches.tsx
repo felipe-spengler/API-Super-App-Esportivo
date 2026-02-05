@@ -74,8 +74,8 @@ export function EventMatches() {
                     {/* Home Team */}
                     <div className="flex-1 flex flex-col items-center text-center gap-2">
                         <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center overflow-hidden border border-gray-200">
-                            {match.home_team?.logo ? (
-                                <img src={match.home_team.logo} alt={match.home_team.name} className="w-full h-full object-cover" />
+                            {match.home_team?.logo || match.home_team?.logo_url ? (
+                                <img src={match.home_team.logo || match.home_team.logo_url} alt={match.home_team.name} className="w-full h-full object-cover" />
                             ) : (
                                 <span className="text-xs font-bold text-gray-400">{match.home_team?.name?.substring(0, 2)}</span>
                             )}
@@ -98,8 +98,8 @@ export function EventMatches() {
                     {/* Away Team */}
                     <div className="flex-1 flex flex-col items-center text-center gap-2">
                         <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center overflow-hidden border border-gray-200">
-                            {match.away_team?.logo ? (
-                                <img src={match.away_team.logo} alt={match.away_team.name} className="w-full h-full object-cover" />
+                            {match.away_team?.logo || match.away_team?.logo_url ? (
+                                <img src={match.away_team.logo || match.away_team.logo_url} alt={match.away_team.name} className="w-full h-full object-cover" />
                             ) : (
                                 <span className="text-xs font-bold text-gray-400">{match.away_team?.name?.substring(0, 2)}</span>
                             )}
@@ -110,6 +110,70 @@ export function EventMatches() {
             </div>
         </div>
     );
+
+    const renderMatchesByRound = (matchesList: any[], emptyMessage: string) => {
+        if (matchesList.length === 0) {
+            return (
+                <div className="text-center py-10 bg-white rounded-xl shadow-sm border border-gray-100">
+                    <p className="text-gray-500">{emptyMessage}</p>
+                </div>
+            );
+        }
+
+        const groups: Record<string, any[]> = {};
+
+        matchesList.forEach(m => {
+            let roundLabel = 'Outros Jogos';
+
+            // Tenta identificar o nome da rodada se for numérico ou string
+            if (m.round_number) {
+                roundLabel = `Rodada ${m.round_number}`;
+            } else if (m.round) {
+                // Formata rodadas de mata-mata
+                const lower = String(m.round).toLowerCase();
+                if (lower.includes('32')) roundLabel = '16 Avos de Final';
+                else if (lower.includes('16') || lower.includes('oitavas')) roundLabel = 'Oitavas de Final';
+                else if (lower.includes('quarter') || lower.includes('quartas')) roundLabel = 'Quartas de Final';
+                else if (lower.includes('semi')) roundLabel = 'Semifinais';
+                else if (lower.includes('third') || lower.includes('3rd')) roundLabel = 'Disputa de 3º Lugar';
+                else if (lower.includes('final')) roundLabel = 'Grande Final';
+                else roundLabel = `Rodada ${m.round}`;
+            }
+
+            if (!groups[roundLabel]) groups[roundLabel] = [];
+            groups[roundLabel].push(m);
+        });
+
+        // Tenta ordenar as chaves. Rodadas numéricas primeiro, depois strings
+        const sortedKeys = Object.keys(groups).sort((a, b) => {
+            const numA = parseInt(a.replace(/\D/g, ''));
+            const numB = parseInt(b.replace(/\D/g, ''));
+
+            if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+            // Se um é numérico e outro não, numérico vem antes
+            if (!isNaN(numA)) return -1;
+            if (!isNaN(numB)) return 1;
+
+            return a.localeCompare(b);
+        });
+
+        return (
+            <div className="space-y-8">
+                {sortedKeys.map(round => (
+                    <div key={round}>
+                        <div className="flex items-center gap-4 mb-4">
+                            <div className="h-px bg-gray-200 flex-1"></div>
+                            <span className="text-sm font-bold text-gray-500 uppercase tracking-wider bg-gray-50 px-3 py-1 rounded-full border border-gray-200 shadow-sm">{round}</span>
+                            <div className="h-px bg-gray-200 flex-1"></div>
+                        </div>
+                        {groups[round].map(match => (
+                            <MatchCard key={match.id} match={match} />
+                        ))}
+                    </div>
+                ))}
+            </div>
+        );
+    };
 
     return (
         <div className="min-h-screen bg-gray-50 pb-20">
@@ -126,28 +190,28 @@ export function EventMatches() {
 
             {/* Tabs */}
             <div className="bg-white border-b border-gray-200 sticky top-[73px] z-10">
-                <div className="max-w-3xl mx-auto flex">
+                <div className="max-w-3xl mx-auto flex overflow-x-auto">
                     <button
                         onClick={() => setActiveTab('all')}
-                        className={`flex-1 py-3 text-sm font-semibold transition-all border-b-2 ${activeTab === 'all' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                        className={`flex-1 py-3 text-sm font-semibold transition-all border-b-2 whitespace-nowrap px-4 ${activeTab === 'all' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
                     >
                         Todos ({matches.length})
                     </button>
                     <button
                         onClick={() => setActiveTab('live')}
-                        className={`flex-1 py-3 text-sm font-semibold transition-all border-b-2 ${activeTab === 'live' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                        className={`flex-1 py-3 text-sm font-semibold transition-all border-b-2 whitespace-nowrap px-4 ${activeTab === 'live' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
                     >
                         Ao Vivo ({liveMatches.length})
                     </button>
                     <button
                         onClick={() => setActiveTab('upcoming')}
-                        className={`flex-1 py-3 text-sm font-semibold transition-all border-b-2 ${activeTab === 'upcoming' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                        className={`flex-1 py-3 text-sm font-semibold transition-all border-b-2 whitespace-nowrap px-4 ${activeTab === 'upcoming' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
                     >
                         Agendados ({upcomingMatches.length})
                     </button>
                     <button
                         onClick={() => setActiveTab('finished')}
-                        className={`flex-1 py-3 text-sm font-semibold transition-all border-b-2 ${activeTab === 'finished' ? 'border-gray-600 text-gray-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                        className={`flex-1 py-3 text-sm font-semibold transition-all border-b-2 whitespace-nowrap px-4 ${activeTab === 'finished' ? 'border-gray-600 text-gray-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
                     >
                         Finalizados ({finishedMatches.length})
                     </button>
@@ -176,24 +240,8 @@ export function EventMatches() {
                                         {liveMatches.map(match => <MatchCard key={match.id} match={match} />)}
                                     </div>
                                 )}
-                                {upcomingMatches.length > 0 && (
-                                    <div>
-                                        <h3 className="text-sm font-bold text-blue-600 uppercase tracking-wider mb-3 flex items-center gap-2">
-                                            <Calendar className="w-4 h-4" />
-                                            Próximos Jogos
-                                        </h3>
-                                        {upcomingMatches.map(match => <MatchCard key={match.id} match={match} />)}
-                                    </div>
-                                )}
-                                {finishedMatches.length > 0 && (
-                                    <div>
-                                        <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
-                                            <Clock className="w-4 h-4" />
-                                            Finalizados
-                                        </h3>
-                                        {finishedMatches.map(match => <MatchCard key={match.id} match={match} />)}
-                                    </div>
-                                )}
+
+                                {renderMatchesByRound(matches.filter(m => m.status !== 'live'), "Nenhum outro jogo encontrado.")}
                             </>
                         )}
 
@@ -207,25 +255,9 @@ export function EventMatches() {
                             )
                         )}
 
-                        {activeTab === 'upcoming' && (
-                            upcomingMatches.length > 0 ? (
-                                upcomingMatches.map(match => <MatchCard key={match.id} match={match} />)
-                            ) : (
-                                <div className="text-center py-10 bg-white rounded-xl shadow-sm border border-gray-100">
-                                    <p className="text-gray-500">Nenhum jogo agendado.</p>
-                                </div>
-                            )
-                        )}
+                        {activeTab === 'upcoming' && renderMatchesByRound(upcomingMatches, "Nenhum jogo agendado.")}
 
-                        {activeTab === 'finished' && (
-                            finishedMatches.length > 0 ? (
-                                finishedMatches.map(match => <MatchCard key={match.id} match={match} />)
-                            ) : (
-                                <div className="text-center py-10 bg-white rounded-xl shadow-sm border border-gray-100">
-                                    <p className="text-gray-500">Nenhum jogo finalizado ainda.</p>
-                                </div>
-                            )
-                        )}
+                        {activeTab === 'finished' && renderMatchesByRound(finishedMatches, "Nenhum jogo finalizado ainda.")}
                     </>
                 )}
             </div>

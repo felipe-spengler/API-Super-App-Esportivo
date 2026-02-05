@@ -10,6 +10,7 @@ use App\Models\Team;
 use App\Models\MatchEvent;
 
 use App\Http\Requests\StoreMatchRequest;
+use App\Http\Controllers\Admin\BracketController;
 
 class AdminMatchController extends Controller
 {
@@ -115,12 +116,181 @@ class AdminMatchController extends Controller
 
         $match->update($updateData);
 
-        // Send Notification Hook
-        // (new NotificationController)->sendInternal(...)
-        // \Log::info("Match finished: Notification scheduled for Match #{$id}");
+        // Check for automatic bracket advancement or Group -> Knockout transition
+        try {
+            if ($match->group_name) {
+                $this->checkAndGenerateKnockout($match);
+            } else {
+                $this->checkAndAdvanceBracket($match);
+            }
+        } catch (\Exception $e) {
+            \Log::error("Auto Automation Error: " . $e->getMessage());
+        }
 
         return response()->json($match);
     }
+
+    /**
+     * Verifica se a fase de grupos acabou e gera o mata-mata automaticamente
+     */
+    private function checkAndGenerateKnockout($match)
+    {
+        // 1. Verifica se todos os jogos de grupo estão finalizados
+        $pendingQuery = GameMatch::where('championship_id', $match->championship_id)
+            ->whereNotNull('group_name')
+            ->where('status', '!=', 'finished');
+
+        if ($match->category_id) {
+            $pendingQuery->where('category_id', $match->category_id);
+        }
+
+        if ($pendingQuery->count() > 0) {
+            return; // Ainda tem jogos
+        }
+
+        // 2. Verifica se já existe mata-mata gerado para esta categoria
+        $existsQuery = GameMatch::where('championship_id', $match->championship_id)
+            ->where('is_knockout', true);
+
+        if ($match->category_id) {
+            $existsQuery->where('category_id', $match->category_id);
+        }
+
+        if ($existsQuery->exists()) {
+            return; // Já gerou
+        }
+
+        // 3. Gera mata-mata
+        $bracketController = new BracketController();
+        // Simula request
+        $req = new Request();
+        $req->merge(['category_id' => $match->category_id]);
+
+        $bracketController->generateFromGroups($req, $match->championship_id);
+    }
+
+    /**
+     * Verifica e avança o chaveamento automaticamente
+     */
+    private function checkAndAdvanceBracket($match)
+    {
+        // Só processa se for jogo de mata-mata com rodada definida
+        if (empty($match->round) || empty($match->championship_id)) {
+            return;
+        }
+
+        $roundsOrder = ['round_of_32', 'round_of_16', 'quarter', 'semi', 'final'];
+        $currentRoundIndex = array_search($match->round, $roundsOrder);
+        $isSemi = ($match->round === 'semi');
+
+        // Se não achou, não tem pra onde ir. Se for final, acabou.
+        // A MENOS que precise gerar 3o lugar, mas 3o lugar é gerado NA semi.
+        if ($currentRoundIndex === false || ($currentRoundIndex >= count($roundsOrder) - 1 && !$isSemi)) {
+            return;
+        }
+
+        $nextRoundName = isset($roundsOrder[$currentRoundIndex + 1]) ? $roundsOrder[$currentRoundIndex + 1] : null;
+
+        // Busca todos os jogos desta rodada neste campeonato
+        $roundMatches = GameMatch::where('championship_id', $match->championship_id)
+            ->where('round', $match->round)
+            ->where('category_id', $match->category_id) // Add category check
+            ->orderBy('id', 'asc')
+            ->get();
+
+        // Encontra posição do jogo atual
+        $myIndex = $roundMatches->search(function ($m) use ($match) {
+            return $m->id === $match->id;
+        });
+
+        if ($myIndex === false)
+            return;
+
+        // Determina o índice do "Par" (vizinho)
+        $metrics = $myIndex % 2; // 0 ou 1
+        $partnerIndex = ($metrics === 0) ? $myIndex + 1 : $myIndex - 1;
+
+        if (!isset($roundMatches[$partnerIndex]))
+            return;
+        $partnerMatch = $roundMatches[$partnerIndex];
+
+        if ($partnerMatch->status !== 'finished')
+            return;
+
+        // --- Vencedores -> Próxima Fase ---
+        if ($nextRoundName) {
+            $myWinnerId = $match->home_score > $match->away_score ? $match->home_team_id : $match->away_team_id;
+            $partnerWinnerId = $partnerMatch->home_score > $partnerMatch->away_score ? $partnerMatch->home_team_id : $partnerMatch->away_team_id;
+
+            if ($myWinnerId && $partnerWinnerId) {
+                // Checa duplicação
+                $exists = GameMatch::where('championship_id', $match->championship_id)
+                    ->where('round', $nextRoundName)
+                    ->where('category_id', $match->category_id)
+                    ->where(function ($q) use ($myWinnerId, $partnerWinnerId) {
+                        $q->where('home_team_id', $myWinnerId)->orWhere('home_team_id', $partnerWinnerId);
+                    })->exists();
+
+                if (!$exists) {
+                    $homeTeamId = ($myIndex < $partnerIndex) ? $myWinnerId : $partnerWinnerId;
+                    $awayTeamId = ($myIndex < $partnerIndex) ? $partnerWinnerId : $myWinnerId;
+
+                    // Data prevista: Pega a data mais tardia dos dois jogos e soma intervalo (ex: 7 dias)
+                    // Idealmente pegaria intervalo do campeonato, mas aqui vamos hardcoded por segurança ou 7 dias
+                    $baseDate = $match->start_time > $partnerMatch->start_time ? $match->start_time : $partnerMatch->start_time;
+                    $nextDate = \Carbon\Carbon::parse($baseDate)->addDays(7); // Default +7 dias
+
+                    GameMatch::create([
+                        'championship_id' => $match->championship_id,
+                        'category_id' => $match->category_id,
+                        'home_team_id' => $homeTeamId,
+                        'away_team_id' => $awayTeamId,
+                        'start_time' => $nextDate,
+                        'location' => $match->location ?? 'A Definir',
+                        'status' => 'scheduled',
+                        'round' => $nextRoundName,
+                        'is_knockout' => true
+                    ]);
+                }
+            }
+        }
+
+        // --- Perdedores -> Disputa de 3º Lugar (Apenas na Semi) ---
+        if ($isSemi) {
+            $myLoserId = $match->home_score < $match->away_score ? $match->home_team_id : $match->away_team_id;
+            $partnerLoserId = $partnerMatch->home_score < $partnerMatch->away_score ? $partnerMatch->home_team_id : $partnerMatch->away_team_id;
+
+            if ($myLoserId && $partnerLoserId) {
+                // Checa duplicação
+                $exists3rd = GameMatch::where('championship_id', $match->championship_id)
+                    ->where('round', 'third_place')
+                    ->where('category_id', $match->category_id)
+                    ->exists();
+
+                if (!$exists3rd) {
+                    $homeTeamId = ($myIndex < $partnerIndex) ? $myLoserId : $partnerLoserId;
+                    $awayTeamId = ($myIndex < $partnerIndex) ? $partnerLoserId : $myLoserId;
+
+                    $baseDate = $match->start_time > $partnerMatch->start_time ? $match->start_time : $partnerMatch->start_time;
+                    // Geralmente mesmo dia da final ou antes
+                    $nextDate = \Carbon\Carbon::parse($baseDate)->addDays(7);
+
+                    GameMatch::create([
+                        'championship_id' => $match->championship_id,
+                        'category_id' => $match->category_id,
+                        'home_team_id' => $homeTeamId,
+                        'away_team_id' => $awayTeamId,
+                        'start_time' => $nextDate,
+                        'location' => $match->location ?? 'A Definir',
+                        'status' => 'scheduled',
+                        'round' => 'third_place',
+                        'is_knockout' => true
+                    ]);
+                }
+            }
+        }
+    }
+
 
     // Set MVP for match
     public function setMVP(Request $request, $id)

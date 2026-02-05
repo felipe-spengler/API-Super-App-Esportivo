@@ -299,6 +299,12 @@ class BracketController extends Controller
             $groups = array_chunk($teamsArray, $teamsPerGroup);
         }
 
+        // Validação: Mínimo 2 grupos
+        if (count($groups) < 2) {
+            // Se for custom groups e veio só 1, ou calculamos e deu 1
+            abort(400, 'Para o formato de Grupos, é necessário haver pelo menos 2 grupos. Adicione mais times ou configure os grupos manualmente.');
+        }
+
         // Gera partidas dentro de cada grupo
         foreach ($groups as $groupIndex => $groupTeams) {
             $groupName = chr(65 + $groupIndex); // A, B, C, D...
@@ -440,6 +446,184 @@ class BracketController extends Controller
         return response()->json([
             'message' => 'Equipes sorteadas!',
             'teams' => $teams->values()
+        ]);
+    }
+
+    /**
+     * Gera mata-mata a partir da fase de grupos
+     */
+    public function generateFromGroups(Request $request, $championshipId)
+    {
+        $championship = Championship::findOrFail($championshipId);
+        $categoryId = $request->input('category_id');
+
+        // 1. Identificar Grupos e Times
+        $matches = MatchModel::where('championship_id', $championshipId)
+            ->whereNotNull('group_name')
+            ->when($categoryId, function ($q) use ($categoryId) {
+                return $q->where('category_id', $categoryId);
+            })
+            ->get();
+
+        if ($matches->isEmpty()) {
+            return response()->json(['message' => 'Nenhum jogo de fase de grupos encontrado.'], 400);
+        }
+
+        $groups = [];
+        $teamStats = [];
+
+        // Helper para inicializar stats
+        $initStats = function () {
+            return [
+                'points' => 0,
+                'wins' => 0,
+                'goal_diff' => 0,
+                'goals_for' => 0,
+                'played' => 0
+            ];
+        };
+
+        foreach ($matches as $match) {
+            $gName = $match->group_name;
+            if (!$gName)
+                continue;
+
+            if (!isset($groups[$gName]))
+                $groups[$gName] = [];
+
+            $hId = $match->home_team_id;
+            $aId = $match->away_team_id;
+
+            if (!in_array($hId, $groups[$gName]))
+                $groups[$gName][] = $hId;
+            if (!in_array($aId, $groups[$gName]))
+                $groups[$gName][] = $aId;
+
+            if (!isset($teamStats[$hId]))
+                $teamStats[$hId] = $initStats();
+            if (!isset($teamStats[$aId]))
+                $teamStats[$aId] = $initStats();
+
+            if ($match->status === 'finished') {
+                $teamStats[$hId]['played']++;
+                $teamStats[$aId]['played']++;
+
+                $teamStats[$hId]['goals_for'] += $match->home_score;
+                $teamStats[$aId]['goals_for'] += $match->away_score;
+
+                $diff = $match->home_score - $match->away_score;
+                $teamStats[$hId]['goal_diff'] += $diff;
+                $teamStats[$aId]['goal_diff'] -= $diff;
+
+                if ($match->home_score > $match->away_score) {
+                    $teamStats[$hId]['points'] += 3;
+                    $teamStats[$hId]['wins']++;
+                } elseif ($match->away_score > $match->home_score) {
+                    $teamStats[$aId]['points'] += 3;
+                    $teamStats[$aId]['wins']++;
+                } else {
+                    $teamStats[$hId]['points'] += 1;
+                    $teamStats[$aId]['points'] += 1;
+                }
+            }
+        }
+
+        // 2. Classificar cada grupo
+        $qualifiedTeams = []; // [ 'A' => [1st_id, 2nd_id], 'B' => ... ]
+
+        foreach ($groups as $gName => $teamIds) {
+            usort($teamIds, function ($a, $b) use ($teamStats) {
+                $sa = $teamStats[$a];
+                $sb = $teamStats[$b];
+
+                if ($sb['points'] !== $sa['points'])
+                    return $sb['points'] <=> $sa['points'];
+                if ($sb['wins'] !== $sa['wins'])
+                    return $sb['wins'] <=> $sa['wins'];
+                if ($sb['goal_diff'] !== $sa['goal_diff'])
+                    return $sb['goal_diff'] <=> $sa['goal_diff'];
+                return $sb['goals_for'] <=> $sa['goals_for'];
+            });
+
+            // Pega top 2
+            $qualifiedTeams[$gName] = array_slice($teamIds, 0, 2);
+        }
+
+        // 3. Determinar Confrontos (Cruzamento)
+        // Regra simples: 
+        // 4 grupos (A, B, C, D) -> Quartas: A1xB2, B1xA2, C1xD2, D1xC2
+        // 2 grupos (A, B) -> Semis: A1xB2, B1xA2
+
+        $groupNames = array_keys($qualifiedTeams);
+        sort($groupNames); // A, B, C...
+        $numGroups = count($groupNames);
+
+        $nextRoundName = '';
+        if ($numGroups == 2)
+            $nextRoundName = 'semi';
+        elseif ($numGroups == 4)
+            $nextRoundName = 'quarter';
+        elseif ($numGroups == 8)
+            $nextRoundName = 'round_of_16';
+        else {
+            // Fallback genérico ou erro se for ímpar/diferente
+            // Tenta parear sequencialmente: Grupo 0 vs Grupo 1, Grupo 2 vs 3...
+            if ($numGroups % 2 != 0) {
+                return response()->json([
+                    'message' => "Número de grupos ($numGroups) não suportado para geração automática de mata-mata padrão (precisa ser potência de 2: 2, 4, 8)."
+                ], 400);
+            }
+            $nextRoundName = 'round_of_' . ($numGroups * 2); // ex: 16
+        }
+
+        $newMatches = [];
+
+        // Encontra a data do último jogo finalizado para usar como base
+        $lastMatchDate = MatchModel::where('championship_id', $championshipId)
+            ->whereNotNull('group_name')
+            ->max('start_time');
+
+        $baseDate = $lastMatchDate ? Carbon::parse($lastMatchDate)->addDays(7) : Carbon::now()->addDays(7);
+
+        for ($i = 0; $i < $numGroups; $i += 2) {
+            $g1 = $groupNames[$i];   // ex: A
+            $g2 = $groupNames[$i + 1]; // ex: B
+
+            // Jogo 1: 1º do G1 vs 2º do G2
+            if (isset($qualifiedTeams[$g1][0]) && isset($qualifiedTeams[$g2][1])) {
+                $newMatches[] = MatchModel::create([
+                    'championship_id' => $championshipId,
+                    'category_id' => $categoryId,
+                    'home_team_id' => $qualifiedTeams[$g1][0],
+                    'away_team_id' => $qualifiedTeams[$g2][1],
+                    'start_time' => $baseDate,
+                    'location' => $championship->location,
+                    'status' => 'scheduled',
+                    'round' => $nextRoundName,
+                    'is_knockout' => true
+                ]);
+            }
+
+            // Jogo 2: 1º do G2 vs 2º do G1
+            if (isset($qualifiedTeams[$g2][0]) && isset($qualifiedTeams[$g1][1])) {
+                $newMatches[] = MatchModel::create([
+                    'championship_id' => $championshipId,
+                    'category_id' => $categoryId,
+                    'home_team_id' => $qualifiedTeams[$g2][0],
+                    'away_team_id' => $qualifiedTeams[$g1][1],
+                    'start_time' => $baseDate,
+                    'location' => $championship->location,
+                    'status' => 'scheduled',
+                    'round' => $nextRoundName,
+                    'is_knockout' => true
+                ]);
+            }
+        }
+
+        return response()->json([
+            'message' => 'Mata-mata gerado com sucesso!',
+            'matches' => $newMatches,
+            'round_name' => $nextRoundName
         ]);
     }
 }

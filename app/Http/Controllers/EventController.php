@@ -98,13 +98,28 @@ class EventController extends Controller
                 ];
             };
 
+            // Mapa de grupos dos times (baseado em qualquer jogo gerado, não só finalizados)
+            $teamGroups = [];
+            $allMatches = GameMatch::where('championship_id', $championshipId)
+                ->whereNotNull('group_name')
+                ->select('home_team_id', 'away_team_id', 'group_name')
+                ->get();
+
+            foreach ($allMatches as $am) {
+                if ($am->home_team_id)
+                    $teamGroups[$am->home_team_id] = $am->group_name;
+                if ($am->away_team_id)
+                    $teamGroups[$am->away_team_id] = $am->group_name;
+            }
+
             foreach ($matches as $m) {
                 $homeId = $m->home_team_id;
                 $awayId = $m->away_team_id;
                 if (!$homeId || !$awayId)
                     continue; // Ignora jogos sem definição
 
-                $groupName = $m->group_name ?? 'Geral';
+                // Prefere o grupo do jogo atual, se não tiver, tenta do mapa
+                $groupName = $m->group_name ?? ($teamGroups[$homeId] ?? 'Geral');
 
                 if (!isset($teamsData[$homeId])) {
                     $teamsData[$homeId] = $initStats($m->homeTeam->name ?? 'Time A', $m->homeTeam->logo_url ?? null);
@@ -181,10 +196,13 @@ class EventController extends Controller
                 if (!isset($teamsData[$team->id])) {
                     $teamsData[$team->id] = $initStats($team->name, $team->logo_url);
                     $teamsData[$team->id]['id'] = $team->id;
-                    $teamsData[$team->id]['group_name'] = 'Geral';
+                    $teamsData[$team->id]['group_name'] = $teamGroups[$team->id] ?? 'Geral';
                 } else {
                     // Ensure ID is set
                     $teamsData[$team->id]['id'] = $team->id;
+                    if (($teamsData[$team->id]['group_name'] ?? 'Geral') === 'Geral' && isset($teamGroups[$team->id])) {
+                        $teamsData[$team->id]['group_name'] = $teamGroups[$team->id];
+                    }
                 }
             }
 
@@ -265,6 +283,8 @@ class EventController extends Controller
                 'team2_score' => $match->away_score,
                 'round' => $match->round, // 'round_of_16', 'quarter', 'semi', 'final'
                 'match_date' => $match->start_time,
+                'location' => $match->location,
+                'status' => $match->status,
                 'winner_team_id' => $match->home_score !== null && $match->away_score !== null
                     ? ($match->home_score > $match->away_score ? $match->home_team_id : $match->away_team_id)
                     : null

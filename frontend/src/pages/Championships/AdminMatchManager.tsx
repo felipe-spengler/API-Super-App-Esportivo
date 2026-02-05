@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Calendar, Trophy, Save, Plus, Trash2, CheckCircle, AlertCircle, List, Edit2, X, MapPin, Clock as ClockIcon, Loader2, Play, Printer } from 'lucide-react';
+import { ArrowLeft, Calendar, Trophy, Save, Plus, Trash2, CheckCircle, AlertCircle, List, Edit2, X, MapPin, Clock as ClockIcon, Loader2, Play, Printer, Users } from 'lucide-react';
 import api from '../../services/api';
 
 interface Match {
@@ -15,6 +15,7 @@ interface Match {
     round_number: number;
     status: 'scheduled' | 'finished' | 'live' | 'canceled';
     location?: string;
+    group_name?: string;
 }
 
 export function AdminMatchManager() {
@@ -39,6 +40,8 @@ export function AdminMatchManager() {
     const [savingArbitration, setSavingArbitration] = useState(false);
     const [selectedCategoryId, setSelectedCategoryId] = useState<number | 'no-category' | null>(null);
     const [legs, setLegs] = useState(1); // Number of times teams play each other (1 = single round, 2 = home & away)
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
+    const [isGeneratingKnockout, setIsGeneratingKnockout] = useState(false);
 
 
     useEffect(() => {
@@ -323,6 +326,27 @@ export function AdminMatchManager() {
         rounds[Number(round)].sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
     });
 
+
+
+    const handleGenerateFromGroups = async () => {
+        if (!window.confirm("Isso calculará a classificação dos grupos e gerará automaticamente os jogos da próxima fase (mata-mata). Deseja continuar?")) {
+            return;
+        }
+        setIsGeneratingKnockout(true);
+        try {
+            const response = await api.post(`/championships/${id}/bracket/generate-from-groups`, {
+                category_id: selectedCategoryId === 'no-category' ? null : selectedCategoryId
+            });
+            alert(`Sucesso! ${response.data.matches?.length || 0} jogos gerados.`);
+            loadData(); // Reusing loadData instead of loadMatches which doesn't exist
+        } catch (error: any) {
+            console.error("Erro ao gerar mata-mata", error);
+            alert(error.response?.data?.message || "Erro ao gerar mata-mata.");
+        } finally {
+            setIsGeneratingKnockout(false);
+        }
+    };
+
     if (loading) return <div className="p-8 text-center">Carregando...</div>;
 
     return (
@@ -337,8 +361,21 @@ export function AdminMatchManager() {
                         <div>
                             <h1 className="text-2xl font-bold text-gray-900">Gerenciar Jogos</h1>
                             <p className="text-gray-500">{championship?.name}</p>
+
                         </div>
                     </div>
+                    {/* Botão para Encerrar Grupos -> Gerar Mata-mata */}
+                    {(championship?.format === 'groups' || championship?.format === 'group_knockout') && matches.length > 0 && (
+                        <button
+                            onClick={handleGenerateFromGroups}
+                            disabled={isGeneratingKnockout}
+                            className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-lg hover:from-purple-600 hover:to-indigo-700 transition-all shadow-sm text-sm font-bold disabled:opacity-50 mx-2"
+                            title="Calcula classificação e gera próxima fase"
+                        >
+                            {isGeneratingKnockout ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trophy className="w-4 h-4" />}
+                            <span className="hidden sm:inline">Gerar Mata-mata</span>
+                        </button>
+                    )}
                     {(matches.length > 0 || teams.length > 0) && (
                         <div className="flex items-center gap-3">
                             <button
@@ -467,133 +504,157 @@ export function AdminMatchManager() {
                     </div>
                 ) : (
                     <div className="space-y-8">
-                        {Object.entries(rounds).sort((a, b) => Number(a[0]) - Number(b[0])).map(([round, roundMatches]) => (
-                            <div key={round} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                                <div className="bg-gray-50 px-6 py-3 border-b border-gray-200 flex justify-between items-center">
-                                    <div className="flex items-center gap-3">
-                                        <h3 className="font-bold text-gray-800 text-lg">Rodada {round}</h3>
-                                        <span className="text-[10px] font-bold text-gray-500 bg-gray-200 px-2 py-1 rounded-full uppercase tracking-wider">{roundMatches.length} JOGOS</span>
-                                    </div>
-                                    <button
-                                        onClick={() => {
-                                            setNewData({
-                                                home_team_id: '',
-                                                away_team_id: '',
-                                                start_time: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
-                                                location: championship?.location || '',
-                                                round_number: Number(round)
-                                            });
-                                            setShowAddModal(true);
-                                        }}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-indigo-200 text-indigo-600 rounded-lg hover:bg-indigo-50 hover:border-indigo-300 text-xs font-bold uppercase transition-all shadow-sm"
-                                    >
-                                        <Plus className="w-3 h-3" /> Adicionar Jogo Nesta Rodada
-                                    </button>
-                                </div>
-                                <div>
-                                    {roundMatches.map((match) => (
-                                        <div key={match.id} className="p-4 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors">
-                                            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                        {Object.entries(rounds).sort((a, b) => Number(a[0]) - Number(b[0])).map(([round, roundMatches]) => {
+                            // Group matches by group_name within the round
+                            const matchesByGroup = roundMatches.reduce((acc, match) => {
+                                const group = match.group_name || 'Unico';
+                                if (!acc[group]) acc[group] = [];
+                                acc[group].push(match);
+                                return acc;
+                            }, {} as Record<string, Match[]>);
 
-                                                {/* Date / Location */}
-                                                <div className="w-full md:w-40 flex flex-row md:flex-col items-center md:items-start justify-between md:justify-start border-b md:border-b-0 pb-2 md:pb-0 mb-2 md:mb-0">
-                                                    <div>
-                                                        <div className="text-[11px] font-bold text-indigo-600 flex items-center gap-1">
-                                                            <Calendar size={12} /> {new Date(match.start_time).toLocaleDateString('pt-BR')}
-                                                        </div>
-                                                        <div className="text-[10px] text-gray-500 flex items-center gap-1">
-                                                            <ClockIcon size={12} /> {new Date(match.start_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                                                        </div>
-                                                    </div>
-                                                    {match.location && (
-                                                        <div className="text-[10px] text-gray-400 flex items-center gap-1 truncate max-w-[120px] md:max-w-[150px] bg-gray-50 px-2 py-1 rounded md:bg-transparent md:p-0">
-                                                            <MapPin size={10} /> {match.location}
-                                                        </div>
-                                                    )}
-                                                </div>
+                            const sortedGroups = Object.keys(matchesByGroup).sort();
+                            const hasMultipleGroups = sortedGroups.length > 1 || sortedGroups[0] !== 'Unico';
 
-                                                {/* Scoreboard */}
-                                                <div className="flex flex-row items-center gap-2 md:gap-4 flex-1 justify-center w-full px-2">
-                                                    {/* Home Team */}
-                                                    <div className="flex flex-col md:flex-row items-center gap-1 md:gap-3 text-center md:text-right flex-1 justify-center md:justify-end">
-                                                        <div className="order-1 md:order-2">
-                                                            {match.home_team?.logo_url ? (
-                                                                <img src={match.home_team.logo_url} className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white shadow-sm border p-0.5" />
-                                                            ) : (
-                                                                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-400 border border-dashed">T1</div>
-                                                            )}
-                                                        </div>
-                                                        <span className="text-[11px] md:text-sm font-bold text-gray-900 order-2 md:order-1 truncate max-w-[80px] md:max-w-none">
-                                                            {match.home_team?.name || 'Time A'}
-                                                        </span>
-                                                    </div>
-
-                                                    {/* Score */}
-                                                    <div className="flex flex-col items-center">
-                                                        <div className="flex items-center gap-2 md:gap-4 bg-white px-3 md:px-6 py-1.5 md:py-2 rounded-xl border border-gray-200 shadow-sm min-w-[90px] md:min-w-[120px] justify-center">
-                                                            <span className={`text-xl md:text-2xl font-black ${match.home_score !== null ? 'text-gray-900' : 'text-gray-300'}`}>
-                                                                {match.home_score ?? 0}
-                                                            </span>
-                                                            <span className="text-gray-300 font-bold text-[10px]">X</span>
-                                                            <span className={`text-xl md:text-2xl font-black ${match.away_score !== null ? 'text-gray-900' : 'text-gray-300'}`}>
-                                                                {match.away_score ?? 0}
-                                                            </span>
-                                                        </div>
-                                                        {(match.home_penalty_score != null || match.away_penalty_score != null) && (match.home_penalty_score > 0 || match.away_penalty_score > 0) && (
-                                                            <span className="text-[10px] font-bold text-gray-500 mt-1">
-                                                                ({match.home_penalty_score} x {match.away_penalty_score} Pen.)
-                                                            </span>
-                                                        )}
-                                                    </div>
-
-                                                    {/* Away Team */}
-                                                    <div className="flex flex-col md:flex-row items-center gap-1 md:gap-3 text-center md:text-left flex-1 justify-center md:justify-start">
-                                                        <div className="">
-                                                            {match.away_team?.logo_url ? (
-                                                                <img src={match.away_team.logo_url} className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white shadow-sm border p-0.5" />
-                                                            ) : (
-                                                                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-400 border border-dashed">T2</div>
-                                                            )}
-                                                        </div>
-                                                        <span className="text-[11px] md:text-sm font-bold text-gray-900 truncate max-w-[80px] md:max-w-none">
-                                                            {match.away_team?.name || 'Time B'}
-                                                        </span>
-                                                    </div>
-                                                </div>
-
-                                                {/* Actions */}
-                                                <div className="w-full md:w-auto flex justify-around md:justify-end gap-2 border-t md:border-t-0 pt-3 md:pt-0 mt-2 md:mt-0">
-                                                    <button
-                                                        onClick={() => openMatchSumula(match)}
-                                                        className={`flex-1 md:flex-none flex items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all border ${match.status === 'finished' ? 'text-green-600 bg-green-50 border-green-100' : 'text-indigo-600 bg-indigo-50 border-indigo-100'}`}
-                                                    >
-                                                        {match.status === 'finished' ? <CheckCircle className="w-4 h-4" /> : <List className="w-4 h-4" />}
-                                                        <span className="text-[10px] font-bold uppercase md:hidden">{match.status === 'finished' ? 'Resumo' : 'Súmula'}</span>
-                                                    </button>
-
-                                                    <button
-                                                        onClick={() => openEditModal(match)}
-                                                        className="flex-1 md:flex-none flex items-center justify-center gap-1 px-3 py-2 text-gray-500 bg-gray-50 border border-gray-200 rounded-lg transition-all"
-                                                    >
-                                                        <Edit2 className="w-4 h-4" />
-                                                        <span className="text-[10px] font-bold uppercase md:hidden">Editar</span>
-                                                    </button>
-
-                                                    <button
-                                                        onClick={() => handleDeleteMatch(match.id)}
-                                                        className="flex-1 md:flex-none flex items-center justify-center gap-1 px-3 py-2 text-red-500 bg-red-50 border border-red-200 rounded-lg transition-all hover:bg-red-100"
-                                                        title="Excluir Confronto"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                        <span className="text-[10px] font-bold uppercase md:hidden">Excluir</span>
-                                                    </button>
-                                                </div>
-                                            </div>
+                            return (
+                                <div key={round} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                                    <div className="bg-gray-50 px-6 py-3 border-b border-gray-200 flex justify-between items-center">
+                                        <div className="flex items-center gap-3">
+                                            <h3 className="font-bold text-gray-800 text-lg">Rodada {round}</h3>
+                                            <span className="text-[10px] font-bold text-gray-500 bg-gray-200 px-2 py-1 rounded-full uppercase tracking-wider">{roundMatches.length} JOGOS</span>
                                         </div>
-                                    ))}
+                                        <button
+                                            onClick={() => {
+                                                setNewData({
+                                                    home_team_id: '',
+                                                    away_team_id: '',
+                                                    start_time: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
+                                                    location: championship?.location || '',
+                                                    round_number: Number(round)
+                                                });
+                                                setShowAddModal(true);
+                                            }}
+                                            className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-indigo-200 text-indigo-600 rounded-lg hover:bg-indigo-50 hover:border-indigo-300 text-xs font-bold uppercase transition-all shadow-sm"
+                                        >
+                                            <Plus className="w-3 h-3" /> Adicionar Jogo Nesta Rodada
+                                        </button>
+                                    </div>
+
+                                    <div>
+                                        {sortedGroups.map(groupName => (
+                                            <div key={groupName}>
+                                                {hasMultipleGroups && (
+                                                    <div className="px-6 py-2 bg-indigo-50/50 border-b border-indigo-100 font-bold text-indigo-800 text-sm flex items-center gap-2">
+                                                        <Users className="w-4 h-4" /> {groupName.includes('Grupo') ? groupName : `Grupo ${groupName}`}
+                                                    </div>
+                                                )}
+
+                                                {matchesByGroup[groupName].map((match) => (
+                                                    <div key={match.id} className="p-4 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors">
+                                                        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+
+                                                            {/* Date / Location */}
+                                                            <div className="w-full md:w-40 flex flex-row md:flex-col items-center md:items-start justify-between md:justify-start border-b md:border-b-0 pb-2 md:pb-0 mb-2 md:mb-0">
+                                                                <div>
+                                                                    <div className="text-[11px] font-bold text-indigo-600 flex items-center gap-1">
+                                                                        <Calendar size={12} /> {new Date(match.start_time).toLocaleDateString('pt-BR')}
+                                                                    </div>
+                                                                    <div className="text-[10px] text-gray-500 flex items-center gap-1">
+                                                                        <ClockIcon size={12} /> {new Date(match.start_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                                                    </div>
+                                                                </div>
+                                                                {match.location && (
+                                                                    <div className="text-[10px] text-gray-400 flex items-center gap-1 truncate max-w-[120px] md:max-w-[150px] bg-gray-50 px-2 py-1 rounded md:bg-transparent md:p-0">
+                                                                        <MapPin size={10} /> {match.location}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+
+                                                            {/* Scoreboard */}
+                                                            <div className="flex flex-row items-center gap-2 md:gap-4 flex-1 justify-center w-full px-2">
+                                                                {/* Home Team */}
+                                                                <div className="flex flex-col md:flex-row items-center gap-1 md:gap-3 text-center md:text-right flex-1 justify-center md:justify-end">
+                                                                    <div className="order-1 md:order-2">
+                                                                        {match.home_team?.logo_url ? (
+                                                                            <img src={match.home_team.logo_url} className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white shadow-sm border p-0.5" />
+                                                                        ) : (
+                                                                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-400 border border-dashed">T1</div>
+                                                                        )}
+                                                                    </div>
+                                                                    <span className="text-[11px] md:text-sm font-bold text-gray-900 order-2 md:order-1 truncate max-w-[80px] md:max-w-none">
+                                                                        {match.home_team?.name || 'Time A'}
+                                                                    </span>
+                                                                </div>
+
+                                                                {/* Score */}
+                                                                <div className="flex flex-col items-center">
+                                                                    <div className="flex items-center gap-2 md:gap-4 bg-white px-3 md:px-6 py-1.5 md:py-2 rounded-xl border border-gray-200 shadow-sm min-w-[90px] md:min-w-[120px] justify-center">
+                                                                        <span className={`text-xl md:text-2xl font-black ${match.home_score !== null ? 'text-gray-900' : 'text-gray-300'}`}>
+                                                                            {match.home_score ?? 0}
+                                                                        </span>
+                                                                        <span className="text-gray-300 font-bold text-[10px]">X</span>
+                                                                        <span className={`text-xl md:text-2xl font-black ${match.away_score !== null ? 'text-gray-900' : 'text-gray-300'}`}>
+                                                                            {match.away_score ?? 0}
+                                                                        </span>
+                                                                    </div>
+                                                                    {(match.home_penalty_score != null || match.away_penalty_score != null) && (match.home_penalty_score > 0 || match.away_penalty_score > 0) && (
+                                                                        <span className="text-[10px] font-bold text-gray-500 mt-1">
+                                                                            ({match.home_penalty_score} x {match.away_penalty_score} Pen.)
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+
+                                                                {/* Away Team */}
+                                                                <div className="flex flex-col md:flex-row items-center gap-1 md:gap-3 text-center md:text-left flex-1 justify-center md:justify-start">
+                                                                    <div className="">
+                                                                        {match.away_team?.logo_url ? (
+                                                                            <img src={match.away_team.logo_url} className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white shadow-sm border p-0.5" />
+                                                                        ) : (
+                                                                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-400 border border-dashed">T2</div>
+                                                                        )}
+                                                                    </div>
+                                                                    <span className="text-[11px] md:text-sm font-bold text-gray-900 truncate max-w-[80px] md:max-w-none">
+                                                                        {match.away_team?.name || 'Time B'}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Actions */}
+                                                            <div className="w-full md:w-auto flex justify-around md:justify-end gap-2 border-t md:border-t-0 pt-3 md:pt-0 mt-2 md:mt-0">
+                                                                <button
+                                                                    onClick={() => openMatchSumula(match)}
+                                                                    className={`flex-1 md:flex-none flex items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all border ${match.status === 'finished' ? 'text-green-600 bg-green-50 border-green-100' : 'text-indigo-600 bg-indigo-50 border-indigo-100'}`}
+                                                                >
+                                                                    {match.status === 'finished' ? <CheckCircle className="w-4 h-4" /> : <List className="w-4 h-4" />}
+                                                                    <span className="text-[10px] font-bold uppercase md:hidden">{match.status === 'finished' ? 'Resumo' : 'Súmula'}</span>
+                                                                </button>
+
+                                                                <button
+                                                                    onClick={() => openEditModal(match)}
+                                                                    className="flex-1 md:flex-none flex items-center justify-center gap-1 px-3 py-2 text-gray-500 bg-gray-50 border border-gray-200 rounded-lg transition-all"
+                                                                >
+                                                                    <Edit2 className="w-4 h-4" />
+                                                                    <span className="text-[10px] font-bold uppercase md:hidden">Editar</span>
+                                                                </button>
+
+                                                                <button
+                                                                    onClick={() => handleDeleteMatch(match.id)}
+                                                                    className="flex-1 md:flex-none flex items-center justify-center gap-1 px-3 py-2 text-red-500 bg-red-50 border border-red-200 rounded-lg transition-all hover:bg-red-100"
+                                                                    title="Excluir Confronto"
+                                                                >
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                    <span className="text-[10px] font-bold uppercase md:hidden">Excluir</span>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
             </div>
