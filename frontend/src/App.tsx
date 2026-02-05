@@ -27,6 +27,8 @@ import { NewEventSelection } from './pages/EventWizard/NewEventSelection';
 import { ClubList } from './pages/SuperAdmin/ClubList';
 import { ClubForm } from './pages/SuperAdmin/ClubForm';
 import { SystemSettings } from './pages/SuperAdmin/SystemSettings';
+import { AdminProductManager } from './pages/Shop/AdminProductManager';
+import { TemporaryAccess } from './pages/Settings/TemporaryAccess';
 
 import { Explore } from './pages/Public/Explore';
 import { EventDetails } from './pages/Public/EventDetails';
@@ -134,6 +136,8 @@ function App() {
               <Route path="clubs-manage/new" element={<ClubForm />} />
               <Route path="clubs-manage/:id/edit" element={<ClubForm />} />
               <Route path="system-settings" element={<SystemSettings />} />
+              <Route path="products" element={<AdminProductManager />} />
+              <Route path="temporary-access" element={<TemporaryAccess />} />
 
               <Route path="matches" element={<Matches />} />
             </Route>

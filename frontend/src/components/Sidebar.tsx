@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Trophy, List, BarChart3, Settings, Users, UserPlus, X, Building2, Settings2 } from 'lucide-react';
+import { Home, Trophy, List, BarChart3, Settings, Users, UserPlus, X, Building2, Settings2, ShoppingBag, Key } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useAuth } from '../context/AuthContext';
@@ -30,6 +30,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         menuItems = [
             { label: 'Dashboard', path: '/admin', icon: Home },
             { label: 'Gerenciar Clubes', path: '/admin/clubs-manage', icon: Building2 },
+            { label: 'Acessos Temporários', path: '/admin/temporary-access', icon: Key },
             { label: 'Sistema', path: '/admin/system-settings', icon: Settings2 },
             { label: 'Relatórios', path: '/admin/reports', icon: BarChart3 },
         ];
@@ -41,8 +42,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             { label: 'Partidas', path: '/admin/matches', icon: List },
             { label: 'Equipes', path: '/admin/teams', icon: Users },
             { label: 'Jogadores', path: '/admin/players', icon: UserPlus },
+            { label: 'Loja', path: '/admin/products', icon: ShoppingBag },
             { label: 'Relatórios', path: '/admin/reports', icon: BarChart3 },
             { label: 'Configurações', path: '/admin/settings', icon: Settings },
+            { label: 'Acessos', path: '/admin/temporary-access', icon: Key },
         ];
     }
 

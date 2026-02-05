@@ -64,6 +64,7 @@ Route::get('/public/art/match/{matchId}/mvp', [\App\Http\Controllers\Admin\ArtGe
 
 // Loja (Público)
 Route::get('/clubs/{clubId}/products', [ShopController::class, 'products']);
+Route::get('/public/products', [ShopController::class, 'allProducts']); // NEW
 Route::get('/products/{id}', [ShopController::class, 'productDetails']);
 
 // Rotas Protegidas (Atleta Logado)
@@ -260,6 +261,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/clubs-manage/{id}', [\App\Http\Controllers\Admin\AdminClubController::class, 'update']);
         Route::delete('/clubs-manage/{id}', [\App\Http\Controllers\Admin\AdminClubController::class, 'destroy']);
         Route::post('/clubs-manage/{id}/impersonate', [\App\Http\Controllers\Admin\AdminClubController::class, 'impersonate']);
+        // Gestão de Loja/Produtos (NEW)
+        Route::get('/products-manage', [\App\Http\Controllers\Admin\AdminProductController::class, 'index']);
+        Route::post('/products-manage', [\App\Http\Controllers\Admin\AdminProductController::class, 'store']);
+        Route::put('/products-manage/{id}', [\App\Http\Controllers\Admin\AdminProductController::class, 'update']);
+        Route::delete('/products-manage/{id}', [\App\Http\Controllers\Admin\AdminProductController::class, 'destroy']);
+        Route::post('/upload/product-image', [\App\Http\Controllers\Admin\AdminProductController::class, 'uploadImage']);
     });
 });
 

@@ -6,10 +6,22 @@ use Illuminate\Http\Request;
 
 class ShopController extends Controller
 {
-    // 1. Listar Produtos do Clube
+    // 1. Listar Produtos do Clube (Rota Específica)
     public function products($clubId)
     {
         return response()->json(\App\Models\Product::where('club_id', $clubId)->get());
+    }
+
+    // 1.1 Listar Todos os Produtos (Marketplace / Busca Geral)
+    public function allProducts(Request $request)
+    {
+        $query = \App\Models\Product::query();
+
+        if ($request->has('club_id')) {
+            $query->where('club_id', $request->club_id);
+        }
+
+        return response()->json($query->orderBy('created_at', 'desc')->get());
     }
 
     // 1.5. Detalhes do Produto
