@@ -246,6 +246,8 @@ class EventController extends Controller
                     'drawn' => $t['stats']['draws'],
                     'lost' => $t['stats']['losses'],
                     'goal_difference' => $t['stats']['goals_for'] - $t['stats']['goals_against'],
+                    'goals_for' => $t['stats']['goals_for'],
+                    'goals_against' => $t['stats']['goals_against'],
                     'group_name' => $t['group_name'] ?? 'Geral'
                 ];
             }

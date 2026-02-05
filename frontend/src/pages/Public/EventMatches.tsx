@@ -161,10 +161,12 @@ export function EventMatches() {
             <div className="space-y-8">
                 {sortedKeys.map(round => (
                     <div key={round}>
-                        <div className="flex items-center gap-4 mb-4">
-                            <div className="h-px bg-gray-200 flex-1"></div>
-                            <span className="text-sm font-bold text-gray-500 uppercase tracking-wider bg-gray-50 px-3 py-1 rounded-full border border-gray-200 shadow-sm">{round}</span>
-                            <div className="h-px bg-gray-200 flex-1"></div>
+                        <div className="flex items-center justify-center mb-6 mt-4">
+                            <div className="h-px bg-gray-300 flex-1 opacity-50"></div>
+                            <span className="mx-4 text-sm font-black text-white uppercase tracking-widest bg-gray-900 px-6 py-2 rounded-lg shadow-md border border-gray-800">
+                                {round}
+                            </span>
+                            <div className="h-px bg-gray-300 flex-1 opacity-50"></div>
                         </div>
                         {groups[round].map(match => (
                             <MatchCard key={match.id} match={match} />

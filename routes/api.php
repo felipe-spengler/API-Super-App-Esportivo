@@ -247,6 +247,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/categories', [\App\Http\Controllers\Admin\AdminCategoryController::class, 'store']);
         Route::put('/categories/{id}', [\App\Http\Controllers\Admin\AdminCategoryController::class, 'update']);
         Route::delete('/categories/{id}', [\App\Http\Controllers\Admin\AdminCategoryController::class, 'destroy']);
+        // Acessos Temporários (NEW)
+        Route::get('/temporary-access', [\App\Http\Controllers\Admin\TemporaryAccessController::class, 'index']);
+        Route::post('/temporary-access', [\App\Http\Controllers\Admin\TemporaryAccessController::class, 'store']);
+        Route::put('/temporary-access/{id}', [\App\Http\Controllers\Admin\TemporaryAccessController::class, 'update']);
+        Route::delete('/temporary-access/{id}', [\App\Http\Controllers\Admin\TemporaryAccessController::class, 'destroy']);
+
         // Gestão de Clubes (Super Admin)
         Route::get('/clubs-manage', [\App\Http\Controllers\Admin\AdminClubController::class, 'index']);
         Route::post('/clubs-manage', [\App\Http\Controllers\Admin\AdminClubController::class, 'store']);
