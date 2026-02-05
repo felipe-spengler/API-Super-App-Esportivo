@@ -1,8 +1,9 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Calendar, MapPin, Clock } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Clock, Eye, FileText } from 'lucide-react';
 import api from '../../services/api';
+import { MatchDetailsModal } from '../../components/MatchDetailsModal';
 
 export function EventMatches() {
     const { id } = useParams();
@@ -15,27 +16,48 @@ export function EventMatches() {
     const [champName, setChampName] = useState('');
     const [activeTab, setActiveTab] = useState<'all' | 'live' | 'upcoming' | 'finished'>('all');
 
-    useEffect(() => {
-        async function loadData() {
-            setLoading(true);
-            try {
-                // Fetch championship info for header
+    // Modal State
+    const [selectedMatchId, setSelectedMatchId] = useState<string | number | null>(null);
+
+    // Polling Ref to avoid state closure staleness if needed, but dependency array is enough
+    const pollingRef = useRef<any>(null);
+
+    const fetchData = async (silent = false) => {
+        if (!silent) setLoading(true);
+        try {
+            // Only fetch name if empty
+            if (!champName) {
                 const champRes = await api.get(`/championships/${id}`);
                 setChampName(champRes.data.name);
-
-                const response = await api.get(`/championships/${id}/matches`, {
-                    params: { category_id: categoryId }
-                });
-                setMatches(response.data);
-
-            } catch (error) {
-                console.error("Erro ao carregar jogos", error);
-            } finally {
-                setLoading(false);
             }
+
+            const response = await api.get(`/championships/${id}/matches`, {
+                params: { category_id: categoryId }
+            });
+            setMatches(response.data);
+
+        } catch (error) {
+            console.error("Erro ao carregar jogos", error);
+        } finally {
+            if (!silent) setLoading(false);
         }
-        loadData();
+    };
+
+    useEffect(() => {
+        fetchData();
+
+        // Polling every 30 seconds to keep list updated (live scores, etc)
+        pollingRef.current = setInterval(() => {
+            fetchData(true);
+        }, 30000); // 30s
+
+        return () => {
+            if (pollingRef.current) clearInterval(pollingRef.current);
+        };
     }, [id, categoryId]);
+
+    // Faster polling if active tab is live? 
+    // Maybe better to just keep 30s for list, and let Modal handle fast polling for details.
 
     const getStatusBadge = (status: string) => {
         switch (status) {
@@ -52,15 +74,23 @@ export function EventMatches() {
     const finishedMatches = matches.filter(m => m.status === 'finished');
 
     const MatchCard = ({ match }: { match: any }) => (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-all mb-3">
+        <div
+            onClick={() => setSelectedMatchId(match.id)}
+            className="group bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-all mb-3 cursor-pointer relative"
+        >
+            {/* Live Indicator Strip */}
+            {match.status === 'live' && (
+                <div className="absolute top-0 left-0 right-0 h-1 bg-red-500 animate-pulse" />
+            )}
+
             {/* Match Header: Date & Place */}
-            <div className="bg-gray-50 px-4 py-2 flex justify-between items-center text-xs text-gray-500 border-b border-gray-100">
+            <div className="bg-gray-50 px-4 py-2 flex justify-between items-center text-xs text-gray-500 border-b border-gray-100 mt-1">
                 <div className="flex items-center gap-1">
                     <Calendar className="w-3 h-3" />
-                    <span>{new Date(match.start_time).toLocaleDateString()}</span>
+                    <span>{match.start_time ? new Date(match.start_time).toLocaleDateString() : 'TBA'}</span>
                     <span className="mx-1">•</span>
                     <Clock className="w-3 h-3" />
-                    <span>{new Date(match.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    <span>{match.start_time ? new Date(match.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}</span>
                 </div>
                 <div className="flex items-center gap-1">
                     <MapPin className="w-3 h-3" />
@@ -69,11 +99,13 @@ export function EventMatches() {
             </div>
 
             {/* Match Content */}
-            <div className="p-4">
+            <div className="p-4 relative">
+                {/* Hover Action Overlay Text (Optional, keeping it clean for mobile) */}
+
                 <div className="flex items-center justify-between">
                     {/* Home Team */}
                     <div className="flex-1 flex flex-col items-center text-center gap-2">
-                        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center overflow-hidden border border-gray-200">
+                        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center overflow-hidden border border-gray-200 group-hover:border-indigo-200 transition-colors">
                             {match.home_team?.logo || match.home_team?.logo_url ? (
                                 <img src={match.home_team.logo || match.home_team.logo_url} alt={match.home_team.name} className="w-full h-full object-cover" />
                             ) : (
@@ -84,11 +116,15 @@ export function EventMatches() {
                     </div>
 
                     {/* Score Board */}
-                    <div className="flex flex-col items-center px-4 w-24">
+                    <div className="flex flex-col items-center px-4 w-28">
                         <div className="flex items-center gap-3">
-                            <span className="text-2xl font-black text-gray-900">{match.home_score ?? '-'}</span>
+                            <span className={`text-2xl font-black ${match.home_score > match.away_score ? 'text-gray-900' : 'text-gray-600'}`}>
+                                {match.home_score ?? '-'}
+                            </span>
                             <span className="text-xs text-gray-400 font-bold">X</span>
-                            <span className="text-2xl font-black text-gray-900">{match.away_score ?? '-'}</span>
+                            <span className={`text-2xl font-black ${match.away_score > match.home_score ? 'text-gray-900' : 'text-gray-600'}`}>
+                                {match.away_score ?? '-'}
+                            </span>
                         </div>
                         <div className="mt-2 text-center scale-90 origin-top">
                             {getStatusBadge(match.status)}
@@ -97,7 +133,7 @@ export function EventMatches() {
 
                     {/* Away Team */}
                     <div className="flex-1 flex flex-col items-center text-center gap-2">
-                        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center overflow-hidden border border-gray-200">
+                        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center overflow-hidden border border-gray-200 group-hover:border-indigo-200 transition-colors">
                             {match.away_team?.logo || match.away_team?.logo_url ? (
                                 <img src={match.away_team.logo || match.away_team.logo_url} alt={match.away_team.name} className="w-full h-full object-cover" />
                             ) : (
@@ -106,6 +142,21 @@ export function EventMatches() {
                         </div>
                         <span className="text-sm font-bold text-gray-800 leading-tight block w-full truncate">{match.away_team?.name || 'Visitante'}</span>
                     </div>
+                </div>
+
+                {/* Call to Action Button (Visible on Hover or Always small) */}
+                <div className="mt-4 flex justify-center">
+                    {match.status === 'live' ? (
+                        <button className="flex items-center gap-2 px-4 py-1.5 bg-red-50 text-red-600 rounded-full text-xs font-bold hover:bg-red-100 transition-colors">
+                            <Eye size={14} className="animate-pulse" /> Acompanhar Ao Vivo
+                        </button>
+                    ) : match.status === 'finished' ? (
+                        <button className="flex items-center gap-2 px-4 py-1.5 bg-gray-100 text-gray-600 rounded-full text-xs font-bold hover:bg-gray-200 transition-colors group-hover:bg-indigo-50 group-hover:text-indigo-600">
+                            <FileText size={14} /> Ver Súmula e Detalhes
+                        </button>
+                    ) : (
+                        <span className="text-[10px] text-gray-400">Clique para ver detalhes</span>
+                    )}
                 </div>
             </div>
         </div>
@@ -180,7 +231,7 @@ export function EventMatches() {
     return (
         <div className="min-h-screen bg-gray-50 pb-20">
             {/* Header */}
-            <div className="bg-white p-4 pt-8 shadow-sm flex items-center sticky top-0 z-10 border-b border-gray-100">
+            <div className="bg-white p-4 pt-8 shadow-sm flex items-center sticky top-0 z-20 border-b border-gray-100">
                 <button onClick={() => navigate(-1)} className="p-2 mr-2 rounded-full hover:bg-gray-100 transition-colors">
                     <ArrowLeft className="w-5 h-5 text-gray-600" />
                 </button>
@@ -191,17 +242,17 @@ export function EventMatches() {
             </div>
 
             {/* Tabs */}
-            <div className="bg-white border-b border-gray-200 sticky top-[73px] z-10">
-                <div className="max-w-3xl mx-auto flex overflow-x-auto">
+            <div className="bg-white border-b border-gray-200 sticky top-[73px] z-10 shadow-sm">
+                <div className="max-w-3xl mx-auto flex overflow-x-auto no-scrollbar">
                     <button
                         onClick={() => setActiveTab('all')}
-                        className={`flex-1 py-3 text-sm font-semibold transition-all border-b-2 whitespace-nowrap px-4 ${activeTab === 'all' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                        className={`flex-1 py-3 text-sm font-semibold transition-all border-b-2 whitespace-nowrap px-4 ${activeTab === 'all' ? 'border-indigo-600 text-indigo-600 bg-indigo-50/50' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
                     >
                         Todos ({matches.length})
                     </button>
                     <button
                         onClick={() => setActiveTab('live')}
-                        className={`flex-1 py-3 text-sm font-semibold transition-all border-b-2 whitespace-nowrap px-4 ${activeTab === 'live' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                        className={`flex-1 py-3 text-sm font-semibold transition-all border-b-2 whitespace-nowrap px-4 ${activeTab === 'live' ? 'border-red-600 text-red-600 bg-red-50/50' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
                     >
                         Ao Vivo ({liveMatches.length})
                     </button>
@@ -221,7 +272,7 @@ export function EventMatches() {
             </div>
 
             <div className="max-w-3xl mx-auto p-4 space-y-6">
-                {loading ? (
+                {loading && matches.length === 0 ? (
                     <div className="flex justify-center p-8">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
                     </div>
@@ -234,9 +285,9 @@ export function EventMatches() {
                         {activeTab === 'all' && (
                             <>
                                 {liveMatches.length > 0 && (
-                                    <div>
+                                    <div className="animate-in fade-in slide-in-from-top-4 duration-500">
                                         <h3 className="text-sm font-bold text-red-600 uppercase tracking-wider mb-3 flex items-center gap-2">
-                                            <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse"></span>
+                                            <span className="block w-2 h-2 rounded-full bg-red-600 animate-pulse"></span>
                                             Acontecendo Agora
                                         </h3>
                                         {liveMatches.map(match => <MatchCard key={match.id} match={match} />)}
@@ -249,7 +300,9 @@ export function EventMatches() {
 
                         {activeTab === 'live' && (
                             liveMatches.length > 0 ? (
-                                liveMatches.map(match => <MatchCard key={match.id} match={match} />)
+                                <div className="animate-in fade-in zoom-in-95 duration-300">
+                                    {liveMatches.map(match => <MatchCard key={match.id} match={match} />)}
+                                </div>
                             ) : (
                                 <div className="text-center py-10 bg-white rounded-xl shadow-sm border border-gray-100">
                                     <p className="text-gray-500">Nenhum jogo ao vivo no momento.</p>
@@ -263,6 +316,12 @@ export function EventMatches() {
                     </>
                 )}
             </div>
+
+            <MatchDetailsModal
+                matchId={selectedMatchId}
+                isOpen={!!selectedMatchId}
+                onClose={() => setSelectedMatchId(null)}
+            />
         </div>
     );
 }

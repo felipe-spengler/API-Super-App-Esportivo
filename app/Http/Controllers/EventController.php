@@ -576,4 +576,66 @@ class EventController extends Controller
 
         return response()->json($events);
     }
+    // 11. Detalhes da Partida (Público - para Modal Ao Vivo/Súmula)
+    public function matchDetails($id)
+    {
+        $match = GameMatch::with(['homeTeam.players', 'awayTeam.players', 'championship.sport', 'events.player'])->findOrFail($id);
+
+        $details = $match->match_details ?? [];
+
+        if (!isset($details['events'])) {
+            $details['events'] = [];
+        }
+
+        // Se houver eventos na tabela MatchEvent, eles são a fonte de verdade
+        if ($match->events->count() > 0) {
+            $tableEvents = $match->events->map(function ($e) {
+                return [
+                    'id' => $e->id,
+                    'type' => $e->event_type,
+                    'team_id' => $e->team_id,
+                    'player_id' => $e->player_id,
+                    'player_name' => $e->player?->name ?? '?',
+                    'minute' => $e->game_time ?? '00:00',
+                    'period' => $e->metadata['period'] ?? ($e->metadata['label'] ?? '1º Tempo'),
+                    'value' => $e->value
+                ];
+            });
+            $details['events'] = $tableEvents;
+        }
+
+        if (!isset($details['sets']))
+            $details['sets'] = [];
+        if (!isset($details['positions']))
+            $details['positions'] = [];
+
+        // Carregar jogadores reais dos times
+        $rosters = [
+            'home' => $this->formatRoster($match->homeTeam),
+            'away' => $this->formatRoster($match->awayTeam),
+        ];
+
+        return response()->json([
+            'match' => $match,
+            'details' => $details,
+            'rosters' => $rosters,
+            'sport' => $match->championship->sport->slug ?? 'football'
+        ]);
+    }
+
+    // Helper para formatar elenco
+    private function formatRoster($team)
+    {
+        if (!$team)
+            return [];
+
+        return $team->players->map(function ($player) {
+            return [
+                'id' => $player->id,
+                'number' => $player->pivot->number ?? '',
+                'name' => $player->name,
+                'position' => $player->pivot->position
+            ];
+        });
+    }
 }
