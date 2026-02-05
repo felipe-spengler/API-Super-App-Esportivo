@@ -17,8 +17,33 @@ export function Profile() {
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
     if (!user) {
-        navigate('/login');
-        return null; // Or loading
+        return (
+            <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+                <div className="bg-white p-8 rounded-2xl shadow-sm text-center max-w-sm w-full border border-gray-100">
+                    <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-white shadow-sm">
+                        <User className="w-8 h-8" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">Faça Login</h2>
+                    <p className="text-gray-500 mb-8 leading-relaxed">
+                        Para acessar seu perfil, gerenciar seus times e ver suas inscrições, você precisa estar conectado.
+                    </p>
+                    <div className="space-y-3">
+                        <button
+                            onClick={() => navigate('/login')}
+                            className="w-full bg-indigo-600 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-200 hover:shadow-xl hover:bg-indigo-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                        >
+                            Entrar na Conta
+                        </button>
+                        <button
+                            onClick={() => navigate('/register')}
+                            className="w-full bg-white text-indigo-600 font-bold py-3.5 rounded-xl border-2 border-indigo-100 hover:bg-indigo-50 hover:border-indigo-200 active:scale-[0.98] transition-all"
+                        >
+                            Criar Nova Conta
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )
     }
 
     const MENU_ITEMS = [
