@@ -8,6 +8,10 @@ class MatchEvent extends Model
 {
     protected $guarded = [];
 
+    protected $casts = [
+        'metadata' => 'array',
+    ];
+
     public function gameMatch()
     {
         return $this->belongsTo(GameMatch::class);

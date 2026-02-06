@@ -30,9 +30,9 @@ export function SumulaFutsal() {
     const [showShootoutOptions, setShowShootoutOptions] = useState(false);
     const [selectedPlayer, setSelectedPlayer] = useState<any>(null);
 
-    const fetchMatchDetails = async () => {
+    const fetchMatchDetails = async (silent = false) => {
         try {
-            setLoading(true);
+            if (!silent) setLoading(true);
             const response = await api.get(`/admin/matches/${id}/full-details`);
             const data = response.data;
             if (data.match) {
@@ -56,8 +56,6 @@ export function SumulaFutsal() {
                 // Only merge history if not already preserved by persistence or if empty
                 setEvents(history);
 
-
-
                 const homeFouls = history.filter((e: any) => e.team === 'home' && e.type === 'foul').length;
                 const awayFouls = history.filter((e: any) => e.team === 'away' && e.type === 'foul').length;
 
@@ -69,30 +67,36 @@ export function SumulaFutsal() {
             }
         } catch (e) {
             console.error(e);
-            alert('Erro ao carregar jogo.');
+            if (!silent) alert('Erro ao carregar jogo.');
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     };
 
     // --- PERSISTENCE LOGIC START ---
     const STORAGE_KEY = `match_state_futsal_${id}`; // Unique key for futsal
 
-    // 1. Load State on Mount
+    // 1. Load State on Mount & Sync
     useEffect(() => {
+        // Initial Fetch
+        if (id) fetchMatchDetails();
+
+        // Sync Interval (Every 5s check for server updates to keep in sync)
+        const syncInterval = setInterval(() => {
+            if (id) fetchMatchDetails(true);
+        }, 5000);
+
+        // Load Local State
         if (id) {
             const saved = localStorage.getItem(STORAGE_KEY);
             if (saved) {
                 try {
                     const parsed = JSON.parse(saved);
-                    // Recover Period and Fouls
                     if (parsed.currentPeriod) setCurrentPeriod(parsed.currentPeriod);
                     if (parsed.fouls) setFouls(parsed.fouls);
 
-                    // Recover Timer
                     let restoredTime = parsed.time || 0;
                     if (parsed.isRunning && parsed.lastTimestamp) {
-                        // Calculate seconds elapsed since last save (simulating background run)
                         const secondsPassed = Math.floor((Date.now() - parsed.lastTimestamp) / 1000);
                         restoredTime += secondsPassed;
                         setIsRunning(true);
@@ -104,8 +108,9 @@ export function SumulaFutsal() {
                     console.error("Failed to recover state", e);
                 }
             }
-            fetchMatchDetails();
         }
+
+        return () => clearInterval(syncInterval);
     }, [id]);
 
     // 2. Save State on Change

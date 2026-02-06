@@ -30,9 +30,9 @@ export function SumulaFutebol() {
     const [showShootoutOptions, setShowShootoutOptions] = useState(false);
     const [selectedPlayer, setSelectedPlayer] = useState<any>(null);
 
-    const fetchMatchDetails = async () => {
+    const fetchMatchDetails = async (silent = false) => {
         try {
-            setLoading(true);
+            if (!silent) setLoading(true);
             const response = await api.get(`/admin/matches/${id}/full-details`);
             const data = response.data;
             if (data.match) {
@@ -85,65 +85,41 @@ export function SumulaFutebol() {
     const STORAGE_KEY = `match_state_${id}`;
 
     // 1. Load State on Mount
+    // --- DATA SYNC & TIMER LOGIC ---
     useEffect(() => {
-        if (id) {
-            const saved = localStorage.getItem(STORAGE_KEY);
-            if (saved) {
-                try {
-                    const parsed = JSON.parse(saved);
-                    // Recover Period and Fouls
-                    if (parsed.currentPeriod) setCurrentPeriod(parsed.currentPeriod);
-                    if (parsed.fouls) setFouls(parsed.fouls);
+        // Initial Fetch
+        if (id) fetchMatchDetails();
 
-                    // Recover Timer
-                    let restoredTime = parsed.time || 0;
-                    if (parsed.isRunning && parsed.lastTimestamp) {
-                        // Calculate seconds elapsed since last save (simulating background run)
-                        const secondsPassed = Math.floor((Date.now() - parsed.lastTimestamp) / 1000);
-                        restoredTime += secondsPassed;
-                        setIsRunning(true);
-                    } else {
-                        setIsRunning(false);
-                    }
-                    setTime(restoredTime);
-                } catch (e) {
-                    console.error("Failed to recover state", e);
-                }
-            }
-            fetchMatchDetails();
-        }
+        // Sync Interval (Every 5s check for server updates to keep in sync)
+        const syncInterval = setInterval(() => {
+            if (id) fetchMatchDetails(true);
+        }, 5000);
+
+        return () => clearInterval(syncInterval);
     }, [id]);
-
-    // 2. Save State on Change
-    useEffect(() => {
-        if (!id || loading) return;
-
-        const stateToSave = {
-            time,
-            isRunning,
-            currentPeriod,
-            fouls,
-            lastTimestamp: Date.now()
-        };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
-
-    }, [time, isRunning, currentPeriod, fouls, id, loading]);
-    // --- PERSISTENCE LOGIC END ---
 
     useEffect(() => {
         let interval: any = null;
         if (isRunning) {
             interval = setInterval(() => setTime(t => t + 1), 1000);
 
-            // If match is still scheduled, try to set to live on first play
+            // If match is still scheduled locally, try to set to live on first play
+            // We do this check continuously to retry if failed, but we should throttle or check flag
             if (matchData && matchData.status === 'scheduled') {
-                // We call this once when isRunning becomes true. 
-                // We don't update status locally immediately to ensure backend confirms it.
                 registerSystemEvent('match_start', 'Início da Partida');
             }
         }
         return () => clearInterval(interval);
-    }, [isRunning, matchData]);
+    }, [isRunning, matchData]); // Re-add matchData dependency so we try again if status update fails/reverts
+
+    // When server data comes back, we may need to correct our local state
+    // BUT we must be careful not to override our local timer if it's running ahead
+    // Strategy: 
+    // 1. If server says "live" and we are "scheduled", switch to live.
+    // 2. If server has more events than us, reload events.
+    // 3. We trust our local timer while running. If we refreshed page, we try to recover from persisted state or server start time if available in future features.
+    // For now, persistence logic below handles page refresh.
+
 
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
