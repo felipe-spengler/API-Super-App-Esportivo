@@ -129,10 +129,9 @@ export function SumulaFutsal() {
         if (isRunning) {
             interval = setInterval(() => setTime(t => t + 1), 1000);
 
-            // If match is still scheduled, set to live on first play
+            // If match is still scheduled, try to set to live on first play
             if (matchData && matchData.status === 'scheduled') {
                 registerSystemEvent('match_start', 'Início da Partida');
-                setMatchData((prev: any) => ({ ...prev, status: 'live' }));
             }
         }
         return () => clearInterval(interval);
@@ -199,7 +198,7 @@ export function SumulaFutsal() {
         try {
             const response = await api.post(`/admin/matches/${id}/events`, {
                 event_type: type,
-                team_id: matchData.home_team_id, // Default to home team for system events
+                team_id: matchData.home_team_id || matchData.away_team_id, // Default to home team for system events
                 minute: currentTime,
                 period: currentPeriod,
                 metadata: { label }
@@ -213,8 +212,17 @@ export function SumulaFutsal() {
                 period: currentPeriod,
                 player_name: label
             }, ...prev]);
+
+            // If we successfully started the match, update status locally
+            if (type === 'match_start') {
+                setMatchData((prev: any) => ({ ...prev, status: 'live' }));
+            }
         } catch (e) {
-            console.error(e);
+            console.error("Erro ao registrar evento de sistema", e);
+            if (type === 'match_start') {
+                setIsRunning(false); // Stop timer if we couldn't start match!
+                alert("Erro de conexão ao iniciar partida. O cronômetro foi pausado. Tente novamente.");
+            }
         }
     };
 

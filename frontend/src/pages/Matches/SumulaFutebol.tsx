@@ -135,16 +135,15 @@ export function SumulaFutebol() {
         if (isRunning) {
             interval = setInterval(() => setTime(t => t + 1), 1000);
 
-            // If match is still scheduled, set to live on first play
+            // If match is still scheduled, try to set to live on first play
             if (matchData && matchData.status === 'scheduled') {
+                // We call this once when isRunning becomes true. 
+                // We don't update status locally immediately to ensure backend confirms it.
                 registerSystemEvent('match_start', 'Início da Partida');
-                setMatchData((prev: any) => ({ ...prev, status: 'live' }));
             }
         }
         return () => clearInterval(interval);
     }, [isRunning, matchData]);
-
-
 
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
@@ -200,6 +199,7 @@ export function SumulaFutebol() {
         if (newPeriod) setCurrentPeriod(newPeriod);
     };
 
+
     const registerSystemEvent = async (type: string, label: string) => {
         if (!matchData) return;
         const currentTime = formatTime(time);
@@ -207,7 +207,7 @@ export function SumulaFutebol() {
         try {
             const response = await api.post(`/admin/matches/${id}/events`, {
                 event_type: type,
-                team_id: matchData.home_team_id, // Default to home team for system events
+                team_id: matchData.home_team_id || matchData.away_team_id, // Ensure we pass some team_id if possible, or backed allows null now
                 minute: currentTime,
                 period: currentPeriod,
                 metadata: { label }
@@ -216,13 +216,23 @@ export function SumulaFutebol() {
             setEvents(prev => [{
                 id: response.data.id,
                 type: type,
-                team: 'home',
+                team: 'home', // Display as home or generic
                 time: currentTime,
                 period: currentPeriod,
                 player_name: label
             }, ...prev]);
+
+            // If we successfully started the match, update status locally
+            if (type === 'match_start') {
+                setMatchData((prev: any) => ({ ...prev, status: 'live' }));
+            }
+
         } catch (e) {
-            console.error(e);
+            console.error("Erro ao registrar evento de sistema", e);
+            if (type === 'match_start') {
+                setIsRunning(false); // Stop timer if we couldn't start match!
+                alert("Erro de conexão ao iniciar partida. O cronômetro foi pausado. Tente novamente.");
+            }
         }
     };
 

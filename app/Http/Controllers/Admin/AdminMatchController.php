@@ -323,20 +323,20 @@ class AdminMatchController extends Controller
         $match = GameMatch::findOrFail($id);
 
         $validated = $request->validate([
-            'team_id' => 'required|exists:teams,id',
+            'team_id' => 'nullable|exists:teams,id', // Allow system events without team
             'player_id' => 'nullable|integer',
             'event_type' => 'required|in:goal,yellow_card,red_card,blue_card,assist,foul,mvp,substitution,point,ace,block,timeout,period_start,period_end,match_start,match_end,shootout_goal,shootout_miss',
             'minute' => 'nullable|string', // Change to string to support "00:00"
-            'value' => 'nullable|integer|min:1',
+            'value' => 'nullable|integer',
             'metadata' => 'nullable|array',
         ]);
 
         $event = MatchEvent::create([
             'game_match_id' => $match->id,
-            'team_id' => $validated['team_id'],
+            'team_id' => $validated['team_id'] ?? null,
             'player_id' => $validated['player_id'] ?? null,
             'event_type' => $validated['event_type'],
-            'game_time' => $validated['minute'] ?? null, // Map minute from frontend to game_time in DB
+            'game_time' => $validated['minute'] ?? null,
             'value' => $validated['value'] ?? 1,
             'metadata' => $validated['metadata'] ?? null,
         ]);
