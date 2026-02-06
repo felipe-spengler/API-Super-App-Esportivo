@@ -11,6 +11,7 @@ export function SumulaHandebol() {
     const [loading, setLoading] = useState(true);
     const [matchData, setMatchData] = useState<any>(null);
     const [rosters, setRosters] = useState<any>({ home: [], away: [] });
+    const [serverTimerLoaded, setServerTimerLoaded] = useState(false);
 
     // Timer & Period State (30min cada tempo)
     const [time, setTime] = useState(0);
@@ -26,9 +27,9 @@ export function SumulaHandebol() {
     const [selectedTeam, setSelectedTeam] = useState<'home' | 'away' | null>(null);
     const [eventType, setEventType] = useState<'goal' | 'yellow_card' | 'suspension_2min' | 'red_card' | 'assist' | 'mvp' | null>(null);
 
-    const fetchMatchDetails = async () => {
+    const fetchMatchDetails = async (silent = false) => {
         try {
-            setLoading(true);
+            if (!silent) setLoading(true);
             const response = await api.get(`/admin/matches/${id}/full-details`);
             const data = response.data;
             if (data.match) {
@@ -37,6 +38,15 @@ export function SumulaHandebol() {
                     scoreHome: parseInt(data.match.home_score || 0),
                     scoreAway: parseInt(data.match.away_score || 0)
                 });
+
+                // Sync timer if not yet loaded from server or if someone else is running it
+                if (data.match.match_details?.sync_timer && !serverTimerLoaded) {
+                    const st = data.match.match_details.sync_timer;
+                    setTime(st.time || 0);
+                    setIsRunning(st.isRunning || false);
+                    if (st.currentPeriod) setCurrentPeriod(st.currentPeriod);
+                    setServerTimerLoaded(true);
+                }
 
                 if (data.rosters) setRosters(data.rosters);
 
@@ -52,9 +62,9 @@ export function SumulaHandebol() {
             }
         } catch (e) {
             console.error(e);
-            alert('Erro ao carregar jogo.');
+            if (!silent) alert('Erro ao carregar jogo.');
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     };
 
@@ -62,6 +72,14 @@ export function SumulaHandebol() {
     const STORAGE_KEY = `match_state_handebol_${id}`;
 
     useEffect(() => {
+        // Initial Fetch
+        if (id) fetchMatchDetails();
+
+        // Sync Interval (Every 5s check for server updates to keep in sync)
+        const syncInterval = setInterval(() => {
+            if (id) fetchMatchDetails(true);
+        }, 2000);
+
         if (id) {
             const saved = localStorage.getItem(STORAGE_KEY);
             if (saved) {
@@ -83,8 +101,9 @@ export function SumulaHandebol() {
                     console.error("Failed to recover state", e);
                 }
             }
-            fetchMatchDetails();
         }
+
+        return () => clearInterval(syncInterval);
     }, [id]);
 
     useEffect(() => {
@@ -106,14 +125,39 @@ export function SumulaHandebol() {
         if (isRunning) {
             interval = setInterval(() => setTime(t => t + 1), 1000);
 
-            // If match is still scheduled, set to live on first play
-            if (matchData && matchData.status === 'scheduled') {
+            // If match is still scheduled, try to set to live on first play
+            if (matchData && (matchData.status === 'scheduled' || matchData.status === 'Agendado')) {
                 registerSystemEvent('match_start', 'Início da Partida');
-                setMatchData((prev: any) => ({ ...prev, status: 'live' }));
             }
         }
         return () => clearInterval(interval);
     }, [isRunning, matchData]);
+
+    // PING - Sync local state TO server (Every 3 seconds if running)
+    useEffect(() => {
+        if (!id || !isRunning || loading || !matchData) return;
+
+        const pingInterval = setInterval(async () => {
+            try {
+                // Update server with our current time
+                await api.patch(`/admin/matches/${id}`, {
+                    match_details: {
+                        ...matchData.match_details,
+                        sync_timer: {
+                            time,
+                            isRunning,
+                            currentPeriod,
+                            updated_at: Date.now()
+                        }
+                    }
+                });
+            } catch (e) {
+                console.error("Timer sync failed", e);
+            }
+        }, 3000);
+
+        return () => clearInterval(pingInterval);
+    }, [id, isRunning, time, currentPeriod]);
 
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
@@ -161,7 +205,7 @@ export function SumulaHandebol() {
         try {
             const response = await api.post(`/admin/matches/${id}/events`, {
                 event_type: type,
-                team_id: matchData.home_team_id,
+                team_id: matchData.home_team_id || matchData.away_team_id,
                 minute: currentTime,
                 period: currentPeriod,
                 metadata: { label }
@@ -175,8 +219,17 @@ export function SumulaHandebol() {
                 period: currentPeriod,
                 player_name: label
             }, ...prev]);
+
+            // If we successfully started the match, update status locally
+            if (type === 'match_start') {
+                setMatchData((prev: any) => ({ ...prev, status: 'live' }));
+            }
         } catch (e) {
-            console.error(e);
+            console.error("Erro ao registrar evento de sistema", e);
+            if (type === 'match_start') {
+                setIsRunning(false); // Stop timer if we couldn't start match!
+                alert("Erro de conexão ao iniciar partida. O cronômetro foi pausado. Tente novamente.");
+            }
         }
     };
 

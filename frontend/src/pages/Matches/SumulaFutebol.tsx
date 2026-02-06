@@ -11,6 +11,7 @@ export function SumulaFutebol() {
     const [loading, setLoading] = useState(true);
     const [matchData, setMatchData] = useState<any>(null);
     const [rosters, setRosters] = useState<any>({ home: [], away: [] });
+    const [serverTimerLoaded, setServerTimerLoaded] = useState(false);
 
     // Timer & Period State
     const [time, setTime] = useState(0);
@@ -41,6 +42,15 @@ export function SumulaFutebol() {
                     scoreHome: parseInt(data.match.home_score || 0),
                     scoreAway: parseInt(data.match.away_score || 0)
                 });
+
+                // Sync timer if not yet loaded from server or if someone else is running it
+                if (data.match.match_details?.sync_timer && !serverTimerLoaded) {
+                    const st = data.match.match_details.sync_timer;
+                    setTime(st.time || 0);
+                    setIsRunning(st.isRunning || false);
+                    if (st.currentPeriod) setCurrentPeriod(st.currentPeriod);
+                    setServerTimerLoaded(true);
+                }
 
                 if (data.rosters) setRosters(data.rosters);
 
@@ -93,7 +103,7 @@ export function SumulaFutebol() {
         // Sync Interval (Every 5s check for server updates to keep in sync)
         const syncInterval = setInterval(() => {
             if (id) fetchMatchDetails(true);
-        }, 5000);
+        }, 2000);
 
         return () => clearInterval(syncInterval);
     }, [id]);
@@ -103,14 +113,38 @@ export function SumulaFutebol() {
         if (isRunning) {
             interval = setInterval(() => setTime(t => t + 1), 1000);
 
-            // If match is still scheduled locally, try to set to live on first play
-            // We do this check continuously to retry if failed, but we should throttle or check flag
             if (matchData && matchData.status === 'scheduled') {
                 registerSystemEvent('match_start', 'Início da Partida');
             }
         }
         return () => clearInterval(interval);
-    }, [isRunning, matchData]); // Re-add matchData dependency so we try again if status update fails/reverts
+    }, [isRunning, matchData]);
+
+    // PING - Sync local state TO server (Every 3 seconds if running)
+    useEffect(() => {
+        if (!id || !isRunning || loading || !matchData) return;
+
+        const pingInterval = setInterval(async () => {
+            try {
+                // Update server with our current time
+                await api.patch(`/admin/matches/${id}`, {
+                    match_details: {
+                        ...matchData.match_details,
+                        sync_timer: {
+                            time,
+                            isRunning,
+                            currentPeriod,
+                            updated_at: Date.now()
+                        }
+                    }
+                });
+            } catch (e) {
+                console.error("Failed to sync timer to server", e);
+            }
+        }, 3000);
+
+        return () => clearInterval(pingInterval);
+    }, [id, isRunning, time, currentPeriod]);
 
     // When server data comes back, we may need to correct our local state
     // BUT we must be careful not to override our local timer if it's running ahead
@@ -183,7 +217,7 @@ export function SumulaFutebol() {
         try {
             const response = await api.post(`/admin/matches/${id}/events`, {
                 event_type: type,
-                team_id: matchData.home_team_id || matchData.away_team_id, // Ensure we pass some team_id if possible, or backed allows null now
+                team_id: matchData.home_team_id || matchData.away_team_id,
                 minute: currentTime,
                 period: currentPeriod,
                 metadata: { label }
@@ -192,7 +226,7 @@ export function SumulaFutebol() {
             setEvents(prev => [{
                 id: response.data.id,
                 type: type,
-                team: 'home', // Display as home or generic
+                team: 'home',
                 time: currentTime,
                 period: currentPeriod,
                 player_name: label

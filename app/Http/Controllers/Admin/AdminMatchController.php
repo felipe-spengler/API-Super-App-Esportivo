@@ -325,7 +325,7 @@ class AdminMatchController extends Controller
         $validated = $request->validate([
             'team_id' => 'nullable|exists:teams,id', // Allow system events without team
             'player_id' => 'nullable|integer',
-            'event_type' => 'required|in:goal,yellow_card,red_card,blue_card,assist,foul,mvp,substitution,point,ace,block,timeout,period_start,period_end,match_start,match_end,shootout_goal,shootout_miss',
+            'event_type' => 'required|in:goal,yellow_card,red_card,blue_card,assist,foul,mvp,substitution,point,ace,block,timeout,period_start,period_end,match_start,match_end,shootout_goal,shootout_miss,takedown,guard_pass,mount,back_control,knee_on_belly,sweep,advantage,penalty',
             'minute' => 'nullable|string', // Change to string to support "00:00"
             'value' => 'nullable|integer',
             'metadata' => 'nullable|array',
@@ -340,6 +340,26 @@ class AdminMatchController extends Controller
             'value' => $validated['value'] ?? 1,
             'metadata' => $validated['metadata'] ?? null,
         ]);
+
+        // Auto-update match score for regular points/goals
+        $scoreEvents = ['goal', 'point', 'takedown', 'guard_pass', 'mount', 'back_control', 'knee_on_belly', 'sweep'];
+        if (in_array($event->event_type, $scoreEvents)) {
+            $value = $event->value ?: 1;
+            if ($event->team_id == $match->home_team_id) {
+                $match->increment('home_score', $value);
+            } elseif ($event->team_id == $match->away_team_id) {
+                $match->increment('away_score', $value);
+            }
+        }
+
+        // Auto-update penalty score
+        if ($event->event_type === 'shootout_goal') {
+            if ($event->team_id == $match->home_team_id) {
+                $match->increment('home_penalty_score');
+            } elseif ($event->team_id == $match->away_team_id) {
+                $match->increment('away_penalty_score');
+            }
+        }
 
         // Auto-update match status to live if it was scheduled
         if ($match->status === 'scheduled') {
@@ -384,6 +404,40 @@ class AdminMatchController extends Controller
     public function deleteEvent($matchId, $eventId)
     {
         $event = MatchEvent::where('game_match_id', $matchId)->findOrFail($eventId);
+        $match = GameMatch::findOrFail($matchId);
+
+        // Auto-update match score if deleting goals/points
+        $scoreEvents = [
+            'goal',
+            'point',
+            '1_point',
+            '2_points',
+            '3_points',
+            'free_throw',
+            'field_goal_2',
+            'field_goal_3',
+            'jiu_jitsu_2',
+            'jiu_jitsu_3',
+            'jiu_jitsu_4'
+        ];
+        if (in_array($event->event_type, $scoreEvents)) {
+            $value = $event->value ?: 1;
+            if ($event->team_id == $match->home_team_id) {
+                $match->decrement('home_score', $value);
+            } elseif ($event->team_id == $match->away_team_id) {
+                $match->decrement('away_score', $value);
+            }
+        }
+
+        // Auto-update penalty score
+        if ($event->event_type === 'shootout_goal') {
+            if ($event->team_id == $match->home_team_id) {
+                $match->decrement('home_penalty_score');
+            } elseif ($event->team_id == $match->away_team_id) {
+                $match->decrement('away_penalty_score');
+            }
+        }
+
         $event->delete();
 
         return response()->json(['message' => 'Event deleted successfully']);

@@ -13,6 +13,7 @@ export function SumulaJiuJitsu() {
     const [loading, setLoading] = useState(true);
     const [matchData, setMatchData] = useState<any>(null);
     const [rosters, setRosters] = useState<any>({ home: [], away: [] });
+    const [serverTimerLoaded, setServerTimerLoaded] = useState(false);
 
     // Timer State (regressivo - normalmente 5-10min)
     const [time, setTime] = useState(300); // 5min padrão
@@ -35,9 +36,9 @@ export function SumulaJiuJitsu() {
         'sweep': 2
     };
 
-    const fetchMatchDetails = async () => {
+    const fetchMatchDetails = async (silent = false) => {
         try {
-            setLoading(true);
+            if (!silent) setLoading(true);
             const response = await api.get(`/admin/matches/${id}/full-details`);
             const data = response.data;
             if (data.match) {
@@ -46,6 +47,14 @@ export function SumulaJiuJitsu() {
                     scoreHome: parseInt(data.match.home_score || 0),
                     scoreAway: parseInt(data.match.away_score || 0)
                 });
+
+                // Sync timer if not yet loaded from server or if someone else is running it
+                if (data.match.match_details?.sync_timer && !serverTimerLoaded) {
+                    const st = data.match.match_details.sync_timer;
+                    setTime(st.time || 300);
+                    setIsRunning(st.isRunning || false);
+                    setServerTimerLoaded(true);
+                }
 
                 if (data.rosters) setRosters(data.rosters);
 
@@ -58,12 +67,24 @@ export function SumulaJiuJitsu() {
                     value: e.value || 0
                 }));
                 setEvents(history);
+
+                // Recalculate states from history
+                const homeP = history.filter((e: any) => e.team === 'home' && pointsMap[e.type]).reduce((acc, curr) => acc + (pointsMap[curr.type] || 0), 0);
+                const awayP = history.filter((e: any) => e.team === 'away' && pointsMap[e.type]).reduce((acc, curr) => acc + (pointsMap[curr.type] || 0), 0);
+                const homeA = history.filter((e: any) => e.team === 'home' && e.type === 'advantage').length;
+                const awayA = history.filter((e: any) => e.team === 'away' && e.type === 'advantage').length;
+                const homePen = history.filter((e: any) => e.team === 'home' && e.type === 'penalty').length;
+                const awayPen = history.filter((e: any) => e.team === 'away' && e.type === 'penalty').length;
+
+                setPoints({ home: homeP, away: awayP });
+                setAdvantages({ home: homeA, away: awayA });
+                setPenalties({ home: homePen, away: awayPen });
             }
         } catch (e) {
             console.error(e);
-            alert('Erro ao carregar jogo.');
+            if (!silent) alert('Erro ao carregar jogo.');
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     };
 
@@ -72,6 +93,14 @@ export function SumulaJiuJitsu() {
 
     useEffect(() => {
         if (id) {
+            // Initial Fetch
+            fetchMatchDetails();
+
+            // Sync Interval
+            const syncInterval = setInterval(() => {
+                fetchMatchDetails(true);
+            }, 2000);
+
             const saved = localStorage.getItem(STORAGE_KEY);
             if (saved) {
                 try {
@@ -86,7 +115,7 @@ export function SumulaJiuJitsu() {
                     console.error("Failed to recover state", e);
                 }
             }
-            fetchMatchDetails();
+            return () => clearInterval(syncInterval);
         }
     }, [id]);
 
@@ -110,7 +139,6 @@ export function SumulaJiuJitsu() {
             // Set match to live on start
             if (matchData && (matchData.status === 'scheduled' || matchData.status === 'Agendado')) {
                 registerSystemEvent('match_start', 'Início da Partida');
-                setMatchData((prev: any) => ({ ...prev, status: 'live' }));
             }
 
             interval = setInterval(() => setTime(t => {
@@ -124,7 +152,32 @@ export function SumulaJiuJitsu() {
             }), 1000);
         }
         return () => clearInterval(interval);
-    }, [isRunning, time]);
+    }, [isRunning, time, matchData]);
+
+    // PING - Sync local state TO server (Every 3 seconds if running)
+    useEffect(() => {
+        if (!id || !isRunning || loading || !matchData) return;
+
+        const pingInterval = setInterval(async () => {
+            try {
+                // Update server with our current time
+                await api.patch(`/admin/matches/${id}`, {
+                    match_details: {
+                        ...matchData.match_details,
+                        sync_timer: {
+                            time,
+                            isRunning,
+                            updated_at: Date.now()
+                        }
+                    }
+                });
+            } catch (e) {
+                console.error("Timer sync failed", e);
+            }
+        }, 3000);
+
+        return () => clearInterval(pingInterval);
+    }, [id, isRunning, time]);
 
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
@@ -238,12 +291,21 @@ export function SumulaJiuJitsu() {
         try {
             await api.post(`/admin/matches/${id}/events`, {
                 event_type: type,
-                team_id: matchData.home_team_id,
+                team_id: matchData.home_team_id || matchData.away_team_id,
                 minute: formatTime(time),
                 metadata: { label }
             });
+
+            // If we successfully started the match, update status locally
+            if (type === 'match_start') {
+                setMatchData((prev: any) => ({ ...prev, status: 'live' }));
+            }
         } catch (e) {
-            console.error(e);
+            console.error("Erro ao registrar evento de sistema", e);
+            if (type === 'match_start') {
+                setIsRunning(false); // Stop timer if we couldn't start match!
+                alert("Erro de conexão ao iniciar partida. O cronômetro foi pausado. Tente novamente.");
+            }
         }
     };
 

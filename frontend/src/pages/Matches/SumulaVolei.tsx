@@ -38,13 +38,19 @@ export function SumulaVolei() {
     const [servingTeamId, setServingTeamId] = useState<number | null>(null);
 
     useEffect(() => {
-        if (id) fetchFullDetails();
-        const interval = setInterval(() => { if (id) fetchState() }, 5000);
-        return () => clearInterval(interval);
+        if (id) {
+            fetchFullDetails();
+            // Sync Interval (Every 5s check for server updates to keep in sync)
+            const syncInterval = setInterval(() => {
+                fetchState(true);
+            }, 2000);
+            return () => clearInterval(syncInterval);
+        }
     }, [id]);
 
-    const fetchFullDetails = async () => {
+    const fetchFullDetails = async (silent = false) => {
         try {
+            if (!silent) setLoading(true);
             // 1. Get Match Core Data including players
             const fullMatch = await api.get(`/admin/matches/${id}`);
 
@@ -61,15 +67,18 @@ export function SumulaVolei() {
             const hasAway = response.data.current_rotations?.away?.filter((x: any) => x).length === 6;
 
             if ((!hasHome || !hasAway) && response.data.state.current_set === 1 && response.data.sets.length <= 1 && response.data.sets[0]?.home_score === 0) {
-                setSetupModalOpen(true);
+                if (!silent) setSetupModalOpen(true);
             }
 
         } catch (e) {
             console.error(e);
+            if (!silent) alert('Erro ao carregar detalhes do vôlei');
+        } finally {
+            if (!silent) setLoading(false);
         }
     }
 
-    const fetchState = async () => {
+    const fetchState = async (silent = false) => {
         try {
             const response = await api.get(`/admin/matches/${id}/volley-state`);
             processStateResponse(response.data);
@@ -150,13 +159,21 @@ export function SumulaVolei() {
         try {
             await api.post(`/admin/matches/${id}/events`, {
                 event_type: type,
-                team_id: matchData.home_team_id,
+                team_id: matchData.home_team_id || matchData.away_team_id,
                 minute: 0,
                 period: volleyState ? `${volleyState.current_set}º Set` : 'Pré-jogo',
                 metadata: { label }
             });
+
+            // If we successfully started the match, update status locally
+            if (type === 'match_start') {
+                setMatchData((prev: any) => ({ ...prev, status: 'live' }));
+            }
         } catch (e) {
-            console.error(e);
+            console.error("Erro ao registrar evento de sistema", e);
+            if (type === 'match_start') {
+                alert("Erro de conexão ao iniciar partida no servidor.");
+            }
         }
     };
 

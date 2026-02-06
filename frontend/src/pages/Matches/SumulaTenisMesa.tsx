@@ -23,9 +23,9 @@ export function SumulaTenisMesa() {
     const MIN_MARGIN = 2;
     const BEST_OF = 5; // Melhor de 5 sets (primeiro a 3)
 
-    const fetchMatchDetails = async () => {
+    const fetchMatchDetails = async (silent = false) => {
         try {
-            setLoading(true);
+            if (!silent) setLoading(true);
             const response = await api.get(`/admin/matches/${id}/full-details`);
             const data = response.data;
             if (data.match) {
@@ -39,14 +39,21 @@ export function SumulaTenisMesa() {
 
                 if (data.details?.sets && data.details.sets.length > 0) {
                     setSets(data.details.sets);
-                    setCurrentSet(data.details.sets.length + 1);
+                }
+
+                // Recover current state from server sync
+                if (data.match.match_details?.sync_state) {
+                    const ss = data.match.match_details.sync_state;
+                    if (ss.score) setScore(ss.score);
+                    if (ss.currentSet) setCurrentSet(ss.currentSet);
+                    if (ss.server) setServer(ss.server);
                 }
             }
         } catch (e) {
             console.error(e);
-            alert('Erro ao carregar jogo.');
+            if (!silent) alert('Erro ao carregar jogo.');
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     };
 
@@ -55,6 +62,14 @@ export function SumulaTenisMesa() {
 
     useEffect(() => {
         if (id) {
+            // Initial Fetch
+            fetchMatchDetails();
+
+            // Sync Interval
+            const syncInterval = setInterval(() => {
+                fetchMatchDetails(true);
+            }, 2000);
+
             const saved = localStorage.getItem(STORAGE_KEY);
             if (saved) {
                 try {
@@ -68,7 +83,7 @@ export function SumulaTenisMesa() {
                     console.error("Failed to recover state", e);
                 }
             }
-            fetchMatchDetails();
+            return () => clearInterval(syncInterval);
         }
     }, [id]);
 
@@ -84,6 +99,31 @@ export function SumulaTenisMesa() {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
     }, [id, loading, sets, currentSet, score, matchFinished, server]);
 
+    // PING - Sync local state TO server (Every 3 seconds)
+    useEffect(() => {
+        if (!id || matchFinished || loading || !matchData) return;
+
+        const pingInterval = setInterval(async () => {
+            try {
+                await api.patch(`/admin/matches/${id}`, {
+                    match_details: {
+                        ...matchData.match_details,
+                        sync_state: {
+                            score,
+                            currentSet,
+                            server,
+                            updated_at: Date.now()
+                        }
+                    }
+                });
+            } catch (e) {
+                console.error("State sync failed", e);
+            }
+        }, 3000);
+
+        return () => clearInterval(pingInterval);
+    }, [id, score, currentSet, server]);
+
     // Service rotation: every 2 points
     useEffect(() => {
         const totalPoints = score.home + score.away;
@@ -95,10 +135,9 @@ export function SumulaTenisMesa() {
     const addPoint = async (team: 'home' | 'away') => {
         if (matchFinished) return;
 
-        // If match is still scheduled, set to live on first point
+        // If match is still scheduled, try to set to live on first point
         if (matchData && (matchData.status === 'scheduled' || matchData.status === 'Agendado')) {
             registerSystemEvent('match_start', 'Início da Partida');
-            setMatchData((prev: any) => ({ ...prev, status: 'live' }));
         }
 
         const newScore = { ...score };
@@ -190,13 +229,21 @@ export function SumulaTenisMesa() {
         try {
             await api.post(`/admin/matches/${id}/events`, {
                 event_type: type,
-                team_id: matchData.home_team_id,
+                team_id: matchData.home_team_id || matchData.away_team_id,
                 minute: 0,
                 period: `Set ${currentSet}`,
                 metadata: { label }
             });
+
+            // If we successfully started the match, update status locally
+            if (type === 'match_start') {
+                setMatchData((prev: any) => ({ ...prev, status: 'live' }));
+            }
         } catch (e) {
-            console.error(e);
+            console.error("Erro ao registrar evento de sistema", e);
+            if (type === 'match_start') {
+                alert("Erro de conexão ao iniciar partida no servidor.");
+            }
         }
     };
 

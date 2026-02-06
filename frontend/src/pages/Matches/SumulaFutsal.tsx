@@ -11,6 +11,7 @@ export function SumulaFutsal() {
     const [loading, setLoading] = useState(true);
     const [matchData, setMatchData] = useState<any>(null);
     const [rosters, setRosters] = useState<any>({ home: [], away: [] });
+    const [serverTimerLoaded, setServerTimerLoaded] = useState(false);
 
     // Timer & Period State
     const [time, setTime] = useState(0);
@@ -41,6 +42,15 @@ export function SumulaFutsal() {
                     scoreHome: parseInt(data.match.home_score || 0),
                     scoreAway: parseInt(data.match.away_score || 0)
                 });
+
+                // Sync timer if not yet loaded from server or if someone else is running it
+                if (data.match.match_details?.sync_timer && !serverTimerLoaded) {
+                    const st = data.match.match_details.sync_timer;
+                    setTime(st.time || 0);
+                    setIsRunning(st.isRunning || false);
+                    if (st.currentPeriod) setCurrentPeriod(st.currentPeriod);
+                    setServerTimerLoaded(true);
+                }
 
                 if (data.rosters) setRosters(data.rosters);
 
@@ -84,7 +94,7 @@ export function SumulaFutsal() {
         // Sync Interval (Every 5s check for server updates to keep in sync)
         const syncInterval = setInterval(() => {
             if (id) fetchMatchDetails(true);
-        }, 5000);
+        }, 2000);
 
         // Load Local State
         if (id) {
@@ -135,12 +145,38 @@ export function SumulaFutsal() {
             interval = setInterval(() => setTime(t => t + 1), 1000);
 
             // If match is still scheduled, try to set to live on first play
-            if (matchData && matchData.status === 'scheduled') {
+            if (matchData && (matchData.status === 'scheduled' || matchData.status === 'Agendado')) {
                 registerSystemEvent('match_start', 'Início da Partida');
             }
         }
         return () => clearInterval(interval);
     }, [isRunning, matchData]);
+
+    // PING - Sync local state TO server (Every 3 seconds if running)
+    useEffect(() => {
+        if (!id || !isRunning || loading || !matchData) return;
+
+        const pingInterval = setInterval(async () => {
+            try {
+                // Update server with our current time
+                await api.patch(`/admin/matches/${id}`, {
+                    match_details: {
+                        ...matchData.match_details,
+                        sync_timer: {
+                            time,
+                            isRunning,
+                            currentPeriod,
+                            updated_at: Date.now()
+                        }
+                    }
+                });
+            } catch (e) {
+                console.error("Timer sync failed", e);
+            }
+        }, 3000);
+
+        return () => clearInterval(pingInterval);
+    }, [id, isRunning, time, currentPeriod]);
 
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
