@@ -157,9 +157,9 @@ export function SumulaBasquete() {
         return () => clearInterval(interval);
     }, [isRunning, time, matchData]);
 
-    // PING - Sync local state TO server (Every 3 seconds if running)
+    // PING - Sync local state TO server (Every 3 seconds)
     useEffect(() => {
-        if (!id || !isRunning || loading || !matchData) return;
+        if (!id || loading || !matchData) return;
 
         const pingInterval = setInterval(async () => {
             try {
@@ -456,13 +456,14 @@ export function SumulaBasquete() {
                         currentQuarter === 'Fim de Jogo' ? 'bg-red-700 text-white' :
                             'bg-black/40 text-white backdrop-blur'
                         }`}>
-                        {currentQuarter === '1º Quarto' ? 'Fim 1º Q' :
-                            currentQuarter === '2º Quarto' ? 'Intervalo' :
-                                currentQuarter === 'Intervalo' ? 'Iniciar 3º Q' :
-                                    currentQuarter === '3º Quarto' ? 'Fim 3º Q' :
-                                        currentQuarter === '4º Quarto' ? 'Encerrar' :
-                                            currentQuarter === 'Prorrogação' ? 'Fim Prorrogação' :
-                                                'Finalizado'}
+                        {matchData.status === 'scheduled' || matchData.status === 'Agendado' ? 'Iniciar Jogo' :
+                            currentQuarter === '1º Quarto' ? 'Fim 1º Q' :
+                                currentQuarter === '2º Quarto' ? 'Intervalo' :
+                                    currentQuarter === 'Intervalo' ? 'Iniciar 3º Q' :
+                                        currentQuarter === '3º Quarto' ? 'Fim 3º Q' :
+                                            currentQuarter === '4º Quarto' ? 'Encerrar' :
+                                                currentQuarter === 'Prorrogação' ? 'Fim Prorrogação' :
+                                                    'Finalizado'}
                     </button>
                 </div>
 

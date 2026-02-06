@@ -30,30 +30,40 @@ export function SumulaFutebol() {
     const [showShootoutOptions, setShowShootoutOptions] = useState(false);
     const [selectedPlayer, setSelectedPlayer] = useState<any>(null);
 
-    const fetchMatchDetails = async (silent = false) => {
+    const fetchMatchDetails = async (isInitial = false) => {
         try {
-            if (!silent) setLoading(true);
+            if (isInitial) setLoading(true);
             const response = await api.get(`/admin/matches/${id}/full-details`);
             const data = response.data;
             if (data.match) {
-                setMatchData({
-                    ...data.match,
-                    scoreHome: parseInt(data.match.home_score || 0),
-                    scoreAway: parseInt(data.match.away_score || 0)
+                // Update matchData but preserve local score if we just updated it
+                setMatchData((prev: any) => {
+                    const newScoreHome = parseInt(data.match.home_score || 0);
+                    const newScoreAway = parseInt(data.match.away_score || 0);
+
+                    return {
+                        ...data.match,
+                        scoreHome: newScoreHome,
+                        scoreAway: newScoreAway
+                    };
                 });
 
-                // Sync timer if not yet loaded from server or if someone else is running it
-                if (data.match.match_details?.sync_timer && !serverTimerLoaded) {
+                // Sync timer ONLY on initial load or if not locally running
+                if (data.match.match_details?.sync_timer && (!serverTimerLoaded || !isRunning)) {
                     const st = data.match.match_details.sync_timer;
-                    setTime(st.time || 0);
-                    setIsRunning(st.isRunning || false);
-                    if (st.currentPeriod) setCurrentPeriod(st.currentPeriod);
+
+                    // Priority to local storage if available and more recent? 
+                    // For now, let's load from server if not running locally.
+                    if (!isRunning) {
+                        setTime(st.time || 0);
+                        if (st.currentPeriod) setCurrentPeriod(st.currentPeriod);
+                    }
                     setServerTimerLoaded(true);
                 }
 
                 if (data.rosters) setRosters(data.rosters);
 
-                // Process History & Stats
+                // Process History
                 const history = (data.details?.events || []).map((e: any) => ({
                     id: e.id,
                     type: e.type,
@@ -62,20 +72,17 @@ export function SumulaFutebol() {
                     period: e.period,
                     player_name: e.player_name
                 }));
-                // Only merge history if not already preserved by persistence or if empty
                 setEvents(history);
 
-                setEvents(history);
-
-                const homePenalties = history.filter((e: any) => e.team === 'home' && e.type === 'shootout_goal').length;
-                const awayPenalties = history.filter((e: any) => e.team === 'away' && e.type === 'shootout_goal').length;
+                const homePenalties = history.filter((e: any) => e.team === 'home' && (e.type === 'shootout_goal' || e.type === 'penalty_goal')).length;
+                const awayPenalties = history.filter((e: any) => e.team === 'away' && (e.type === 'shootout_goal' || e.type === 'penalty_goal')).length;
                 setPenaltyScore({ home: homePenalties, away: awayPenalties });
             }
         } catch (e) {
             console.error(e);
-            alert('Erro ao carregar jogo.');
+            if (isInitial) alert('Erro ao carregar jogo.');
         } finally {
-            setLoading(false);
+            if (isInitial) setLoading(false);
         }
     };
 
@@ -83,18 +90,42 @@ export function SumulaFutebol() {
     const STORAGE_KEY = `match_state_${id}`;
 
     // 1. Load State on Mount
-    // --- DATA SYNC & TIMER LOGIC ---
     useEffect(() => {
-        // Initial Fetch
-        if (id) fetchMatchDetails();
+        if (!id) return;
 
-        // Sync Interval (Every 5s check for server updates to keep in sync)
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                setTime(parsed.time || 0);
+                setIsRunning(parsed.isRunning || false);
+                setCurrentPeriod(parsed.currentPeriod || '1º Tempo');
+                if (parsed.events) setEvents(parsed.events);
+                // score handles by API but we can keep optimistic for a sec
+            } catch (e) {
+                console.error("Failed to parse saved state", e);
+            }
+        }
+
+        fetchMatchDetails(true);
+
         const syncInterval = setInterval(() => {
-            if (id) fetchMatchDetails(true);
-        }, 2000);
+            fetchMatchDetails();
+        }, 3000);
 
         return () => clearInterval(syncInterval);
     }, [id]);
+
+    // 2. Save State on Change
+    useEffect(() => {
+        if (!id || loading) return;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+            time,
+            isRunning,
+            currentPeriod,
+            // events // better to trust API for events on reload, but we can save for extreme offline protection
+        }));
+    }, [time, isRunning, currentPeriod, id, loading]);
 
     useEffect(() => {
         let interval: any = null;
@@ -108,9 +139,9 @@ export function SumulaFutebol() {
         return () => clearInterval(interval);
     }, [isRunning, matchData]);
 
-    // PING - Sync local state TO server (Every 3 seconds if running)
+    // PING - Sync local state TO server (Every 3 seconds)
     useEffect(() => {
-        if (!id || !isRunning || loading || !matchData) return;
+        if (!id || loading || !matchData) return;
 
         const pingInterval = setInterval(async () => {
             try {
@@ -154,6 +185,7 @@ export function SumulaFutebol() {
         let newPeriod = '';
 
         if (currentPeriod === '1º Tempo') {
+            if (!window.confirm("Encerrar 1º Tempo?")) return;
             setIsRunning(false);
             newPeriod = 'Intervalo';
             registerSystemEvent('period_end', `Fim do ${oldPeriod}`);
@@ -162,12 +194,12 @@ export function SumulaFutebol() {
             setIsRunning(true);
             registerSystemEvent('period_start', `Início do ${newPeriod}`);
         } else if (currentPeriod === '2º Tempo') {
+            if (!window.confirm("Encerrar Tempo Normal?")) return;
             setIsRunning(false);
-            newPeriod = 'Fim de Tempo Normal';
+            newPeriod = 'Encerrado (Normal)';
             registerSystemEvent('period_end', `Fim do ${oldPeriod}`);
-        } else if (currentPeriod === 'Fim de Tempo Normal') {
-            // Option to go to Extra Time or End
-            if (window.confirm("Iniciar Prorrogação? Cancelar para ir direto para Pênaltis ou Encerrar.")) {
+        } else if (currentPeriod === 'Encerrado (Normal)') {
+            if (window.confirm("Iniciar Prorrogação? Cancelar para ir para Pênaltis ou Encerrar.")) {
                 newPeriod = 'Prorrogação';
                 setIsRunning(true);
                 registerSystemEvent('period_start', `Início da ${newPeriod}`);
@@ -175,23 +207,26 @@ export function SumulaFutebol() {
                 if (window.confirm("Iniciar Pênaltis?")) {
                     newPeriod = 'Pênaltis';
                     setIsRunning(false);
-                    registerSystemEvent('period_start', `Início dos ${newPeriod}`);
+                    registerSystemEvent('period_start', `Início dos Pênaltis`);
                 } else {
-                    newPeriod = 'Fim de Jogo';
+                    handleFinish();
                 }
             }
         } else if (currentPeriod === 'Prorrogação') {
+            if (!window.confirm("Encerrar Prorrogação?")) return;
             setIsRunning(false);
-            registerSystemEvent('period_end', `Fim da ${oldPeriod}`);
+            registerSystemEvent('period_end', `Fim da Prorrogação`);
             if (window.confirm("Iniciar Pênaltis?")) {
                 newPeriod = 'Pênaltis';
                 registerSystemEvent('period_start', `Início dos Pênaltis`);
             } else {
-                newPeriod = 'Fim de Jogo';
+                handleFinish();
             }
         } else if (currentPeriod === 'Pênaltis') {
-            newPeriod = 'Fim de Jogo';
+            if (!window.confirm("Encerrar Disputa de Pênaltis?")) return;
+            newPeriod = 'Prorrogação Finalizada';
             registerSystemEvent('period_end', `Fim dos Pênaltis`);
+            handleFinish();
         }
 
         if (newPeriod) setCurrentPeriod(newPeriod);
@@ -205,7 +240,7 @@ export function SumulaFutebol() {
         try {
             const response = await api.post(`/admin/matches/${id}/events`, {
                 event_type: type,
-                team_id: matchData.home_team_id || matchData.away_team_id,
+                team_id: (matchData.home_team_id || matchData.away_team_id) ?? null,
                 minute: currentTime,
                 period: currentPeriod,
                 metadata: { label }
@@ -434,17 +469,18 @@ export function SumulaFutebol() {
                         <span className="text-[10px] font-bold tracking-widest text-gray-400">SUMULA DIGITAL</span>
                         {(matchData.details?.arbitration?.referee) && <span className="text-[10px] text-gray-500">{matchData.details.arbitration.referee}</span>}
                     </div>
-                    <button onClick={handlePeriodChange} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase transition-colors ${currentPeriod === 'Intervalo' || currentPeriod === 'Fim de Tempo Normal' ? 'bg-orange-500 text-white' :
+                    <button onClick={handlePeriodChange} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase transition-colors ${currentPeriod === 'Intervalo' || currentPeriod === 'Encerrado (Normal)' ? 'bg-orange-500 text-white' :
                         currentPeriod === 'Fim de Jogo' ? 'bg-red-600 text-white' :
                             'bg-indigo-600 text-white'
                         }`}>
-                        {currentPeriod === '1º Tempo' ? 'Fim 1º T' :
-                            currentPeriod === 'Intervalo' ? 'Iniciar 2º T' :
-                                currentPeriod === '2º Tempo' ? 'Encerrar Normal' :
-                                    currentPeriod === 'Fim de Tempo Normal' ? 'Próxima Fase' :
-                                        currentPeriod === 'Prorrogação' ? 'Fim Prorrogação' :
-                                            currentPeriod === 'Pênaltis' ? 'Encerrar Pênaltis' :
-                                                'Finalizado'}
+                        {matchData.status === 'scheduled' ? 'Iniciar Jogo' :
+                            currentPeriod === '1º Tempo' ? 'Fim 1º T' :
+                                currentPeriod === 'Intervalo' ? 'Iniciar 2º T' :
+                                    currentPeriod === '2º Tempo' ? 'Encerrar Normal' :
+                                        currentPeriod === 'Encerrado (Normal)' ? 'Próxima Fase' :
+                                            currentPeriod === 'Prorrogação' ? 'Fim Prorrogação' :
+                                                currentPeriod === 'Pênaltis' ? 'Encerrar Pênaltis' :
+                                                    'Finalizado'}
                     </button>
 
                 </div>

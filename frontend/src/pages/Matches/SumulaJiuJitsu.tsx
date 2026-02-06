@@ -154,9 +154,9 @@ export function SumulaJiuJitsu() {
         return () => clearInterval(interval);
     }, [isRunning, time, matchData]);
 
-    // PING - Sync local state TO server (Every 3 seconds if running)
+    // PING - Sync local state TO server (Every 3 seconds)
     useEffect(() => {
-        if (!id || !isRunning || loading || !matchData) return;
+        if (!id || loading || !matchData) return;
 
         const pingInterval = setInterval(async () => {
             try {
@@ -326,8 +326,9 @@ export function SumulaJiuJitsu() {
                         </div>
                         {matchData.details?.arbitration?.referee && <span className="text-[10px] text-amber-100">{matchData.details.arbitration.referee}</span>}
                     </div>
-                    <button onClick={() => setIsRunning(!isRunning)} disabled={finished} className={`p-2 rounded-full backdrop-blur ${isRunning ? 'bg-red-600' : 'bg-green-600'}`}>
-                        <Timer className="w-5 h-5" />
+                    <button onClick={() => setIsRunning(!isRunning)} disabled={finished} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase transition-colors shadow-lg flex items-center gap-2 ${isRunning ? 'bg-red-600' : 'bg-green-600'}`}>
+                        <Timer className="w-4 h-4" />
+                        {matchData.status === 'scheduled' || matchData.status === 'Agendado' ? 'Iniciar Luta' : (isRunning ? 'Pausar' : 'Retomar')}
                     </button>
                 </div>
 

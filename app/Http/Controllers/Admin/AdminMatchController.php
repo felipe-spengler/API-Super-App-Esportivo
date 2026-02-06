@@ -342,7 +342,25 @@ class AdminMatchController extends Controller
         ]);
 
         // Auto-update match score for regular points/goals
-        $scoreEvents = ['goal', 'point', 'takedown', 'guard_pass', 'mount', 'back_control', 'knee_on_belly', 'sweep'];
+        $scoreEvents = [
+            'goal',
+            'point',
+            '1_point',
+            '2_points',
+            '3_points',
+            'free_throw',
+            'field_goal_2',
+            'field_goal_3',
+            'jiu_jitsu_2',
+            'jiu_jitsu_3',
+            'jiu_jitsu_4',
+            'takedown',
+            'guard_pass',
+            'mount',
+            'back_control',
+            'knee_on_belly',
+            'sweep'
+        ];
         if (in_array($event->event_type, $scoreEvents)) {
             $value = $event->value ?: 1;
             if ($event->team_id == $match->home_team_id) {

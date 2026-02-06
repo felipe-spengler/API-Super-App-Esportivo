@@ -133,9 +133,9 @@ export function SumulaHandebol() {
         return () => clearInterval(interval);
     }, [isRunning, matchData]);
 
-    // PING - Sync local state TO server (Every 3 seconds if running)
+    // PING - Sync local state TO server (Every 3 seconds)
     useEffect(() => {
-        if (!id || !isRunning || loading || !matchData) return;
+        if (!id || loading || !matchData) return;
 
         const pingInterval = setInterval(async () => {
             try {
@@ -373,16 +373,18 @@ export function SumulaHandebol() {
                         <span className="text-[10px] font-bold tracking-widest text-purple-200">SÚMULA DIGITAL - HANDEBOL</span>
                         {(matchData.details?.arbitration?.referee) && <span className="text-[10px] text-purple-300">{matchData.details.arbitration.referee}</span>}
                     </div>
-                    <button onClick={handlePeriodChange} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase transition-all shadow-lg ${currentPeriod === 'Intervalo' ? 'bg-yellow-500 text-black animate-pulse' :
+                    <button onClick={handlePeriodChange} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase transition-colors ${currentPeriod === 'Intervalo' || currentPeriod === 'Fim de Tempo Normal' ? 'bg-orange-500 text-white' :
                         currentPeriod === 'Fim de Jogo' ? 'bg-red-600 text-white' :
-                            'bg-black/40 text-white backdrop-blur'
+                            'bg-indigo-600 text-white'
                         }`}>
-                        {currentPeriod === '1º Tempo' ? 'Fim 1º T' :
-                            currentPeriod === 'Intervalo' ? 'Iniciar 2º T' :
-                                currentPeriod === '2º Tempo' ? 'Encerrar Normal' :
-                                    currentPeriod === 'Fim de Tempo Normal' ? 'Prorrogação' :
-                                        currentPeriod === 'Prorrogação' ? 'Encerrar' :
-                                            'Finalizado'}
+                        {matchData.status === 'scheduled' || matchData.status === 'Agendado' ? 'Iniciar Jogo' :
+                            currentPeriod === '1º Tempo' ? 'Fim 1º T' :
+                                currentPeriod === 'Intervalo' ? 'Iniciar 2º T' :
+                                    currentPeriod === '2º Tempo' ? 'Encerrar Normal' :
+                                        currentPeriod === 'Fim de Tempo Normal' ? 'Próxima Fase' :
+                                            currentPeriod === 'Prorrogação' ? 'Fim Prorrogação' :
+                                                currentPeriod === 'Pênaltis' ? 'Encerrar Pênaltis' :
+                                                    'Finalizado'}
                     </button>
                 </div>
 

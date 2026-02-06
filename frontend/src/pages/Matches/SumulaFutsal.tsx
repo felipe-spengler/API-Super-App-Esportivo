@@ -152,9 +152,9 @@ export function SumulaFutsal() {
         return () => clearInterval(interval);
     }, [isRunning, matchData]);
 
-    // PING - Sync local state TO server (Every 3 seconds if running)
+    // PING - Sync local state TO server (Every 3 seconds)
     useEffect(() => {
-        if (!id || !isRunning || loading || !matchData) return;
+        if (!id || loading || !matchData) return;
 
         const pingInterval = setInterval(async () => {
             try {
@@ -508,13 +508,14 @@ export function SumulaFutsal() {
                         currentPeriod === 'Fim de Jogo' ? 'bg-red-600 text-white' :
                             'bg-indigo-600 text-white'
                         }`}>
-                        {currentPeriod === '1º Tempo' ? 'Fim 1º T' :
-                            currentPeriod === 'Intervalo' ? 'Iniciar 2º T' :
-                                currentPeriod === '2º Tempo' ? 'Encerrar Normal' :
-                                    currentPeriod === 'Fim de Tempo Normal' ? 'Próxima Fase' :
-                                        currentPeriod === 'Prorrogação' ? 'Fim Prorrogação' :
-                                            currentPeriod === 'Pênaltis' ? 'Encerrar Pênaltis' :
-                                                'Finalizado'}
+                        {matchData.status === 'scheduled' || matchData.status === 'Agendado' ? 'Iniciar Jogo' :
+                            currentPeriod === '1º Tempo' ? 'Fim 1º T' :
+                                currentPeriod === 'Intervalo' ? 'Iniciar 2º T' :
+                                    currentPeriod === '2º Tempo' ? 'Encerrar Normal' :
+                                        currentPeriod === 'Fim de Tempo Normal' ? 'Próxima Fase' :
+                                            currentPeriod === 'Prorrogação' ? 'Fim Prorrogação' :
+                                                currentPeriod === 'Pênaltis' ? 'Encerrar Pênaltis' :
+                                                    'Finalizado'}
                     </button>
 
                 </div>
