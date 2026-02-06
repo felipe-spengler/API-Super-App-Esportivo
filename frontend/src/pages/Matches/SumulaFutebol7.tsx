@@ -175,6 +175,31 @@ export function SumulaFutebol7() {
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
+    // Helper to render foul dots (Futebol 7 style)
+    const renderFouls = (count: number) => {
+        // Society limit is 5. 6th is penalty/shootout.
+        const dots = [];
+        for (let i = 0; i < 6; i++) {
+            const filled = i < count;
+            const isLimit = i >= 5; // 6th foul slot
+            dots.push(
+                <div key={i} className={`w-3 h-3 rounded-full border border-black ${filled ? (isLimit ? 'bg-orange-500 animate-pulse' : 'bg-red-500') : 'bg-gray-700'}`}></div>
+            );
+        }
+        return (
+            <div className="flex flex-col items-center gap-1">
+                <div className="flex justify-center gap-1">
+                    {dots}
+                </div>
+                {count >= 5 && (
+                    <span className={`text-[9px] font-bold uppercase tracking-tighter ${count >= 6 ? 'text-orange-400 animate-bounce' : 'text-red-400'}`}>
+                        {count >= 6 ? '🚨 SHOOTOUT' : '⚠️ PRÓX. SHOOTOUT'}
+                    </span>
+                )}
+            </div>
+        );
+    }
+
     const handlePeriodChange = () => {
         const oldPeriod = currentPeriod;
         let newPeriod = '';
@@ -475,7 +500,9 @@ export function SumulaFutebol7() {
                             </div>
                         )}
                         <h2 className="font-bold text-xs sm:text-sm text-green-200 truncate max-w-[100px] mx-auto">{matchData.home_team?.name}</h2>
-                        <div className="text-[10px] text-gray-400 mt-1">Faltas: {fouls.home}</div>
+                        <div className="mt-1">
+                            {renderFouls(fouls.home)}
+                        </div>
                     </div>
 
                     <div className="flex flex-col items-center w-28 bg-black/50 backdrop-blur rounded-xl py-2 border border-green-500/50">
@@ -497,7 +524,9 @@ export function SumulaFutebol7() {
                             </div>
                         )}
                         <h2 className="font-bold text-xs sm:text-sm text-green-200 truncate max-w-[100px] mx-auto">{matchData.away_team?.name}</h2>
-                        <div className="text-[10px] text-gray-400 mt-1">Faltas: {fouls.away}</div>
+                        <div className="mt-1">
+                            {renderFouls(fouls.away)}
+                        </div>
                     </div>
                 </div>
             </div>

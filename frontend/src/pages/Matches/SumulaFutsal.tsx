@@ -473,12 +473,23 @@ export function SumulaFutsal() {
         const dots = [];
         for (let i = 0; i < 6; i++) {
             const filled = i < count;
-            const isLimit = i >= 5; // 6th foul
+            const isLimit = i >= 5; // 6th foul slot
             dots.push(
                 <div key={i} className={`w-3 h-3 rounded-full border border-black ${filled ? (isLimit ? 'bg-purple-500 animate-pulse' : 'bg-red-500') : 'bg-gray-700'}`}></div>
             );
         }
-        return dots;
+        return (
+            <div className="flex flex-col items-center gap-1">
+                <div className="flex justify-center gap-1">
+                    {dots}
+                </div>
+                {count >= 5 && (
+                    <span className={`text-[9px] font-bold uppercase tracking-tighter ${count >= 6 ? 'text-purple-400 animate-bounce' : 'text-red-400'}`}>
+                        {count >= 6 ? '🚨 TIRO LIVRE' : '⚠️ PRÓX. TIRO LIVRE'}
+                    </span>
+                )}
+            </div>
+        );
     }
 
     if (loading || !matchData) return <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white"><span className="loading loading-spinner loading-lg"></span></div>;
@@ -519,7 +530,7 @@ export function SumulaFutsal() {
                             </div>
                         )}
                         <h2 className="font-bold text-xs sm:text-sm text-gray-400 truncate max-w-[100px] mx-auto">{matchData.home_team?.name}</h2>
-                        <div className="mt-1 flex justify-center gap-1">
+                        <div className="mt-1">
                             {renderFouls(fouls.home)}
                         </div>
                     </div>
@@ -545,7 +556,7 @@ export function SumulaFutsal() {
                             </div>
                         )}
                         <h2 className="font-bold text-xs sm:text-sm text-gray-400 truncate max-w-[100px] mx-auto">{matchData.away_team?.name}</h2>
-                        <div className="mt-1 flex justify-center gap-1">
+                        <div className="mt-1">
                             {renderFouls(fouls.away)}
                         </div>
                     </div>

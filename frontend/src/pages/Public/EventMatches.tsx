@@ -59,13 +59,37 @@ export function EventMatches() {
     // Faster polling if active tab is live? 
     // Maybe better to just keep 30s for list, and let Modal handle fast polling for details.
 
-    const getStatusBadge = (status: string) => {
+    const getStatusBadge = (match: any) => {
+        const status = match.status;
+        const st = match.match_details?.sync_timer;
+
         switch (status) {
             case 'finished': return <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px] font-bold uppercase border border-gray-200">Finalizada</span>;
-            case 'live': return <span className="px-2 py-0.5 bg-red-100 text-red-600 rounded text-[10px] font-bold uppercase border border-red-200 animate-pulse">Ao Vivo</span>;
+            case 'live':
+                return (
+                    <div className="flex flex-col items-center gap-1">
+                        <span className="px-2 py-0.5 bg-red-100 text-red-600 rounded text-[10px] font-bold uppercase border border-red-200 animate-pulse">Ao Vivo</span>
+                        {st && (
+                            <div className="flex flex-col items-center">
+                                <span className="text-lg font-mono font-black text-red-600 leading-none">
+                                    {formatMatchTimePublic(st.time || 0)}
+                                </span>
+                                {st.currentPeriod && (
+                                    <span className="text-[8px] text-gray-400 font-bold uppercase">{st.currentPeriod}</span>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                );
             case 'upcoming': return <span className="px-2 py-0.5 bg-blue-100 text-blue-600 rounded text-[10px] font-bold uppercase border border-blue-200">Agendada</span>;
             default: return <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-[10px] font-bold uppercase border border-yellow-200">{status}</span>;
         }
+    };
+
+    const formatMatchTimePublic = (seconds: number) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
     // Group matches
@@ -127,7 +151,7 @@ export function EventMatches() {
                             </span>
                         </div>
                         <div className="mt-2 text-center scale-90 origin-top">
-                            {getStatusBadge(match.status)}
+                            {getStatusBadge(match)}
                         </div>
                     </div>
 

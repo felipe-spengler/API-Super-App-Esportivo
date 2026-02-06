@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Play, Pause, Save, Clock, Users, X, Flag, Timer, Trash2 } from 'lucide-react';
+import { ArrowLeft, Play, Pause, Save, Clock, Users, X, Timer, Trash2 } from 'lucide-react';
 import api from '../../services/api';
 
 export function SumulaFutebol() {
@@ -20,7 +20,6 @@ export function SumulaFutebol() {
     // Periods: '1º Tempo', 'Intervalo', '2º Tempo', 'Fim'
 
     // Stats State (Optimistic)
-    const [fouls, setFouls] = useState({ home: 0, away: 0 });
     const [penaltyScore, setPenaltyScore] = useState({ home: 0, away: 0 });
     const [events, setEvents] = useState<any[]>([]);
 
@@ -66,18 +65,7 @@ export function SumulaFutebol() {
                 // Only merge history if not already preserved by persistence or if empty
                 setEvents(history);
 
-                // Calc Fouls (only if not recovered from localStorage to avoid overwrite with stale data if backend is behind)
-                // Actually, backend is source of truth for events, but failures might be local only first. 
-                // For now, let's trust backend for events list, but local for fouls counter if we want optimistic.
-                // But let's sync:
-                const homeFouls = history.filter((e: any) => e.team === 'home' && e.type === 'foul').length;
-                const awayFouls = history.filter((e: any) => e.team === 'away' && e.type === 'foul').length;
-
-                // If local storage has more fouls (optimistic), keep them? 
-                // Ideally we should merge. For simplicity, let's trust backend on load, 
-                // but if we are recovering a crash, backend might be outdated? 
-                // No, backend is always saved on event. So backend is safe.
-                setFouls({ home: homeFouls, away: awayFouls });
+                setEvents(history);
 
                 const homePenalties = history.filter((e: any) => e.team === 'home' && e.type === 'shootout_goal').length;
                 const awayPenalties = history.filter((e: any) => e.team === 'away' && e.type === 'shootout_goal').length;
@@ -256,7 +244,7 @@ export function SumulaFutebol() {
         setShowEventModal(true);
     };
 
-    const registerSimpleEvent = async (team: 'home' | 'away', type: 'foul' | 'timeout') => {
+    const registerSimpleEvent = async (team: 'home' | 'away', type: 'timeout') => {
         if (!isRunning) {
             alert('Atenção: Inicie o cronômetro para poder lançar eventos!');
             return;
@@ -265,21 +253,13 @@ export function SumulaFutebol() {
         const teamId = team === 'home' ? matchData.home_team_id : matchData.away_team_id;
         const currentTime = formatTime(time);
 
-        // Optimistic
-        if (type === 'foul') {
-            setFouls(prev => ({
-                ...prev,
-                [team]: prev[team] + 1
-            }));
-        }
-
         const newEvent = {
             id: Date.now(),
             type: type,
             team: team,
             time: currentTime,
             period: currentPeriod,
-            player_name: type === 'timeout' ? 'Pedido de Tempo' : 'Falta de Equipe'
+            player_name: 'Pedido de Tempo'
         };
         setEvents(prev => [newEvent, ...prev]);
 
@@ -408,13 +388,6 @@ export function SumulaFutebol() {
                 }));
             }
 
-            if (type === 'foul') {
-                setFouls(prev => ({
-                    ...prev,
-                    [team]: Math.max(0, prev[team] - 1)
-                }));
-            }
-
             if (type === 'shootout_goal') {
                 setPenaltyScore(prev => ({
                     ...prev,
@@ -487,9 +460,6 @@ export function SumulaFutebol() {
                             </div>
                         )}
                         <h2 className="font-bold text-xs sm:text-sm text-gray-400 truncate max-w-[100px] mx-auto">{matchData.home_team?.name}</h2>
-                        <div className="mt-1 flex justify-center gap-1">
-                            {[...Array(Math.min(fouls.home, 5))].map((_, i) => <div key={i} className="w-2 h-2 rounded-full bg-red-500 border border-black"></div>)}
-                        </div>
                     </div>
 
                     {/* Center / Timer */}
@@ -513,9 +483,6 @@ export function SumulaFutebol() {
                             </div>
                         )}
                         <h2 className="font-bold text-xs sm:text-sm text-gray-400 truncate max-w-[100px] mx-auto">{matchData.away_team?.name}</h2>
-                        <div className="mt-1 flex justify-center gap-1">
-                            {[...Array(Math.min(fouls.away, 5))].map((_, i) => <div key={i} className="w-2 h-2 rounded-full bg-red-500 border border-black"></div>)}
-                        </div>
                     </div>
                 </div>
             </div>
@@ -536,10 +503,7 @@ export function SumulaFutebol() {
                         <button onClick={() => openEventModal('home', 'assist')} className="py-2 bg-indigo-500 rounded-lg font-bold border-b-4 border-indigo-700 active:scale-95 text-xs">👟 Assist.</button>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                        <button onClick={() => openEventModal('home', 'foul')} className="py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold text-[10px] flex items-center justify-center gap-1 active:scale-95 border-b-2 border-gray-900 uppercase">
-                            <Flag size={12} /> + Falta
-                        </button>
-                        <button onClick={() => openEventModal('home', 'mvp')} className="py-2 bg-amber-500 text-black rounded-lg font-bold text-[10px] flex items-center justify-center gap-1 active:scale-95 border-b-2 border-amber-700 uppercase">
+                        <button onClick={() => openEventModal('home', 'mvp')} className="py-2 bg-amber-500 text-black rounded-lg font-bold text-[10px] flex items-center justify-center gap-1 active:scale-95 border-b-2 border-amber-700 uppercase col-span-2">
                             ⭐ Craque
                         </button>
                     </div>
@@ -565,10 +529,7 @@ export function SumulaFutebol() {
                         <button onClick={() => openEventModal('away', 'assist')} className="py-2 bg-indigo-500 rounded-lg font-bold border-b-4 border-indigo-700 active:scale-95 text-xs">👟 Assist.</button>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                        <button onClick={() => openEventModal('away', 'foul')} className="py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold text-[10px] flex items-center justify-center gap-1 active:scale-95 border-b-2 border-gray-900 uppercase">
-                            <Flag size={12} /> + Falta
-                        </button>
-                        <button onClick={() => openEventModal('away', 'mvp')} className="py-2 bg-amber-500 text-black rounded-lg font-bold text-[10px] flex items-center justify-center gap-1 active:scale-95 border-b-2 border-amber-700 uppercase">
+                        <button onClick={() => openEventModal('away', 'mvp')} className="py-2 bg-amber-500 text-black rounded-lg font-bold text-[10px] flex items-center justify-center gap-1 active:scale-95 border-b-2 border-amber-700 uppercase col-span-2">
                             ⭐ Craque
                         </button>
                     </div>

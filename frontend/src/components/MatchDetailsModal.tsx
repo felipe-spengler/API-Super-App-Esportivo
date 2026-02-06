@@ -15,23 +15,73 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
     const [rosters, setRosters] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'summary' | 'lineups' | 'stats'>('summary');
+    const [localTime, setLocalTime] = useState<number | null>(null);
+    const [isTimerRunning, setIsTimerRunning] = useState(false);
+    const [currentPeriod, setCurrentPeriod] = useState<string | null>(null);
 
     useEffect(() => {
         if (isOpen && matchId) {
             loadMatchDetails();
             const interval = setInterval(() => {
-                // Always poll to check for status changes or updates
-                // We could optimize to stop if finished, but keeping it simple ensures updates during transition
                 loadMatchDetails(true);
-            }, 10000); // Poll every 10s if open
+            }, 10000); // 10s poll
 
             return () => clearInterval(interval);
         } else {
             setMatch(null);
             setDetails(null);
+            setLocalTime(null);
+            setIsTimerRunning(false);
+            setCurrentPeriod(null);
             setLoading(true);
         }
     }, [isOpen, matchId]);
+
+    // Sync local timer with server data
+    useEffect(() => {
+        if (match?.match_details?.sync_timer) {
+            const st = match.match_details.sync_timer;
+            const sport = match?.championship?.sport?.slug || 'futebol';
+            const isRegressive = sport === 'basquete';
+
+            // Calculate drift if updated_at is available
+            let baseTime = st.time ?? 0;
+            if (st.updated_at && st.isRunning) {
+                const elapsedSinceUpdate = Math.floor((Date.now() - st.updated_at) / 1000);
+                if (elapsedSinceUpdate > 0) {
+                    baseTime = isRegressive ? Math.max(0, baseTime - elapsedSinceUpdate) : baseTime + elapsedSinceUpdate;
+                }
+            }
+
+            setLocalTime(baseTime);
+            setIsTimerRunning(st.isRunning ?? false);
+            setCurrentPeriod(st.currentPeriod ?? null);
+        }
+    }, [match]);
+
+    // Local ticking for smooth UI
+    useEffect(() => {
+        let interval: any = null;
+        if (isTimerRunning && localTime !== null) {
+            const sport = match?.championship?.sport?.slug || 'futebol';
+            const isRegressive = sport === 'basquete';
+
+            interval = setInterval(() => {
+                setLocalTime(prev => {
+                    if (prev === null) return null;
+                    return isRegressive ? Math.max(0, prev - 1) : prev + 1;
+                });
+            }, 1000);
+        }
+        return () => clearInterval(interval);
+    }, [isTimerRunning, localTime, match]);
+
+    const formatMatchTime = (seconds: number | null) => {
+        if (seconds === null) return '--:--';
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
 
 
     async function loadMatchDetails(silent = false) {
@@ -111,7 +161,19 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                         </div>
 
                         {/* Score */}
-                        <div className="flex flex-col items-center pb-4">
+                        <div className="flex flex-col items-center pb-4 min-w-[120px]">
+                            {isLive && localTime !== null && (
+                                <div className="mb-2 flex flex-col items-center">
+                                    <div className="text-yellow-400 font-mono text-2xl font-bold drop-shadow-md flex items-center gap-2">
+                                        <Timer size={18} className="animate-pulse" />
+                                        {formatMatchTime(localTime)}
+                                    </div>
+                                    {currentPeriod && (
+                                        <span className="text-[10px] text-white/60 font-bold uppercase tracking-widest">{currentPeriod}</span>
+                                    )}
+                                </div>
+                            )}
+
                             {!loading && (
                                 <div className="flex items-center gap-4">
                                     <span className="text-5xl font-black text-white">{match?.home_score ?? 0}</span>
@@ -120,8 +182,8 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                 </div>
                             )}
                             <div className={`mt-2 px-3 py-0.5 rounded-full text-[10px] font-black tracking-widest uppercase border ${isLive ? 'bg-red-500/20 text-red-400 border-red-500/50 animate-pulse' :
-                                    isFinished ? 'bg-white/10 text-white/60 border-white/10' :
-                                        'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                                isFinished ? 'bg-white/10 text-white/60 border-white/10' :
+                                    'bg-blue-500/20 text-blue-400 border-blue-500/30'
                                 }`}>
                                 {getStatusText(match?.status)}
                             </div>
