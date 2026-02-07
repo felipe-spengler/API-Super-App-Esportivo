@@ -617,28 +617,36 @@ class ArtGeneratorController extends Controller
         // Garante bounds
         $imgW = imagesx($img);
         $imgH = imagesy($img);
-        $x = max(0, $x);
-        $y = max(0, $y);
-        $w = min($w, $imgW - $x);
-        $h = min($h, $imgH - $y);
 
-        if ($w <= 0 || $h <= 0)
+        $x = floor(max(0, $x));
+        $y = floor(max(0, $y));
+        $w = floor(min($w, $imgW - $x));
+        $h = floor(min($h, $imgH - $y));
+
+        if ($w <= 1 || $h <= 1)
             return imagecolorallocate($img, 255, 255, 255); // Fallback White
 
-        // Amostra 5 pontos: cantos e centro
+        // Amostra 5 pontos: cantos e centro, garantindo estar dentro da imagem (0 a size-1)
         $points = [
             [$x, $y],
-            [$x + $w, $y],
-            [$x, $y + $h],
-            [$x + $w, $y + $h],
-            [$x + ($w / 2), $y + ($h / 2)]
+            [min($x + $w - 1, $imgW - 1), $y],
+            [$x, min($y + $h - 1, $imgH - 1)],
+            [min($x + $w - 1, $imgW - 1), min($y + $h - 1, $imgH - 1)],
+            [min($x + ($w / 2), $imgW - 1), min($y + ($h / 2), $imgH - 1)]
         ];
 
         $totalLimunance = 0;
         $samples = 0;
 
         foreach ($points as $p) {
-            $rgb = imagecolorat($img, $p[0], $p[1]);
+            $px = (int) $p[0];
+            $py = (int) $p[1];
+
+            // Verificação extra de redundância
+            if ($px < 0 || $px >= $imgW || $py < 0 || $py >= $imgH)
+                continue;
+
+            $rgb = imagecolorat($img, $px, $py);
             $r = ($rgb >> 16) & 0xFF;
             $g = ($rgb >> 8) & 0xFF;
             $b = $rgb & 0xFF;
@@ -649,9 +657,12 @@ class ArtGeneratorController extends Controller
             $samples++;
         }
 
+        if ($samples === 0)
+            return imagecolorallocate($img, 255, 255, 255);
+
         $avgLum = $totalLimunance / $samples;
 
-        // Se for claro (> 128), texto deve ser escuro (Preto ou quase preto)
+        // Se for claro (> 130), texto deve ser escuro (Preto ou quase preto)
         // Se for escuro, texto deve ser claro (Branco)
         if ($avgLum > 130) {
             return imagecolorallocate($img, 20, 20, 20); // Dark text
