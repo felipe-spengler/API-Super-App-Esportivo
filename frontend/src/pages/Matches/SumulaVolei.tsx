@@ -315,9 +315,27 @@ export function SumulaVolei() {
                 </div>
 
                 <div className="grid grid-cols-3 gap-2">
-                    <button onClick={() => handleRotation(teamId, 'forward')} className="p-2 bg-gray-700 hover:bg-gray-600 rounded text-xs flex items-center justify-center gap-1"><RefreshCw size={14} /> Rodar</button>
-                    <button onClick={() => handleTimeout(teamId)} className="p-2 bg-gray-700 hover:bg-gray-600 rounded text-xs flex items-center justify-center gap-1"><History size={14} /> Tempo</button>
-                    <button onClick={() => openCardModal(teamId)} className="p-2 bg-gray-700 hover:bg-gray-600 rounded text-xs flex items-center justify-center gap-1"><AlertOctagon size={14} /> Cartão</button>
+                    <button
+                        onClick={() => handleRotation(teamId, 'forward')}
+                        disabled={matchData.status !== 'live'}
+                        className="p-2 bg-gray-700 hover:bg-gray-600 rounded text-xs flex items-center justify-center gap-1 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                    >
+                        <RefreshCw size={14} /> Rodar
+                    </button>
+                    <button
+                        onClick={() => handleTimeout(teamId)}
+                        disabled={matchData.status !== 'live'}
+                        className="p-2 bg-gray-700 hover:bg-gray-600 rounded text-xs flex items-center justify-center gap-1 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                    >
+                        <History size={14} /> Tempo
+                    </button>
+                    <button
+                        onClick={() => openCardModal(teamId)}
+                        disabled={matchData.status !== 'live'}
+                        className="p-2 bg-gray-700 hover:bg-gray-600 rounded text-xs flex items-center justify-center gap-1 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                    >
+                        <AlertOctagon size={14} /> Cartão
+                    </button>
                 </div>
             </div>
         );
@@ -337,8 +355,13 @@ export function SumulaVolei() {
                     </div>
                     <div className="flex items-center gap-2">
                         <button onClick={() => setInvertedSides(!invertedSides)} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-full" title="Inverter Lados"><ArrowRightLeft size={16} /></button>
-                        <button onClick={() => setSetupModalOpen(true)} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-full" title="Escalação"><UserPlus size={16} /></button>
-                        <button onClick={startNextSet} className="p-2 bg-indigo-600 rounded text-xs font-bold">Novo Set</button>
+                        <button
+                            onClick={startNextSet}
+                            disabled={matchData.status !== 'live'}
+                            className="p-2 bg-indigo-600 rounded text-xs font-bold disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
+                            Novo Set
+                        </button>
                     </div>
                 </div>
             </div>
@@ -367,7 +390,11 @@ export function SumulaVolei() {
             <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
                 {/* Home Zone */}
                 <div className={`space-y-4 order-${invertedSides ? '2' : '1'}`}>
-                    <button onClick={() => handlePointClick(matchData.home_team_id)} className="w-full py-6 bg-blue-600 rounded-xl font-black text-2xl shadow-lg border-b-4 border-blue-800 active:scale-95 transition-all flex items-center justify-center gap-3">
+                    <button
+                        onClick={() => handlePointClick(matchData.home_team_id)}
+                        disabled={matchData.status !== 'live'}
+                        className="w-full py-6 bg-blue-600 rounded-xl font-black text-2xl shadow-lg border-b-4 border-blue-800 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                    >
                         <PlusCircle size={32} /> PONTO {matchData.home_team?.code}
                     </button>
                     {renderCourt(matchData.home_team_id, matchData.home_team?.name, rotations.home)}
@@ -375,7 +402,11 @@ export function SumulaVolei() {
 
                 {/* Away Zone */}
                 <div className={`space-y-4 order-${invertedSides ? '1' : '2'}`}>
-                    <button onClick={() => handlePointClick(matchData.away_team_id)} className="w-full py-6 bg-green-600 rounded-xl font-black text-2xl shadow-lg border-b-4 border-green-800 active:scale-95 transition-all flex items-center justify-center gap-3">
+                    <button
+                        onClick={() => handlePointClick(matchData.away_team_id)}
+                        disabled={matchData.status !== 'live'}
+                        className="w-full py-6 bg-green-600 rounded-xl font-black text-2xl shadow-lg border-b-4 border-green-800 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                    >
                         <PlusCircle size={32} /> PONTO {matchData.away_team?.code}
                     </button>
                     {renderCourt(matchData.away_team_id, matchData.away_team?.name, rotations.away)}

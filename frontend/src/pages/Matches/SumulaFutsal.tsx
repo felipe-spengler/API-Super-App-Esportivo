@@ -568,52 +568,132 @@ export function SumulaFutsal() {
             <div className="p-2 sm:p-4 grid grid-cols-2 gap-2 sm:gap-4 max-w-4xl mx-auto">
                 {/* Home Controls */}
                 <div className="bg-blue-900/10 p-3 rounded-xl border border-blue-900/30 space-y-2">
-                    <button onClick={() => openEventModal('home', 'goal')} className="w-full py-4 bg-blue-600 rounded-lg font-black text-xl border-b-4 border-blue-800 active:scale-95 transition-all text-shadow">
+                    <button
+                        onClick={() => openEventModal('home', 'goal')}
+                        disabled={!isRunning}
+                        className="w-full py-4 bg-blue-600 rounded-lg font-black text-xl border-b-4 border-blue-800 active:scale-95 transition-all text-shadow disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                    >
                         {currentPeriod === 'Pênaltis' ? 'PÊNALTI' : 'GOL'}
                     </button>
                     <div className="grid grid-cols-2 gap-2">
-                        <button onClick={() => openEventModal('home', 'yellow_card')} className="py-3 bg-yellow-500 text-black rounded-lg font-bold border-b-4 border-yellow-700 active:scale-95 text-xs sm:text-sm">🟨 Amarelo</button>
-                        <button onClick={() => openEventModal('home', 'red_card')} className="py-3 bg-red-600 rounded-lg font-bold border-b-4 border-red-800 active:scale-95 text-xs sm:text-sm">🟥 Vermelho</button>
+                        <button
+                            onClick={() => openEventModal('home', 'yellow_card')}
+                            disabled={!isRunning}
+                            className="py-3 bg-yellow-500 text-black rounded-lg font-bold border-b-4 border-yellow-700 active:scale-95 text-xs sm:text-sm disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
+                            🟨 Amarelo
+                        </button>
+                        <button
+                            onClick={() => openEventModal('home', 'red_card')}
+                            disabled={!isRunning}
+                            className="py-3 bg-red-600 rounded-lg font-bold border-b-4 border-red-800 active:scale-95 text-xs sm:text-sm disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
+                            🟥 Vermelho
+                        </button>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                        <button onClick={() => openEventModal('home', 'blue_card')} className="py-2 bg-blue-500 rounded-lg font-bold border-b-4 border-blue-700 active:scale-95 text-xs">🟦 Azul</button>
-                        <button onClick={() => openEventModal('home', 'assist')} className="py-2 bg-indigo-500 rounded-lg font-bold border-b-4 border-indigo-700 active:scale-95 text-xs">👟 Assist.</button>
+                        <button
+                            onClick={() => openEventModal('home', 'blue_card')}
+                            disabled={!isRunning}
+                            className="py-2 bg-blue-500 rounded-lg font-bold border-b-4 border-blue-700 active:scale-95 text-xs disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
+                            🟦 Azul
+                        </button>
+                        <button
+                            onClick={() => openEventModal('home', 'assist')}
+                            disabled={!isRunning}
+                            className="py-2 bg-indigo-500 rounded-lg font-bold border-b-4 border-indigo-700 active:scale-95 text-xs disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
+                            👟 Assist.
+                        </button>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                        <button onClick={() => registerSimpleEvent('home', 'foul')} className="py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold text-xs flex items-center justify-center gap-1 active:scale-95 border-b-2 border-gray-900">
+                        <button
+                            onClick={() => registerSimpleEvent('home', 'foul')}
+                            disabled={!isRunning}
+                            className="py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold text-xs flex items-center justify-center gap-1 active:scale-95 border-b-2 border-gray-900 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
                             <Flag size={14} /> + Falta
                         </button>
-                        <button onClick={() => openEventModal('home', 'mvp')} className="py-2 bg-amber-500 text-black rounded-lg font-bold text-xs flex items-center justify-center gap-1 active:scale-95 border-b-2 border-amber-700">
+                        <button
+                            onClick={() => openEventModal('home', 'mvp')}
+                            disabled={!isRunning}
+                            className="py-2 bg-amber-500 text-black rounded-lg font-bold text-xs flex items-center justify-center gap-1 active:scale-95 border-b-2 border-amber-700 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
                             ⭐ Craque
                         </button>
                     </div>
-                    <button onClick={() => registerSimpleEvent('home', 'timeout')} className="w-full py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg font-bold text-[9px] text-gray-400 uppercase tracking-widest active:scale-95">
+                    <button
+                        onClick={() => registerSimpleEvent('home', 'timeout')}
+                        disabled={!isRunning}
+                        className="w-full py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg font-bold text-[9px] text-gray-400 uppercase tracking-widest active:scale-95 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                    >
                         Pedido de Tempo
                     </button>
                 </div>
 
                 {/* Away Controls */}
                 <div className="bg-red-900/10 p-3 rounded-xl border border-red-900/30 space-y-2">
-                    <button onClick={() => openEventModal('away', 'goal')} className="w-full py-4 bg-green-600 rounded-lg font-black text-xl border-b-4 border-green-800 active:scale-95 transition-all text-shadow">
+                    <button
+                        onClick={() => openEventModal('away', 'goal')}
+                        disabled={!isRunning}
+                        className="w-full py-4 bg-green-600 rounded-lg font-black text-xl border-b-4 border-green-800 active:scale-95 transition-all text-shadow disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                    >
                         {currentPeriod === 'Pênaltis' ? 'PÊNALTI' : 'GOL'}
                     </button>
                     <div className="grid grid-cols-2 gap-2">
-                        <button onClick={() => openEventModal('away', 'yellow_card')} className="py-3 bg-yellow-500 text-black rounded-lg font-bold border-b-4 border-yellow-700 active:scale-95 text-xs sm:text-sm">🟨 Amarelo</button>
-                        <button onClick={() => openEventModal('away', 'red_card')} className="py-3 bg-red-600 rounded-lg font-bold border-b-4 border-red-800 active:scale-95 text-xs sm:text-sm">🟥 Vermelho</button>
+                        <button
+                            onClick={() => openEventModal('away', 'yellow_card')}
+                            disabled={!isRunning}
+                            className="py-3 bg-yellow-500 text-black rounded-lg font-bold border-b-4 border-yellow-700 active:scale-95 text-xs sm:text-sm disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
+                            🟨 Amarelo
+                        </button>
+                        <button
+                            onClick={() => openEventModal('away', 'red_card')}
+                            disabled={!isRunning}
+                            className="py-3 bg-red-600 rounded-lg font-bold border-b-4 border-red-800 active:scale-95 text-xs sm:text-sm disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
+                            🟥 Vermelho
+                        </button>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                        <button onClick={() => openEventModal('away', 'blue_card')} className="py-2 bg-blue-500 rounded-lg font-bold border-b-4 border-blue-700 active:scale-95 text-xs">🟦 Azul</button>
-                        <button onClick={() => openEventModal('away', 'assist')} className="py-2 bg-indigo-500 rounded-lg font-bold border-b-4 border-indigo-700 active:scale-95 text-xs">👟 Assist.</button>
+                        <button
+                            onClick={() => openEventModal('away', 'blue_card')}
+                            disabled={!isRunning}
+                            className="py-2 bg-blue-500 rounded-lg font-bold border-b-4 border-blue-700 active:scale-95 text-xs disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
+                            🟦 Azul
+                        </button>
+                        <button
+                            onClick={() => openEventModal('away', 'assist')}
+                            disabled={!isRunning}
+                            className="py-2 bg-indigo-500 rounded-lg font-bold border-b-4 border-indigo-700 active:scale-95 text-xs disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
+                            👟 Assist.
+                        </button>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                        <button onClick={() => registerSimpleEvent('away', 'foul')} className="py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold text-xs flex items-center justify-center gap-1 active:scale-95 border-b-2 border-gray-900">
+                        <button
+                            onClick={() => registerSimpleEvent('away', 'foul')}
+                            disabled={!isRunning}
+                            className="py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold text-xs flex items-center justify-center gap-1 active:scale-95 border-b-2 border-gray-900 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
                             <Flag size={14} /> + Falta
                         </button>
-                        <button onClick={() => openEventModal('away', 'mvp')} className="py-2 bg-amber-500 text-black rounded-lg font-bold text-xs flex items-center justify-center gap-1 active:scale-95 border-b-2 border-amber-700">
+                        <button
+                            onClick={() => openEventModal('away', 'mvp')}
+                            disabled={!isRunning}
+                            className="py-2 bg-amber-500 text-black rounded-lg font-bold text-xs flex items-center justify-center gap-1 active:scale-95 border-b-2 border-amber-700 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
                             ⭐ Craque
                         </button>
                     </div>
-                    <button onClick={() => registerSimpleEvent('away', 'timeout')} className="w-full py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg font-bold text-[9px] text-gray-400 uppercase tracking-widest active:scale-95">
+                    <button
+                        onClick={() => registerSimpleEvent('away', 'timeout')}
+                        disabled={!isRunning}
+                        className="w-full py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg font-bold text-[9px] text-gray-400 uppercase tracking-widest active:scale-95 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                    >
                         Pedido de Tempo
                     </button>
                 </div>

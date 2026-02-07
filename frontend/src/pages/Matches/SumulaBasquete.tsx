@@ -518,21 +518,41 @@ export function SumulaBasquete() {
                 {/* Home Controls */}
                 <div className="bg-blue-900/20 p-3 rounded-xl border border-blue-500/30 space-y-2 backdrop-blur">
                     <div className="grid grid-cols-3 gap-2">
-                        <button onClick={() => openEventModal('home', '1_point')} className="py-3 bg-blue-600 rounded-lg font-black text-sm border-b-4 border-blue-800 active:scale-95 transition-all hover:bg-blue-500">
+                        <button
+                            onClick={() => openEventModal('home', '1_point')}
+                            disabled={!isRunning}
+                            className="py-3 bg-blue-600 rounded-lg font-black text-sm border-b-4 border-blue-800 active:scale-95 transition-all hover:bg-blue-500 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
                             +1
                         </button>
-                        <button onClick={() => openEventModal('home', '2_points')} className="py-3 bg-blue-700 rounded-lg font-black text-lg border-b-4 border-blue-900 active:scale-95 transition-all hover:bg-blue-600">
+                        <button
+                            onClick={() => openEventModal('home', '2_points')}
+                            disabled={!isRunning}
+                            className="py-3 bg-blue-700 rounded-lg font-black text-lg border-b-4 border-blue-900 active:scale-95 transition-all hover:bg-blue-600 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
                             +2
                         </button>
-                        <button onClick={() => openEventModal('home', '3_points')} className="py-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg font-black text-xl border-b-4 border-purple-800 active:scale-95 transition-all shadow-lg">
+                        <button
+                            onClick={() => openEventModal('home', '3_points')}
+                            disabled={!isRunning}
+                            className="py-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg font-black text-xl border-b-4 border-purple-800 active:scale-95 transition-all shadow-lg disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
                             +3
                         </button>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                        <button onClick={() => openEventModal('home', 'foul')} className="py-2 bg-red-600 hover:bg-red-500 rounded-lg font-bold text-xs flex items-center justify-center gap-1 active:scale-95 border-b-2 border-red-800">
+                        <button
+                            onClick={() => openEventModal('home', 'foul')}
+                            disabled={!isRunning}
+                            className="py-2 bg-red-600 hover:bg-red-500 rounded-lg font-bold text-xs flex items-center justify-center gap-1 active:scale-95 border-b-2 border-red-800 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
                             ⚠️ Falta
                         </button>
-                        <button onClick={() => registerTimeout('home')} className="py-2 bg-yellow-600 hover:bg-yellow-500 text-black rounded-lg font-bold text-xs flex items-center justify-center gap-1 active:scale-95 border-b-2 border-yellow-800">
+                        <button
+                            onClick={() => registerTimeout('home')}
+                            disabled={!isRunning}
+                            className="py-2 bg-yellow-600 hover:bg-yellow-500 text-black rounded-lg font-bold text-xs flex items-center justify-center gap-1 active:scale-95 border-b-2 border-yellow-800 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
                             <Timer size={14} /> Tempo
                         </button>
                     </div>
@@ -541,21 +561,41 @@ export function SumulaBasquete() {
                 {/* Away Controls */}
                 <div className="bg-red-900/20 p-3 rounded-xl border border-red-500/30 space-y-2 backdrop-blur">
                     <div className="grid grid-cols-3 gap-2">
-                        <button onClick={() => openEventModal('away', '1_point')} className="py-3 bg-green-600 rounded-lg font-black text-sm border-b-4 border-green-800 active:scale-95 transition-all hover:bg-green-500">
+                        <button
+                            onClick={() => openEventModal('away', '1_point')}
+                            disabled={!isRunning}
+                            className="py-3 bg-green-600 rounded-lg font-black text-sm border-b-4 border-green-800 active:scale-95 transition-all hover:bg-green-500 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
                             +1
                         </button>
-                        <button onClick={() => openEventModal('away', '2_points')} className="py-3 bg-green-700 rounded-lg font-black text-lg border-b-4 border-green-900 active:scale-95 transition-all hover:bg-green-600">
+                        <button
+                            onClick={() => openEventModal('away', '2_points')}
+                            disabled={!isRunning}
+                            className="py-3 bg-green-700 rounded-lg font-black text-lg border-b-4 border-green-900 active:scale-95 transition-all hover:bg-green-600 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
                             +2
                         </button>
-                        <button onClick={() => openEventModal('away', '3_points')} className="py-3 bg-gradient-to-br from-green-500 to-teal-600 rounded-lg font-black text-xl border-b-4 border-teal-800 active:scale-95 transition-all shadow-lg">
+                        <button
+                            onClick={() => openEventModal('away', '3_points')}
+                            disabled={!isRunning}
+                            className="py-3 bg-gradient-to-br from-green-500 to-teal-600 rounded-lg font-black text-xl border-b-4 border-teal-800 active:scale-95 transition-all shadow-lg disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
                             +3
                         </button>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                        <button onClick={() => openEventModal('away', 'foul')} className="py-2 bg-red-600 hover:bg-red-500 rounded-lg font-bold text-xs flex items-center justify-center gap-1 active:scale-95 border-b-2 border-red-800">
+                        <button
+                            onClick={() => openEventModal('away', 'foul')}
+                            disabled={!isRunning}
+                            className="py-2 bg-red-600 hover:bg-red-500 rounded-lg font-bold text-xs flex items-center justify-center gap-1 active:scale-95 border-b-2 border-red-800 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
                             ⚠️ Falta
                         </button>
-                        <button onClick={() => registerTimeout('away')} className="py-2 bg-yellow-600 hover:bg-yellow-500 text-black rounded-lg font-bold text-xs flex items-center justify-center gap-1 active:scale-95 border-b-2 border-yellow-800">
+                        <button
+                            onClick={() => registerTimeout('away')}
+                            disabled={!isRunning}
+                            className="py-2 bg-yellow-600 hover:bg-yellow-500 text-black rounded-lg font-bold text-xs flex items-center justify-center gap-1 active:scale-95 border-b-2 border-yellow-800 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
                             <Timer size={14} /> Tempo
                         </button>
                     </div>

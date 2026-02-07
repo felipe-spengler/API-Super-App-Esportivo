@@ -68,7 +68,12 @@ export function EventMatches() {
             case 'live':
                 return (
                     <div className="flex flex-col items-center gap-1">
-                        <span className="px-2 py-0.5 bg-red-100 text-red-600 rounded text-[10px] font-bold uppercase border border-red-200 animate-pulse">Ao Vivo</span>
+                        <div className="flex items-center gap-1">
+                            <span className="px-2 py-0.5 bg-red-100 text-red-600 rounded text-[10px] font-bold uppercase border border-red-200 animate-pulse">Ao Vivo</span>
+                            {st && !st.isRunning && (
+                                <span className="px-1 py-0.5 bg-yellow-100 text-yellow-700 rounded text-[8px] font-black uppercase border border-yellow-200">Parado</span>
+                            )}
+                        </div>
                         {st && (
                             <div className="flex flex-col items-center">
                                 <span className="text-lg font-mono font-black text-red-600 leading-none">
@@ -77,6 +82,19 @@ export function EventMatches() {
                                 {st.currentPeriod && (
                                     <span className="text-[8px] text-gray-400 font-bold uppercase">{st.currentPeriod}</span>
                                 )}
+                            </div>
+                        )}
+                    </div>
+                );
+            case 'finished':
+                return (
+                    <div className="flex flex-col items-center gap-1">
+                        <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px] font-bold uppercase border border-gray-200">Finalizada</span>
+                        {st && (
+                            <div className="flex flex-col items-center opacity-70">
+                                <span className="text-xs font-mono font-bold text-gray-500 leading-none">
+                                    {formatMatchTimePublic(st.time || 0)}
+                                </span>
                             </div>
                         )}
                     </div>

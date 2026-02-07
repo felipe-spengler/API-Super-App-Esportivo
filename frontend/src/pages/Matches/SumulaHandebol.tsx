@@ -434,47 +434,119 @@ export function SumulaHandebol() {
             <div className="p-2 sm:p-4 grid grid-cols-2 gap-2 sm:gap-4 max-w-4xl mx-auto">
                 {/* Home Controls */}
                 <div className="bg-blue-900/10 p-3 rounded-xl border border-blue-900/30 space-y-2">
-                    <button onClick={() => openEventModal('home', 'goal')} className="w-full py-4 bg-blue-600 rounded-lg font-black text-xl border-b-4 border-blue-800 active:scale-95 transition-all text-shadow">
+                    <button
+                        onClick={() => openEventModal('home', 'goal')}
+                        disabled={!isRunning}
+                        className="w-full py-4 bg-blue-600 rounded-lg font-black text-xl border-b-4 border-blue-800 active:scale-95 transition-all text-shadow disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                    >
                         GOL
                     </button>
                     <div className="grid grid-cols-2 gap-2">
-                        <button onClick={() => openEventModal('home', 'yellow_card')} className="py-3 bg-yellow-500 text-black rounded-lg font-bold border-b-4 border-yellow-700 active:scale-95 text-xs sm:text-sm">🟨 Cartão</button>
-                        <button onClick={() => openEventModal('home', 'red_card')} className="py-3 bg-red-600 rounded-lg font-bold border-b-4 border-red-800 active:scale-95 text-xs sm:text-sm">🟥 Cartão</button>
+                        <button
+                            onClick={() => openEventModal('home', 'yellow_card')}
+                            disabled={!isRunning}
+                            className="py-3 bg-yellow-500 text-black rounded-lg font-bold border-b-4 border-yellow-700 active:scale-95 text-xs sm:text-sm disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
+                            🟨 Cartão
+                        </button>
+                        <button
+                            onClick={() => openEventModal('home', 'red_card')}
+                            disabled={!isRunning}
+                            className="py-3 bg-red-600 rounded-lg font-bold border-b-4 border-red-800 active:scale-95 text-xs sm:text-sm disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
+                            🟥 Cartão
+                        </button>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                        <button onClick={() => openEventModal('home', 'suspension_2min')} className="py-2 bg-orange-600 hover:bg-orange-500 rounded-lg font-bold text-xs flex items-center justify-center gap-1 active:scale-95 border-b-2 border-orange-800">
+                        <button
+                            onClick={() => openEventModal('home', 'suspension_2min')}
+                            disabled={!isRunning}
+                            className="py-2 bg-orange-600 hover:bg-orange-500 rounded-lg font-bold text-xs flex items-center justify-center gap-1 active:scale-95 border-b-2 border-orange-800 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
                             <UserX size={14} /> 2min
                         </button>
-                        <button onClick={() => registerTimeout('home')} className="py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold text-xs flex items-center justify-center gap-1 active:scale-95 border-b-2 border-gray-900">
+                        <button
+                            onClick={() => registerTimeout('home')}
+                            disabled={!isRunning}
+                            className="py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold text-xs flex items-center justify-center gap-1 active:scale-95 border-b-2 border-gray-900 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
                             <Timer size={14} /> Tempo
                         </button>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                        <button onClick={() => openEventModal('home', 'assist')} className="py-2 bg-indigo-500 rounded-lg font-bold border-b-4 border-indigo-700 active:scale-95 text-xs">👟 Assist.</button>
-                        <button onClick={() => openEventModal('home', 'mvp')} className="py-2 bg-amber-500 text-black rounded-lg font-bold border-b-4 border-amber-700 active:scale-95 text-xs">⭐ Craque</button>
+                        <button
+                            onClick={() => openEventModal('home', 'assist')}
+                            disabled={!isRunning}
+                            className="py-2 bg-indigo-500 rounded-lg font-bold border-b-4 border-indigo-700 active:scale-95 text-xs disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
+                            👟 Assist.
+                        </button>
+                        <button
+                            onClick={() => openEventModal('home', 'mvp')}
+                            disabled={!isRunning}
+                            className="py-2 bg-amber-500 text-black rounded-lg font-bold border-b-4 border-amber-700 active:scale-95 text-xs disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
+                            ⭐ Craque
+                        </button>
                     </div>
                 </div>
 
                 {/* Away Controls */}
                 <div className="bg-red-900/10 p-3 rounded-xl border border-red-900/30 space-y-2">
-                    <button onClick={() => openEventModal('away', 'goal')} className="w-full py-4 bg-green-600 rounded-lg font-black text-xl border-b-4 border-green-800 active:scale-95 transition-all text-shadow">
+                    <button
+                        onClick={() => openEventModal('away', 'goal')}
+                        disabled={!isRunning}
+                        className="w-full py-4 bg-green-600 rounded-lg font-black text-xl border-b-4 border-green-800 active:scale-95 transition-all text-shadow disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                    >
                         GOL
                     </button>
                     <div className="grid grid-cols-2 gap-2">
-                        <button onClick={() => openEventModal('away', 'yellow_card')} className="py-3 bg-yellow-500 text-black rounded-lg font-bold border-b-4 border-yellow-700 active:scale-95 text-xs sm:text-sm">🟨 Cartão</button>
-                        <button onClick={() => openEventModal('away', 'red_card')} className="py-3 bg-red-600 rounded-lg font-bold border-b-4 border-red-800 active:scale-95 text-xs sm:text-sm">🟥 Cartão</button>
+                        <button
+                            onClick={() => openEventModal('away', 'yellow_card')}
+                            disabled={!isRunning}
+                            className="py-3 bg-yellow-500 text-black rounded-lg font-bold border-b-4 border-yellow-700 active:scale-95 text-xs sm:text-sm disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
+                            🟨 Cartão
+                        </button>
+                        <button
+                            onClick={() => openEventModal('away', 'red_card')}
+                            disabled={!isRunning}
+                            className="py-3 bg-red-600 rounded-lg font-bold border-b-4 border-red-800 active:scale-95 text-xs sm:text-sm disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
+                            🟥 Cartão
+                        </button>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                        <button onClick={() => openEventModal('away', 'suspension_2min')} className="py-2 bg-orange-600 hover:bg-orange-500 rounded-lg font-bold text-xs flex items-center justify-center gap-1 active:scale-95 border-b-2 border-orange-800">
+                        <button
+                            onClick={() => openEventModal('away', 'suspension_2min')}
+                            disabled={!isRunning}
+                            className="py-2 bg-orange-600 hover:bg-orange-500 rounded-lg font-bold text-xs flex items-center justify-center gap-1 active:scale-95 border-b-2 border-orange-800 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
                             <UserX size={14} /> 2min
                         </button>
-                        <button onClick={() => registerTimeout('away')} className="py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold text-xs flex items-center justify-center gap-1 active:scale-95 border-b-2 border-gray-900">
+                        <button
+                            onClick={() => registerTimeout('away')}
+                            disabled={!isRunning}
+                            className="py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold text-xs flex items-center justify-center gap-1 active:scale-95 border-b-2 border-gray-900 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
                             <Timer size={14} /> Tempo
                         </button>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                        <button onClick={() => openEventModal('away', 'assist')} className="py-2 bg-indigo-500 rounded-lg font-bold border-b-4 border-indigo-700 active:scale-95 text-xs">👟 Assist.</button>
-                        <button onClick={() => openEventModal('away', 'mvp')} className="py-2 bg-amber-500 text-black rounded-lg font-bold border-b-4 border-amber-700 active:scale-95 text-xs">⭐ Craque</button>
+                        <button
+                            onClick={() => openEventModal('away', 'assist')}
+                            disabled={!isRunning}
+                            className="py-2 bg-indigo-500 rounded-lg font-bold border-b-4 border-indigo-700 active:scale-95 text-xs disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
+                            👟 Assist.
+                        </button>
+                        <button
+                            onClick={() => openEventModal('away', 'mvp')}
+                            disabled={!isRunning}
+                            className="py-2 bg-amber-500 text-black rounded-lg font-bold border-b-4 border-amber-700 active:scale-95 text-xs disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
+                            ⭐ Craque
+                        </button>
                     </div>
                 </div>
             </div>
