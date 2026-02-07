@@ -322,6 +322,7 @@ export function SumulaFutebol() {
     const confirmEvent = async (player: any) => {
         if (!matchData || !selectedTeam || !eventType) return;
         const teamId = selectedTeam === 'home' ? matchData.home_team_id : matchData.away_team_id;
+        const opponentTeamId = selectedTeam === 'home' ? matchData.away_team_id : matchData.home_team_id;
         const currentTime = formatTime(time);
 
         // Intercept Logic for Shootout
@@ -333,35 +334,57 @@ export function SumulaFutebol() {
         }
 
         try {
+            // Optimization: If it's an own goal (contra), we might want to attach to the OTHER team but mark as contra.
+            // For now, let's keep it simple: the player recorded is the one who did the action.
+
             const response = await api.post(`/admin/matches/${id}/events`, {
                 event_type: eventType,
-                team_id: teamId,
+                team_id: player.isOpponent ? opponentTeamId : teamId,
                 minute: currentTime,
                 period: currentPeriod,
-                player_id: player.id
+                player_id: player.id === 'unknown' ? null : player.id,
+                metadata: player.isOwnGoal ? { own_goal: true } : null
             });
 
             const newEvent = {
-                id: response.data.id, // Use real ID from backend
+                id: response.data.id,
                 type: eventType,
-                team: selectedTeam,
+                team: player.isOpponent ? (selectedTeam === 'home' ? 'away' : 'home') : selectedTeam,
                 time: currentTime,
                 period: currentPeriod,
-                player_name: player.name
+                player_name: player.isOwnGoal ? `${player.name} (Gol Contra)` : player.name,
+                isOwnGoal: player.isOwnGoal
             };
+
             setEvents(prev => [newEvent, ...prev]);
 
             if (eventType === 'goal') {
-                setMatchData((prev: any) => ({
-                    ...prev,
-                    scoreHome: selectedTeam === 'home' ? prev.scoreHome + 1 : prev.scoreHome,
-                    scoreAway: selectedTeam === 'away' ? prev.scoreAway + 1 : prev.scoreAway
-                }));
+                setMatchData((prev: any) => {
+                    // Logic for score update
+                    let homeInc = 0;
+                    let awayInc = 0;
+
+                    if (player.isOwnGoal) {
+                        // Gol contra: selectedTeam is 'home', but point goes to 'away'
+                        if (selectedTeam === 'home') awayInc = 1;
+                        else homeInc = 1;
+                    } else {
+                        if (selectedTeam === 'home') homeInc = 1;
+                        else awayInc = 1;
+                    }
+
+                    return {
+                        ...prev,
+                        scoreHome: (prev.scoreHome || 0) + homeInc,
+                        scoreAway: (prev.scoreAway || 0) + awayInc
+                    };
+                });
             }
             setShowEventModal(false);
+            setSelectedPlayer(null);
         } catch (e) {
             console.error(e);
-            alert('Erro ao registrar evento');
+            alert('Erro ao registrar evento. Verifique sua conexão.');
         }
     };
 
@@ -756,24 +779,57 @@ export function SumulaFutebol() {
                                 </button>
                             </div>
 
-                            <div className="overflow-y-auto p-2 space-y-1 custom-scrollbar flex-1">
-                                {(selectedTeam === 'home' ? rosters.home : rosters.away).length === 0 ? (
-                                    <p className="p-8 text-center text-gray-500">Nenhum jogador cadastrado.</p>
-                                ) : (
-                                    (selectedTeam === 'home' ? rosters.home : rosters.away).map((player: any) => (
+                            <div className="overflow-y-auto p-4 space-y-2 custom-scrollbar flex-1 bg-gray-900/30">
+                                {/* Opções Específicas para GOL */}
+                                {eventType === 'goal' && (
+                                    <div className="grid grid-cols-2 gap-2 mb-4">
                                         <button
-                                            key={player.id}
-                                            onClick={() => confirmEvent(player)}
-                                            className="w-full flex items-center justify-between p-3 hover:bg-gray-700 rounded-xl transition-colors group mb-1 border border-transparent hover:border-gray-600"
+                                            onClick={() => confirmEvent({ id: 'unknown', name: 'Jogador Desconhecido' })}
+                                            className="p-4 bg-gray-700 hover:bg-gray-600 rounded-xl border border-gray-600 flex flex-col items-center justify-center gap-1 transition-all active:scale-95"
                                         >
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center font-bold text-sm text-gray-300 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                                                    {player.number || '#'}
-                                                </div>
-                                                <span className="font-medium text-left text-sm">{player.name}</span>
-                                            </div>
+                                            <Users size={20} className="text-gray-400" />
+                                            <span className="text-[10px] font-bold uppercase">Sem Jogador</span>
                                         </button>
-                                    ))
+                                        <button
+                                            onClick={() => confirmEvent({ id: 'unknown', name: selectedTeam === 'home' ? matchData.home_team?.name : matchData.away_team?.name, isOwnGoal: true })}
+                                            className="p-4 bg-red-900/20 hover:bg-red-900/40 rounded-xl border border-red-900/30 flex flex-col items-center justify-center gap-1 transition-all active:scale-95 text-red-400"
+                                        >
+                                            <X size={20} className="text-red-500" />
+                                            <span className="text-[10px] font-bold uppercase">Gol Contra</span>
+                                        </button>
+                                    </div>
+                                )}
+
+                                <div className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 px-1">Selecione do Elenco</div>
+
+                                {(selectedTeam === 'home' ? rosters.home : rosters.away).length === 0 ? (
+                                    <div className="p-12 text-center bg-gray-800/50 rounded-2xl border border-dashed border-gray-700">
+                                        <Users className="w-8 h-8 text-gray-600 mx-auto mb-2 opacity-20" />
+                                        <p className="text-sm text-gray-500 font-medium">Nenhum jogador cadastrado para este time.</p>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 gap-1.5">
+                                        {(selectedTeam === 'home' ? rosters.home : rosters.away).map((player: any) => (
+                                            <button
+                                                key={player.id}
+                                                onClick={() => confirmEvent(player)}
+                                                className="w-full flex items-center justify-between p-4 bg-gray-800 hover:bg-gray-700 rounded-2xl transition-all group border border-gray-700/50 active:translate-x-1"
+                                            >
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center font-black text-sm text-gray-300 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-inner">
+                                                        {player.number || '#'}
+                                                    </div>
+                                                    <div className="flex flex-col items-start">
+                                                        <span className="font-bold text-sm text-gray-100 group-hover:text-white">{player.name}</span>
+                                                        <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">Jogador Registrado</span>
+                                                    </div>
+                                                </div>
+                                                <div className="w-6 h-6 rounded-full border-2 border-gray-700 flex items-center justify-center group-hover:border-indigo-500 transition-colors">
+                                                    <div className="w-2 h-2 rounded-full bg-transparent group-hover:bg-indigo-500 transition-colors"></div>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
                                 )}
                             </div>
                         </div>
