@@ -321,6 +321,8 @@ class AdminMatchController extends Controller
             'awards' => $awards,
         ]);
 
+        MatchUpdated::dispatch($match->id, $match->toArray());
+
         return response()->json($match);
     }
 

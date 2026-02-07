@@ -27,16 +27,18 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
             // Real-time Updates with Reverb
             const channelName = `match.${matchId}`;
             echo.channel(channelName)
-                .listen('.MatchUpdated', (data: any) => {
-                    console.log("Real-time match update received:", data);
-                    // Single event update or full object update?
-                    // We dispatch $match->toArray() or ['event' => $event]
-                    if (data.id) {
+                .listen('.MatchUpdated', (payload: any) => {
+                    console.log("Real-time match update received:", payload);
+
+                    // The event has 'matchId' and 'data' properties
+                    const matchData = payload.data;
+
+                    if (matchData && matchData.id) {
                         // Full match update
-                        setMatch(data);
-                        setDetails(data.match_details || data.details);
-                    } else if (data.event) {
-                        // Incremental update (new goal/card) - trigger reload to be safe and simple
+                        setMatch(matchData);
+                        setDetails(matchData.match_details || matchData.details);
+                    } else if (payload.event) {
+                        // Incremental update (new goal/card) - trigger reload
                         loadMatchDetails(true);
                     }
                 });

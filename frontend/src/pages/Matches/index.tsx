@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Trash2, Edit, Loader2, Filter, Printer, ClipboardList, X, MapPin, Clock as ClockIcon } from 'lucide-react';
+import { Calendar, Trash2, Edit, Loader2, Filter, Printer, ClipboardList, X, MapPin, Clock as ClockIcon, Star, CheckCircle, Trophy } from 'lucide-react';
 import api from '../../services/api';
 import { Link } from 'react-router-dom';
 import { isSameDay, isYesterday, isThisWeek, parseISO } from 'date-fns';
@@ -16,9 +16,53 @@ export function Matches() {
     const [arbitrationData, setArbitrationData] = useState({ referee: '', assistant1: '', assistant2: '' });
     const [saving, setSaving] = useState(false);
 
-    // Edit Modal State
     const [showEditModal, setShowEditModal] = useState(false);
     const [editData, setEditData] = useState({ start_time: '', location: '' });
+
+    // MVP Summary State
+    const [isSummaryOpen, setIsSummaryOpen] = useState(false);
+    const [rosters, setRosters] = useState<{ home: any[], away: any[] }>({ home: [], away: [] });
+    const [loadingRosters, setLoadingRosters] = useState(false);
+    const [selectedMvpId, setSelectedMvpId] = useState<string | number>('');
+    const [isSavingMvp, setIsSavingMvp] = useState(false);
+
+    useEffect(() => {
+        if (isSummaryOpen && selectedMatch) {
+            fetchRosters(selectedMatch.id);
+            // @ts-ignore
+            setSelectedMvpId(selectedMatch.mvp_player_id || '');
+        }
+    }, [isSummaryOpen, selectedMatch]);
+
+    const fetchRosters = async (matchId: number) => {
+        try {
+            setLoadingRosters(true);
+            const response = await api.get(`/admin/matches/${matchId}/full-details`);
+            setRosters(response.data.rosters || { home: [], away: [] });
+        } catch (error) {
+            console.error("Erro ao carregar elencos", error);
+        } finally {
+            setLoadingRosters(false);
+        }
+    };
+
+    const handleSaveMvp = async () => {
+        if (!selectedMatch || !selectedMvpId) return;
+        try {
+            setIsSavingMvp(true);
+            await api.post(`/admin/matches/${selectedMatch.id}/mvp`, {
+                player_id: selectedMvpId
+            });
+            alert("Craque do Jogo definido com sucesso!");
+            loadMatches();
+            setIsSummaryOpen(false);
+        } catch (error) {
+            console.error("Erro ao salvar MVP", error);
+            alert("Erro ao salvar Craque do Jogo.");
+        } finally {
+            setIsSavingMvp(false);
+        }
+    };
 
     useEffect(() => {
         loadMatches();
@@ -46,7 +90,7 @@ export function Matches() {
             // Sort by start_time ascending
             const sorted = response.data.sort((a: any, b: any) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
             setMatches(sorted);
-            setFilteredMatches(sorted); // Initial filter state logic handles filtering from 'matches' state anyway
+            setFilteredMatches(sorted);
         } catch (error) {
             console.error("Erro ao carregar partidas", error);
         } finally {
@@ -64,7 +108,6 @@ export function Matches() {
 
     const openArbitration = (match: any) => {
         setSelectedMatch(match);
-        // Pre-fill if exists
         const currentRef = match.match_details?.arbitration || {};
         setArbitrationData({
             referee: currentRef.referee || '',
@@ -80,15 +123,13 @@ export function Matches() {
 
         try {
             setSaving(true);
-            // Save to backend
             await api.put(`/admin/matches/${selectedMatch.id}`, {
                 arbitration: arbitrationData
             });
 
-            // Determine the correct sumula URL based on sport
             const sportSlug = selectedMatch.championship?.sport?.slug || 'futebol';
             const sumulaRoutes: Record<string, string> = {
-                'futebol': '/sumula', // Rota legado ou padrão
+                'futebol': '/sumula',
                 'volei': '/sumula-volei',
                 'futsal': '/sumula-futsal',
                 'basquete': '/sumula-basquete',
@@ -102,8 +143,6 @@ export function Matches() {
             };
 
             const suffix = sumulaRoutes[sportSlug] || 'sumula';
-
-            // Close and navigate
             setIsArbitrationOpen(false);
             window.location.href = `/admin/matches/${selectedMatch.id}${suffix}`;
         } catch (error) {
@@ -117,10 +156,6 @@ export function Matches() {
     const openEditModal = (match: any) => {
         setSelectedMatch(match);
         const date = new Date(match.start_time);
-        // Adjust for timezone offset for datetime-local input? 
-        // Actually, match.start_time is usually ISO UTC. 
-        // To show in input, we need YYYY-MM-DDTHH:MM local.
-        // Simple trick for local time input:
         const localIso = new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
 
         setEditData({
@@ -138,7 +173,6 @@ export function Matches() {
                 location: editData.location
             });
             setShowEditModal(false);
-            // Reload to reorder and update UI
             loadMatches();
             alert('Partida atualizada!');
         } catch (error) {
@@ -212,7 +246,7 @@ export function Matches() {
 
             {/* Modal de Edição (Hora/Local) */}
             {showEditModal && selectedMatch && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 text-left">
                     <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
                         <div className="p-4 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
                             <h3 className="font-bold text-gray-900">Editar Detalhes da Partida</h3>
@@ -253,13 +287,137 @@ export function Matches() {
                 </div>
             )}
 
+            {/* Modal de Resumo (Finished) */}
+            {isSummaryOpen && selectedMatch && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 text-left">
+                    <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-4 bg-green-600 text-white flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <CheckCircle className="w-5 h-5" />
+                                <h3 className="font-bold">Resumo da Partida</h3>
+                            </div>
+                            <button onClick={() => setIsSummaryOpen(false)} className="p-1 hover:bg-green-700 rounded-full">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="p-8">
+                            <div className="flex items-center justify-between mb-8">
+                                <div className="text-center flex-1">
+                                    <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-2 border">
+                                        {selectedMatch.home_team?.logo_url ? <img src={selectedMatch.home_team.logo_url} className="w-12 h-12" /> : <Trophy className="text-gray-300" />}
+                                    </div>
+                                    <div className="font-bold text-gray-900 leading-tight">{selectedMatch.home_team?.name}</div>
+                                </div>
+                                <div className="flex flex-col items-center">
+                                    <div className="flex items-center gap-4 px-6">
+                                        <span className="text-5xl font-black text-gray-900">{selectedMatch.home_score || 0}</span>
+                                        <span className="text-gray-300 font-bold">X</span>
+                                        <span className="text-5xl font-black text-gray-900">{selectedMatch.away_score || 0}</span>
+                                    </div>
+                                    {(selectedMatch.home_penalty_score != null || selectedMatch.away_penalty_score != null) && (selectedMatch.home_penalty_score > 0 || selectedMatch.away_penalty_score > 0) && (
+                                        <span className="text-sm font-bold text-gray-500 mt-2">
+                                            ({selectedMatch.home_penalty_score} x {selectedMatch.away_penalty_score} Pênaltis)
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="text-center flex-1">
+                                    <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-2 border">
+                                        {selectedMatch.away_team?.logo_url ? <img src={selectedMatch.away_team.logo_url} className="w-12 h-12" /> : <Trophy className="text-gray-300" />}
+                                    </div>
+                                    <div className="font-bold text-gray-900 leading-tight">{selectedMatch.away_team?.name}</div>
+                                </div>
+                            </div>
+
+                            {/* Craque do Jogo (MVP) */}
+                            <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 mb-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center gap-2">
+                                        <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                                        <div className="text-[10px] text-amber-600 font-black uppercase tracking-wider">Craque do Jogo (MVP)</div>
+                                    </div>
+                                </div>
+
+                                {loadingRosters ? (
+                                    <div className="flex items-center gap-2 text-xs text-amber-400 py-2">
+                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                        Carregando elencos...
+                                    </div>
+                                ) : (
+                                    <div className="flex gap-2">
+                                        <select
+                                            value={selectedMvpId}
+                                            onChange={e => setSelectedMvpId(e.target.value)}
+                                            className="flex-1 bg-white border border-amber-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500 transition-all font-medium text-gray-700"
+                                        >
+                                            <option value="">Selecione o Craque...</option>
+                                            {rosters.home.length > 0 && (
+                                                <optgroup label={selectedMatch.home_team?.name}>
+                                                    {rosters.home.map(p => (
+                                                        <option key={p.id} value={p.id}>{p.number ? `#${p.number}` : ''} {p.name}</option>
+                                                    ))}
+                                                </optgroup>
+                                            )}
+                                            {rosters.away.length > 0 && (
+                                                <optgroup label={selectedMatch.away_team?.name}>
+                                                    {rosters.away.map(p => (
+                                                        <option key={p.id} value={p.id}>{p.number ? `#${p.number}` : ''} {p.name}</option>
+                                                    ))}
+                                                </optgroup>
+                                            )}
+                                        </select>
+                                        <button
+                                            onClick={handleSaveMvp}
+                                            disabled={isSavingMvp || !selectedMvpId}
+                                            className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg text-sm transition-all disabled:opacity-50 shadow-sm shadow-amber-200 active:scale-95"
+                                        >
+                                            {isSavingMvp ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Definir'}
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="p-4 bg-gray-50 border-t border-gray-100 flex gap-3">
+                            <Link
+                                to={`/admin/matches/${selectedMatch.id}/sumula-print`}
+                                className="flex-1 px-4 py-3 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all flex items-center justify-center gap-2 text-center"
+                            >
+                                <Printer className="w-5 h-5" /> Imprimir Súmula
+                            </Link>
+                            <button
+                                onClick={() => {
+                                    const sportSlug = (selectedMatch as any).championship?.sport?.slug || 'futebol';
+                                    const sumulaRoutes: Record<string, string> = {
+                                        'futebol': '/sumula',
+                                        'volei': '/sumula-volei',
+                                        'futsal': '/sumula-futsal',
+                                        'basquete': '/sumula-basquete',
+                                        'handebol': '/sumula-handebol',
+                                        'beach-tennis': '/sumula-beach-tennis',
+                                        'futebol7': '/sumula-futebol7',
+                                        'futevolei': '/sumula-futevolei',
+                                        'volei-praia': '/sumula-volei-praia',
+                                        'tenis-mesa': '/sumula-tenis-mesa',
+                                        'jiu-jitsu': '/sumula-jiu-jitsu'
+                                    };
+                                    const suffix = sumulaRoutes[sportSlug] || '/sumula';
+                                    window.location.href = `/admin/matches/${selectedMatch.id}${suffix}`;
+                                }}
+                                className="flex-1 px-4 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all"
+                            >
+                                Ver Detalhes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Partidas</h1>
                     <p className="text-gray-500">Gerencie todos os jogos e súmulas.</p>
                 </div>
 
-                {/* Filtros de Data */}
                 <div className="flex items-center bg-white p-1 rounded-lg border border-gray-200 shadow-sm overflow-x-auto max-w-full no-scrollbar">
                     <button
                         onClick={() => setFilterPeriod('all')}
@@ -303,8 +461,6 @@ export function Matches() {
                     {filteredMatches.map(match => (
                         <div key={match.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition-all">
                             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-
-                                {/* Info / Status */}
                                 <div className="flex flex-col items-center md:items-start min-w-[150px]">
                                     <div className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">
                                         {match.championship?.name}
@@ -316,7 +472,6 @@ export function Matches() {
                                     <div className="mt-2">{getStatusBadge(match.status)}</div>
                                 </div>
 
-                                {/* Placar */}
                                 <div className="flex-1 flex items-center justify-center gap-3 md:gap-8 w-full md:w-auto">
                                     <div className="text-right flex-1 min-w-0">
                                         <h3 className="text-sm md:text-lg font-bold text-gray-900 truncate">{match.home_team?.name}</h3>
@@ -341,9 +496,7 @@ export function Matches() {
                                     </div>
                                 </div>
 
-                                {/* Ações */}
                                 <div className="flex items-center gap-2 min-w-[150px] justify-end">
-
                                     <button
                                         onClick={() => openEditModal(match)}
                                         className="p-2 text-gray-400 hover:bg-gray-100 rounded-lg transition-colors"
@@ -353,14 +506,24 @@ export function Matches() {
                                     </button>
 
                                     {match.status === 'finished' ? (
-                                        <Link
-                                            to={`/admin/matches/${match.id}/sumula-print`}
-                                            className="p-2 rounded-lg flex items-center gap-2 font-medium text-sm transition-colors text-gray-600 hover:bg-gray-100"
-                                            title="Imprimir Súmula"
-                                        >
-                                            <Printer className="w-4 h-4" />
-                                            Imprimir
-                                        </Link>
+                                        <div className="flex items-center gap-1">
+                                            <button
+                                                onClick={() => { setSelectedMatch(match); setIsSummaryOpen(true); }}
+                                                className="p-2 rounded-lg flex items-center gap-2 font-medium text-sm transition-colors text-amber-600 hover:bg-amber-50"
+                                                title="Resumo e Craque do Jogo"
+                                            >
+                                                <Star className="w-4 h-4" />
+                                                Resumo
+                                            </button>
+                                            <Link
+                                                to={`/admin/matches/${match.id}/sumula-print`}
+                                                className="p-2 rounded-lg flex items-center gap-2 font-medium text-sm transition-colors text-gray-600 hover:bg-gray-100"
+                                                title="Imprimir Súmula"
+                                            >
+                                                <Printer className="w-4 h-4" />
+                                                Imprimir
+                                            </Link>
+                                        </div>
                                     ) : (
                                         <button
                                             onClick={() => openArbitration(match)}

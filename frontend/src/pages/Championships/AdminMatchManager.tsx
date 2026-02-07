@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Calendar, Trophy, Save, Plus, Trash2, CheckCircle, AlertCircle, List, Edit2, X, MapPin, Clock as ClockIcon, Loader2, Play, Printer, Users } from 'lucide-react';
+import { ArrowLeft, Calendar, Trophy, Save, Plus, Trash2, CheckCircle, AlertCircle, List, Edit2, X, MapPin, Clock as ClockIcon, Loader2, Play, Printer, Users, Star } from 'lucide-react';
 import api from '../../services/api';
 
 interface Match {
@@ -42,6 +42,48 @@ export function AdminMatchManager() {
     const [legs, setLegs] = useState(1); // Number of times teams play each other (1 = single round, 2 = home & away)
     const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
     const [isGeneratingKnockout, setIsGeneratingKnockout] = useState(false);
+    const [rosters, setRosters] = useState<{ home: any[], away: any[] }>({ home: [], away: [] });
+    const [loadingRosters, setLoadingRosters] = useState(false);
+    const [selectedMvpId, setSelectedMvpId] = useState<string | number>('');
+    const [isSavingMvp, setIsSavingMvp] = useState(false);
+
+    useEffect(() => {
+        if (isSummaryOpen && selectedMatch) {
+            fetchRosters(selectedMatch.id);
+            // @ts-ignore
+            setSelectedMvpId(selectedMatch.mvp_player_id || '');
+        }
+    }, [isSummaryOpen, selectedMatch]);
+
+    const fetchRosters = async (matchId: number) => {
+        try {
+            setLoadingRosters(true);
+            const response = await api.get(`/admin/matches/${matchId}/full-details`);
+            setRosters(response.data.rosters || { home: [], away: [] });
+        } catch (error) {
+            console.error("Erro ao carregar elencos", error);
+        } finally {
+            setLoadingRosters(false);
+        }
+    };
+
+    const handleSaveMvp = async () => {
+        if (!selectedMatch || !selectedMvpId) return;
+        try {
+            setIsSavingMvp(true);
+            await api.post(`/admin/matches/${selectedMatch.id}/mvp`, {
+                player_id: selectedMvpId
+            });
+            alert("Craque do Jogo definido com sucesso!");
+            loadData();
+            setIsSummaryOpen(false);
+        } catch (error) {
+            console.error("Erro ao salvar MVP", error);
+            alert("Erro ao salvar Craque do Jogo.");
+        } finally {
+            setIsSavingMvp(false);
+        }
+    };
 
 
     useEffect(() => {
@@ -833,21 +875,71 @@ export function AdminMatchManager() {
                                         <div className="text-sm font-bold text-gray-900">{new Date(selectedMatch.start_time).toLocaleDateString('pt-BR')}</div>
                                     </div>
                                 </div>
-                                <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
-                                    <div className="text-[10px] text-indigo-400 font-bold uppercase mb-2">Equipe de Arbitragem</div>
-                                    <div className="text-sm font-medium text-indigo-900">
-                                        {/* @ts-ignore */}
-                                        <b>Árbitro:</b> {selectedMatch.match_details?.arbitration?.referee || 'Não informado'}
+                            </div>
+
+                            {/* Craque do Jogo (MVP) */}
+                            <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 mb-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center gap-2">
+                                        <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                                        <div className="text-[10px] text-amber-600 font-black uppercase tracking-wider">Craque do Jogo (MVP)</div>
                                     </div>
-                                    {(selectedMatch as any).match_details?.arbitration?.assistant1 && (
-                                        <div className="text-sm text-indigo-700 mt-1">
-                                            {/* @ts-ignore */}
-                                            <b>Assistentes:</b> {(selectedMatch as any).match_details?.arbitration?.assistant1} {(selectedMatch as any).match_details?.arbitration?.assistant2 ? ` / ${(selectedMatch as any).match_details?.arbitration?.assistant2}` : ''}
-                                        </div>
-                                    )}
                                 </div>
+
+                                {loadingRosters ? (
+                                    <div className="flex items-center gap-2 text-xs text-amber-400 py-2">
+                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                        Carregando elencos...
+                                    </div>
+                                ) : (
+                                    <div className="flex gap-2">
+                                        <select
+                                            value={selectedMvpId}
+                                            onChange={e => setSelectedMvpId(e.target.value)}
+                                            className="flex-1 bg-white border border-amber-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500 transition-all font-medium text-gray-700"
+                                        >
+                                            <option value="">Selecione o Craque...</option>
+                                            {rosters.home.length > 0 && (
+                                                <optgroup label={selectedMatch.home_team?.name}>
+                                                    {rosters.home.map(p => (
+                                                        <option key={p.id} value={p.id}>{p.number ? `#${p.number}` : ''} {p.name}</option>
+                                                    ))}
+                                                </optgroup>
+                                            )}
+                                            {rosters.away.length > 0 && (
+                                                <optgroup label={selectedMatch.away_team?.name}>
+                                                    {rosters.away.map(p => (
+                                                        <option key={p.id} value={p.id}>{p.number ? `#${p.number}` : ''} {p.name}</option>
+                                                    ))}
+                                                </optgroup>
+                                            )}
+                                        </select>
+                                        <button
+                                            onClick={handleSaveMvp}
+                                            disabled={isSavingMvp || !selectedMvpId}
+                                            className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg text-sm transition-all disabled:opacity-50 shadow-sm shadow-amber-200 active:scale-95"
+                                        >
+                                            {isSavingMvp ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Definir'}
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                                <div className="text-[10px] text-indigo-400 font-bold uppercase mb-2">Equipe de Arbitragem</div>
+                                <div className="text-sm font-medium text-indigo-900">
+                                    {/* @ts-ignore */}
+                                    <b>Árbitro:</b> {selectedMatch.match_details?.arbitration?.referee || 'Não informado'}
+                                </div>
+                                {(selectedMatch as any).match_details?.arbitration?.assistant1 && (
+                                    <div className="text-sm text-indigo-700 mt-1">
+                                        {/* @ts-ignore */}
+                                        <b>Assistentes:</b> {(selectedMatch as any).match_details?.arbitration?.assistant1} {(selectedMatch as any).match_details?.arbitration?.assistant2 ? ` / ${(selectedMatch as any).match_details?.arbitration?.assistant2}` : ''}
+                                    </div>
+                                )}
                             </div>
                         </div>
+
                         <div className="p-4 bg-gray-50 border-t border-gray-100 flex gap-3">
                             <button
                                 onClick={() => navigate(`/admin/matches/${selectedMatch.id}/sumula-print`)}
@@ -867,80 +959,82 @@ export function AdminMatchManager() {
             )}
 
             {/* Add Modal */}
-            {showAddModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                    <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-                        <div className="p-4 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
-                            <h3 className="font-bold text-gray-900">Novo Jogo Avulso</h3>
-                            <button onClick={() => setShowAddModal(false)} className="p-1 hover:bg-gray-200 rounded-full transition-colors">
-                                <X size={20} />
-                            </button>
-                        </div>
-                        <div className="p-6 space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Time Mandante</label>
-                                    <select
-                                        value={newData.home_team_id}
-                                        onChange={e => setNewData({ ...newData, home_team_id: e.target.value })}
-                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
-                                    >
-                                        <option value="">Selecione...</option>
-                                        {(teams || []).map((t: any) => (
-                                            <option key={t.id} value={t.id}>{t.name}</option>
-                                        ))}
-                                    </select>
+            {
+                showAddModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                        <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+                            <div className="p-4 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
+                                <h3 className="font-bold text-gray-900">Novo Jogo Avulso</h3>
+                                <button onClick={() => setShowAddModal(false)} className="p-1 hover:bg-gray-200 rounded-full transition-colors">
+                                    <X size={20} />
+                                </button>
+                            </div>
+                            <div className="p-6 space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Time Mandante</label>
+                                        <select
+                                            value={newData.home_team_id}
+                                            onChange={e => setNewData({ ...newData, home_team_id: e.target.value })}
+                                            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
+                                        >
+                                            <option value="">Selecione...</option>
+                                            {(teams || []).map((t: any) => (
+                                                <option key={t.id} value={t.id}>{t.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Time Visitante</label>
+                                        <select
+                                            value={newData.away_team_id}
+                                            onChange={e => setNewData({ ...newData, away_team_id: e.target.value })}
+                                            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
+                                        >
+                                            <option value="">Selecione...</option>
+                                            {(teams || []).map((t: any) => (
+                                                <option key={t.id} value={t.id}>{t.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Time Visitante</label>
-                                    <select
-                                        value={newData.away_team_id}
-                                        onChange={e => setNewData({ ...newData, away_team_id: e.target.value })}
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Data e Hora</label>
+                                    <input
+                                        type="datetime-local"
+                                        value={newData.start_time}
+                                        onChange={e => setNewData({ ...newData, start_time: e.target.value })}
                                         className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
-                                    >
-                                        <option value="">Selecione...</option>
-                                        {(teams || []).map((t: any) => (
-                                            <option key={t.id} value={t.id}>{t.name}</option>
-                                        ))}
-                                    </select>
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Local</label>
+                                    <input
+                                        type="text"
+                                        value={newData.location}
+                                        placeholder="Campo 1, Ginásio..."
+                                        onChange={e => setNewData({ ...newData, location: e.target.value })}
+                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
+                                    />
+                                </div>
+                                <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                                    <p className="text-xs text-indigo-800">
+                                        O jogo será criado na categoria: <strong>{championship?.categories?.find((c: any) => c.id === selectedCategoryId)?.name || 'Sem Categoria'}</strong>
+                                    </p>
                                 </div>
                             </div>
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Data e Hora</label>
-                                <input
-                                    type="datetime-local"
-                                    value={newData.start_time}
-                                    onChange={e => setNewData({ ...newData, start_time: e.target.value })}
-                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
-                                />
+                            <div className="p-4 bg-gray-50 border-t border-gray-100 flex gap-3">
+                                <button onClick={() => setShowAddModal(false)} className="flex-1 px-4 py-3 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all">
+                                    Cancelar
+                                </button>
+                                <button onClick={handleSaveAdd} className="flex-1 px-4 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all">
+                                    Criar Jogo
+                                </button>
                             </div>
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Local</label>
-                                <input
-                                    type="text"
-                                    value={newData.location}
-                                    placeholder="Campo 1, Ginásio..."
-                                    onChange={e => setNewData({ ...newData, location: e.target.value })}
-                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
-                                />
-                            </div>
-                            <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
-                                <p className="text-xs text-indigo-800">
-                                    O jogo será criado na categoria: <strong>{championship?.categories?.find((c: any) => c.id === selectedCategoryId)?.name || 'Sem Categoria'}</strong>
-                                </p>
-                            </div>
-                        </div>
-                        <div className="p-4 bg-gray-50 border-t border-gray-100 flex gap-3">
-                            <button onClick={() => setShowAddModal(false)} className="flex-1 px-4 py-3 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all">
-                                Cancelar
-                            </button>
-                            <button onClick={handleSaveAdd} className="flex-1 px-4 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all">
-                                Criar Jogo
-                            </button>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 }
