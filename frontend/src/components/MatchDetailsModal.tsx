@@ -43,10 +43,23 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                     }
                 });
 
-            // Keep slow re-sync as fallback (60s)
-            const slowInterval = setInterval(() => {
+            // Keep re-sync as fallback. Faster if live.
+            let fallbackInterval = 30000; // default 30s
+
+            const recomputeInterval = () => {
+                const isLive = match?.status === 'live' || details?.status === 'live';
+                const newInterval = isLive ? 5000 : 30000; // 5s if live, 30s otherwise
+                if (newInterval !== fallbackInterval) {
+                    fallbackInterval = newInterval;
+                    clearInterval(slowInterval);
+                    slowInterval = setInterval(() => loadMatchDetails(true), fallbackInterval);
+                }
+            };
+
+            let slowInterval = setInterval(() => {
                 loadMatchDetails(true);
-            }, 60000);
+                recomputeInterval();
+            }, fallbackInterval);
 
             return () => {
                 echo.leave(channelName);

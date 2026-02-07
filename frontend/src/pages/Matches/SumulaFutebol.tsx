@@ -22,6 +22,7 @@ export function SumulaFutebol() {
     // Stats State (Optimistic)
     const [penaltyScore, setPenaltyScore] = useState({ home: 0, away: 0 });
     const [events, setEvents] = useState<any[]>([]);
+    const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'error'>('synced');
 
     // Modal State
     const [showEventModal, setShowEventModal] = useState(false);
@@ -54,16 +55,11 @@ export function SumulaFutebol() {
                     };
                 });
 
-                // Sync timer ONLY on initial load or if not locally running
-                if (data.match.match_details?.sync_timer && (!serverTimerLoaded || !isRunning)) {
+                // Sync timer ONLY on initial load
+                if (data.match.match_details?.sync_timer && !serverTimerLoaded) {
                     const st = data.match.match_details.sync_timer;
-
-                    // Priority to local storage if available and more recent? 
-                    // For now, let's load from server if not running locally.
-                    if (!isRunning) {
-                        setTime(st.time || 0);
-                        if (st.currentPeriod) setCurrentPeriod(st.currentPeriod);
-                    }
+                    setTime(st.time || 0);
+                    if (st.currentPeriod) setCurrentPeriod(st.currentPeriod);
                     setServerTimerLoaded(true);
                 }
 
@@ -145,7 +141,7 @@ export function SumulaFutebol() {
         return () => clearInterval(interval);
     }, [isRunning]);
 
-    // PING - Sync local state TO server (Every 5 seconds)
+    // PING - Sync local state TO server (Every 3 seconds)
     useEffect(() => {
         if (!id) return;
 
@@ -154,21 +150,26 @@ export function SumulaFutebol() {
             if (!md) return;
 
             try {
+                setSyncStatus('syncing');
+                // We send WITHOUT updated_at, the server controller will set it.
                 await api.patch(`/admin/matches/${id}`, {
                     match_details: {
                         ...md.match_details,
                         sync_timer: {
                             time: t,
                             isRunning: ir,
-                            currentPeriod: cp,
-                            updated_at: Date.now()
+                            currentPeriod: cp
                         }
                     }
                 });
+                setSyncStatus('synced');
+                console.log(`[Sync] Timer synced to server: ${formatTime(t)} (${ir ? 'Running' : 'Stopped'})`);
             } catch (e) {
-                console.error("Failed to sync timer to server", e);
+                setSyncStatus('error');
+                console.error("[Sync] Failed to sync timer to server", e);
+                // On error, we don't do anything, the local timer continues to be the source of truth
             }
-        }, 5000);
+        }, 3000);
 
         return () => clearInterval(pingInterval);
     }, [id]);
@@ -497,7 +498,13 @@ export function SumulaFutebol() {
                 <div className="px-4 flex items-center justify-between mb-4">
                     <button onClick={() => navigate(-1)} className="p-2 bg-gray-700 rounded-full"><ArrowLeft className="w-5 h-5" /></button>
                     <div className="flex flex-col items-center">
-                        <span className="text-[10px] font-bold tracking-widest text-gray-400">SUMULA DIGITAL</span>
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-bold tracking-widest text-gray-400">SUMULA DIGITAL</span>
+                            <div className={`w-1.5 h-1.5 rounded-full ${syncStatus === 'synced' ? 'bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.6)]' :
+                                    syncStatus === 'syncing' ? 'bg-blue-500 animate-pulse' :
+                                        'bg-red-500 animate-bounce'
+                                }`} title={syncStatus === 'synced' ? 'Sincronizado' : syncStatus === 'syncing' ? 'Sincronizando...' : 'Erro de Conexão'} />
+                        </div>
                         {(matchData.details?.arbitration?.referee) && <span className="text-[10px] text-gray-500">{matchData.details.arbitration.referee}</span>}
                     </div>
                     <button onClick={handlePeriodChange} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase transition-colors ${currentPeriod === 'Intervalo' || currentPeriod === 'Encerrado (Normal)' ? 'bg-orange-500 text-white' :

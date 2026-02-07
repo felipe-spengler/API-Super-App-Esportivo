@@ -52,6 +52,7 @@ class MatchOperationController extends Controller
             'match' => $match,
             'details' => $details,
             'rosters' => $rosters,
+            'server_time' => now()->timestamp * 1000,
             'sport' => $match->championship->sport->slug ?? 'football'
         ]);
     }

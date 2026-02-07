@@ -87,6 +87,11 @@ class AdminMatchController extends Controller
             unset($validated['arbitration']);
         }
 
+        // Force server timestamp on sync_timer if it exists
+        if (isset($validated['match_details']['sync_timer'])) {
+            $validated['match_details']['sync_timer']['updated_at'] = now()->timestamp * 1000;
+        }
+
         $match->update($validated);
         $match->load(['homeTeam', 'awayTeam', 'category']);
 
