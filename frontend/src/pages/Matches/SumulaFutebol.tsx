@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Play, Pause, Save, Clock, Users, X, Timer, Trash2 } from 'lucide-react';
 import api from '../../services/api';
@@ -29,6 +29,12 @@ export function SumulaFutebol() {
     const [eventType, setEventType] = useState<'goal' | 'yellow_card' | 'red_card' | 'blue_card' | 'assist' | 'foul' | 'mvp' | null>(null);
     const [showShootoutOptions, setShowShootoutOptions] = useState(false);
     const [selectedPlayer, setSelectedPlayer] = useState<any>(null);
+
+    // Refs for stable sync
+    const timerRef = useRef({ time, isRunning, currentPeriod, matchData });
+    useEffect(() => {
+        timerRef.current = { time, isRunning, currentPeriod, matchData };
+    }, [time, isRunning, currentPeriod, matchData]);
 
     const fetchMatchDetails = async (isInitial = false) => {
         try {
@@ -132,27 +138,29 @@ export function SumulaFutebol() {
         if (isRunning) {
             interval = setInterval(() => setTime(t => t + 1), 1000);
 
-            if (matchData && matchData.status === 'scheduled') {
+            if (matchData && (matchData.status === 'scheduled' || matchData.status === 'Agendado')) {
                 registerSystemEvent('match_start', 'Início da Partida');
             }
         }
         return () => clearInterval(interval);
-    }, [isRunning, matchData]);
+    }, [isRunning]);
 
-    // PING - Sync local state TO server (Every 3 seconds)
+    // PING - Sync local state TO server (Every 5 seconds)
     useEffect(() => {
-        if (!id || loading || !matchData) return;
+        if (!id) return;
 
         const pingInterval = setInterval(async () => {
+            const { time: t, isRunning: ir, currentPeriod: cp, matchData: md } = timerRef.current;
+            if (!md) return;
+
             try {
-                // Update server with our current time
                 await api.patch(`/admin/matches/${id}`, {
                     match_details: {
-                        ...matchData.match_details,
+                        ...md.match_details,
                         sync_timer: {
-                            time,
-                            isRunning,
-                            currentPeriod,
+                            time: t,
+                            isRunning: ir,
+                            currentPeriod: cp,
                             updated_at: Date.now()
                         }
                     }
@@ -160,10 +168,10 @@ export function SumulaFutebol() {
             } catch (e) {
                 console.error("Failed to sync timer to server", e);
             }
-        }, 3000);
+        }, 5000);
 
         return () => clearInterval(pingInterval);
-    }, [id, isRunning, time, currentPeriod]);
+    }, [id]);
 
     // When server data comes back, we may need to correct our local state
     // BUT we must be careful not to override our local timer if it's running ahead

@@ -17,7 +17,7 @@ export function MatchPrintView() {
     const loadMatch = async () => {
         try {
             setLoading(true);
-            const response = await api.get(`/admin/matches/${id}/full-details`);
+            const response = await api.get(`/public/matches/${id}/full-details`);
             const data = response.data;
             if (data.match) {
                 setMatch(data.match);

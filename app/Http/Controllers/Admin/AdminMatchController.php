@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Events\MatchUpdated;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\GameMatch;
@@ -87,8 +88,11 @@ class AdminMatchController extends Controller
         }
 
         $match->update($validated);
+        $match->load(['homeTeam', 'awayTeam', 'category']);
 
-        return response()->json($match->load(['homeTeam', 'awayTeam', 'category']));
+        MatchUpdated::dispatch($match->id, $match->toArray());
+
+        return response()->json($match);
     }
 
     // Finish match and set final score
@@ -115,6 +119,9 @@ class AdminMatchController extends Controller
             $updateData['away_penalty_score'] = $validated['away_penalty_score'];
 
         $match->update($updateData);
+        $match->load(['homeTeam', 'awayTeam', 'category']);
+
+        MatchUpdated::dispatch($match->id, $match->toArray());
 
         // Check for automatic bracket advancement or Group -> Knockout transition
         try {
@@ -383,6 +390,8 @@ class AdminMatchController extends Controller
         if ($match->status === 'scheduled') {
             $match->update(['status' => 'live']);
         }
+
+        MatchUpdated::dispatch($match->id, ['event' => $event]);
 
         return response()->json($event, 201);
     }

@@ -92,6 +92,7 @@ function App() {
             <Route path="/profile" element={<Profile />} />
             <Route path="/races/:id" element={<RaceDetails />} />
             <Route path="/races/:id/results" element={<div className="p-10 text-center">Resultados (Em Breve)</div>} />
+            <Route path="/matches/:id/print" element={<MatchPrintView />} />
 
             {/* Athlete Private Area */}
             <Route path="/profile/teams" element={<MyTeams />} />

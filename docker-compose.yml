@@ -21,11 +21,43 @@ services:
     volumes:
       - storage_volume:/var/www/storage
 
+  # Reverb WebSocket Server
+  reverb:
+    image: app-esportivo-api
+    restart: always
+    command: php artisan reverb:start --host=0.0.0.0 --port=8080
+    environment:
+      APP_ENV: production
+      APP_DEBUG: 'false'
+      APP_KEY: ${APP_KEY}
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      REVERB_APP_ID: ${REVERB_APP_ID}
+      REVERB_APP_KEY: ${REVERB_APP_KEY}
+      REVERB_APP_SECRET: ${REVERB_APP_SECRET}
+      REVERB_HOST: ${REVERB_HOST}
+      REVERB_PORT: 8080
+      REVERB_SCHEME: https
+    depends_on:
+      - api
+    expose:
+      - "8080"
+
   # Frontend Web (React)
   web:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL}
+        VITE_REVERB_APP_KEY: ${REVERB_APP_KEY}
+        VITE_REVERB_HOST: ${REVERB_HOST}
+        VITE_REVERB_PORT: 443
+        VITE_REVERB_SCHEME: https
     image: app-esportivo-web
     restart: always
     expose:

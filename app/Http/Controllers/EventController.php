@@ -579,7 +579,7 @@ class EventController extends Controller
     // 11. Detalhes da Partida (Público - para Modal Ao Vivo/Súmula)
     public function matchDetails($id)
     {
-        $match = GameMatch::with(['homeTeam.players', 'awayTeam.players', 'championship.sport', 'events.player'])->findOrFail($id);
+        $match = GameMatch::with(['homeTeam.players', 'awayTeam.players', 'championship.sport', 'events.player', 'mvp'])->findOrFail($id);
 
         $details = $match->match_details ?? [];
 
@@ -604,6 +604,11 @@ class EventController extends Controller
             $details['events'] = $tableEvents;
         }
 
+        // Garante que o cronômetro sincronizado vá para o frontend
+        if ($match->match_details && isset($match->match_details['sync_timer'])) {
+            $details['sync_timer'] = $match->match_details['sync_timer'];
+        }
+
         if (!isset($details['sets']))
             $details['sets'] = [];
         if (!isset($details['positions']))
@@ -619,6 +624,7 @@ class EventController extends Controller
             'match' => $match,
             'details' => $details,
             'rosters' => $rosters,
+            'server_time' => now()->timestamp * 1000, // milisegundos
             'sport' => $match->championship->sport->slug ?? 'football'
         ]);
     }
@@ -637,5 +643,80 @@ class EventController extends Controller
                 'position' => $player->pivot->position
             ];
         });
+    }
+
+    public function matchPdf($id)
+    {
+        $match = GameMatch::with(['homeTeam.players', 'awayTeam.players', 'championship.sport', 'events.player', 'mvp'])->findOrFail($id);
+
+        $html = "
+        <html>
+        <head>
+            <title>Súmula - Match #{$id}</title>
+            <style>
+                body { font-family: sans-serif; padding: 40px; color: #333; line-height: 1.6; }
+                .header { text-align: center; border-bottom: 2px solid #EEE; padding-bottom: 20px; margin-bottom: 30px; }
+                .teams { display: flex; justify-content: space-around; align-items: center; margin-bottom: 40px; background: #F9FAFB; padding: 20px; border-radius: 12px; }
+                .score { font-size: 64px; font-weight: 900; color: #111; }
+                .team-card { text-align: center; flex: 1; }
+                .team-card h2 { margin: 0; font-size: 24px; color: #4F46E5; }
+                .events { width: 100%; border-collapse: collapse; margin-top: 30px; }
+                .events th, .events td { border: 1px solid #EEE; padding: 12px; text-align: left; }
+                .events th { background-color: #F3F4F6; font-weight: 600; }
+                .mvp-section { margin-top: 50px; border-top: 2px solid #4F46E5; padding-top: 20px; display: flex; align-items: center; gap: 20px; }
+                .mvp-badge { background: #4F46E5; color: white; padding: 4px 12px; border-radius: 99px; font-size: 12px; font-weight: bold; }
+                @media print { .no-print { display: none; } }
+            </style>
+        </head>
+        <body>
+            <div class='no-print' style='background: #FFFBEB; padding: 15px; margin-bottom: 40px; border: 1px solid #FEF3C7; border-radius: 12px; text-align: center; color: #92400E;'>
+                📄 <b>Documento Oficial</b> - Pressione <b>Ctrl + P</b> para salvar como PDF ou Imprimir.
+            </div>
+            <div class='header'>
+                <h1 style='margin:0; color: #111;'>" . ($match->championship->name ?? 'Campeonato') . "</h1>
+                <p style='color: #666;'>" . ($match->start_time ? $match->start_time->format('d/m/Y H:i') : '') . " - " . ($match->location ?? 'Local a definir') . "</p>
+            </div>
+            <div class='teams'>
+                <div class='team-card'><h2>{$match->homeTeam->name}</h2></div>
+                <div class='score'>{$match->home_score} <span style='font-size: 32px; color: #999;'>x</span> {$match->away_score}</div>
+                <div class='team-card'><h2>{$match->awayTeam->name}</h2></div>
+            </div>
+            <h3 style='border-left: 4px solid #4F46E5; padding-left: 15px;'>Cronologia da Partida</h3>
+            <table class='events'>
+                <thead>
+                    <tr><th>Tempo</th><th>Tipo</th><th>Jogador</th><th>Equipe</th></tr>
+                </thead>
+                <tbody>";
+
+        foreach ($match->events as $event) {
+            $typeLabel = str_replace('_', ' ', strtoupper($event->event_type));
+            $html .= "<tr>
+                <td style='font-weight: bold;'>{$event->game_time}'</td>
+                <td>{$typeLabel}</td>
+                <td>" . ($event->player->name ?? '---') . "</td>
+                <td>" . ($event->team_id == $match->home_team_id ? $match->homeTeam->name : $match->awayTeam->name) . "</td>
+            </tr>";
+        }
+
+        $html .= "</tbody></table>";
+
+        if ($match->mvp) {
+            $html .= "<div class='mvp-section'>
+                <div>
+                    <span class='mvp-badge'>CRAQUE DO JOGO</span>
+                    <h2 style='margin: 5px 0 0 0;'>{$match->mvp->name}</h2>
+                </div>
+            </div>";
+        }
+
+        $html .= "
+            <footer style='margin-top: 100px; text-align: center; font-size: 12px; color: #999; border-top: 1px solid #EEE; padding-top: 20px;'>
+                Gerado em " . date('d/m/Y H:i') . " via Plataforma Esportiva
+            </footer>
+            <script>window.onload = function() { window.print(); }</script>
+        </body>
+        </html>";
+
+        return response($html);
     }
 }

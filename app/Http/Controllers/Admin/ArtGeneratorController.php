@@ -36,10 +36,15 @@ class ArtGeneratorController extends Controller
      */
     public function mvpArt($matchId, Request $request)
     {
-        $match = GameMatch::with(['homeTeam', 'awayTeam', 'mvpPlayer', 'championship', 'championship.sport'])->findOrFail($matchId);
+        $match = GameMatch::with(['homeTeam', 'awayTeam', 'mvp', 'championship', 'championship.sport'])->findOrFail($matchId);
         $category = $request->query('category', 'craque');
 
-        return $this->generatePlayerArt($match->mvpPlayer, $match, $category);
+        return $this->generatePlayerArt($match->mvp, $match, $category);
+    }
+
+    public function downloadMvpArt($matchId, Request $request)
+    {
+        return $this->mvpArt($matchId, $request);
     }
 
     /**

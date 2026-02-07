@@ -1,7 +1,8 @@
 
 import { useState, useEffect } from 'react';
-import { X, Calendar, MapPin, Clock, Trophy, Share2, Timer, User } from 'lucide-react';
+import { X, Calendar, Clock, MapPin, Trophy, User, Share2, FileText, ChevronRight, Star, History, Printer, Timer } from 'lucide-react';
 import api from '../services/api';
+import echo from '../services/echo';
 
 interface MatchDetailsModalProps {
     matchId: string | number | null;
@@ -14,7 +15,7 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
     const [details, setDetails] = useState<any>(null);
     const [rosters, setRosters] = useState<any>(null);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'summary' | 'lineups' | 'stats'>('summary');
+    const [activeTab, setActiveTab] = useState<'summary' | 'mvp' | 'report'>('summary');
     const [localTime, setLocalTime] = useState<number | null>(null);
     const [isTimerRunning, setIsTimerRunning] = useState(false);
     const [currentPeriod, setCurrentPeriod] = useState<string | null>(null);
@@ -22,11 +23,33 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
     useEffect(() => {
         if (isOpen && matchId) {
             loadMatchDetails();
-            const interval = setInterval(() => {
-                loadMatchDetails(true);
-            }, 5000); // 5s poll
 
-            return () => clearInterval(interval);
+            // Real-time Updates with Reverb
+            const channelName = `match.${matchId}`;
+            echo.channel(channelName)
+                .listen('.MatchUpdated', (data: any) => {
+                    console.log("Real-time match update received:", data);
+                    // Single event update or full object update?
+                    // We dispatch $match->toArray() or ['event' => $event]
+                    if (data.id) {
+                        // Full match update
+                        setMatch(data);
+                        setDetails(data.match_details || data.details);
+                    } else if (data.event) {
+                        // Incremental update (new goal/card) - trigger reload to be safe and simple
+                        loadMatchDetails(true);
+                    }
+                });
+
+            // Keep slow re-sync as fallback (60s)
+            const slowInterval = setInterval(() => {
+                loadMatchDetails(true);
+            }, 60000);
+
+            return () => {
+                echo.leave(channelName);
+                clearInterval(slowInterval);
+            };
         } else {
             setMatch(null);
             setDetails(null);
@@ -34,30 +57,41 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
             setIsTimerRunning(false);
             setCurrentPeriod(null);
             setLoading(true);
+            setActiveTab('summary');
         }
     }, [isOpen, matchId]);
 
     // Sync local timer with server data
     useEffect(() => {
-        if (match?.match_details?.sync_timer) {
-            const st = match.match_details.sync_timer;
+        const timerData = match?.match_details?.sync_timer || details?.sync_timer;
+        if (timerData) {
+            const st = timerData;
             const sport = match?.championship?.sport?.slug || 'futebol';
             const isRegressive = sport === 'basquete';
 
-            // Calculate drift if updated_at is available
+            // Calculate drift using server_time if available
             let baseTime = st.time ?? 0;
             if (st.updated_at && st.isRunning) {
-                const elapsedSinceUpdate = Math.floor((Date.now() - st.updated_at) / 1000);
+                // If we have server_time, we can calculate the exact offset
+                const now = Date.now();
+                // If the backend sent server_time, use it to normalize the elapsed time
+                const serverNow = details?.server_time || now;
+                const elapsedSinceUpdate = Math.floor((serverNow - st.updated_at) / 1000);
+
                 if (elapsedSinceUpdate > 0) {
                     baseTime = isRegressive ? Math.max(0, baseTime - elapsedSinceUpdate) : baseTime + elapsedSinceUpdate;
                 }
             }
 
-            setLocalTime(baseTime);
-            setIsTimerRunning(st.isRunning ?? false);
+            // Sync Logic: ONLY update if the difference is > 2 seconds to avoid "jitter" 
+            // OR if it's the first time we load the timer
+            if (localTime === null || Math.abs(localTime - baseTime) > 2 || isTimerRunning !== st.isRunning) {
+                setLocalTime(baseTime);
+                setIsTimerRunning(st.isRunning ?? false);
+            }
             setCurrentPeriod(st.currentPeriod ?? null);
         }
-    }, [match]);
+    }, [match, details, localTime]);
 
     // Local ticking for smooth UI
     useEffect(() => {
@@ -249,20 +283,30 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                 {/* Content */}
                 {!loading && (
                     <div className="flex-1 flex flex-col overflow-hidden">
-                        {/* Tabs */}
-                        <div className="flex border-b border-gray-100 shrink-0">
+                        {/* Tabs (Show MVP and Report only when finished) */}
+                        <div className="flex border-b border-gray-100 shrink-0 bg-white">
                             <button
                                 onClick={() => setActiveTab('summary')}
                                 className={`flex-1 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors ${activeTab === 'summary' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
                             >
                                 Resumo
                             </button>
-                            <button
-                                onClick={() => setActiveTab('lineups')}
-                                className={`flex-1 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors ${activeTab === 'lineups' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
-                            >
-                                Escalações
-                            </button>
+                            {isFinished && (
+                                <>
+                                    <button
+                                        onClick={() => setActiveTab('mvp')}
+                                        className={`flex-1 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors ${activeTab === 'mvp' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                                    >
+                                        ⭐ Craque
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveTab('report')}
+                                        className={`flex-1 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors ${activeTab === 'report' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                                    >
+                                        📄 Súmula
+                                    </button>
+                                </>
+                            )}
                         </div>
 
                         {/* Tab Panels */}
@@ -331,53 +375,55 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                 </div>
                             )}
 
-                            {activeTab === 'lineups' && (
-                                <div className="grid grid-cols-2 gap-4 sm:gap-8">
-                                    {/* Home Roster */}
-                                    <div className="min-w-0">
-                                        <h3 className="font-bold text-gray-900 border-b border-gray-200 pb-2 mb-3 text-center uppercase text-[10px] sm:text-xs tracking-wider truncate">
-                                            {match.home_team?.name}
-                                        </h3>
-                                        <div className="space-y-1">
-                                            {rosters?.home?.map((player: any) => (
-                                                <div key={player.id} className="flex items-center gap-2 sm:gap-3 p-1.5 sm:p-2 hover:bg-white rounded-lg transition-colors min-w-0">
-                                                    <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-[10px] sm:text-xs font-bold shrink-0">
-                                                        {player.number || '-'}
-                                                    </div>
-                                                    <span className="text-xs sm:text-sm text-gray-700 font-medium truncate flex-1">{player.name}</span>
-                                                    {details?.events?.some((e: any) => e.type === 'goal' && e.player_id === player.id) && (
-                                                        <span className="text-[10px] shrink-0">⚽</span>
-                                                    )}
-                                                </div>
-                                            ))}
-                                            {(!rosters?.home || rosters.home.length === 0) && (
-                                                <p className="text-center text-gray-400 text-[10px] sm:text-xs italic py-4">Não disponível</p>
-                                            )}
+                            {activeTab === 'mvp' && (
+                                <div className="flex flex-col items-center justify-center py-6">
+                                    {match?.mvp ? (
+                                        <div className="w-full max-w-sm flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-300">
+                                            <div className="relative w-full aspect-[4/5] bg-gray-200 rounded-2xl overflow-hidden shadow-xl border border-white">
+                                                <img
+                                                    src={`${api.defaults.baseURL}/public/art/match/${match.id}/mvp`}
+                                                    className="w-full h-full object-cover"
+                                                    alt="Arte do Craque do Jogo"
+                                                    onError={(e: any) => {
+                                                        e.target.src = 'https://via.placeholder.com/400x500?text=Arte+do+Craque';
+                                                    }}
+                                                />
+                                            </div>
+                                            <div className="text-center">
+                                                <h3 className="text-xl font-black text-indigo-900 uppercase italic tracking-tighter">
+                                                    {match.mvp.name}
+                                                </h3>
+                                                <p className="text-gray-500 text-sm font-medium">Eleito o melhor da partida</p>
+                                            </div>
                                         </div>
-                                    </div>
+                                    ) : (
+                                        <div className="text-center py-20">
+                                            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                <User size={32} className="text-gray-300" />
+                                            </div>
+                                            <p className="text-gray-500 font-medium">Nenhum craque definido ainda.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
-                                    {/* Away Roster */}
-                                    <div className="min-w-0">
-                                        <h3 className="font-bold text-gray-900 border-b border-gray-200 pb-2 mb-3 text-center uppercase text-[10px] sm:text-xs tracking-wider truncate">
-                                            {match.away_team?.name}
-                                        </h3>
-                                        <div className="space-y-1">
-                                            {rosters?.away?.map((player: any) => (
-                                                <div key={player.id} className="flex items-center gap-2 sm:gap-3 p-1.5 sm:p-2 hover:bg-white rounded-lg transition-colors min-w-0">
-                                                    <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-[10px] sm:text-xs font-bold shrink-0">
-                                                        {player.number || '-'}
-                                                    </div>
-                                                    <span className="text-xs sm:text-sm text-gray-700 font-medium truncate flex-1">{player.name}</span>
-                                                    {details?.events?.some((e: any) => e.type === 'goal' && e.player_id === player.id) && (
-                                                        <span className="text-[10px] shrink-0">⚽</span>
-                                                    )}
-                                                </div>
-                                            ))}
-                                            {(!rosters?.away || rosters.away.length === 0) && (
-                                                <p className="text-center text-gray-400 text-[10px] sm:text-xs italic py-4">Não disponível</p>
-                                            )}
-                                        </div>
+                            {activeTab === 'report' && (
+                                <div className="flex flex-col items-center justify-center py-12 text-center">
+                                    <div className="w-20 h-20 bg-indigo-50 rounded-3xl flex items-center justify-center mb-6 shadow-inner">
+                                        <Printer size={40} className="text-indigo-600" />
                                     </div>
+                                    <h3 className="text-xl font-bold text-gray-900 mb-2">Súmula Oficial</h3>
+                                    <p className="text-gray-500 max-w-xs mb-8">
+                                        Clique abaixo para visualizar e imprimir o documento oficial desta partida.
+                                    </p>
+                                    <a
+                                        href={`/matches/${match.id}/print`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-2 px-8 py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-600/30 hover:bg-indigo-700 transition-all active:scale-95"
+                                    >
+                                        <Printer size={20} /> Imprimir Súmula
+                                    </a>
                                 </div>
                             )}
                         </div>
