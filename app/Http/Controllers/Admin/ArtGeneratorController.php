@@ -39,12 +39,41 @@ class ArtGeneratorController extends Controller
         $match = GameMatch::with(['homeTeam', 'awayTeam', 'mvp', 'championship', 'championship.sport'])->findOrFail($matchId);
         $category = $request->query('category', 'craque');
 
+        if (!$match->mvp_player_id) {
+            return response('MVP não definido para esta partida.', 404);
+        }
+
         return $this->generatePlayerArt($match->mvp, $match, $category);
     }
 
     public function downloadMvpArt($matchId, Request $request)
     {
         return $this->mvpArt($matchId, $request);
+    }
+
+    /**
+     * Gera Arte de Classificação (Standings)
+     */
+    public function standingsArt($championshipId, Request $request)
+    {
+        $championship = \App\Models\Championship::with(['sport', 'club'])->findOrFail($championshipId);
+        $this->loadClubResources($championship->club);
+
+        $sport = strtolower($championship->sport->name ?? 'futebol');
+        $bgFile = $this->getBackgroundFile($sport, 'classificacao', $championship->club);
+        $img = $this->initImage($bgFile);
+
+        if (!$img) {
+            $img = $this->initImage('fundo_confronto.jpg');
+        }
+
+        if (!$img) {
+            return response('Erro ao inicializar imagem de classificação.', 500);
+        }
+
+        $this->drawCenteredText($img, 50, 1700, null, mb_strtoupper($championship->name), true);
+
+        return $this->outputImage($img, 'classificacao_' . $championshipId);
     }
 
     /**
@@ -297,7 +326,18 @@ class ArtGeneratorController extends Controller
 
             // Se não veio time explícito, mas veio partida, tenta deduzir
             if (!$targetTeam && $match) {
-                $targetTeam = $match->homeTeam; // Fallback to Home
+                // Tenta achar em qual time o jogador está
+                // Nota: Usamos query simples aqui para ser rápido
+                $isHome = \DB::table('team_players')
+                    ->where('team_id', $match->home_team_id)
+                    ->where('user_id', $player->id)
+                    ->exists();
+
+                if ($isHome) {
+                    $targetTeam = $match->homeTeam;
+                } else {
+                    $targetTeam = $match->awayTeam;
+                }
             }
 
             if ($targetTeam) {
@@ -383,26 +423,45 @@ class ArtGeneratorController extends Controller
         // Se filename vier com caminho completo (storage ou url), tentar carregar
         if (str_contains($filename, '/') || str_contains($filename, '\\')) {
             if (file_exists($filename)) {
-                return @imagecreatefromjpeg($filename);
+                return $this->createFromFormat($filename);
             }
             // Tentar no public/storage se for relativo
             $storagePath = storage_path('app/public/' . $filename);
             if (file_exists($storagePath)) {
-                return @imagecreatefromjpeg($storagePath);
+                return $this->createFromFormat($storagePath);
             }
             $publicPath = public_path('storage/' . $filename);
             if (file_exists($publicPath)) {
-                return @imagecreatefromjpeg($publicPath);
+                return $this->createFromFormat($publicPath);
             }
-            // Tentar loading direto se for URL (cuidado com performance, por enquanto local files)
         }
 
         $path = $this->templatesPath . $filename;
         if (!file_exists($path)) {
-            // Tenta fallback para o bg_mvp padrão se específico falhar
-            $path = $this->templatesPath . 'bg_mvp.jpg';
-            if (!file_exists($path))
-                return null;
+            // Tenta fallback para o fundo_craque_do_jogo.jpg se bg_mvp falhar
+            $path = $this->templatesPath . 'fundo_craque_do_jogo.jpg';
+            if (!file_exists($path)) {
+                $path = $this->templatesPath . 'bg_mvp.jpg';
+                if (!file_exists($path)) {
+                    // Create a blank image as absolute last resort
+                    $img = imagecreatetruecolor(1080, 1350);
+                    $bg = imagecolorallocate($img, 30, 30, 30);
+                    imagefill($img, 0, 0, $bg);
+                    return $img;
+                }
+            }
+        }
+        return $this->createFromFormat($path);
+    }
+
+    private function createFromFormat($path)
+    {
+        $info = @getimagesize($path);
+        if (!$info)
+            return @imagecreatefromjpeg($path); // Try anyway
+
+        if ($info['mime'] == 'image/png') {
+            return @imagecreatefrompng($path);
         }
         return @imagecreatefromjpeg($path);
     }
