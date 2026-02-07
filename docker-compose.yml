@@ -43,6 +43,7 @@ services:
       REVERB_PORT: 9090
       REVERB_SCHEME: https
     depends_on:
+      - db
       - api
     expose:
       - "9090"
