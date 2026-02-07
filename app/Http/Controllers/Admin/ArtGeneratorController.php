@@ -264,13 +264,13 @@ class ArtGeneratorController extends Controller
         }
 
         $playerName = mb_strtoupper($finalName);
-        $this->drawCenteredText($img, 70, 1230, null, $playerName, false); // Primary Font, Auto Color
+        $this->drawCenteredText($img, 70, 1230, $white, $playerName, false); // White name
 
         $champName = mb_strtoupper($championship->name);
-        $this->drawCenteredText($img, 40, 1700, null, $champName, true); // Secondary Font, Auto Color
+        $this->drawCenteredText($img, 40, 1700, $white, $champName, true); // White champ
 
         if ($roundName) {
-            $this->drawCenteredText($img, 30, 1750, null, mb_strtoupper($roundName), true); // Secondary Font
+            $this->drawCenteredText($img, 30, 1750, $white, mb_strtoupper($roundName), true); // White round
         }
 
         // Título da Categoria para Vôlei (Legacy)

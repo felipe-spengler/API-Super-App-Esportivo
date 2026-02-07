@@ -87,11 +87,17 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
             // Calculate drift using server_time if available
             let baseTime = st.time ?? 0;
             if (st.updated_at && st.isRunning) {
-                // If we have server_time, we can calculate the exact offset
                 const now = Date.now();
-                // If the backend sent server_time, use it to normalize the elapsed time
-                const serverNow = details?.server_time || now;
-                const elapsedSinceUpdate = Math.floor((serverNow - st.updated_at) / 1000);
+                // Fallback to local 'now' if 'server_time' is missing (common in real-time payloads)
+                const serverNow = match?.server_time || details?.server_time || now;
+
+                let elapsedSinceUpdate = Math.floor((serverNow - st.updated_at) / 1000);
+
+                // DRIFT GUARD: If drift is impossible (e.g. > 2 hours), ignore it
+                if (elapsedSinceUpdate < 0 || elapsedSinceUpdate > 7200) {
+                    console.warn("Match Timer Sync: Impossible drift detected, ignoring sync offset", elapsedSinceUpdate);
+                    elapsedSinceUpdate = 0;
+                }
 
                 if (elapsedSinceUpdate > 0) {
                     baseTime = isRegressive ? Math.max(0, baseTime - elapsedSinceUpdate) : baseTime + elapsedSinceUpdate;
@@ -99,7 +105,6 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
             }
 
             // Sync Logic: ONLY update if the difference is > 2 seconds to avoid "jitter" 
-            // OR if it's the first time we load the timer
             if (localTime === null || Math.abs(localTime - baseTime) > 2 || isTimerRunning !== st.isRunning) {
                 setLocalTime(baseTime);
                 setIsTimerRunning(st.isRunning ?? false);
