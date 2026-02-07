@@ -162,17 +162,19 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
 
                         {/* Score */}
                         <div className="flex flex-col items-center pb-2 min-w-[100px] sm:min-w-[120px] shrink-0">
-                            {(isLive || isFinished) && localTime !== null && (
+                            {(isLive || isFinished) && (
                                 <div className="mb-1 sm:mb-2 flex flex-col items-center">
-                                    <div className="text-yellow-400 font-mono text-xl sm:text-2xl font-bold drop-shadow-md flex items-center gap-1.5">
-                                        <Timer size={16} className={isTimerRunning ? "animate-pulse" : "opacity-50"} />
-                                        {formatMatchTime(localTime)}
+                                    <div className="text-yellow-400 font-mono text-xl sm:text-2xl font-bold drop-shadow-md flex items-center gap-1.5 line-height-none">
+                                        <Timer size={16} className={isTimerRunning ? "animate-pulse" : "opacity-30"} />
+                                        {localTime !== null ? formatMatchTime(localTime) : "--:--"}
                                     </div>
                                     <div className="flex items-center gap-1 mt-0.5">
-                                        {currentPeriod && (
+                                        {currentPeriod ? (
                                             <span className="text-[8px] sm:text-[10px] text-white/60 font-bold uppercase tracking-widest">{currentPeriod}</span>
+                                        ) : (
+                                            isLive && <span className="text-[8px] text-white/30 font-bold uppercase tracking-widest">Aguardando Sinc.</span>
                                         )}
-                                        {isLive && !isTimerRunning && (
+                                        {isLive && localTime !== null && !isTimerRunning && (
                                             <span className="text-[7px] sm:text-[8px] bg-yellow-500/20 text-yellow-500 px-1 rounded font-black border border-yellow-500/30 shrink-0">PARADO</span>
                                         )}
                                     </div>
