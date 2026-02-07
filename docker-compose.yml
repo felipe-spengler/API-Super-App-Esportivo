@@ -46,6 +46,12 @@ services:
       - api
     expose:
       - "9090"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.reverb.rule=Host(`${REVERB_HOST}`) && (PathPrefix(`/app`) || PathPrefix(`/reverb`))"
+      - "traefik.http.routers.reverb.entrypoints=websecure"
+      - "traefik.http.routers.reverb.tls=true"
+      - "traefik.http.services.reverb.loadbalancer.server.port=9090"
 
   # Frontend Web (React)
   web:
