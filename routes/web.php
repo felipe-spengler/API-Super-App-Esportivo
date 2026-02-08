@@ -20,3 +20,8 @@ Route::get('/storage/{path}', function ($path) {
 
     return response()->file($fullPath);
 })->where('path', '.*');
+
+// 🧪 Página de teste - Remoção de fundo com IA
+Route::get('/testando-imagem', function () {
+    return response()->file(public_path('testando_imagem.php'));
+});
