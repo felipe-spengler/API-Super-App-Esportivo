@@ -300,11 +300,15 @@ class ArtGeneratorController extends Controller
 
             // Home Team
             $xA = 102 + ($width / 2) - $centerDist - ($badgeSize / 2);
-            $this->drawTeamBadge($img, $match->homeTeam, $xA, $yBadges, $badgeSize, $black);
+            // Auto-detect color for home team based on background
+            $colorA = $this->getAutoContrastColor($img, $xA, $yBadges, $badgeSize, $badgeSize);
+            $this->drawTeamBadge($img, $match->homeTeam, $xA, $yBadges, $badgeSize, $colorA);
 
             // Away Team
             $xB = -94 + ($width / 2) + $centerDist - ($badgeSize / 2);
-            $this->drawTeamBadge($img, $match->awayTeam, $xB, $yBadges, $badgeSize, $white);
+            // Auto-detect color for away team based on background
+            $colorB = $this->getAutoContrastColor($img, $xB, $yBadges, $badgeSize, $badgeSize);
+            $this->drawTeamBadge($img, $match->awayTeam, $xB, $yBadges, $badgeSize, $colorB);
 
             // Placar
             $scoreY = 1535;
