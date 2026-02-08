@@ -81,37 +81,20 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
         const timerData = match?.match_details?.sync_timer || details?.sync_timer;
         if (timerData) {
             const st = timerData;
-            const sport = match?.championship?.sport?.slug || 'futebol';
-            const isRegressive = sport === 'basquete';
 
-            // Calculate drift using server_time if available
-            let baseTime = st.time ?? 0;
-            if (st.updated_at && st.isRunning) {
-                const now = Date.now();
-                // Fallback to local 'now' if 'server_time' is missing (common in real-time payloads)
-                const serverNow = match?.server_time || details?.server_time || now;
+            // Use server time directly without drift calculation
+            const baseTime = st.time ?? 0;
 
-                let elapsedSinceUpdate = Math.floor((serverNow - st.updated_at) / 1000);
-
-                // DRIFT GUARD: If drift is impossible (e.g. > 2 hours), ignore it
-                if (elapsedSinceUpdate < 0 || elapsedSinceUpdate > 7200) {
-                    console.warn("Match Timer Sync: Impossible drift detected, ignoring sync offset", elapsedSinceUpdate);
-                    elapsedSinceUpdate = 0;
-                }
-
-                if (elapsedSinceUpdate > 0) {
-                    baseTime = isRegressive ? Math.max(0, baseTime - elapsedSinceUpdate) : baseTime + elapsedSinceUpdate;
-                }
-            }
-
-            // Sync Logic: ONLY update if the difference is > 2 seconds to avoid "jitter" 
-            if (localTime === null || Math.abs(localTime - baseTime) > 2 || isTimerRunning !== st.isRunning) {
+            // Sync Logic: ONLY update if timer state changed or difference is significant
+            // This prevents constant resyncs that cause jitter
+            if (localTime === null || isTimerRunning !== st.isRunning || Math.abs(localTime - baseTime) > 5) {
+                console.log(`[Sync] Timer synced to server: ${Math.floor(baseTime / 60)}:${String(baseTime % 60).padStart(2, '0')} (${st.isRunning ? 'Running' : 'Stopped'})`);
                 setLocalTime(baseTime);
                 setIsTimerRunning(st.isRunning ?? false);
             }
             setCurrentPeriod(st.currentPeriod ?? null);
         }
-    }, [match, details, localTime]);
+    }, [match, details]);
 
     // Local ticking for smooth UI
     useEffect(() => {
