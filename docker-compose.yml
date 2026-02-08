@@ -57,11 +57,11 @@ services:
       - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
       - "traefik.http.routers.http-reverb.entryPoints=http"
       - "traefik.http.routers.http-reverb.middlewares=redirect-to-https"
-      - "traefik.http.routers.http-reverb.rule=Host(`${REVERB_HOST}`) && PathPrefix(`/app`)"
+      - "traefik.http.routers.http-reverb.rule=Host(`esportivo.techinteligente.site`) && PathPrefix(`/app`)"
 
       # HTTPS com WebSocket
       - "traefik.http.routers.https-reverb.entryPoints=https"
-      - "traefik.http.routers.https-reverb.rule=Host(`${REVERB_HOST}`) && PathPrefix(`/app`)"
+      - "traefik.http.routers.https-reverb.rule=Host(`esportivo.techinteligente.site`) && PathPrefix(`/app`)"
       - "traefik.http.routers.https-reverb.tls.certresolver=letsencrypt"
       - "traefik.http.routers.https-reverb.tls=true"
 
