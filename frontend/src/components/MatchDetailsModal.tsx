@@ -81,17 +81,36 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
         const timerData = match?.match_details?.sync_timer || details?.sync_timer;
         if (timerData) {
             const st = timerData;
-
-            // Use server time directly without drift calculation
+            const serverTime = match?.server_time || details?.server_time || Date.now();
             const baseTime = st.time ?? 0;
+            const diff = localTime !== null ? Math.abs(localTime - baseTime) : 0;
+
+            // 🔍 DEBUG LOG - Informações completas do timer
+            console.group(`⏱️ TIMER SYNC DEBUG - ${new Date().toLocaleTimeString()}`);
+            console.log(`📡 Server Time:`, new Date(serverTime).toLocaleTimeString());
+            console.log(`⏰ Timer do Servidor:`, `${Math.floor(baseTime / 60)}:${String(baseTime % 60).padStart(2, '0')}`);
+            console.log(`💻 Timer Local Atual:`, localTime !== null ? `${Math.floor(localTime / 60)}:${String(localTime % 60).padStart(2, '0')}` : 'null');
+            console.log(`📊 Diferença:`, `${diff} segundos`);
+            console.log(`▶️ Estado Servidor:`, st.isRunning ? '🟢 RODANDO' : '🔴 PARADO');
+            console.log(`▶️ Estado Local:`, isTimerRunning ? '🟢 RODANDO' : '🔴 PARADO');
+            console.log(`🔄 Updated At:`, st.updated_at ? new Date(st.updated_at).toLocaleTimeString() : 'N/A');
 
             // Sync Logic: ONLY update if timer state changed or difference is significant
-            // This prevents constant resyncs that cause jitter
-            if (localTime === null || isTimerRunning !== st.isRunning || Math.abs(localTime - baseTime) > 5) {
-                console.log(`[Sync] Timer synced to server: ${Math.floor(baseTime / 60)}:${String(baseTime % 60).padStart(2, '0')} (${st.isRunning ? 'Running' : 'Stopped'})`);
+            const shouldSync = localTime === null || isTimerRunning !== st.isRunning || diff > 5;
+
+            if (shouldSync) {
+                const reason = localTime === null ? 'Inicialização' :
+                    isTimerRunning !== st.isRunning ? 'Mudança de estado' :
+                        `Diferença grande (${diff}s)`;
+                console.log(`✅ SINCRONIZANDO:`, reason);
+                console.groupEnd();
                 setLocalTime(baseTime);
                 setIsTimerRunning(st.isRunning ?? false);
+            } else {
+                console.log(`⏭️ IGNORANDO SYNC: Diferença pequena (${diff}s ≤ 5s)`);
+                console.groupEnd();
             }
+
             setCurrentPeriod(st.currentPeriod ?? null);
         }
     }, [match, details]);
@@ -103,14 +122,27 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
             const sport = match?.championship?.sport?.slug || 'futebol';
             const isRegressive = sport === 'basquete';
 
+            console.log(`🎬 TIMER LOCAL INICIADO - Modo: ${isRegressive ? 'Regressivo ⏪' : 'Progressivo ⏩'}`);
+
             interval = setInterval(() => {
                 setLocalTime(prev => {
                     if (prev === null) return null;
-                    return isRegressive ? Math.max(0, prev - 1) : prev + 1;
+                    const newTime = isRegressive ? Math.max(0, prev - 1) : prev + 1;
+                    console.log(`⏰ TICK LOCAL: ${Math.floor(newTime / 60)}:${String(newTime % 60).padStart(2, '0')}`);
+                    return newTime;
                 });
             }, 1000);
+        } else {
+            if (!isTimerRunning && localTime !== null) {
+                console.log(`⏸️ TIMER LOCAL PAUSADO`);
+            }
         }
-        return () => clearInterval(interval);
+        return () => {
+            if (interval) {
+                console.log(`🛑 TIMER LOCAL PARADO`);
+                clearInterval(interval);
+            }
+        };
     }, [isTimerRunning, localTime, match]);
 
     const formatMatchTime = (seconds: number | null) => {
