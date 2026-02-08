@@ -43,29 +43,31 @@ export function SumulaFutebol() {
             const response = await api.get(`/admin/matches/${id}/full-details`);
             const data = response.data;
             if (data.match) {
-                // Update matchData but preserve local score if we just updated it
-                setMatchData((prev: any) => {
-                    const newScoreHome = parseInt(data.match.home_score || 0);
-                    const newScoreAway = parseInt(data.match.away_score || 0);
-
-                    return {
+                // 🔒 ONLY update matchData on initial load to prevent race conditions
+                // After initial load, we trust local state completely for timer and score
+                if (isInitial) {
+                    setMatchData({
                         ...data.match,
-                        scoreHome: newScoreHome,
-                        scoreAway: newScoreAway
-                    };
-                });
+                        scoreHome: parseInt(data.match.home_score || 0),
+                        scoreAway: parseInt(data.match.away_score || 0)
+                    });
 
-                // Sync timer ONLY on initial load
-                if (data.match.match_details?.sync_timer && !serverTimerLoaded) {
-                    const st = data.match.match_details.sync_timer;
-                    setTime(st.time || 0);
-                    if (st.currentPeriod) setCurrentPeriod(st.currentPeriod);
-                    setServerTimerLoaded(true);
+                    // Sync timer ONLY on initial load
+                    if (data.match.match_details?.sync_timer && !serverTimerLoaded) {
+                        const st = data.match.match_details.sync_timer;
+                        setTime(st.time || 0);
+                        if (st.currentPeriod) setCurrentPeriod(st.currentPeriod);
+                        setServerTimerLoaded(true);
+                    }
+
+                    if (data.rosters) setRosters(data.rosters);
+                } else {
+                    // 🔄 On periodic sync, ONLY update rosters and events, NOT matchData
+                    // This prevents server's stale timer data from overwriting our local timer
+                    if (data.rosters) setRosters(data.rosters);
                 }
 
-                if (data.rosters) setRosters(data.rosters);
-
-                // Process History
+                // Process History (always update to catch new events from other sources)
                 const history = (data.details?.events || []).map((e: any) => ({
                     id: e.id,
                     type: e.type,
