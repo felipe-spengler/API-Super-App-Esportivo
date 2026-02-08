@@ -365,4 +365,81 @@ class ImageUploadController extends Controller
         $user = $request->user();
         return $this->uploadPlayerPhoto($request, $user->id);
     }
+
+    /**
+     * 🧪 MÉTODO DE TESTE - Remover fundo de imagem sem autenticação
+     * Para testar a qualidade do rembg com diferentes tipos de fotos
+     */
+    public function testRemoveBg(Request $request)
+    {
+        try {
+            $request->validate([
+                'photo' => 'required|image|mimes:jpeg,png,jpg,webp|max:4096',
+            ]);
+
+            // Aumenta o tempo de execução para evitar timeout
+            set_time_limit(300);
+
+            $file = $request->file('photo');
+            $filename = 'test-' . time() . '.' . $file->getClientOriginalExtension();
+            $path = $file->storeAs('test', $filename, 'public');
+
+            $responseData = [
+                'message' => 'Foto enviada com sucesso!',
+                'photo_url' => Storage::url($path),
+                'photo_path' => $path
+            ];
+
+            // PROCESSAMENTO DE IA: REMOVER FUNDO
+            try {
+                // Caminhos absolutos
+                $inputAbsPath = storage_path('app/public/' . $path);
+                $filenameNobg = str_replace('.', '_nobg.', $filename);
+                // Força PNG para suportar transparência
+                $filenameNobg = preg_replace('/\.(jpg|jpeg)$/i', '.png', $filenameNobg);
+
+                $outputAbsPath = storage_path('app/public/test/' . $filenameNobg);
+
+                // Script Python
+                $scriptPath = base_path('scripts/remove_bg.py');
+
+                // Executa comando
+                $command = "python \"{$scriptPath}\" \"{$inputAbsPath}\" \"{$outputAbsPath}\"";
+
+                $output = [];
+                $returnVar = 0;
+                $startTime = microtime(true);
+
+                exec($command, $output, $returnVar);
+
+                $endTime = microtime(true);
+                $processingTime = round($endTime - $startTime, 2);
+
+                if ($returnVar === 0 && file_exists($outputAbsPath)) {
+                    // Sucesso
+                    $pathNobg = 'test/' . $filenameNobg;
+
+                    $responseData['photo_nobg_url'] = Storage::url($pathNobg);
+                    $responseData['photo_nobg_path'] = $pathNobg;
+                    $responseData['ai_processed'] = true;
+                    $responseData['processing_time'] = $processingTime . 's';
+                    $responseData['original_size'] = filesize($inputAbsPath);
+                    $responseData['processed_size'] = filesize($outputAbsPath);
+                } else {
+                    $responseData['ai_error'] = 'Falha ao processar IA. Código: ' . $returnVar;
+                    $responseData['ai_output'] = $output;
+                    $responseData['command'] = $command;
+                }
+            } catch (\Exception $e) {
+                $responseData['ai_error'] = $e->getMessage();
+            }
+
+            return response()->json($responseData);
+        } catch (\Exception $e) {
+            \Log::error("Test Remove BG Error: " . $e->getMessage());
+            return response()->json([
+                'message' => 'Erro ao processar imagem: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

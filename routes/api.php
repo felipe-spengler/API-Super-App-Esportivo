@@ -35,6 +35,8 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/ocr/analyze', [App\Http\Controllers\DocumentOCRController::class, 'analyze']);
 
+// 🧪 ROTA DE TESTE - Remover em produção ou proteger
+Route::post('/test-remove-bg', [App\Http\Controllers\Admin\ImageUploadController::class, 'testRemoveBg']);
 
 
 Route::get('/cities', [CoreController::class, 'cities']);
