@@ -132,13 +132,27 @@ export function SumulaFutebol() {
     useEffect(() => {
         let interval: any = null;
         if (isRunning) {
-            interval = setInterval(() => setTime(t => t + 1), 1000);
+            console.log(`🎬 TIMER DA SÚMULA INICIADO`);
+            interval = setInterval(() => {
+                setTime(t => {
+                    const newTime = t + 1;
+                    console.log(`⏰ TICK SÚMULA: ${formatTime(newTime)}`);
+                    return newTime;
+                });
+            }, 1000);
 
             if (matchData && (matchData.status === 'scheduled' || matchData.status === 'Agendado')) {
                 registerSystemEvent('match_start', 'Início da Partida');
             }
+        } else {
+            console.log(`⏸️ TIMER DA SÚMULA PAUSADO`);
         }
-        return () => clearInterval(interval);
+        return () => {
+            if (interval) {
+                console.log(`🛑 TIMER DA SÚMULA PARADO`);
+                clearInterval(interval);
+            }
+        };
     }, [isRunning]);
 
     // PING - Sync local state TO server (Every 3 seconds)
@@ -151,6 +165,14 @@ export function SumulaFutebol() {
 
             try {
                 setSyncStatus('syncing');
+
+                // 🔍 DEBUG LOG - O que está sendo enviado para o servidor
+                console.group(`📤 ENVIANDO TIMER PARA SERVIDOR - ${new Date().toLocaleTimeString()}`);
+                console.log(`⏰ Timer Local:`, `${formatTime(t)} (${t}s)`);
+                console.log(`▶️ Estado:`, ir ? '🟢 RODANDO' : '🔴 PARADO');
+                console.log(`📍 Período:`, cp);
+                console.log(`🕐 Timestamp Envio:`, new Date().toLocaleTimeString());
+
                 // We send WITHOUT updated_at, the server controller will set it.
                 await api.patch(`/admin/matches/${id}`, {
                     match_details: {
@@ -162,11 +184,14 @@ export function SumulaFutebol() {
                         }
                     }
                 });
+
                 setSyncStatus('synced');
-                console.log(`[Sync] Timer synced to server: ${formatTime(t)} (${ir ? 'Running' : 'Stopped'})`);
+                console.log(`✅ SYNC COMPLETO - Servidor atualizado com sucesso`);
+                console.groupEnd();
             } catch (e) {
                 setSyncStatus('error');
-                console.error("[Sync] Failed to sync timer to server", e);
+                console.error(`❌ ERRO NO SYNC:`, e);
+                console.groupEnd();
                 // On error, we don't do anything, the local timer continues to be the source of truth
             }
         }, 3000);
@@ -501,8 +526,8 @@ export function SumulaFutebol() {
                         <div className="flex items-center gap-1.5">
                             <span className="text-[10px] font-bold tracking-widest text-gray-400">SUMULA DIGITAL</span>
                             <div className={`w-1.5 h-1.5 rounded-full ${syncStatus === 'synced' ? 'bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.6)]' :
-                                    syncStatus === 'syncing' ? 'bg-blue-500 animate-pulse' :
-                                        'bg-red-500 animate-bounce'
+                                syncStatus === 'syncing' ? 'bg-blue-500 animate-pulse' :
+                                    'bg-red-500 animate-bounce'
                                 }`} title={syncStatus === 'synced' ? 'Sincronizado' : syncStatus === 'syncing' ? 'Sincronizando...' : 'Erro de Conexão'} />
                         </div>
                         {(matchData.details?.arbitration?.referee) && <span className="text-[10px] text-gray-500">{matchData.details.arbitration.referee}</span>}
