@@ -25,7 +25,7 @@ services:
   reverb:
     image: app-esportivo-api
     restart: always
-    command: sh -c "sleep 10 && php artisan reverb:start --host=0.0.0.0 --port=9090 --debug --hostname=${REVERB_HOST}"
+    command: sh -c "sleep 10 && php artisan reverb:start --host=0.0.0.0 --port=9090"
     environment:
       APP_ENV: production
       APP_DEBUG: 'false'
@@ -49,28 +49,6 @@ services:
       - api
     expose:
       - "9090"
-    labels:
-      - "traefik.enable=true"
-
-      # Router para WebSocket - Simplificado para Coolify
-      - "traefik.http.routers.reverb.rule=Host(`${REVERB_HOST}`) && PathPrefix(`/app`)"
-      - "traefik.http.routers.reverb.entrypoints=websecure"
-      - "traefik.http.routers.reverb.tls=true"
-      - "traefik.http.routers.reverb.tls.certresolver=letsencrypt"
-
-      # Service - Porta do Reverb
-      - "traefik.http.services.reverb.loadbalancer.server.port=9090"
-
-      # Middleware para remover o prefixo /app antes de enviar para o Reverb
-      - "traefik.http.middlewares.reverb-stripprefix.stripprefix.prefixes=/app"
-
-      # Middleware para headers WebSocket
-      - "traefik.http.middlewares.reverb-headers.headers.customrequestheaders.X-Forwarded-Proto=https"
-      - "traefik.http.middlewares.reverb-headers.headers.customrequestheaders.Upgrade=$$http_upgrade"
-      - "traefik.http.middlewares.reverb-headers.headers.customrequestheaders.Connection=$$connection_upgrade"
-
-      # Aplicar middlewares em cadeia
-      - "traefik.http.routers.reverb.middlewares=reverb-stripprefix,reverb-headers"
 
   # Frontend Web (React)
   web:
