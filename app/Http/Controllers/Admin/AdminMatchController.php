@@ -87,9 +87,22 @@ class AdminMatchController extends Controller
             unset($validated['arbitration']);
         }
 
-        // Force server timestamp on sync_timer if it exists
+        // Force server timestamp on sync_timer ONLY if timer state changed
         if (isset($validated['match_details']['sync_timer'])) {
-            $validated['match_details']['sync_timer']['updated_at'] = now()->timestamp * 1000;
+            $oldTimer = $match->match_details['sync_timer'] ?? null;
+            $newTimer = $validated['match_details']['sync_timer'];
+
+            // Only update timestamp if timer state actually changed
+            $timerChanged = !$oldTimer ||
+                ($oldTimer['time'] ?? 0) !== ($newTimer['time'] ?? 0) ||
+                ($oldTimer['isRunning'] ?? false) !== ($newTimer['isRunning'] ?? false);
+
+            if ($timerChanged) {
+                $validated['match_details']['sync_timer']['updated_at'] = now()->timestamp * 1000;
+            } else {
+                // Preserve old timestamp if timer didn't change
+                $validated['match_details']['sync_timer']['updated_at'] = $oldTimer['updated_at'] ?? (now()->timestamp * 1000);
+            }
         }
 
         $match->update($validated);
