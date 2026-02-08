@@ -52,21 +52,25 @@ services:
     labels:
       - "traefik.enable=true"
 
-      # Router principal para WebSocket
-      - "traefik.http.routers.reverb.rule=Host(`${REVERB_HOST}`) && (PathPrefix(`/app`) || PathPrefix(`/apps`))"
+      # Router para WebSocket - Simplificado para Coolify
+      - "traefik.http.routers.reverb.rule=Host(`${REVERB_HOST}`) && PathPrefix(`/app`)"
       - "traefik.http.routers.reverb.entrypoints=websecure"
       - "traefik.http.routers.reverb.tls=true"
+      - "traefik.http.routers.reverb.tls.certresolver=letsencrypt"
 
-      # Service
+      # Service - Porta do Reverb
       - "traefik.http.services.reverb.loadbalancer.server.port=9090"
 
-      # Middlewares para WebSocket - Headers necessários
-      - "traefik.http.middlewares.reverb-headers.headers.customrequestheaders.X-Forwarded-Proto=https"
-      - "traefik.http.middlewares.reverb-headers.headers.customrequestheaders.Upgrade=websocket"
-      - "traefik.http.middlewares.reverb-headers.headers.customrequestheaders.Connection=Upgrade"
+      # Middleware para remover o prefixo /app antes de enviar para o Reverb
+      - "traefik.http.middlewares.reverb-stripprefix.stripprefix.prefixes=/app"
 
-      # Aplicar middleware
-      - "traefik.http.routers.reverb.middlewares=reverb-headers"
+      # Middleware para headers WebSocket
+      - "traefik.http.middlewares.reverb-headers.headers.customrequestheaders.X-Forwarded-Proto=https"
+      - "traefik.http.middlewares.reverb-headers.headers.customrequestheaders.Upgrade=$$http_upgrade"
+      - "traefik.http.middlewares.reverb-headers.headers.customrequestheaders.Connection=$$connection_upgrade"
+
+      # Aplicar middlewares em cadeia
+      - "traefik.http.routers.reverb.middlewares=reverb-stripprefix,reverb-headers"
 
   # Frontend Web (React)
   web:
