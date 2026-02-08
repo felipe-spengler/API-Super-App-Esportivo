@@ -2,10 +2,14 @@ FROM php:8.4-cli
 
 # 1. Instalar dependências do sistema
 # ADICIONADO: libzip-dev para a extensão zip e deps do Python
+# ADICIONADO: libjpeg-dev, libfreetype6-dev, libwebp-dev para GD (geração de artes)
 RUN apt-get update && apt-get install -y \
     git \
     curl \
     libpng-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
+    libwebp-dev \
     libonig-dev \
     libxml2-dev \
     zip \
@@ -27,28 +31,34 @@ RUN pip install --no-cache-dir rembg[cli] pillow onnxruntime
 # 2. Limpar cache
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# 3. Instalar extensões PHP
+# 3. Configurar GD com suporte a JPEG, FreeType e WebP
+RUN docker-php-ext-configure gd \
+    --with-freetype \
+    --with-jpeg \
+    --with-webp
+
+# 4. Instalar extensões PHP
 # ADICIONADO: zip na lista de extensões
 RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd intl pdo_sqlite zip
 
-# 4. Obter Composer
+# 5. Obter Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# 5. Diretório de trabalho
+# 6. Diretório de trabalho
 WORKDIR /var/www
 
-# 6. Copiar arquivos
+# 7. Copiar arquivos
 COPY . .
 
-# 7. Instalar dependências do Composer
+# 8. Instalar dependências do Composer
 RUN composer install --no-interaction --optimize-autoloader
 
-# 8. Ajustar permissões
+# 9. Ajustar permissões
 RUN chown -R www-data:www-data /var/www \
     && chmod -R 775 /var/www/storage /var/www/bootstrap/cache
 
-# 9. Porta
+# 10. Porta
 EXPOSE 8000
 
-# 10. Start
+# 11. Start
 CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
