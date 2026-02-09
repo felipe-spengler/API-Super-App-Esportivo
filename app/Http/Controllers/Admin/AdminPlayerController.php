@@ -72,10 +72,13 @@ class AdminPlayerController extends Controller
 
         $validated = $request->validate([
             'name' => 'string|max:255',
+            'nickname' => 'nullable|string|max:255',
             'email' => 'email|unique:users,email,' . $id,
             'cpf' => 'nullable|string|unique:users,cpf,' . $id,
             'phone' => 'nullable|string',
             'birth_date' => 'nullable|date',
+            'gender' => 'nullable|string|in:M,F,O',
+            'address' => 'nullable|string|max:500',
         ]);
 
         $player->update($validated);

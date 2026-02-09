@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Users, Shield, Trophy, Loader2, Plus, User as UserIcon, CheckCircle, Clock, Trash2, X } from 'lucide-react';
+import { ArrowLeft, Users, Shield, Trophy, Loader2, Plus, User as UserIcon, CheckCircle, Clock, Trash2, X, Edit } from 'lucide-react';
 import api from '../../services/api';
+import { PlayerEditModal } from '../Players/PlayerEditModal';
 
 interface Player {
     id: number;
@@ -52,6 +53,7 @@ export function TeamDetails() {
     const [documentFile, setDocumentFile] = useState<File | null>(null);
     const [photoFile, setPhotoFile] = useState<File | null>(null);
     const [adding, setAdding] = useState(false);
+    const [editingPlayerId, setEditingPlayerId] = useState<number | null>(null);
 
     useEffect(() => {
         loadTeam();
@@ -219,6 +221,13 @@ export function TeamDetails() {
                                         <div className="text-sm font-bold text-gray-400 mr-2">
                                             #{player.number || '-'}
                                         </div>
+                                        <button
+                                            onClick={() => setEditingPlayerId(player.id)}
+                                            className="p-1.5 text-indigo-400 hover:bg-indigo-50 rounded-md transition-colors"
+                                            title="Editar Jogador"
+                                        >
+                                            <Edit className="w-3.5 h-3.5" />
+                                        </button>
                                         <button
                                             onClick={() => handleRemovePlayer(player.id)}
                                             className="p-1.5 text-red-400 hover:bg-red-50 rounded-md transition-colors"
@@ -425,6 +434,18 @@ export function TeamDetails() {
                         </form>
                     </div>
                 </div>
+            )}
+
+            {/* Player Edit Modal */}
+            {editingPlayerId && (
+                <PlayerEditModal
+                    playerId={editingPlayerId}
+                    onClose={() => setEditingPlayerId(null)}
+                    onSuccess={() => {
+                        loadTeam();
+                        setEditingPlayerId(null);
+                    }}
+                />
             )}
         </div>
     );

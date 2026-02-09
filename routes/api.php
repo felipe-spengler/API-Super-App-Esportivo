@@ -167,6 +167,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // Given I want to consolidate, I will map the new route listImages.
         Route::post('/upload/award-photo', [\App\Http\Controllers\Admin\ImageUploadController::class, 'uploadAwardPhoto']);
         Route::post('/upload/generic', [\App\Http\Controllers\Admin\ImageUploadController::class, 'uploadGeneric']);
+        Route::post('/upload-image', [\App\Http\Controllers\Admin\ImageUploadController::class, 'uploadImage']); // Unified upload
         Route::get('/upload/list', [\App\Http\Controllers\Admin\ImageUploadController::class, 'listImages']);
         Route::delete('/upload/delete', [\App\Http\Controllers\Admin\ImageUploadController::class, 'deleteImage']);
 

@@ -442,4 +442,50 @@ class ImageUploadController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Upload unificado de imagem (player, team, championship)
+     */
+    public function uploadImage(Request $request)
+    {
+        try {
+            $request->validate([
+                'file' => 'required|image|mimes:jpeg,png,jpg,webp|max:4096',
+                'type' => 'required|string|in:player,team,championship',
+                'id' => 'required|integer',
+            ]);
+
+            $type = $request->input('type');
+            $id = $request->input('id');
+
+            // Redireciona para o método específico
+            if ($type === 'player') {
+                // Cria um novo request com o campo 'photo' esperado
+                $photoRequest = new Request();
+                $photoRequest->files->set('photo', $request->file('file'));
+                $photoRequest->setUserResolver($request->getUserResolver());
+
+                return $this->uploadPlayerPhoto($photoRequest, $id);
+            } elseif ($type === 'team') {
+                // Cria um novo request com o campo 'logo' esperado
+                $logoRequest = new Request();
+                $logoRequest->files->set('logo', $request->file('file'));
+                $logoRequest->setUserResolver($request->getUserResolver());
+
+                return $this->uploadTeamLogo($logoRequest, $id);
+            } elseif ($type === 'championship') {
+                // Cria um novo request com o campo 'logo' esperado
+                $logoRequest = new Request();
+                $logoRequest->files->set('logo', $request->file('file'));
+                $logoRequest->setUserResolver($request->getUserResolver());
+
+                return $this->uploadChampionshipLogo($logoRequest, $id);
+            }
+
+            return response()->json(['message' => 'Tipo inválido'], 400);
+        } catch (\Exception $e) {
+            \Log::error("Upload Image Error: " . $e->getMessage());
+            return response()->json(['message' => 'Erro ao fazer upload: ' . $e->getMessage()], 500);
+        }
+    }
 }
