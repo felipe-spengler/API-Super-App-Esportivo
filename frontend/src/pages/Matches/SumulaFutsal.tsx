@@ -30,6 +30,7 @@ export function SumulaFutsal() {
     const [eventType, setEventType] = useState<'goal' | 'yellow_card' | 'red_card' | 'blue_card' | 'assist' | 'foul' | 'mvp' | null>(null);
     const [showShootoutOptions, setShowShootoutOptions] = useState(false);
     const [selectedPlayer, setSelectedPlayer] = useState<any>(null);
+    const [isSelectingOwnGoal, setIsSelectingOwnGoal] = useState(false);
 
     const fetchMatchDetails = async (silent = false) => {
         try {
@@ -336,7 +337,8 @@ export function SumulaFutsal() {
                 team_id: teamId,
                 minute: currentTime,
                 period: currentPeriod,
-                player_id: player.id
+                player_id: player.id === 'unknown' ? null : player.id,
+                metadata: player.isOwnGoal ? { own_goal: true } : null
             });
 
             const newEvent = {
@@ -345,18 +347,36 @@ export function SumulaFutsal() {
                 team: selectedTeam,
                 time: currentTime,
                 period: currentPeriod,
-                player_name: player.name
+                player_name: player.isOwnGoal ? `${player.name} (Gol Contra)` : player.name,
+                isOwnGoal: player.isOwnGoal
             };
             setEvents(prev => [newEvent, ...prev]);
 
             if (eventType === 'goal') {
-                setMatchData((prev: any) => ({
-                    ...prev,
-                    scoreHome: selectedTeam === 'home' ? prev.scoreHome + 1 : prev.scoreHome,
-                    scoreAway: selectedTeam === 'away' ? prev.scoreAway + 1 : prev.scoreAway
-                }));
+                setMatchData((prev: any) => {
+                    // Logic for score update
+                    let homeInc = 0;
+                    let awayInc = 0;
+
+                    if (player.isOwnGoal) {
+                        // Gol contra: selectedTeam is 'home', but point goes to 'away'
+                        if (selectedTeam === 'home') awayInc = 1;
+                        else homeInc = 1;
+                    } else {
+                        if (selectedTeam === 'home') homeInc = 1;
+                        else awayInc = 1;
+                    }
+
+                    return {
+                        ...prev,
+                        scoreHome: (prev.scoreHome || 0) + homeInc,
+                        scoreAway: (prev.scoreAway || 0) + awayInc
+                    };
+                });
             }
             setShowEventModal(false);
+            setSelectedPlayer(null);
+            setIsSelectingOwnGoal(false);
         } catch (e) {
             console.error(e);
             alert('Erro ao registrar evento');
@@ -787,19 +807,43 @@ export function SumulaFutsal() {
                                     {selectedTeam === 'home' ? matchData.home_team?.name : matchData.away_team?.name}
                                 </p>
                             </div>
-                            <button onClick={() => setShowEventModal(false)} className="p-2 bg-black/30 rounded-full hover:bg-black/50">
+                            <button onClick={() => { setShowEventModal(false); setIsSelectingOwnGoal(false); }} className="p-2 bg-black/30 rounded-full hover:bg-black/50">
                                 <X size={20} />
                             </button>
                         </div>
 
-                        <div className="overflow-y-auto p-2 space-y-1 flex-1">
+                        <div className="overflow-y-auto p-4 space-y-2 custom-scrollbar flex-1 bg-gray-900/30">
+                            {/* Opções Específicas para GOL */}
+                            {eventType === 'goal' && (
+                                <div className="grid grid-cols-2 gap-2 mb-4">
+                                    <button
+                                        onClick={() => confirmEvent({ id: 'unknown', name: 'Jogador Desconhecido' })}
+                                        className="p-4 bg-gray-700 hover:bg-gray-600 rounded-xl border border-gray-600 flex flex-col items-center justify-center gap-1 transition-all active:scale-95"
+                                    >
+                                        <Users size={20} className="text-gray-400" />
+                                        <span className="text-[10px] font-bold uppercase">Sem Jogador</span>
+                                    </button>
+                                    <button
+                                        onClick={() => setIsSelectingOwnGoal(true)}
+                                        className="p-4 bg-red-900/20 hover:bg-red-900/40 rounded-xl border border-red-900/30 flex flex-col items-center justify-center gap-1 transition-all active:scale-95 text-red-400"
+                                    >
+                                        <X size={20} className="text-red-500" />
+                                        <span className="text-[10px] font-bold uppercase">Gol Contra</span>
+                                    </button>
+                                </div>
+                            )}
+
+                            <div className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 px-1">
+                                {isSelectingOwnGoal ? 'Quem fez o Gol Contra?' : 'Selecione do Elenco'}
+                            </div>
+
                             {(selectedTeam === 'home' ? rosters.home : rosters.away).length === 0 ? (
                                 <p className="p-8 text-center text-gray-500">Nenhum jogador cadastrado.</p>
                             ) : (
                                 (selectedTeam === 'home' ? rosters.home : rosters.away).map((player: any) => (
                                     <button
                                         key={player.id}
-                                        onClick={() => confirmEvent(player)}
+                                        onClick={() => confirmEvent(isSelectingOwnGoal ? { ...player, isOwnGoal: true } : player)}
                                         className="w-full flex items-center justify-between p-3 hover:bg-gray-700 rounded-xl transition-colors group mb-1 border border-transparent hover:border-green-500"
                                     >
                                         <div className="flex items-center gap-3">
