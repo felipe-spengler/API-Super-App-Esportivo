@@ -359,7 +359,15 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                             </div>
                                         ) : (
                                             getSortedEvents().map((event: any, idx: number) => {
-                                                const isHome = event.team_id === match.home_team_id;
+                                                // Check if it's an own goal - if so, invert the display side
+                                                const isOwnGoal = event.metadata?.own_goal === true;
+                                                let isHome = event.team_id === match.home_team_id;
+
+                                                // If it's an own goal, invert the side where it appears
+                                                // (team A scored own goal -> show on team B's side)
+                                                if (isOwnGoal) {
+                                                    isHome = !isHome;
+                                                }
                                                 return (
                                                     <div key={idx} className={`flex items-center mb-6 sm:mb-8 ${isHome ? 'sm:flex-row-reverse' : ''}`}>
                                                         <div className="hidden sm:block flex-1">
@@ -383,7 +391,7 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                                                     </div>
                                                                     <div className="flex flex-col">
                                                                         <span className="text-gray-800 leading-tight">
-                                                                            {event.type === 'goal' ? 'Gol!' : ''} {event.player_name}
+                                                                            {event.type === 'goal' ? (event.metadata?.own_goal ? 'Gol Contra!' : 'Gol!') : ''} {event.player_name}
                                                                         </span>
                                                                         <span className="text-[9px] sm:text-[10px] text-gray-400 font-normal sm:hidden">
                                                                             {isHome ? match.home_team?.name : match.away_team?.name}

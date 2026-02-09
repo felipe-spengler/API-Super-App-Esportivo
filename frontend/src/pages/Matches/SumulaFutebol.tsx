@@ -30,6 +30,7 @@ export function SumulaFutebol() {
     const [eventType, setEventType] = useState<'goal' | 'yellow_card' | 'red_card' | 'blue_card' | 'assist' | 'foul' | 'mvp' | null>(null);
     const [showShootoutOptions, setShowShootoutOptions] = useState(false);
     const [selectedPlayer, setSelectedPlayer] = useState<any>(null);
+    const [isSelectingOwnGoal, setIsSelectingOwnGoal] = useState(false);
 
     // Refs for stable sync
     const timerRef = useRef({ time, isRunning, currentPeriod, matchData });
@@ -410,6 +411,7 @@ export function SumulaFutebol() {
             }
             setShowEventModal(false);
             setSelectedPlayer(null);
+            setIsSelectingOwnGoal(false);
         } catch (e) {
             console.error(e);
             alert('Erro ao registrar evento. Verifique sua conexão.');
@@ -808,7 +810,7 @@ export function SumulaFutebol() {
                                         {selectedTeam === 'home' ? matchData.home_team?.name : matchData.away_team?.name}
                                     </p>
                                 </div>
-                                <button onClick={() => setShowEventModal(false)} className="p-2 bg-gray-700 rounded-full hover:bg-gray-600">
+                                <button onClick={() => { setShowEventModal(false); setIsSelectingOwnGoal(false); }} className="p-2 bg-gray-700 rounded-full hover:bg-gray-600">
                                     <X size={20} />
                                 </button>
                             </div>
@@ -825,7 +827,7 @@ export function SumulaFutebol() {
                                             <span className="text-[10px] font-bold uppercase">Sem Jogador</span>
                                         </button>
                                         <button
-                                            onClick={() => confirmEvent({ id: 'unknown', name: selectedTeam === 'home' ? matchData.home_team?.name : matchData.away_team?.name, isOwnGoal: true })}
+                                            onClick={() => setIsSelectingOwnGoal(true)}
                                             className="p-4 bg-red-900/20 hover:bg-red-900/40 rounded-xl border border-red-900/30 flex flex-col items-center justify-center gap-1 transition-all active:scale-95 text-red-400"
                                         >
                                             <X size={20} className="text-red-500" />
@@ -834,7 +836,9 @@ export function SumulaFutebol() {
                                     </div>
                                 )}
 
-                                <div className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 px-1">Selecione do Elenco</div>
+                                <div className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 px-1">
+                                    {isSelectingOwnGoal ? 'Quem fez o Gol Contra?' : 'Selecione do Elenco'}
+                                </div>
 
                                 {(selectedTeam === 'home' ? rosters.home : rosters.away).length === 0 ? (
                                     <div className="p-12 text-center bg-gray-800/50 rounded-2xl border border-dashed border-gray-700">
@@ -846,7 +850,7 @@ export function SumulaFutebol() {
                                         {(selectedTeam === 'home' ? rosters.home : rosters.away).map((player: any) => (
                                             <button
                                                 key={player.id}
-                                                onClick={() => confirmEvent(player)}
+                                                onClick={() => confirmEvent(isSelectingOwnGoal ? { ...player, isOwnGoal: true } : player)}
                                                 className="w-full flex items-center justify-between p-4 bg-gray-800 hover:bg-gray-700 rounded-2xl transition-all group border border-gray-700/50 active:translate-x-1"
                                             >
                                                 <div className="flex items-center gap-4">

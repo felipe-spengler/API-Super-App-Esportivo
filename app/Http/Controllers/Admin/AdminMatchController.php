@@ -377,10 +377,24 @@ class AdminMatchController extends Controller
         ];
         if (in_array($event->event_type, $scoreEvents)) {
             $value = $event->value ?: 1;
+
+            // Check if it's an own goal - if so, invert the team that receives the point
+            $isOwnGoal = isset($event->metadata['own_goal']) && $event->metadata['own_goal'] === true;
+
             if ($event->team_id == $match->home_team_id) {
-                $match->increment('home_score', $value);
+                // If home team scored, but it's own goal, increment away score
+                if ($isOwnGoal) {
+                    $match->increment('away_score', $value);
+                } else {
+                    $match->increment('home_score', $value);
+                }
             } elseif ($event->team_id == $match->away_team_id) {
-                $match->increment('away_score', $value);
+                // If away team scored, but it's own goal, increment home score
+                if ($isOwnGoal) {
+                    $match->increment('home_score', $value);
+                } else {
+                    $match->increment('away_score', $value);
+                }
             }
         }
 
@@ -456,10 +470,24 @@ class AdminMatchController extends Controller
         ];
         if (in_array($event->event_type, $scoreEvents)) {
             $value = $event->value ?: 1;
+
+            // Check if it's an own goal - if so, invert the team that loses the point
+            $isOwnGoal = isset($event->metadata['own_goal']) && $event->metadata['own_goal'] === true;
+
             if ($event->team_id == $match->home_team_id) {
-                $match->decrement('home_score', $value);
+                // If home team scored, but it's own goal, decrement away score
+                if ($isOwnGoal) {
+                    $match->decrement('away_score', $value);
+                } else {
+                    $match->decrement('home_score', $value);
+                }
             } elseif ($event->team_id == $match->away_team_id) {
-                $match->decrement('away_score', $value);
+                // If away team scored, but it's own goal, decrement home score
+                if ($isOwnGoal) {
+                    $match->decrement('home_score', $value);
+                } else {
+                    $match->decrement('away_score', $value);
+                }
             }
         }
 
