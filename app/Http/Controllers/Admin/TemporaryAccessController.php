@@ -33,7 +33,7 @@ class TemporaryAccessController extends Controller
         }
 
         // Return sorted by expiration (soonest to expire first)
-        return response()->json($query->orderBy('expires_at', 'asc')->get());
+        return response()->json($query->with('club')->orderBy('expires_at', 'asc')->get());
     }
 
     /**

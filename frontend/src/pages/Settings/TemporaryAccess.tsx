@@ -11,7 +11,16 @@ interface TempUser {
     email: string;
     expires_at: string;
     club_id: number | null;
+    club?: {
+        id: number;
+        name: string;
+    };
     created_at: string;
+}
+
+interface Club {
+    id: number;
+    name: string;
 }
 
 export function TemporaryAccess() {
@@ -24,13 +33,29 @@ export function TemporaryAccess() {
         name: '',
         email: '',
         password: '', // Optional, defaulting to generated
-        expires_at: ''
+        expires_at: '',
+        club_id: '' as string | number
     });
     const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
+    const [clubs, setClubs] = useState<Club[]>([]);
+
+    const isSuperAdmin = user?.role === 'super_admin' || (user as any)?.is_super_admin;
 
     useEffect(() => {
         loadData();
-    }, []);
+        if (isSuperAdmin) {
+            loadClubs();
+        }
+    }, [isSuperAdmin]);
+
+    const loadClubs = async () => {
+        try {
+            const response = await api.get('/admin/clubs-manage');
+            setClubs(response.data.data || response.data); // Adjust based on API response structure
+        } catch (error) {
+            console.error("Erro ao carregar clubes", error);
+        }
+    };
 
     const loadData = async () => {
         setLoading(true);
@@ -67,7 +92,8 @@ export function TemporaryAccess() {
             name: u.name,
             email: u.email,
             password: '',
-            expires_at: formattedDate
+            expires_at: formattedDate,
+            club_id: u.club_id || ''
         });
         setShowModal(true);
     };
@@ -98,7 +124,7 @@ export function TemporaryAccess() {
             loadData();
             setShowModal(false);
             setEditingId(null);
-            setFormData({ name: '', email: '', password: '', expires_at: '' });
+            setFormData({ name: '', email: '', password: '', expires_at: '', club_id: '' });
         } catch (error: any) {
             console.error("Erro ao salvar acesso", error);
             alert('Erro ao salvar: ' + (error.response?.data?.message || 'Verifique os dados'));
@@ -115,7 +141,7 @@ export function TemporaryAccess() {
                 <button
                     onClick={() => {
                         setEditingId(null);
-                        setFormData({ name: '', email: '', password: '', expires_at: '' });
+                        setFormData({ name: '', email: '', password: '', expires_at: '', club_id: '' });
                         setShowModal(true);
                     }}
                     className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
@@ -197,6 +223,7 @@ export function TemporaryAccess() {
                         <thead className="bg-gray-50 text-gray-500 uppercase font-semibold">
                             <tr>
                                 <th className="px-6 py-4">Nome</th>
+                                {isSuperAdmin && <th className="px-6 py-4">Clube</th>}
                                 <th className="px-6 py-4">Email</th>
                                 <th className="px-6 py-4">Expira em</th>
                                 <th className="px-6 py-4">Status</th>
@@ -206,7 +233,7 @@ export function TemporaryAccess() {
                         <tbody className="divide-y divide-gray-100">
                             {tempUsers.length === 0 ? (
                                 <tr>
-                                    <td colSpan={5} className="px-6 py-8 text-center text-gray-400">
+                                    <td colSpan={isSuperAdmin ? 6 : 5} className="px-6 py-8 text-center text-gray-400">
                                         Nenhum acesso temporário ativo.
                                     </td>
                                 </tr>
@@ -223,6 +250,11 @@ export function TemporaryAccess() {
                                                 </div>
                                                 {u.name}
                                             </td>
+                                            {isSuperAdmin && (
+                                                <td className="px-6 py-4 text-gray-600">
+                                                    {u.club ? u.club.name : <span className="text-gray-400 italic">Sem clube</span>}
+                                                </td>
+                                            )}
                                             <td className="px-6 py-4 text-gray-600">
                                                 <div className="flex items-center gap-2">
                                                     <Mail size={14} />
@@ -277,6 +309,27 @@ export function TemporaryAccess() {
                         </h2>
 
                         <form onSubmit={handleCreateOrUpdate} className="space-y-4">
+                            {isSuperAdmin && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Clube Vinculado</label>
+                                    <select
+                                        value={formData.club_id}
+                                        onChange={e => setFormData({ ...formData, club_id: e.target.value })}
+                                        disabled={!!editingId} // Usually club shouldn't change after creation for temp access, or maybe it can? Let's allow if needed, but user requirement didn't specify. Standard is usually locked or editable. Let's keep it editable if new, locked if edit? 
+                                        // User said: "vincula a nenhum clube". Correct.
+                                        // Let's assume editable for now or follow same pattern as other fields. Name/Email are disabled on edit. Club probably should be too.
+                                        className={`w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all ${editingId ? 'bg-gray-100 text-gray-500' : ''}`}
+                                    >
+                                        <option value="">Selecione um clube...</option>
+                                        {clubs.map(club => (
+                                            <option key={club.id} value={club.id}>
+                                                {club.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Responsável</label>
                                 <input
