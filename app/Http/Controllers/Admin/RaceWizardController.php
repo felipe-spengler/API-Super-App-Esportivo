@@ -77,6 +77,7 @@ class RaceWizardController extends Controller
                     'name' => $catData['name'],
                     'price' => $catData['price'] ?? 0,
                     'gender' => $catData['gender'] ?? 'MISTO',
+                    'included_products' => $catData['included_products'] ?? null,
                     // Parent fields can be null for top-level
                 ]);
 
@@ -91,6 +92,7 @@ class RaceWizardController extends Controller
                             'max_age' => $subData['max_age'] ?? null,
                             'gender' => $subData['gender'] ?? $parentCat->gender,
                             'price' => $parentCat->price, // Herda preço se não especificado (simplificação)
+                            'included_products' => $parentCat->included_products, // Herda produtos da categoria pai
                         ]);
                     }
                 }

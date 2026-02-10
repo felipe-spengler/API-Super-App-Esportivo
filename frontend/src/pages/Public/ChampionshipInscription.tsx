@@ -31,9 +31,22 @@ export function ChampionshipInscription() {
     const [discount, setDiscount] = useState(0);
     const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
 
+    // Product/Variants Data
+    const [categoryProducts, setCategoryProducts] = useState<any[]>([]);
+    const [productVariants, setProductVariants] = useState<Record<number, Record<string, string>>>({});
+
     useEffect(() => {
         loadData();
     }, [id]);
+
+    useEffect(() => {
+        if (selectedCategory?.included_products) {
+            loadCategoryProducts();
+        } else {
+            setCategoryProducts([]);
+            setProductVariants({});
+        }
+    }, [selectedCategory]);
 
     async function loadData() {
         try {
@@ -51,6 +64,40 @@ export function ChampionshipInscription() {
         } finally {
             setLoading(false);
         }
+    }
+
+    async function loadCategoryProducts() {
+        if (!selectedCategory?.included_products || selectedCategory.included_products.length === 0) {
+            return;
+        }
+
+        try {
+            const productIds = selectedCategory.included_products.map((item: any) => item.product_id);
+            const response = await api.get('/public/products', { params: { ids: productIds.join(',') } });
+
+            // Combinar produtos com informações da categoria
+            const productsWithInfo = selectedCategory.included_products.map((item: any) => {
+                const product = response.data.find((p: any) => p.id === item.product_id);
+                return product ? {
+                    ...item,
+                    product
+                } : null;
+            }).filter(Boolean);
+
+            setCategoryProducts(productsWithInfo);
+        } catch (error) {
+            console.error('Erro ao carregar produtos:', error);
+        }
+    }
+
+    function setProductVariant(productId: number, variantName: string, value: string) {
+        setProductVariants(prev => ({
+            ...prev,
+            [productId]: {
+                ...(prev[productId] || {}),
+                [variantName]: value
+            }
+        }));
     }
 
     const currentPrice = selectedCategory?.price || 0;
@@ -92,7 +139,8 @@ export function ChampionshipInscription() {
                 category_id: selectedCategory.id,
                 type: inscriptionType,
                 team_name: inscriptionType === 'team' ? teamName : user.name, // If individual, team name matches user? Or we handle differently.
-                coupon_code: coupon
+                coupon_code: coupon,
+                product_variants: productVariants // { "1": { "Tamanho": "M" }, "2": { "Cor": "Azul" } }
             };
 
             const response = await api.post('/inscriptions/team', payload); // Reuse existing endpoint or new one
@@ -215,6 +263,61 @@ export function ChampionshipInscription() {
                                 <div className="mt-4 p-4 bg-yellow-50 text-yellow-800 rounded-lg text-sm">
                                     <span className="font-bold">Atenção:</span> Verifique se seu perfil está completo com documentos para agilizar a aprovação.
                                 </div>
+                            </div>
+                        )}
+
+                        {/* Produtos Inclusos */}
+                        {categoryProducts.length > 0 && (
+                            <div className="mt-6 space-y-4">
+                                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                                    <Trophy className="w-5 h-5 text-indigo-600" />
+                                    Produtos Inclusos
+                                </h3>
+
+                                {categoryProducts.map((item: any) => {
+                                    const product = item.product;
+                                    if (!product) return null;
+
+                                    return (
+                                        <div key={product.id} className="bg-gradient-to-r from-indigo-50 to-blue-50 p-6 rounded-xl border-2 border-indigo-200">
+                                            <div className="flex items-start justify-between mb-4">
+                                                <div>
+                                                    <h4 className="font-bold text-gray-900 text-lg">{product.name}</h4>
+                                                    <p className="text-sm text-gray-600">
+                                                        Quantidade: {item.quantity} {item.required && <span className="text-red-600 font-bold">*</span>}
+                                                    </p>
+                                                </div>
+                                                {product.image_url && (
+                                                    <img src={product.image_url} alt={product.name} className="w-16 h-16 object-cover rounded-lg" />
+                                                )}
+                                            </div>
+
+                                            {product.variants && product.variants.length > 0 && (
+                                                <div className="space-y-3">
+                                                    {product.variants.map((variant: any) => (
+                                                        <div key={variant.name}>
+                                                            <label className="block text-sm font-bold text-gray-700 mb-2">
+                                                                {variant.name}:
+                                                                {item.required && <span className="text-red-600 ml-1">*</span>}
+                                                            </label>
+                                                            <select
+                                                                value={productVariants[product.id]?.[variant.name] || ''}
+                                                                onChange={e => setProductVariant(product.id, variant.name, e.target.value)}
+                                                                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white font-medium"
+                                                                required={item.required}
+                                                            >
+                                                                <option value="">Selecione...</option>
+                                                                {variant.options.map((opt: string) => (
+                                                                    <option key={opt} value={opt}>{opt}</option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
                             </div>
                         )}
 

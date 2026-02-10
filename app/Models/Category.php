@@ -17,7 +17,12 @@ class Category extends Model
         'min_age',
         'max_age',
         'max_teams',
-        'price'
+        'price',
+        'included_products'
+    ];
+
+    protected $casts = [
+        'included_products' => 'array',
     ];
 
     public function championship()
@@ -86,6 +91,31 @@ class Category extends Model
         }
 
         return ['eligible' => true];
+    }
+
+    /**
+     * Retorna os produtos inclusos nesta categoria com detalhes completos
+     */
+    public function products()
+    {
+        if (!$this->included_products) {
+            return collect([]);
+        }
+
+        $productIds = collect($this->included_products)->pluck('product_id')->toArray();
+        $products = Product::whereIn('id', $productIds)->get();
+
+        return collect($this->included_products)->map(function ($item) use ($products) {
+            $product = $products->firstWhere('id', $item['product_id']);
+            if (!$product)
+                return null;
+
+            return [
+                'product' => $product,
+                'quantity' => $item['quantity'] ?? 1,
+                'required' => $item['required'] ?? true
+            ];
+        })->filter();
     }
 
     public function teams()
