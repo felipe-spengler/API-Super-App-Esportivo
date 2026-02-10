@@ -87,7 +87,7 @@ export function AdminProductManager() {
             if (imageFile) {
                 const data = new FormData();
                 data.append('image', imageFile);
-                const uploadRes = await api.post('/admin/upload/product-image', data, {
+                const uploadRes = await api.post('/admin/products/upload-image', data, {
                     headers: { 'Content-Type': 'multipart/form-data' }
                 });
                 finalImageUrl = uploadRes.data.path;

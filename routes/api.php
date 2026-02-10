@@ -218,6 +218,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/volleyball/match/{matchId}/positions', [\App\Http\Controllers\Admin\VolleyballRotationController::class, 'savePositions']); // Para Drag & Drop
         Route::post('/volleyball/rotate', [\App\Http\Controllers\Admin\VolleyballRotationController::class, 'rotate']);
 
+        // Gestão de Produtos (NEW)
+        Route::get('/products-manage', [\App\Http\Controllers\Admin\AdminProductController::class, 'index']);
+        Route::post('/products-manage', [\App\Http\Controllers\Admin\AdminProductController::class, 'store']);
+        Route::put('/products-manage/{id}', [\App\Http\Controllers\Admin\AdminProductController::class, 'update']);
+        Route::delete('/products-manage/{id}', [\App\Http\Controllers\Admin\AdminProductController::class, 'destroy']);
+        Route::post('/products/upload-image', [\App\Http\Controllers\Admin\AdminProductController::class, 'uploadImage']);
+
         // Legacy routes (manter compatibilidade)
         Route::post('/championships/{id}/categories', [\App\Http\Controllers\TournamentManagerController::class, 'addCategory']);
         Route::post('/championships/{id}/draw', [\App\Http\Controllers\DrawController::class, 'generateBracket']);

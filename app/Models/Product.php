@@ -36,13 +36,19 @@ class Product extends Model
             return null;
         }
 
+        // Se já for URL completa, retorna como está
         if (filter_var($value, FILTER_VALIDATE_URL)) {
             return $value;
         }
 
-        // Se for URL relativa, converte para absoluta com /api
+        // Se for URL relativa com /storage, converte para absoluta
         if (str_starts_with($value, '/storage')) {
             return rtrim(config('app.url'), '/') . '/api' . $value;
+        }
+
+        // Se for apenas o nome do arquivo, assume que está em storage/products
+        if (!str_starts_with($value, '/')) {
+            return rtrim(config('app.url'), '/') . '/api/storage/products/' . $value;
         }
 
         return $value;
