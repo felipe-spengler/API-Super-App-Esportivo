@@ -428,7 +428,7 @@ export function SumulaBasquete() {
             });
 
             localStorage.removeItem(STORAGE_KEY);
-            navigate('/matches');
+            navigate(-1);
         } catch (e) {
             console.error(e);
         }

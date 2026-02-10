@@ -433,7 +433,7 @@ export function SumulaVolei() {
                         onClick={async () => {
                             if (!window.confirm('Encerrar partida e voltar?')) return;
                             await registerSystemEvent('match_end', 'Partida Finalizada');
-                            navigate('/matches');
+                            navigate(-1);
                         }}
                         className="w-full py-4 bg-red-600 hover:bg-red-500 rounded-xl font-bold text-xl shadow-lg uppercase"
                     >

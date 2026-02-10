@@ -512,7 +512,7 @@ export function SumulaFutebol() {
             // Clear local storage
             localStorage.removeItem(STORAGE_KEY);
 
-            navigate('/matches');
+            navigate(-1);
         } catch (e) {
             console.error(e);
         }

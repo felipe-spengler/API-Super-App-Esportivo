@@ -26,13 +26,101 @@ export function Matches() {
     const [selectedMvpId, setSelectedMvpId] = useState<string | number>('');
     const [isSavingMvp, setIsSavingMvp] = useState(false);
 
+    // Events & Score Management
+    const [matchEvents, setMatchEvents] = useState<any[]>([]);
+    const [loadingEvents, setLoadingEvents] = useState(false);
+    const [isAddingEvent, setIsAddingEvent] = useState(false);
+    const [newEvent, setNewEvent] = useState({ team_id: '', player_id: '', minute: '', event_type: 'goal' });
+    const [isSavingEvent, setIsSavingEvent] = useState(false);
+    const [isEditingScore, setIsEditingScore] = useState(false);
+    const [tempScore, setTempScore] = useState({ home: 0, away: 0, home_penalty: 0, away_penalty: 0 });
+    const [isSavingScore, setIsSavingScore] = useState(false);
+
     useEffect(() => {
         if (isSummaryOpen && selectedMatch) {
             fetchRosters(selectedMatch.id);
+            fetchEvents(selectedMatch.id);
             // @ts-ignore
             setSelectedMvpId(selectedMatch.mvp_player_id || '');
+            setTempScore({
+                home: selectedMatch.home_score || 0,
+                away: selectedMatch.away_score || 0,
+                home_penalty: selectedMatch.home_penalty_score || 0,
+                away_penalty: selectedMatch.away_penalty_score || 0
+            });
+            setIsEditingScore(false);
+            setIsAddingEvent(false);
         }
     }, [isSummaryOpen, selectedMatch]);
+
+    const fetchEvents = async (matchId: number) => {
+        try {
+            setLoadingEvents(true);
+            const response = await api.get(`/admin/matches/${matchId}/events`);
+            setMatchEvents(response.data);
+        } catch (error) {
+            console.error("Erro ao carregar eventos", error);
+        } finally {
+            setLoadingEvents(false);
+        }
+    };
+
+    const handleAddEvent = async () => {
+        if (!selectedMatch || !newEvent.team_id || !newEvent.event_type) return;
+        try {
+            setIsSavingEvent(true);
+            await api.post(`/admin/matches/${selectedMatch.id}/events`, {
+                team_id: newEvent.team_id,
+                player_id: newEvent.player_id || null,
+                minute: newEvent.minute,
+                event_type: newEvent.event_type
+            });
+            // Refresh events and match data (to get updated score)
+            fetchEvents(selectedMatch.id);
+            loadMatches();
+            setIsAddingEvent(false);
+            setNewEvent({ team_id: '', player_id: '', minute: '', event_type: 'goal' });
+        } catch (error) {
+            console.error("Erro ao adicionar evento", error);
+            alert("Erro ao adicionar evento.");
+        } finally {
+            setIsSavingEvent(false);
+        }
+    };
+
+    const handleDeleteEvent = async (eventId: number) => {
+        if (!selectedMatch || !window.confirm("Deseja realmente excluir este evento?")) return;
+        try {
+            await api.delete(`/admin/matches/${selectedMatch.id}/events/${eventId}`);
+            fetchEvents(selectedMatch.id);
+            loadMatches();
+        } catch (error) {
+            console.error("Erro ao excluir evento", error);
+            alert("Erro ao excluir evento.");
+        }
+    };
+
+    const handleSaveScore = async () => {
+        if (!selectedMatch) return;
+        try {
+            setIsSavingScore(true);
+            const response = await api.put(`/admin/matches/${selectedMatch.id}`, {
+                home_score: tempScore.home,
+                away_score: tempScore.away,
+                home_penalty_score: tempScore.home_penalty,
+                away_penalty_score: tempScore.away_penalty
+            });
+            setSelectedMatch(response.data);
+            loadMatches();
+            setIsEditingScore(false);
+            alert("Placar atualizado com sucesso!");
+        } catch (error) {
+            console.error("Erro ao salvar placar", error);
+            alert("Erro ao salvar placar.");
+        } finally {
+            setIsSavingScore(false);
+        }
+    };
 
     const fetchRosters = async (matchId: number) => {
         try {
@@ -308,23 +396,182 @@ export function Matches() {
                                     </div>
                                     <div className="font-bold text-gray-900 leading-tight">{selectedMatch.home_team?.name}</div>
                                 </div>
-                                <div className="flex flex-col items-center">
-                                    <div className="flex items-center gap-4 px-6">
-                                        <span className="text-5xl font-black text-gray-900">{selectedMatch.home_score || 0}</span>
-                                        <span className="text-gray-300 font-bold">X</span>
-                                        <span className="text-5xl font-black text-gray-900">{selectedMatch.away_score || 0}</span>
+
+                                {isEditingScore ? (
+                                    <div className="flex flex-col items-center gap-2">
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="number"
+                                                value={tempScore.home}
+                                                onChange={e => setTempScore({ ...tempScore, home: parseInt(e.target.value) || 0 })}
+                                                className="w-16 text-2xl font-black text-center border rounded-lg p-1"
+                                            />
+                                            <span className="text-gray-300 font-bold">X</span>
+                                            <input
+                                                type="number"
+                                                value={tempScore.away}
+                                                onChange={e => setTempScore({ ...tempScore, away: parseInt(e.target.value) || 0 })}
+                                                className="w-16 text-2xl font-black text-center border rounded-lg p-1"
+                                            />
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="number"
+                                                value={tempScore.home_penalty}
+                                                onChange={e => setTempScore({ ...tempScore, home_penalty: parseInt(e.target.value) || 0 })}
+                                                className="w-12 text-sm text-center border rounded p-1"
+                                                placeholder="Pên."
+                                            />
+                                            <span className="text-[10px] text-gray-400 font-bold">Pênaltis</span>
+                                            <input
+                                                type="number"
+                                                value={tempScore.away_penalty}
+                                                onChange={e => setTempScore({ ...tempScore, away_penalty: parseInt(e.target.value) || 0 })}
+                                                className="w-12 text-sm text-center border rounded p-1"
+                                                placeholder="Pên."
+                                            />
+                                        </div>
+                                        <div className="flex gap-2 mt-2">
+                                            <button onClick={() => setIsEditingScore(false)} className="text-[10px] font-bold text-gray-400 uppercase">Cancelar</button>
+                                            <button onClick={handleSaveScore} disabled={isSavingScore} className="text-[10px] font-bold text-indigo-600 uppercase">
+                                                {isSavingScore ? 'Salvando...' : 'Confirmar'}
+                                            </button>
+                                        </div>
                                     </div>
-                                    {(selectedMatch.home_penalty_score != null || selectedMatch.away_penalty_score != null) && (selectedMatch.home_penalty_score > 0 || selectedMatch.away_penalty_score > 0) && (
-                                        <span className="text-sm font-bold text-gray-500 mt-2">
-                                            ({selectedMatch.home_penalty_score} x {selectedMatch.away_penalty_score} Pênaltis)
-                                        </span>
-                                    )}
-                                </div>
+                                ) : (
+                                    <div className="flex flex-col items-center cursor-pointer hover:bg-gray-50 p-2 rounded-xl transition-colors" onClick={() => setIsEditingScore(true)}>
+                                        <div className="flex items-center gap-4 px-6">
+                                            <span className="text-5xl font-black text-gray-900">{selectedMatch.home_score || 0}</span>
+                                            <span className="text-gray-300 font-bold">X</span>
+                                            <span className="text-5xl font-black text-gray-900">{selectedMatch.away_score || 0}</span>
+                                        </div>
+                                        {(selectedMatch.home_penalty_score != null || selectedMatch.away_penalty_score != null) && (selectedMatch.home_penalty_score > 0 || selectedMatch.away_penalty_score > 0) && (
+                                            <span className="text-sm font-bold text-gray-500 mt-2">
+                                                ({selectedMatch.home_penalty_score} x {selectedMatch.away_penalty_score} Pênaltis)
+                                            </span>
+                                        )}
+                                        <div className="text-[10px] text-indigo-500 font-bold uppercase mt-1 opacity-0 group-hover:opacity-100 italic">Clique para editar placar</div>
+                                    </div>
+                                )}
+
                                 <div className="text-center flex-1">
                                     <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-2 border">
                                         {selectedMatch.away_team?.logo_url ? <img src={selectedMatch.away_team.logo_url} className="w-12 h-12" /> : <Trophy className="text-gray-300" />}
                                     </div>
                                     <div className="font-bold text-gray-900 leading-tight">{selectedMatch.away_team?.name}</div>
+                                </div>
+                            </div>
+
+                            {/* Timeline de Eventos */}
+                            <div className="mb-6">
+                                <div className="flex items-center justify-between mb-3">
+                                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                                        <ClockIcon className="w-4 h-4" /> Timeline da Partida
+                                    </h4>
+                                    <button
+                                        onClick={() => setIsAddingEvent(!isAddingEvent)}
+                                        className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded-md font-bold uppercase hover:bg-indigo-100 transition-colors"
+                                    >
+                                        {isAddingEvent ? 'Fechar' : '+ Adicionar Gol/Cartão'}
+                                    </button>
+                                </div>
+
+                                {isAddingEvent && (
+                                    <div className="bg-gray-50 p-4 rounded-xl border border-dashed border-gray-200 mb-4 animate-in slide-in-from-top-2 duration-200">
+                                        <div className="grid grid-cols-2 gap-3 mb-3">
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Equipe</label>
+                                                <select
+                                                    value={newEvent.team_id}
+                                                    onChange={e => {
+                                                        const tid = e.target.value;
+                                                        setNewEvent({ ...newEvent, team_id: tid, player_id: '' });
+                                                    }}
+                                                    className="w-full bg-white border border-gray-200 rounded-lg px-2 py-2 text-xs outline-none focus:ring-2 focus:ring-indigo-500"
+                                                >
+                                                    <option value="">Selecione...</option>
+                                                    <option value={selectedMatch.home_team_id}>{selectedMatch.home_team?.name}</option>
+                                                    <option value={selectedMatch.away_team_id}>{selectedMatch.away_team?.name}</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Tipo</label>
+                                                <select
+                                                    value={newEvent.event_type}
+                                                    onChange={e => setNewEvent({ ...newEvent, event_type: e.target.value })}
+                                                    className="w-full bg-white border border-gray-200 rounded-lg px-2 py-2 text-xs outline-none focus:ring-2 focus:ring-indigo-500"
+                                                >
+                                                    <option value="goal">⚽ GOL</option>
+                                                    <option value="yellow_card">🟨 Cartão Amarelo</option>
+                                                    <option value="red_card">🟥 Cartão Vermelho</option>
+                                                    <option value="blue_card">🟦 Cartão Azul</option>
+                                                    <option value="assist">👟 Assistência</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Jogador (Opcional)</label>
+                                                <select
+                                                    value={newEvent.player_id}
+                                                    onChange={e => setNewEvent({ ...newEvent, player_id: e.target.value })}
+                                                    className="w-full bg-white border border-gray-200 rounded-lg px-2 py-2 text-xs outline-none focus:ring-2 focus:ring-indigo-500"
+                                                >
+                                                    <option value="">Selecione...</option>
+                                                    {(newEvent.team_id == selectedMatch.home_team_id ? rosters.home : rosters.away).map((p: any) => (
+                                                        <option key={p.id} value={p.id}>{p.number ? `#${p.number}` : ''} {p.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Minuto</label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Ex: 22', 15:30..."
+                                                    value={newEvent.minute}
+                                                    onChange={e => setNewEvent({ ...newEvent, minute: e.target.value })}
+                                                    className="w-full bg-white border border-gray-200 rounded-lg px-2 py-2 text-xs outline-none focus:ring-2 focus:ring-indigo-500"
+                                                />
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={handleAddEvent}
+                                            disabled={isSavingEvent || !newEvent.team_id}
+                                            className="w-full py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                                        >
+                                            {isSavingEvent ? 'Lançando...' : 'Lançar Evento'}
+                                        </button>
+                                    </div>
+                                )}
+
+                                <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                                    {loadingEvents ? (
+                                        <div className="flex items-center justify-center py-4">
+                                            <Loader2 className="w-4 h-4 animate-spin text-gray-300" />
+                                        </div>
+                                    ) : matchEvents.length === 0 ? (
+                                        <div className="text-center py-4 text-gray-400 text-[10px] uppercase font-bold tracking-widest border border-dashed rounded-xl">Nenhum evento registrado</div>
+                                    ) : (
+                                        matchEvents.filter(ev => ['goal', 'yellow_card', 'red_card', 'blue_card', 'assist'].includes(ev.event_type)).map((ev: any) => (
+                                            <div key={ev.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-100">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="text-[10px] font-bold text-gray-400 w-8">{ev.game_time || '--'}</div>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-xs font-bold text-gray-800 flex items-center gap-1">
+                                                            {ev.event_type === 'goal' && '⚽'}
+                                                            {ev.event_type === 'yellow_card' && '🟨'}
+                                                            {ev.event_type === 'red_card' && '🟥'}
+                                                            {ev.event_type === 'blue_card' && '🟦'}
+                                                            {ev.event_type === 'assist' && '👟'}
+                                                            {ev.player?.name || 'Jogador desconhecido'}
+                                                            <span className="text-[9px] text-gray-400 font-normal ml-1">({ev.team?.name})</span>
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <button onClick={() => handleDeleteEvent(ev.id)} className="p-1 text-gray-300 hover:text-red-500 transition-colors">
+                                                    <Trash2 className="w-3 h-3" />
+                                                </button>
+                                            </div>
+                                        ))
+                                    )}
                                 </div>
                             </div>
 
