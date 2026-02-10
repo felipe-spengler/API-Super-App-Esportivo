@@ -16,7 +16,7 @@ class UploadController extends Controller
     public function uploadTeamLogo(Request $request)
     {
         $request->validate([
-            'image' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'image' => 'required|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
         try {
@@ -29,7 +29,7 @@ class UploadController extends Controller
             return response()->json([
                 'message' => 'Logo enviado com sucesso!',
                 'path' => $path,
-                'url' => Storage::url($path)
+                'url' => '/storage/' . $path
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -45,7 +45,7 @@ class UploadController extends Controller
     public function uploadPlayerPhoto(Request $request)
     {
         $request->validate([
-            'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'image' => 'required|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
         try {
@@ -58,7 +58,7 @@ class UploadController extends Controller
             return response()->json([
                 'message' => 'Foto enviada com sucesso!',
                 'path' => $path,
-                'url' => Storage::url($path)
+                'url' => '/storage/' . $path
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -75,7 +75,7 @@ class UploadController extends Controller
     public function uploadChampionshipLogo(Request $request, $championshipId)
     {
         $request->validate([
-            'logo' => 'required|image|mimes:jpeg,png,jpg,gif,svg,webp|max:5120', // 5MB
+            'logo' => 'required|image|mimes:jpeg,png,jpg|max:5120', // 5MB
         ]);
 
         try {
@@ -94,10 +94,10 @@ class UploadController extends Controller
 
             // Salva em: storage/app/public/championships/{id}/logo.ext
             $path = $image->storeAs("championships/{$championshipId}", $filename, 'public');
-            $url = Storage::url($path);
+            $url = '/storage/' . $path;
 
             // Atualiza o banco de dados
-            $championship->logo_url = $url;
+            $championship->logo_url = '/storage/' . $path;
             $championship->save();
 
             return response()->json([
@@ -120,7 +120,7 @@ class UploadController extends Controller
     public function uploadChampionshipBanner(Request $request, $championshipId)
     {
         $request->validate([
-            'banner' => 'required|image|mimes:jpeg,png,jpg,gif,svg,webp|max:5120', // 5MB
+            'banner' => 'required|image|mimes:jpeg,png,jpg|max:5120', // 5MB
         ]);
 
         try {
@@ -139,10 +139,10 @@ class UploadController extends Controller
 
             // Salva em: storage/app/public/championships/{id}/banner.ext
             $path = $image->storeAs("championships/{$championshipId}", $filename, 'public');
-            $url = Storage::url($path);
+            $url = '/storage/' . $path;
 
             // Atualiza o banco de dados
-            $championship->cover_image_url = $url;
+            $championship->cover_image_url = '/storage/' . $path;
             $championship->save();
 
             return response()->json([
@@ -165,7 +165,7 @@ class UploadController extends Controller
     public function uploadChampionshipImage(Request $request)
     {
         $request->validate([
-            'image' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'image' => 'required|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
         try {
@@ -178,7 +178,7 @@ class UploadController extends Controller
             return response()->json([
                 'message' => 'Imagem enviada com sucesso!',
                 'path' => $path,
-                'url' => Storage::url($path)
+                'url' => '/storage/' . $path
             ]);
         } catch (\Exception $e) {
             return response()->json([

@@ -16,8 +16,8 @@ class StorePlayerRequest extends FormRequest
         return [
             'name' => 'required|string|max:255',
             'nickname' => 'nullable|string|max:255',
-            'email' => 'nullable|email|unique:users,email',
-            'cpf' => 'nullable|string|unique:users,cpf',
+            'email' => 'nullable|email', // Removed unique to allow empty emails or temp emails generated in controller
+            'cpf' => 'nullable|string', // Removed unique to prevent conflicts with optional CPFs
             'phone' => 'nullable|string',
             'gender' => 'nullable|string',
             'address' => 'nullable|string',

@@ -59,14 +59,14 @@ class TeamController extends Controller
 
         $request->validate([
             'name' => 'required|string',
-            'position' => 'required|string',
+            'position' => 'nullable|string',
             'nickname' => 'nullable|string',
-            'email' => 'required|email',
-            'cpf' => 'required|string',
+            'email' => 'nullable|email',
+            'cpf' => 'nullable|string',
             'phone' => 'nullable|string',
-            'gender' => 'required|string',
+            'gender' => 'nullable|string',
             'address' => 'nullable|string',
-            'birth_date' => 'required|date',
+            'birth_date' => 'nullable|date',
             'number' => 'nullable|string',
             'document_file' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120', // Max 5MB
             'photo_file' => 'nullable|image|max:2048' // Max 2MB
@@ -74,12 +74,12 @@ class TeamController extends Controller
 
         $userData = null;
 
-        // 1. Check by Email
+        // 1. Check by Email (if provided)
         if ($request->email) {
             $userData = \App\Models\User::where('email', $request->email)->first();
         }
 
-        // 2. Check by CPF (if not found by email)
+        // 2. Check by CPF (if provided and not found by email)
         if (!$userData && $request->cpf) {
             $userData = \App\Models\User::where('cpf', $request->cpf)->first();
         }
@@ -97,11 +97,16 @@ class TeamController extends Controller
         // 3. Create User if not exists (Auto-Registration Logic)
         if (!$userData) {
             $tempPassword = $request->cpf ? preg_replace('/[^0-9]/', '', $request->cpf) : 'mudar123';
+            // Generate temp email if strict logic requires it, assuming DB requires unique email
+            $email = $request->email;
+            if (empty($email)) {
+                $email = 'temp_' . uniqid() . '_' . time() . '@temp.app';
+            }
 
             $userData = \App\Models\User::create([
                 'name' => $request->name,
                 'nickname' => $request->nickname,
-                'email' => $request->email,
+                'email' => $email,
                 'cpf' => $request->cpf,
                 'phone' => $request->phone,
                 'gender' => $request->gender,
@@ -129,6 +134,10 @@ class TeamController extends Controller
                 $updateData['nickname'] = $request->nickname;
             if (!$userData->birth_date && $request->birth_date)
                 $updateData['birth_date'] = $request->birth_date;
+
+            // Only update email/cpf if they were empty on the user? 
+            // Usually we don't overwrite verified info with potentially partial info unless explicitly requested.
+            // Keeping existing logic of only filling blanks.
 
             if (!empty($updateData)) {
                 $userData->update($updateData);

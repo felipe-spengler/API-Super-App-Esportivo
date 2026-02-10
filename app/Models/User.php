@@ -103,13 +103,12 @@ class User extends Authenticatable
             return null;
         }
 
-        $url = \Storage::url($this->photo_path);
-
-        // Se for URL relativa, converte para absoluta com /api
-        if (str_starts_with($url, '/storage')) {
-            return rtrim(config('app.url'), '/') . '/api' . $url;
+        // Check if it's already a full URL
+        if (str_starts_with($this->photo_path, 'http')) {
+            return $this->photo_path;
         }
 
-        return $url;
+        // Return full URL
+        return asset('storage/' . $this->photo_path);
     }
 }

@@ -19,7 +19,7 @@ class ImageUploadController extends Controller
     {
         try {
             $request->validate([
-                'logo' => 'required|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
+                'logo' => 'required|image|mimes:jpeg,png,jpg|max:2048',
             ]);
 
             $team = Team::findOrFail($teamId);
@@ -50,7 +50,7 @@ class ImageUploadController extends Controller
             $path = $file->storeAs('teams', $filename, 'public');
 
             // Atualiza no banco usando as colunas corretas
-            $team->logo_url = Storage::url($path);
+            $team->logo_url = '/storage/' . $path; // Force relative path
             $team->logo_path = $path;
 
             // Remove a atribuição incorreta '$team->logo' que causava erro se a coluna não existisse
@@ -77,7 +77,7 @@ class ImageUploadController extends Controller
     {
         try {
             $request->validate([
-                'photo' => 'required|image|mimes:jpeg,png,jpg,webp|max:4096',
+                'photo' => 'required|image|mimes:jpeg,png,jpg|max:4096',
             ]);
 
             // Aumenta o tempo de execução para evitar timeout durante o processamento da IA (rembg pode demorar no 1º uso)
@@ -105,7 +105,7 @@ class ImageUploadController extends Controller
 
             $responseData = [
                 'message' => 'Foto atualizada com sucesso!',
-                'photo_url' => Storage::url($path),
+                'photo_url' => '/storage/' . $path,
                 'photo_path' => $path
             ];
 
@@ -134,7 +134,7 @@ class ImageUploadController extends Controller
                         // Se sucesso, atualiza o path principal para a versão sem fundo
                         $path = 'players/' . $filenameNobg;
 
-                        $responseData['photo_nobg_url'] = Storage::url($path);
+                        $responseData['photo_nobg_url'] = '/storage/' . $path;
                         $responseData['photo_nobg_path'] = $path;
                         $responseData['ai_processed'] = true;
                     } else {
@@ -164,7 +164,7 @@ class ImageUploadController extends Controller
     {
         try {
             $request->validate([
-                'logo' => 'required|image|mimes:jpeg,png,jpg,gif,svg,webp|max:5120', // 5MB
+                'logo' => 'required|image|mimes:jpeg,png,jpg|max:5120', // 5MB
             ]);
 
             $championship = Championship::findOrFail($championshipId);
@@ -190,7 +190,7 @@ class ImageUploadController extends Controller
             $extension = $file->getClientOriginalExtension();
             $filename = 'logo.' . $extension;
             $path = $file->storeAs("championships/{$championshipId}", $filename, 'public');
-            $url = Storage::url($path);
+            $url = '/storage/' . $path;
 
             // Atualiza no banco com URL completo
             $championship->logo_url = $url;
@@ -212,7 +212,7 @@ class ImageUploadController extends Controller
     public function uploadChampionshipBanner(Request $request, $championshipId)
     {
         $request->validate([
-            'banner' => 'required|image|mimes:jpeg,png,jpg,gif,svg,webp|max:5120', // 5MB
+            'banner' => 'required|image|mimes:jpeg,png,jpg|max:5120', // 5MB
         ]);
 
         $championship = Championship::findOrFail($championshipId);
@@ -238,7 +238,7 @@ class ImageUploadController extends Controller
         $extension = $file->getClientOriginalExtension();
         $filename = 'banner.' . $extension;
         $path = $file->storeAs("championships/{$championshipId}", $filename, 'public');
-        $url = Storage::url($path);
+        $url = '/storage/' . $path;
 
         // Atualiza no banco com URL completo
         $championship->cover_image_url = $url;
@@ -269,7 +269,7 @@ class ImageUploadController extends Controller
 
         return response()->json([
             'message' => 'Foto enviada com sucesso!',
-            'photo_url' => Storage::url($path),
+            'photo_url' => '/storage/' . $path,
             'photo_path' => $path
         ]);
     }
@@ -281,7 +281,7 @@ class ImageUploadController extends Controller
     {
         try {
             $request->validate([
-                'image' => 'required|image|mimes:jpeg,png,jpg,gif,svg,webp|max:5120',
+                'image' => 'required|image|mimes:jpeg,png,jpg|max:5120',
                 'folder' => 'nullable|string',
             ]);
 
@@ -298,7 +298,7 @@ class ImageUploadController extends Controller
 
             return response()->json([
                 'message' => 'Imagem enviada com sucesso!',
-                'url' => Storage::url($path),
+                'url' => '/storage/' . $path,
                 'path' => $path
             ]);
         } catch (\Exception $e) {
@@ -349,7 +349,7 @@ class ImageUploadController extends Controller
             $images[] = [
                 'name' => basename($file),
                 'path' => $file,
-                'url' => Storage::url($file),
+                'url' => '/storage/' . $file,
                 'size' => Storage::disk('public')->size($file),
                 'last_modified' => Storage::disk('public')->lastModified($file)
             ];
@@ -374,7 +374,7 @@ class ImageUploadController extends Controller
     {
         try {
             $request->validate([
-                'photo' => 'required|image|mimes:jpeg,png,jpg,webp|max:4096',
+                'photo' => 'required|image|mimes:jpeg,png,jpg|max:4096',
             ]);
 
             // Aumenta o tempo de execução para evitar timeout
@@ -450,7 +450,7 @@ class ImageUploadController extends Controller
     {
         try {
             $request->validate([
-                'file' => 'required|image|mimes:jpeg,png,jpg,webp|max:4096',
+                'file' => 'required|image|mimes:jpeg,png,jpg|max:4096',
                 'type' => 'required|string|in:player,team,championship',
                 'id' => 'required|integer',
             ]);
