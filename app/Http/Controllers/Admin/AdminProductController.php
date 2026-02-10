@@ -121,8 +121,8 @@ class AdminProductController extends Controller
 
         if ($request->hasFile('image')) {
             $path = $request->file('image')->store('products', 'public');
-            // Retorna URL relativa para salvar no banco
-            return response()->json(['path' => '/storage/' . $path]);
+            // Retorna URL correta usando o helper Storage::url, compatível com S3 e outros drivers
+            return response()->json(['path' => Storage::url($path)]);
         }
 
         return response()->json(['message' => 'Nenhum arquivo enviado'], 400);
