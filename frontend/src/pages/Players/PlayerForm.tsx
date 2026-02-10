@@ -7,7 +7,13 @@ function PhotoUploadSection({ playerId, currentPhoto }: { playerId: string, curr
     const [file, setFile] = useState<File | null>(null);
     const [removeBg, setRemoveBg] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [preview, setPreview] = useState<string | null>(currentPhoto ? `${import.meta.env.VITE_API_URL?.replace('/api', '')}/storage/${currentPhoto}` : null);
+    const [preview, setPreview] = useState<string | null>(
+        currentPhoto
+            ? (currentPhoto.startsWith('http')
+                ? currentPhoto
+                : `${import.meta.env.VITE_API_URL?.replace('/api', '')}/storage/${currentPhoto}`)
+            : null
+    );
     const [nobgPreview, setNobgPreview] = useState<string | null>(null);
 
     async function handleUpload() {
@@ -25,10 +31,12 @@ function PhotoUploadSection({ playerId, currentPhoto }: { playerId: string, curr
             });
 
             if (res.data.photo_url) {
-                setPreview(`${import.meta.env.VITE_API_URL?.replace('/api', '')}${res.data.photo_url}`);
+                const url = res.data.photo_url;
+                setPreview(url.startsWith('http') ? url : `${import.meta.env.VITE_API_URL?.replace('/api', '')}${url}`);
             }
             if (res.data.photo_nobg_url) {
-                setNobgPreview(`${import.meta.env.VITE_API_URL?.replace('/api', '')}${res.data.photo_nobg_url}`);
+                const url = res.data.photo_nobg_url;
+                setNobgPreview(url.startsWith('http') ? url : `${import.meta.env.VITE_API_URL?.replace('/api', '')}${url}`);
                 alert('Fundo removido com sucesso!');
             } else {
                 alert('Foto atualizada com sucesso!');

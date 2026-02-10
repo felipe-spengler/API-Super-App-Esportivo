@@ -1,3 +1,4 @@
+// Reviewed by Antigravity
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -153,7 +154,7 @@ export function AdminProductManager() {
                             <div className="aspect-square bg-gray-100 relative overflow-hidden">
                                 {product.image_url ? (
                                     <img
-                                        src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}${product.image_url}`}
+                                        src={product.image_url.trim().startsWith('http') ? product.image_url.trim() : `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}${product.image_url.trim()}`}
                                         alt={product.name}
                                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                     />
@@ -281,7 +282,7 @@ export function AdminProductManager() {
                                     ) : formData.image_url ? (
                                         <div className="flex flex-col items-center">
                                             <img
-                                                src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}${formData.image_url}`}
+                                                src={formData.image_url.trim().startsWith('http') ? formData.image_url.trim() : `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}${formData.image_url.trim()}`}
                                                 alt="Preview"
                                                 className="h-20 object-contain mb-2 rounded"
                                             />
