@@ -21,14 +21,31 @@ class EventController extends Controller
         return response()->json($query->with('sport')->orderBy('start_date', 'desc')->get());
     }
 
-    // 0. Listar Todos (Public Home)
     public function publicList(Request $request)
     {
-        // Retorna os próximos 6 eventos ativos/futuros para a home
-        $championships = Championship::whereIn('status', ['upcoming', 'ongoing', 'in_progress', 'registrations_open'])
-            ->orderBy('start_date', 'asc')
-            ->limit(6)
-            ->get();
+        $query = Championship::with(['club', 'sport']);
+
+        if ($request->has('status')) {
+            $status = $request->status;
+            if ($status === 'open') {
+                $query->where('status', 'registrations_open');
+            } elseif ($status === 'ongoing') {
+                $query->whereIn('status', ['live', 'ongoing', 'in_progress']);
+            } elseif ($status === 'finished') {
+                $query->where('status', 'finished');
+            } elseif ($status === 'upcoming') {
+                $query->where('status', 'upcoming');
+            }
+        } else {
+            // Default: All active/future
+            $query->whereIn('status', ['upcoming', 'ongoing', 'in_progress', 'registrations_open', 'live']);
+        }
+
+        if ($request->has('sport_id')) {
+            $query->where('sport_id', $request->sport_id);
+        }
+
+        $championships = $query->orderBy('start_date', 'asc')->get();
 
         return response()->json($championships);
     }

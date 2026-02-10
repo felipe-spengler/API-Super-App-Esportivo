@@ -53,6 +53,7 @@ import { MyTeams } from './pages/Public/MyTeams';
 import { MyTeamForm } from './pages/Public/MyTeamForm';
 import { MyTeamDetails } from './pages/Public/MyTeamDetails';
 import { MyInscriptions } from './pages/Public/MyInscriptions';
+import { MyOrders } from './pages/Public/MyOrders';
 import { Voting } from './pages/Public/Voting';
 import { ChampionshipInscription } from './pages/Public/ChampionshipInscription';
 import { SumulaVolei } from './pages/Matches/SumulaVolei';
@@ -100,7 +101,7 @@ function App() {
             <Route path="/profile/teams/new" element={<MyTeamForm />} />
             <Route path="/profile/teams/:id" element={<MyTeamDetails />} />
             <Route path="/profile/inscriptions" element={<MyInscriptions />} />
-            <Route path="/profile/orders" element={<div className="p-10 text-center text-gray-500">Meus Pedidos (Em desenvolvimento)</div>} />
+            <Route path="/profile/orders" element={<MyOrders />} />
             <Route path="/voting" element={<Voting />} />
           </Route>
 

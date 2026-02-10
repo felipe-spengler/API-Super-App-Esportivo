@@ -85,7 +85,13 @@ export function Login() {
                     <div className="space-y-2">
                         <div className="flex justify-between items-center ml-1">
                             <label className="text-sm font-bold text-gray-700 block">Senha</label>
-                            <a href="#" className="text-xs text-indigo-600 font-bold hover:underline">Esqueceu?</a>
+                            <button
+                                type="button"
+                                onClick={() => alert('Funcionalidade de recuperação de senha em desenvolvimento. Por favor, entre em contato com o suporte.')}
+                                className="text-xs text-indigo-600 font-bold hover:underline bg-transparent border-none p-0"
+                            >
+                                Esqueceu a senha?
+                            </button>
                         </div>
                         <div className="relative">
                             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -116,7 +122,7 @@ export function Login() {
                     </button>
                 </form>
 
-                <div className="mt-8 text-center hidden">
+                <div className="mt-8 text-center">
                     <p className="text-gray-500 text-sm">
                         Não tem uma conta?{' '}
                         <Link to="/register" className="text-indigo-600 font-bold hover:underline">
