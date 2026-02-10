@@ -36,6 +36,7 @@ class AdminProductController extends Controller
     public function store(Request $request)
     {
         $user = $request->user();
+        \Illuminate\Support\Facades\Log::info('Product store request', $request->all());
 
         $clubId = $user->club_id;
         if ($user->isSuperAdmin() && $request->has('club_id')) {
@@ -64,6 +65,8 @@ class AdminProductController extends Controller
             'variants' => [] // Pode ser implementado depois
         ]);
 
+        \Illuminate\Support\Facades\Log::info('Product created', ['id' => $product->id, 'image_url' => $product->image_url]);
+
         return response()->json($product, 201);
     }
 
@@ -73,6 +76,8 @@ class AdminProductController extends Controller
     public function update(Request $request, $id)
     {
         $user = $request->user();
+        \Illuminate\Support\Facades\Log::info("Product update request ID: {$id}", $request->all());
+
         $product = Product::findOrFail($id);
 
         // Security check
@@ -89,6 +94,8 @@ class AdminProductController extends Controller
         ]);
 
         $product->update($validated);
+
+        \Illuminate\Support\Facades\Log::info("Product updated ID: {$id}", ['image_url' => $product->image_url]);
 
         return response()->json($product);
     }
@@ -115,16 +122,38 @@ class AdminProductController extends Controller
      */
     public function uploadImage(Request $request)
     {
+        \Illuminate\Support\Facades\Log::info('Product image upload start');
+
         $request->validate([
             'image' => 'required|image|mimes:jpeg,png,jpg|max:2048'
         ]);
 
         if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('products', 'public');
+            $file = $request->file('image');
+            \Illuminate\Support\Facades\Log::info('File received', [
+                'name' => $file->getClientOriginalName(),
+                'size' => $file->getSize(),
+                'mime' => $file->getMimeType()
+            ]);
+
+            $path = $file->store('products', 'public');
+            $url = Storage::url($path);
+
+            \Illuminate\Support\Facades\Log::info('File stored', [
+                'path' => $path,
+                'url' => $url
+            ]);
+
             // Retorna URL correta usando o helper Storage::url, compatível com S3 e outros drivers
-            return response()->json(['path' => Storage::url($path)]);
+            // WORKAROUND: Forçar retorno relativo se o Storage::url estiver retornando full URL bugada
+            $relativePath = '/storage/' . $path;
+
+            \Illuminate\Support\Facades\Log::info('Returning relative path', ['path' => $relativePath]);
+
+            return response()->json(['path' => $relativePath]);
         }
 
+        \Illuminate\Support\Facades\Log::warning('No file found in request');
         return response()->json(['message' => 'Nenhum arquivo enviado'], 400);
     }
 }

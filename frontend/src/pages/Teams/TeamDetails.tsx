@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Users, Shield, Trophy, Loader2, Plus, User as UserIcon, CheckCircle, Clock, Trash2, X, Edit } from 'lucide-react';
 import api from '../../services/api';
 import { PlayerEditModal } from '../Players/PlayerEditModal';
+import { useAuth } from '../../context/AuthContext';
 
 interface Player {
     id: number;
@@ -38,6 +39,8 @@ export function TeamDetails() {
     const [team, setTeam] = useState<Team | null>(null);
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
+    const { user } = useAuth();
+    const isAdmin = user?.role === 'admin' || user?.is_admin || user?.role === 'super_admin';
 
     // Form states
     const [newPlayerName, setNewPlayerName] = useState('');
@@ -315,7 +318,7 @@ export function TeamDetails() {
                                 <div>
                                     <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Posição</label>
                                     <input
-                                        required
+                                        required={!isAdmin}
                                         className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
                                         placeholder="Ex: Goleiro"
                                         value={newPlayerPos}
@@ -334,7 +337,7 @@ export function TeamDetails() {
                                 <div>
                                     <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Data Nasc.</label>
                                     <input
-                                        required
+                                        required={!isAdmin}
                                         type="date"
                                         className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
                                         value={newPlayerBirthDate}
@@ -344,7 +347,7 @@ export function TeamDetails() {
                                 <div>
                                     <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Sexo</label>
                                     <select
-                                        required
+                                        required={!isAdmin}
                                         className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
                                         value={newPlayerGender}
                                         onChange={e => setNewPlayerGender(e.target.value)}
@@ -358,7 +361,7 @@ export function TeamDetails() {
                                 <div className="col-span-2">
                                     <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">CPF</label>
                                     <input
-                                        required
+                                        required={!isAdmin}
                                         type="text"
                                         className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
                                         placeholder="000.000.000-00"
@@ -369,7 +372,7 @@ export function TeamDetails() {
                                 <div className="col-span-2">
                                     <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Email</label>
                                     <input
-                                        required
+                                        required={!isAdmin}
                                         type="email"
                                         className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
                                         placeholder="atleta@email.com"
