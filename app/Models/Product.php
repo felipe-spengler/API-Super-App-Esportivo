@@ -41,14 +41,14 @@ class Product extends Model
             return $value;
         }
 
-        // Se for URL relativa com /storage, converte para absoluta
+        // Se for URL relativa com /storage, converte para absoluta COM /api (igual ao Team model)
         if (str_starts_with($value, '/storage')) {
-            return rtrim(config('app.url'), '/') . $value;
+            return rtrim(config('app.url'), '/') . '/api' . $value;
         }
 
         // Se for apenas o nome do arquivo, assume que está em storage/products
         if (!str_starts_with($value, '/')) {
-            return rtrim(config('app.url'), '/') . '/storage/products/' . $value;
+            return rtrim(config('app.url'), '/') . '/api/storage/products/' . $value;
         }
 
         return $value;
