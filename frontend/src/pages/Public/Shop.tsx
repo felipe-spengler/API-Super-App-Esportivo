@@ -56,7 +56,7 @@ export function Shop() {
                                 <div className="aspect-square rounded-lg bg-gray-50 mb-3 flex items-center justify-center relative overflow-hidden">
                                     {product.image_url ? (
                                         <img
-                                            src={product.image_url.trim().startsWith('http') ? product.image_url.trim() : `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}${product.image_url.trim()}`}
+                                            src={product.image_url.trim().startsWith('http') ? product.image_url.trim() : `${(import.meta.env.VITE_API_URL || 'http://localhost:8000').replace('/api', '')}${product.image_url.trim()}`}
                                             alt={product.name}
                                             className="w-full h-full object-cover"
                                         />
