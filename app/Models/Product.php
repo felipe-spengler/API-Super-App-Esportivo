@@ -42,13 +42,14 @@ class Product extends Model
         }
 
         // Se for URL relativa com /storage, converte para absoluta
+        // Não adiciona /api porque app.url já inclui
         if (str_starts_with($value, '/storage')) {
-            return rtrim(config('app.url'), '/') . '/api' . $value;
+            return rtrim(config('app.url'), '/') . $value;
         }
 
         // Se for apenas o nome do arquivo, assume que está em storage/products
         if (!str_starts_with($value, '/')) {
-            return rtrim(config('app.url'), '/') . '/api/storage/products/' . $value;
+            return rtrim(config('app.url'), '/') . '/storage/products/' . $value;
         }
 
         return $value;
