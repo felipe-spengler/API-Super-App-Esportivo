@@ -398,59 +398,76 @@ export function Matches() {
                                 </div>
 
                                 {isEditingScore ? (
-                                    <div className="flex flex-col items-center gap-2">
-                                        <div className="flex items-center gap-2">
-                                            <input
-                                                type="number"
-                                                value={tempScore.home}
-                                                onChange={e => setTempScore({ ...tempScore, home: parseInt(e.target.value) || 0 })}
-                                                className="w-16 text-2xl font-black text-center border rounded-lg p-1"
-                                            />
-                                            <span className="text-gray-300 font-bold">X</span>
-                                            <input
-                                                type="number"
-                                                value={tempScore.away}
-                                                onChange={e => setTempScore({ ...tempScore, away: parseInt(e.target.value) || 0 })}
-                                                className="w-16 text-2xl font-black text-center border rounded-lg p-1"
-                                            />
+                                    <div className="flex flex-col items-center gap-2 bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100 animate-in zoom-in-95 duration-200">
+                                        <div className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-1">Editando Placar</div>
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex flex-col items-center">
+                                                <span className="text-[9px] font-bold text-gray-400 uppercase">Mandante</span>
+                                                <input
+                                                    type="number"
+                                                    value={tempScore.home}
+                                                    onChange={e => setTempScore({ ...tempScore, home: parseInt(e.target.value) || 0 })}
+                                                    className="w-16 text-2xl font-black text-center border-2 border-indigo-200 rounded-xl p-2 outline-none focus:border-indigo-500 transition-colors"
+                                                />
+                                            </div>
+                                            <span className="text-gray-300 font-bold mt-4">X</span>
+                                            <div className="flex flex-col items-center">
+                                                <span className="text-[9px] font-bold text-gray-400 uppercase">Visitante</span>
+                                                <input
+                                                    type="number"
+                                                    value={tempScore.away}
+                                                    onChange={e => setTempScore({ ...tempScore, away: parseInt(e.target.value) || 0 })}
+                                                    className="w-16 text-2xl font-black text-center border-2 border-indigo-200 rounded-xl p-2 outline-none focus:border-indigo-500 transition-colors"
+                                                />
+                                            </div>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <input
-                                                type="number"
-                                                value={tempScore.home_penalty}
-                                                onChange={e => setTempScore({ ...tempScore, home_penalty: parseInt(e.target.value) || 0 })}
-                                                className="w-12 text-sm text-center border rounded p-1"
-                                                placeholder="Pên."
-                                            />
-                                            <span className="text-[10px] text-gray-400 font-bold">Pênaltis</span>
-                                            <input
-                                                type="number"
-                                                value={tempScore.away_penalty}
-                                                onChange={e => setTempScore({ ...tempScore, away_penalty: parseInt(e.target.value) || 0 })}
-                                                className="w-12 text-sm text-center border rounded p-1"
-                                                placeholder="Pên."
-                                            />
+                                        <div className="flex items-center gap-4 mt-2">
+                                            <div className="flex flex-col items-center">
+                                                <span className="text-[8px] font-bold text-gray-400 uppercase">Pên.</span>
+                                                <input
+                                                    type="number"
+                                                    value={tempScore.home_penalty}
+                                                    onChange={e => setTempScore({ ...tempScore, home_penalty: parseInt(e.target.value) || 0 })}
+                                                    className="w-12 text-sm text-center border rounded p-1"
+                                                />
+                                            </div>
+                                            <div className="flex flex-col items-center">
+                                                <span className="text-[8px] font-bold text-gray-400 uppercase">Pên.</span>
+                                                <input
+                                                    type="number"
+                                                    value={tempScore.away_penalty}
+                                                    onChange={e => setTempScore({ ...tempScore, away_penalty: parseInt(e.target.value) || 0 })}
+                                                    className="w-12 text-sm text-center border rounded p-1"
+                                                />
+                                            </div>
                                         </div>
-                                        <div className="flex gap-2 mt-2">
-                                            <button onClick={() => setIsEditingScore(false)} className="text-[10px] font-bold text-gray-400 uppercase">Cancelar</button>
-                                            <button onClick={handleSaveScore} disabled={isSavingScore} className="text-[10px] font-bold text-indigo-600 uppercase">
-                                                {isSavingScore ? 'Salvando...' : 'Confirmar'}
+                                        <div className="flex gap-4 mt-4">
+                                            <button onClick={() => setIsEditingScore(false)} className="px-4 py-1.5 text-xs font-bold text-gray-400 uppercase hover:text-gray-600 transition-colors">Cancelar</button>
+                                            <button onClick={handleSaveScore} disabled={isSavingScore} className="px-6 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-lg uppercase shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all">
+                                                {isSavingScore ? 'Salvando...' : 'Salvar Placar'}
                                             </button>
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="flex flex-col items-center cursor-pointer hover:bg-gray-50 p-2 rounded-xl transition-colors" onClick={() => setIsEditingScore(true)}>
-                                        <div className="flex items-center gap-4 px-6">
-                                            <span className="text-5xl font-black text-gray-900">{selectedMatch.home_score || 0}</span>
+                                    <div
+                                        className="group relative flex flex-col items-center cursor-pointer hover:bg-indigo-50/50 p-4 rounded-2xl transition-all border border-transparent hover:border-indigo-100"
+                                        onClick={() => setIsEditingScore(true)}
+                                        title="Clique para editar o placar"
+                                    >
+                                        <div className="absolute -top-2 bg-indigo-600 text-white text-[8px] font-black px-2 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-all transform group-hover:-translate-y-1 shadow-md uppercase tracking-tighter">Clique para editar</div>
+                                        <div className="flex items-center gap-4 px-6 relative">
+                                            <span className="text-5xl font-black text-gray-900 group-hover:text-indigo-600 transition-colors">{selectedMatch.home_score || 0}</span>
                                             <span className="text-gray-300 font-bold">X</span>
-                                            <span className="text-5xl font-black text-gray-900">{selectedMatch.away_score || 0}</span>
+                                            <span className="text-5xl font-black text-gray-900 group-hover:text-indigo-600 transition-colors">{selectedMatch.away_score || 0}</span>
+                                            <div className="absolute -right-2 top-1/2 -translate-y-1/2 text-gray-200 group-hover:text-indigo-400 opacity-0 group-hover:opacity-100 transition-all">
+                                                <Edit size={16} />
+                                            </div>
                                         </div>
                                         {(selectedMatch.home_penalty_score != null || selectedMatch.away_penalty_score != null) && (selectedMatch.home_penalty_score > 0 || selectedMatch.away_penalty_score > 0) && (
-                                            <span className="text-sm font-bold text-gray-500 mt-2">
+                                            <span className="text-sm font-bold text-gray-400 group-hover:text-indigo-400 mt-2 transition-colors">
                                                 ({selectedMatch.home_penalty_score} x {selectedMatch.away_penalty_score} Pênaltis)
                                             </span>
                                         )}
-                                        <div className="text-[10px] text-indigo-500 font-bold uppercase mt-1 opacity-0 group-hover:opacity-100 italic">Clique para editar placar</div>
                                     </div>
                                 )}
 
