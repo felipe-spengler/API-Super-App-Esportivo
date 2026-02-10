@@ -668,20 +668,16 @@ export function Settings() {
 
                                                         // Use configured API URL or fallback to relative root (works for same-domain deployments)
                                                         const apiUrl = import.meta.env.VITE_API_URL || '';
+                                                        const rootUrl = apiUrl.replace(/\/$/, '').replace(/\/api$/, '');
 
                                                         if (currentBg) {
                                                             if (currentBg.startsWith('http')) {
                                                                 displayUrl = currentBg;
                                                             } else {
-                                                                // Ensure we don't double slash if apiUrl has slash
-                                                                const base = apiUrl.replace(/\/$/, '');
-                                                                displayUrl = `${base}/api/storage/${currentBg.replace(/^\//, '')}`;
+                                                                displayUrl = `${rootUrl}/api/storage/${currentBg.replace(/^\//, '')}`;
                                                             }
                                                         } else if (pos.defaultFile) {
-                                                            // Fallback to system default served via generic route
-                                                            // Route defined in api.php as /assets-templates/{filename} with prefix 'api' => /api/assets-templates/...
-                                                            const base = apiUrl.replace(/\/$/, '');
-                                                            displayUrl = `${base}/api/assets-templates/${pos.defaultFile}`;
+                                                            displayUrl = `${rootUrl}/api/assets-templates/${pos.defaultFile}`;
                                                         }
 
                                                         return (
