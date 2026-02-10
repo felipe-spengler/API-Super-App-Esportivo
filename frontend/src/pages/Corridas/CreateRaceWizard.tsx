@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowLeft, ArrowRight, Check, Trash2, Plus, Info, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
@@ -15,6 +15,11 @@ interface Category {
     name: string;
     price: string;
     subcategories: Subcategory[];
+    included_products?: Array<{
+        product_id: string | number;
+        quantity: number;
+        required: boolean;
+    }>;
 }
 
 interface RaceWizardData {
@@ -34,6 +39,7 @@ export function CreateRaceWizard() {
     const navigate = useNavigate();
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
+    const [availableProducts, setAvailableProducts] = useState<any[]>([]);
 
     // Estado Gigante do Wizard
     const [formData, setFormData] = useState<RaceWizardData>({
@@ -58,7 +64,7 @@ export function CreateRaceWizard() {
     const addCategory = () => {
         setFormData(prev => ({
             ...prev,
-            categories: [...prev.categories, { name: '', price: '0', subcategories: [] }]
+            categories: [...prev.categories, { name: '', price: '0', subcategories: [], included_products: [] }]
         }));
     };
 
@@ -89,6 +95,45 @@ export function CreateRaceWizard() {
     const removeSubcategory = (catIdx: number, subIdx: number) => {
         const newCats = [...formData.categories];
         newCats[catIdx].subcategories.splice(subIdx, 1);
+        setFormData({ ...formData, categories: newCats });
+    };
+
+    // Carregar produtos disponíveis
+    useEffect(() => {
+        loadProducts();
+    }, []);
+
+    async function loadProducts() {
+        try {
+            const response = await api.get('/public/products');
+            setAvailableProducts(response.data);
+        } catch (error) {
+            console.error('Erro ao carregar produtos:', error);
+        }
+    }
+
+    // Handlers de Produtos nas Categorias
+    const addProductToCategory = (catIdx: number) => {
+        const newCats = [...formData.categories];
+        if (!newCats[catIdx].included_products) {
+            newCats[catIdx].included_products = [];
+        }
+        newCats[catIdx].included_products.push({ product_id: '', quantity: 1, required: true });
+        setFormData({ ...formData, categories: newCats });
+    };
+
+    const updateCategoryProduct = (catIdx: number, prodIdx: number, field: string, value: any) => {
+        const newCats = [...formData.categories];
+        newCats[catIdx].included_products[prodIdx] = {
+            ...newCats[catIdx].included_products[prodIdx],
+            [field]: value
+        };
+        setFormData({ ...formData, categories: newCats });
+    };
+
+    const removeCategoryProduct = (catIdx: number, prodIdx: number) => {
+        const newCats = [...formData.categories];
+        newCats[catIdx].included_products.splice(prodIdx, 1);
         setFormData({ ...formData, categories: newCats });
     };
 
@@ -330,6 +375,91 @@ export function CreateRaceWizard() {
                                     >
                                         <Plus className="w-4 h-4" /> Adicionar Faixa Etária
                                     </button>
+
+                                    {/* Produtos Inclusos */}
+                                    <div className="mt-6 pt-6 border-t border-gray-200">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h4 className="font-bold text-gray-700 flex items-center gap-2 text-sm uppercase tracking-wide">
+                                                🎁 Produtos Inclusos (Brindes)
+                                            </h4>
+                                            <button
+                                                onClick={() => navigate('/admin/products')}
+                                                className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-lg hover:bg-green-200 font-bold transition-colors"
+                                            >
+                                                + Criar Novo Produto
+                                            </button>
+                                        </div>
+
+                                        {(!cat.included_products || cat.included_products.length === 0) && (
+                                            <p className="text-sm text-gray-400 italic">Nenhum produto vinculado. Atletas não receberão brindes nesta categoria.</p>
+                                        )}
+
+                                        {cat.included_products?.map((prod, prodIdx) => (
+                                            <div key={prodIdx} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end p-4 bg-indigo-50 rounded-xl border border-indigo-100 hover:border-indigo-300 transition-colors mb-3">
+                                                <div className="md:col-span-5 space-y-1">
+                                                    <label className="text-[10px] uppercase font-bold text-gray-500">Produto</label>
+                                                    <select
+                                                        value={prod.product_id}
+                                                        onChange={e => updateCategoryProduct(catIdx, prodIdx, 'product_id', parseInt(e.target.value))}
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+                                                    >
+                                                        <option value="">Selecione um produto...</option>
+                                                        {availableProducts.map(p => (
+                                                            <option key={p.id} value={p.id}>
+                                                                {p.name} {p.variants && `(${p.variants.map((v: any) => v.name).join(', ')})`}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <div className="md:col-span-2 space-y-1">
+                                                    <label className="text-[10px] uppercase font-bold text-gray-500">Quantidade</label>
+                                                    <input
+                                                        type="number"
+                                                        value={prod.quantity}
+                                                        onChange={e => updateCategoryProduct(catIdx, prodIdx, 'quantity', parseInt(e.target.value))}
+                                                        min="1"
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                                    />
+                                                </div>
+                                                <div className="md:col-span-4 space-y-1">
+                                                    <label className="text-[10px] uppercase font-bold text-gray-500">Obrigatório?</label>
+                                                    <div className="flex items-center gap-4 h-[38px]">
+                                                        <label className="flex items-center gap-2 cursor-pointer">
+                                                            <input
+                                                                type="radio"
+                                                                checked={prod.required === true}
+                                                                onChange={() => updateCategoryProduct(catIdx, prodIdx, 'required', true)}
+                                                                className="w-4 h-4"
+                                                            />
+                                                            <span className="text-sm font-medium text-gray-700">Sim</span>
+                                                        </label>
+                                                        <label className="flex items-center gap-2 cursor-pointer">
+                                                            <input
+                                                                type="radio"
+                                                                checked={prod.required === false}
+                                                                onChange={() => updateCategoryProduct(catIdx, prodIdx, 'required', false)}
+                                                                className="w-4 h-4"
+                                                            />
+                                                            <span className="text-sm font-medium text-gray-700">Não</span>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={() => removeCategoryProduct(catIdx, prodIdx)}
+                                                    className="md:col-span-1 flex items-center justify-center h-[38px] text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        ))}
+
+                                        <button
+                                            onClick={() => addProductToCategory(catIdx)}
+                                            className="mt-2 text-sm font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+                                        >
+                                            <Plus className="w-4 h-4" /> Adicionar Produto Incluso
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         ))}
