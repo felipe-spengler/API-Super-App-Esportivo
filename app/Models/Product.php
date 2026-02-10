@@ -36,13 +36,12 @@ class Product extends Model
             return null;
         }
 
-        // Se já for URL completa, retorna como está
-        if (filter_var($value, FILTER_VALIDATE_URL)) {
+        // Se já for URL completa (http:// ou https://), retorna como está SEM PROCESSAR
+        if (str_starts_with($value, 'http://') || str_starts_with($value, 'https://')) {
             return $value;
         }
 
         // Se for URL relativa com /storage, converte para absoluta
-        // Não adiciona /api porque app.url já inclui
         if (str_starts_with($value, '/storage')) {
             return rtrim(config('app.url'), '/') . $value;
         }
