@@ -27,6 +27,7 @@ import { NewEventSelection } from './pages/EventWizard/NewEventSelection';
 import { ClubList } from './pages/SuperAdmin/ClubList';
 import { ClubForm } from './pages/SuperAdmin/ClubForm';
 import { SystemSettings } from './pages/SuperAdmin/SystemSettings';
+import { IaLaboratory } from './pages/SuperAdmin/IaLaboratory';
 import { AdminProductManager } from './pages/Shop/AdminProductManager';
 import { TemporaryAccess } from './pages/Settings/TemporaryAccess';
 
@@ -137,6 +138,7 @@ function App() {
               <Route path="clubs-manage/new" element={<ClubForm />} />
               <Route path="clubs-manage/:id/edit" element={<ClubForm />} />
               <Route path="system-settings" element={<SystemSettings />} />
+              <Route path="ia-lab" element={<IaLaboratory />} />
               <Route path="products" element={<AdminProductManager />} />
               <Route path="temporary-access" element={<TemporaryAccess />} />
 

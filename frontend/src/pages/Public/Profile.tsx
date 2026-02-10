@@ -76,7 +76,8 @@ export function Profile() {
             }
 
             const response = await api.post('/me/photo', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
+                headers: { 'Content-Type': 'multipart/form-data' },
+                timeout: 120000 // 2 minutes timeout for IA processing
             });
 
             // Update local user context if possible

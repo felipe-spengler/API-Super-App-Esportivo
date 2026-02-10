@@ -27,7 +27,8 @@ function PhotoUploadSection({ playerId, currentPhoto }: { playerId: string, curr
 
         try {
             const res = await api.post(`/admin/upload/player-photo/${playerId}`, formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
+                headers: { 'Content-Type': 'multipart/form-data' },
+                timeout: 120000 // 2 minutes timeout
             });
 
             if (res.data.photo_url) {
