@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Calendar, Trophy, Save, Plus, Trash2, CheckCircle, AlertCircle, List, Edit2, X, MapPin, Clock as ClockIcon, Loader2, Play, Printer, Users, Star } from 'lucide-react';
+import { ArrowLeft, Calendar, Trophy, Save, Plus, Trash2, CheckCircle, AlertCircle, List, Edit2, X, MapPin, Clock as ClockIcon, Loader2, Play, Printer, Users, Star, Shuffle } from 'lucide-react';
 import api from '../../services/api';
 
 interface Match {
@@ -481,6 +481,30 @@ export function AdminMatchManager() {
         } finally {
             setLoadingGroups(false);
         }
+    };
+
+    const handleAutoDistribute = () => {
+        // 1. Generate Group Names (A, B, C...) based on numGroups
+        const count = Math.max(2, numGroups);
+        const newGroupNames: string[] = [];
+        for (let i = 0; i < count; i++) {
+            newGroupNames.push(String.fromCharCode(65 + i));
+        }
+
+        // 2. Shuffle Teams
+        const shuffledTeams = [...teams].sort(() => Math.random() - 0.5);
+
+        // 3. Distribute Round Robin
+        const newAssignments: Record<string, string> = {};
+
+        shuffledTeams.forEach((team, index) => {
+            const groupIndex = index % count;
+            newAssignments[team.id] = newGroupNames[groupIndex];
+        });
+
+        // 4. Update State
+        setAvailableGroupNames(newGroupNames);
+        setGroupAssignments(newAssignments);
     };
 
     if (loading) return <div className="p-8 text-center">Carregando...</div>;
@@ -1161,11 +1185,11 @@ export function AdminMatchManager() {
             {
                 showGroupsModal && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                        <div className="bg-white w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
+                        <div className="bg-white w-full max-w-5xl max-h-[90vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
                             <div className="p-6 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
                                 <div>
                                     <h3 className="text-xl font-bold text-gray-900">Gerenciar Grupos</h3>
-                                    <p className="text-sm text-gray-500">Distribua as equipes nos grupos manualmente.</p>
+                                    <p className="text-sm text-gray-500">Distribua as equipes nos grupos manualmente ou faça um sorteio.</p>
                                 </div>
                                 <button onClick={() => setShowGroupsModal(false)} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
                                     <X size={24} />
@@ -1179,9 +1203,47 @@ export function AdminMatchManager() {
                                         <p className="text-gray-500">Carregando grupos...</p>
                                     </div>
                                 ) : (
-                                    <div className="space-y-8">
-                                        {/* Controls */}
-                                        <div className="flex items-center gap-4 bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                                    <div className="space-y-6">
+                                        {/* Auto-Distribution / Shuffle Controls */}
+                                        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col sm:flex-row items-center gap-4 justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <div className="bg-indigo-100 p-2 rounded-lg text-indigo-600">
+                                                    <Shuffle size={20} />
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-bold text-gray-900 text-sm">Sorteio Automático</h4>
+                                                    <p className="text-xs text-gray-500">Defina a quantidade e o sistema distribui.</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center gap-3 w-full sm:w-auto">
+                                                <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200">
+                                                    <span className="text-xs font-bold text-gray-500 uppercase whitespace-nowrap">Qtd. Grupos:</span>
+                                                    <input
+                                                        type="number"
+                                                        min={2}
+                                                        max={16}
+                                                        value={numGroups}
+                                                        onChange={(e) => setNumGroups(parseInt(e.target.value) || 2)}
+                                                        className="w-12 bg-transparent font-bold text-gray-900 outline-none text-center"
+                                                    />
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        if (confirm('Isso irá redistribuir todos os times e apagar a organização atual. Confirmar?')) {
+                                                            handleAutoDistribute();
+                                                        }
+                                                    }}
+                                                    className="flex-1 sm:flex-none px-4 py-2 bg-indigo-600 text-white text-sm font-bold rounded-lg hover:bg-indigo-700 shadow-sm shadow-indigo-200 transition-all flex items-center justify-center gap-2"
+                                                >
+                                                    <Play size={16} fill="currentColor" />
+                                                    Sortear Times
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Manual Controls */}
+                                        <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
                                             <div className="flex-1">
                                                 <label className="block text-xs font-bold text-indigo-800 uppercase mb-1">Grupos Disponíveis</label>
                                                 <div className="flex flex-wrap gap-2">
