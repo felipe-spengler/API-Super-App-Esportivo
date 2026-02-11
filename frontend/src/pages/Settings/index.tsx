@@ -39,6 +39,7 @@ export function Settings() {
                 { key: 'artilheiro', label: 'Artilheiro', defaultFile: 'fundo_melhor_artilheiro.jpg' },
                 { key: 'assistencia', label: 'Rei das Assistências', defaultFile: 'fundo_melhor_assistencia.jpg' },
                 { key: 'estreante', label: 'Estreante', defaultFile: 'fundo_melhor_estreiante.jpg' },
+                { key: 'jogo_programado', label: 'Jogo Programado', defaultFile: 'fundo_confronto.jpg' },
             ]
         },
         volei: {
@@ -54,6 +55,7 @@ export function Settings() {
                 { key: 'maior_pontuadora', label: 'Maior Pontuador(a)', defaultFile: 'volei_maior_pontuadora_geral.jpg' },
                 { key: 'bloqueadora', label: 'Melhor Bloqueador(a)', defaultFile: 'volei_maior_bloqueadora.jpg' },
                 { key: 'estreante', label: 'Estreante', defaultFile: 'volei_melhor_estreante.jpg' },
+                { key: 'jogo_programado', label: 'Jogo Programado', defaultFile: 'volei_confronto.jpg' },
             ]
         },
         "futebol-7": {
@@ -68,6 +70,7 @@ export function Settings() {
                 { key: 'artilheiro', label: 'Artilheiro', defaultFile: 'fundo_melhor_artilheiro.jpg' },
                 { key: 'assistencia', label: 'Rei das Assistências', defaultFile: 'fundo_melhor_assistencia.jpg' },
                 { key: 'estreante', label: 'Estreante', defaultFile: 'fundo_melhor_estreiante.jpg' },
+                { key: 'jogo_programado', label: 'Jogo Programado', defaultFile: 'fundo_confronto.jpg' },
             ]
         },
         "tenis": {
@@ -76,6 +79,28 @@ export function Settings() {
                 { key: 'confronto', label: 'Confronto (Faceoff)', defaultFile: 'tenis_confronto.jpg' },
                 { key: 'craque', label: 'Melhor da Partida', defaultFile: 'tenis_melhor_da_partida.jpg' },
                 { key: 'estreante', label: 'Estreante', defaultFile: 'tenis_melhor_estreante.jpg' },
+                { key: 'jogo_programado', label: 'Jogo Programado', defaultFile: 'tenis_confronto.jpg' },
+            ]
+        },
+        "futsal": {
+            name: "Futsal",
+            positions: [
+                { key: 'confronto', label: 'Confronto (Faceoff)', defaultFile: 'fundo_confronto.jpg' },
+                { key: 'craque', label: 'Craque do Jogo (MVP)', defaultFile: 'fundo_craque_do_jogo.jpg' },
+                { key: 'goleiro', label: 'Melhor Goleiro', defaultFile: 'fundo_melhor_goleiro.jpg' },
+                { key: 'fixo', label: 'Melhor Fixo', defaultFile: 'fundo_melhor_zagueiro.jpg' },
+                { key: 'ala', label: 'Melhor Ala', defaultFile: 'fundo_melhor_lateral.jpg' },
+                { key: 'pivo', label: 'Melhor Pivô', defaultFile: 'fundo_melhor_atacante.jpg' },
+                { key: 'artilheiro', label: 'Artilheiro', defaultFile: 'fundo_melhor_artilheiro.jpg' },
+                { key: 'jogo_programado', label: 'Jogo Programado', defaultFile: 'fundo_confronto.jpg' },
+            ]
+        },
+        "basquete": {
+            name: "Basquete",
+            positions: [
+                { key: 'confronto', label: 'Confronto (Faceoff)', defaultFile: 'fundo_confronto.jpg' },
+                { key: 'craque', label: 'MVP da Partida', defaultFile: 'fundo_craque_do_jogo.jpg' },
+                { key: 'jogo_programado', label: 'Jogo Programado', defaultFile: 'fundo_confronto.jpg' },
             ]
         }
     };
@@ -647,133 +672,135 @@ export function Settings() {
                                 </p>
                             </header>
 
-                            {Object.entries(artConfig).map(([sportKey, config]: [string, any]) => {
-                                const isOpen = expandedSports.includes(sportKey);
-                                return (
-                                    <section key={sportKey} className="border border-gray-200 rounded-2xl overflow-hidden shadow-sm bg-white">
-                                        <div
-                                            onClick={() => toggleSportSection(sportKey)}
-                                            className="bg-gray-50 p-4 flex justify-between items-center cursor-pointer hover:bg-gray-100 transition-colors"
-                                        >
-                                            <h3 className="text-lg font-bold text-gray-800 capitalize flex items-center gap-2">
-                                                {sportKey === 'futebol' && <div className="w-2 h-2 rounded-full bg-green-500"></div>}
-                                                {sportKey === 'volei' && <div className="w-2 h-2 rounded-full bg-orange-500"></div>}
-                                                {config.name}
-                                            </h3>
-                                            {isOpen ? <ChevronDown className="w-5 h-5 text-gray-400" /> : <ChevronRight className="w-5 h-5 text-gray-400" />}
-                                        </div>
+                            {Object.entries(artConfig)
+                                .filter(([sportKey]) => settings.active_modalities.includes(sportKey))
+                                .map(([sportKey, config]: [string, any]) => {
+                                    const isOpen = expandedSports.includes(sportKey);
+                                    return (
+                                        <section key={sportKey} className="border border-gray-200 rounded-2xl overflow-hidden shadow-sm bg-white">
+                                            <div
+                                                onClick={() => toggleSportSection(sportKey)}
+                                                className="bg-gray-50 p-4 flex justify-between items-center cursor-pointer hover:bg-gray-100 transition-colors"
+                                            >
+                                                <h3 className="text-lg font-bold text-gray-800 capitalize flex items-center gap-2">
+                                                    {sportKey === 'futebol' && <div className="w-2 h-2 rounded-full bg-green-500"></div>}
+                                                    {sportKey === 'volei' && <div className="w-2 h-2 rounded-full bg-orange-500"></div>}
+                                                    {config.name}
+                                                </h3>
+                                                {isOpen ? <ChevronDown className="w-5 h-5 text-gray-400" /> : <ChevronRight className="w-5 h-5 text-gray-400" />}
+                                            </div>
 
-                                        {isOpen && (
-                                            <div className="p-4 md:p-6 bg-white border-t border-gray-100">
-                                                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
-                                                    {config.positions.map((pos: any) => {
-                                                        const currentBg = settings.art_settings?.[sportKey]?.[pos.key];
+                                            {isOpen && (
+                                                <div className="p-4 md:p-6 bg-white border-t border-gray-100">
+                                                    <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
+                                                        {config.positions.map((pos: any) => {
+                                                            const currentBg = settings.art_settings?.[sportKey]?.[pos.key];
 
-                                                        // Resolve URL
-                                                        // If custom: /api/storage/...
-                                                        // If default: /api/assets-templates/...
-                                                        let displayUrl = null;
+                                                            // Resolve URL
+                                                            // If custom: /api/storage/...
+                                                            // If default: /api/assets-templates/...
+                                                            let displayUrl = null;
 
-                                                        // Use configured API URL or fallback to relative root (works for same-domain deployments)
-                                                        const apiUrl = import.meta.env.VITE_API_URL || '';
-                                                        const rootUrl = apiUrl.replace(/\/$/, '').replace(/\/api$/, '');
+                                                            // Use configured API URL or fallback to relative root (works for same-domain deployments)
+                                                            const apiUrl = import.meta.env.VITE_API_URL || '';
+                                                            const rootUrl = apiUrl.replace(/\/$/, '').replace(/\/api$/, '');
 
-                                                        if (currentBg) {
-                                                            if (currentBg.startsWith('http')) {
-                                                                displayUrl = currentBg;
-                                                            } else {
-                                                                displayUrl = `${rootUrl}/api/storage/${currentBg.replace(/^\//, '')}`;
+                                                            if (currentBg) {
+                                                                if (currentBg.startsWith('http')) {
+                                                                    displayUrl = currentBg;
+                                                                } else {
+                                                                    displayUrl = `${rootUrl}/api/storage/${currentBg.replace(/^\//, '')}`;
+                                                                }
+                                                            } else if (pos.defaultFile) {
+                                                                displayUrl = `${rootUrl}/api/assets-templates/${pos.defaultFile}`;
                                                             }
-                                                        } else if (pos.defaultFile) {
-                                                            displayUrl = `${rootUrl}/api/assets-templates/${pos.defaultFile}`;
-                                                        }
 
-                                                        return (
-                                                            <div key={pos.key} className="bg-gray-50 rounded-xl p-3 md:p-4 border border-gray-100 flex flex-col gap-3 transition-hover hover:shadow-md">
-                                                                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-1">
-                                                                    <span className="font-bold text-xs md:text-sm text-gray-700 leading-tight">{pos.label}</span>
-                                                                    {currentBg ? (
-                                                                        <span className="text-[10px] text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full font-medium border border-green-100 whitespace-nowrap">Personalizado</span>
-                                                                    ) : (
-                                                                        <span className="text-[10px] text-gray-500 bg-white px-1.5 py-0.5 rounded-full border border-gray-200 whitespace-nowrap">Padrão</span>
-                                                                    )}
-                                                                </div>
-
-                                                                <div className="relative w-full aspect-[4/5] bg-gray-200 rounded-lg overflow-hidden group border border-gray-200">
-                                                                    {displayUrl ? (
-                                                                        <img
-                                                                            src={displayUrl}
-                                                                            className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                                                                            alt="Preview"
-                                                                            onError={(e) => {
-                                                                                // Fallback visual if image fails to load
-                                                                                e.currentTarget.style.display = 'none';
-                                                                                e.currentTarget.parentElement?.classList.add('flex', 'items-center', 'justify-center');
-                                                                                if (e.currentTarget.nextElementSibling) {
-                                                                                    e.currentTarget.nextElementSibling.classList.remove('hidden');
-                                                                                }
-                                                                            }}
-                                                                        />
-                                                                    ) : null}
-
-                                                                    {/* Fallback element (hidden by default unless image fails or is missing) */}
-                                                                    <div className={`absolute inset-0 flex flex-col items-center justify-center text-gray-400 p-4 text-center bg-gray-100 ${displayUrl ? 'hidden' : ''}`}>
-                                                                        <Palette className="w-8 h-8 mb-2 opacity-20" />
-                                                                        <span className="text-xs">Visualização indisponível</span>
+                                                            return (
+                                                                <div key={pos.key} className="bg-gray-50 rounded-xl p-3 md:p-4 border border-gray-100 flex flex-col gap-3 transition-hover hover:shadow-md">
+                                                                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-1">
+                                                                        <span className="font-bold text-xs md:text-sm text-gray-700 leading-tight">{pos.label}</span>
+                                                                        {currentBg ? (
+                                                                            <span className="text-[10px] text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full font-medium border border-green-100 whitespace-nowrap">Personalizado</span>
+                                                                        ) : (
+                                                                            <span className="text-[10px] text-gray-500 bg-white px-1.5 py-0.5 rounded-full border border-gray-200 whitespace-nowrap">Padrão</span>
+                                                                        )}
                                                                     </div>
 
-                                                                    {/* Hover Actions */}
-                                                                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3 backdrop-blur-sm p-4">
-                                                                        {displayUrl && (
-                                                                            <a
-                                                                                href={displayUrl}
-                                                                                target="_blank"
-                                                                                rel="noopener noreferrer"
-                                                                                className="text-white hover:text-indigo-200 flex items-center gap-1 text-xs font-medium mb-1"
-                                                                            >
-                                                                                <Eye className="w-3 h-3" /> Ver
-                                                                            </a>
-                                                                        )}
+                                                                    <div className="relative w-full aspect-[4/5] bg-gray-200 rounded-lg overflow-hidden group border border-gray-200">
+                                                                        {displayUrl ? (
+                                                                            <img
+                                                                                src={displayUrl}
+                                                                                className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                                                                                alt="Preview"
+                                                                                onError={(e) => {
+                                                                                    // Fallback visual if image fails to load
+                                                                                    e.currentTarget.style.display = 'none';
+                                                                                    e.currentTarget.parentElement?.classList.add('flex', 'items-center', 'justify-center');
+                                                                                    if (e.currentTarget.nextElementSibling) {
+                                                                                        e.currentTarget.nextElementSibling.classList.remove('hidden');
+                                                                                    }
+                                                                                }}
+                                                                            />
+                                                                        ) : null}
 
-                                                                        <div className="flex flex-col w-full gap-2">
-                                                                            <div className="flex gap-2 justify-center">
-                                                                                <input
-                                                                                    type="file"
-                                                                                    id={`upload-${sportKey}-${pos.key}`}
-                                                                                    className="hidden"
-                                                                                    accept="image/*"
-                                                                                    onChange={(e) => handleArtUpload(e, sportKey, pos.key)}
-                                                                                />
-                                                                                <label
-                                                                                    htmlFor={`upload-${sportKey}-${pos.key}`}
-                                                                                    className="bg-white text-indigo-600 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer hover:bg-indigo-50 flex items-center justify-center gap-2 shadow-sm flex-1"
-                                                                                >
-                                                                                    <Upload className="w-3 h-3" />
-                                                                                    {currentBg ? 'Trocar' : 'Enviar'}
-                                                                                </label>
-                                                                            </div>
+                                                                        {/* Fallback element (hidden by default unless image fails or is missing) */}
+                                                                        <div className={`absolute inset-0 flex flex-col items-center justify-center text-gray-400 p-4 text-center bg-gray-100 ${displayUrl ? 'hidden' : ''}`}>
+                                                                            <Palette className="w-8 h-8 mb-2 opacity-20" />
+                                                                            <span className="text-xs">Visualização indisponível</span>
+                                                                        </div>
 
-                                                                            {currentBg && (
-                                                                                <button
-                                                                                    onClick={() => removeArt(sportKey, pos.key)}
-                                                                                    className="bg-red-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer hover:bg-red-600 flex items-center justify-center gap-2 shadow-sm w-full"
+                                                                        {/* Hover Actions */}
+                                                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3 backdrop-blur-sm p-4">
+                                                                            {displayUrl && (
+                                                                                <a
+                                                                                    href={displayUrl}
+                                                                                    target="_blank"
+                                                                                    rel="noopener noreferrer"
+                                                                                    className="text-white hover:text-indigo-200 flex items-center gap-1 text-xs font-medium mb-1"
                                                                                 >
-                                                                                    <Trash2 className="w-3 h-3" />
-                                                                                    Remover
-                                                                                </button>
+                                                                                    <Eye className="w-3 h-3" /> Ver
+                                                                                </a>
                                                                             )}
+
+                                                                            <div className="flex flex-col w-full gap-2">
+                                                                                <div className="flex gap-2 justify-center">
+                                                                                    <input
+                                                                                        type="file"
+                                                                                        id={`upload-${sportKey}-${pos.key}`}
+                                                                                        className="hidden"
+                                                                                        accept="image/*"
+                                                                                        onChange={(e) => handleArtUpload(e, sportKey, pos.key)}
+                                                                                    />
+                                                                                    <label
+                                                                                        htmlFor={`upload-${sportKey}-${pos.key}`}
+                                                                                        className="bg-white text-indigo-600 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer hover:bg-indigo-50 flex items-center justify-center gap-2 shadow-sm flex-1"
+                                                                                    >
+                                                                                        <Upload className="w-3 h-3" />
+                                                                                        {currentBg ? 'Trocar' : 'Enviar'}
+                                                                                    </label>
+                                                                                </div>
+
+                                                                                {currentBg && (
+                                                                                    <button
+                                                                                        onClick={() => removeArt(sportKey, pos.key)}
+                                                                                        className="bg-red-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer hover:bg-red-600 flex items-center justify-center gap-2 shadow-sm w-full"
+                                                                                    >
+                                                                                        <Trash2 className="w-3 h-3" />
+                                                                                        Remover
+                                                                                    </button>
+                                                                                )}
+                                                                            </div>
                                                                         </div>
                                                                     </div>
                                                                 </div>
-                                                            </div>
-                                                        );
-                                                    })}
+                                                            );
+                                                        })}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        )}
-                                    </section>
-                                );
-                            })}
+                                            )}
+                                        </section>
+                                    );
+                                })}
                         </div>
                     )}
 
