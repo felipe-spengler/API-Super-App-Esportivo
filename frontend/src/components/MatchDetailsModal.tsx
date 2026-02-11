@@ -502,13 +502,13 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                 <div className="flex flex-col items-center justify-center py-6">
                                     <div className="w-full max-w-sm flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-300">
                                         <a
-                                            href={`${api.defaults.baseURL}/public/art/match/${match.id}/scheduled`}
+                                            href={`${api.defaults.baseURL}/public/art/match/${match.id}/scheduled?download=true`}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="relative w-full aspect-video bg-gray-200 rounded-2xl overflow-hidden shadow-xl border border-white hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] group cursor-pointer"
                                         >
                                             <img
-                                                src={`${api.defaults.baseURL}/public/art/match/${match.id}/scheduled`}
+                                                src={`${api.defaults.baseURL}/public/art/match/${match.id}/scheduled?t=${Date.now()}`}
                                                 className="w-full h-full object-cover"
                                                 alt="Arte do Jogo Programado"
                                                 onError={(e: any) => {
@@ -527,14 +527,36 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                             </h3>
                                             <p className="text-gray-500 text-sm mb-4">Compartilhe as informações do jogo!</p>
                                             <a
-                                                href={`${api.defaults.baseURL}/public/art/match/${match.id}/scheduled`}
+                                                href={`${api.defaults.baseURL}/public/art/match/${match.id}/scheduled?download=true`}
                                                 download={`jogo-${match.id}.jpg`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="inline-flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-600/30 hover:bg-indigo-700 transition-all active:scale-95 text-sm"
                                             >
-                                                <Share2 size={16} /> Baixar e Compartilhar
+                                                <Share2 size={16} /> Baixar Imagem
                                             </a>
+                                            {/* @ts-ignore */}
+                                            {navigator.share && (
+                                                <button
+                                                    onClick={async () => {
+                                                        try {
+                                                            const response = await fetch(`${api.defaults.baseURL}/public/art/match/${match.id}/scheduled`);
+                                                            const blob = await response.blob();
+                                                            const file = new File([blob], `jogo-${match.id}.jpg`, { type: 'image/jpeg' });
+                                                            await navigator.share({
+                                                                title: `Jogo: ${match.home_team?.name} vs ${match.away_team?.name}`,
+                                                                text: 'Confira os detalhes da nossa próxima partida!',
+                                                                files: [file]
+                                                            });
+                                                        } catch (err) {
+                                                            console.error('Error sharing:', err);
+                                                        }
+                                                    }}
+                                                    className="inline-flex items-center gap-2 px-6 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-50 transition-all active:scale-95 text-sm mt-2"
+                                                >
+                                                    <Share2 size={16} /> Compartilhar
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
