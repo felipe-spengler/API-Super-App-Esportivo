@@ -210,7 +210,7 @@ export function EventStats() {
                                             </div>
                                             <div className="flex-1">
                                                 <p className="text-[10px] text-gray-400 uppercase font-bold mb-0.5">
-                                                    {detail.match_date ? new Date(detail.match_date).toLocaleDateString('pt-BR') : ''} • {detail.period || 'Jogo'}
+                                                    {detail.match_date ? new Date(detail.match_date).toLocaleDateString('pt-BR') : ''} • {detail.period || 'Jogo'} {detail.round ? ` • ${detail.round}` : ''}
                                                 </p>
                                                 <p className="font-medium text-gray-800 text-sm">{detail.match_label || 'Partida'}</p>
                                             </div>

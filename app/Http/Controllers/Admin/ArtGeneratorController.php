@@ -198,10 +198,23 @@ class ArtGeneratorController extends Controller
             $this->drawCenteredText($img, $size, $y, $color, $text, $useSecFont);
         };
 
+        // Helper para desenhar com Sombra em Posição X Específica
+        $drawTextAt = function ($size, $xCenter, $y, $color, $text, $useSecFont) use ($img, $black) {
+            $font = $useSecFont ? $this->secondaryFontPath : $this->fontPath;
+            $box = imagettfbbox($size, 0, $font, $text);
+            $textWidth = $box[2] - $box[0];
+            $x = $xCenter - ($textWidth / 2);
+
+            // Sombra
+            imagettftext($img, $size, 0, $x + 3, $y + 3, $black, $font, $text);
+            // Texto
+            imagettftext($img, $size, 0, $x, $y, $color, $font, $text);
+        };
+
         // 1. Topo: Nome do Campeonato e Esporte (Mais compacto)
         $champName = mb_strtoupper($match->championship->name);
-        // Usar Cor Secundária para o Camp
-        $drawText(35, 100, $secondaryColor, $champName, true);
+        // Usar Branco para o Camp (Solicitado)
+        $drawText(35, 100, $white, $champName, true);
         // Usar Cor Primária para o Esporte (Destaque)
         $drawText(65, 190, $primaryColor, mb_strtoupper($sport), false);
 
@@ -212,42 +225,48 @@ class ArtGeneratorController extends Controller
         // Tamanho dinâmico do brasão baseado na altura da imagem (para 1080x1080 vs 1080x1920)
         // Se for quadrado, usa um pouco menor
         $isSquare = abs($width - $height) < 100;
-        $badgeSize = $isSquare ? 320 : 380;
+        $badgeSize = $isSquare ? 300 : 380;
 
         // Centralizar verticalmente na área disponível
         // Topo acaba ~200. Rodapé começa ~Height-300.
         // Vamos fixar um pouco mais pra cima para garantir
-        $yBadges = ($height / 2) - ($badgeSize / 2) - 50;
-        $centerDist = $isSquare ? 280 : 320;
+        $yBadges = ($height / 2) - ($badgeSize / 2) - 40;
+        $centerDist = $isSquare ? 260 : 320;
 
         // Mandante
         $xA = ($width / 2) - $centerDist - ($badgeSize / 2);
         $this->drawTeamBadge($img, $match->homeTeam, $xA, $yBadges, $badgeSize, $white);
-        // Nome do Time Mandante
-        $this->drawCenteredTextInBox($img, 30, $xA - 50, $yBadges + $badgeSize + 10, $badgeSize + 100, $white, mb_strtoupper($match->homeTeam->name));
+
+        // Nome do Time Mandante (Colado embaixo)
+        $xCenterA = $xA + ($badgeSize / 2);
+        $yName = $yBadges + $badgeSize + 45;
+        $drawTextAt(28, $xCenterA, $yName, $white, mb_strtoupper($match->homeTeam->name), false);
 
 
         // Visitante
         $xB = ($width / 2) + $centerDist - ($badgeSize / 2);
         $this->drawTeamBadge($img, $match->awayTeam, $xB, $yBadges, $badgeSize, $white);
-        // Nome do Time Visitante
-        $this->drawCenteredTextInBox($img, 30, $xB - 50, $yBadges + $badgeSize + 10, $badgeSize + 100, $white, mb_strtoupper($match->awayTeam->name));
+
+        // Nome do Time Visitante (Colado embaixo)
+        $xCenterB = $xB + ($badgeSize / 2);
+        $drawTextAt(28, $xCenterB, $yName, $white, mb_strtoupper($match->awayTeam->name), false);
 
         // VS (Versus) no meio
         $drawText(60, $yBadges + ($badgeSize / 2) + 20, $primaryColor, "X", false);
 
 
-        // 3. Rodapé: Data, Horário e Local (Mais pra cima para não cortar)
-        $yDate = $height - 300;
-        $yLoc = $height - 180;
+        // 3. Rodapé: Data, Horário e Local
+        // Ajustado para ficar mais embaixo e próximo
+        $yLoc = $height - 80;
+        $yDate = $yLoc - 80;
 
         $dateStr = \Carbon\Carbon::parse($match->start_time)->translatedFormat('d \d\e F \à\s H:i');
         $location = mb_strtoupper($match->location ?? 'LOCAL A DEFINIR');
 
         // Data com Cor Primária
-        $drawText(55, $yDate, $primaryColor, mb_strtoupper($dateStr), false);
+        $drawText(50, $yDate, $primaryColor, mb_strtoupper($dateStr), false);
         // Local com Branco/Secundário
-        $drawText(40, $yLoc, $white, $location, true);
+        $drawText(35, $yLoc, $white, $location, true);
 
         return $this->outputImage($img, 'jogo_programado_' . $match->id);
     }
