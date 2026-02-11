@@ -43,6 +43,11 @@ class ArtGeneratorController extends Controller
         return $this->generateScheduledArt($match, $club);
     }
 
+    public function downloadScheduledArt($matchId)
+    {
+        return $this->matchScheduled($matchId);
+    }
+
     /**
      * Gera Arte de MVP da Partida
      */

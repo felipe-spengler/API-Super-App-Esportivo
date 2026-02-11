@@ -16,11 +16,17 @@ export function Explore() {
         async function loadChampionships() {
             setLoading(true);
             try {
-                // Fetch all public championships with status filter
+                // Fetch all public championships with status and club filter
                 const params: any = {};
                 if (statusTab !== 'active') {
                     params.status = statusTab;
                 }
+
+                const clubId = searchParams.get('club');
+                if (clubId) {
+                    params.club_id = clubId;
+                }
+
                 const res = await api.get('/public/events', { params });
 
                 let filtered = res.data;

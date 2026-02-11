@@ -49,6 +49,10 @@ class EventController extends Controller
             $query->where('sport_id', $request->sport_id);
         }
 
+        if ($request->has('club_id')) {
+            $query->where('club_id', $request->club_id);
+        }
+
         $championships = $query->orderBy('start_date', 'asc')->get();
 
         return response()->json($championships);
@@ -693,9 +697,7 @@ class EventController extends Controller
 
                 // Se o status mudou, salva mantendo o is_status_auto como true (pois foi auto)
                 if ($newStatus !== $champ->status) {
-                    // Usamos update direto para evitar disparar o observador 
-                    $champ->status = $newStatus;
-                    $champ->save();
+                    Championship::where('id', $champ->id)->update(['status' => $newStatus]);
                 }
             }
         } catch (\Exception $e) {
