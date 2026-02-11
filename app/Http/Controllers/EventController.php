@@ -663,39 +663,44 @@ class EventController extends Controller
     // 12. Sincronizar Statuses com base nas datas (Automático)
     protected function syncStatuses()
     {
-        $now = now();
-        // Apenas campeonatos que estão marcados para atualização automática e não são rascunhos 'draft'
-        $championships = Championship::where('is_status_auto', true)
-            ->where('status', '!=', 'draft')
-            ->get();
+        try {
+            $now = now();
+            // Apenas campeonatos que estão marcados para atualização automática e não são rascunhos 'draft'
+            $championships = Championship::where('is_status_auto', true)
+                ->where('status', '!=', 'draft')
+                ->get();
 
-        foreach ($championships as $champ) {
-            $newStatus = $champ->status;
+            foreach ($championships as $champ) {
+                $newStatus = $champ->status;
 
-            // 1. Verificar se terminou (End Date)
-            if ($champ->end_date && $now->isAfter($champ->end_date->endOfDay())) {
-                $newStatus = 'finished';
-            }
-            // 2. Verificar se está em andamento (Start Date ou fim das inscrições)
-            else if (
-                ($champ->start_date && $now->isAfter($champ->start_date->startOfDay())) ||
-                ($champ->registration_end_date && $now->isAfter($champ->registration_end_date->endOfDay()))
-            ) {
-                // Se já não estiver finalizado, passa para em andamento
-                $newStatus = 'ongoing';
-            }
-            // 3. Verificar se as inscrições abriram (Registration Start)
-            else if ($champ->registration_start_date && $now->isAfter($champ->registration_start_date)) {
-                // Se as inscrições começaram e ainda não é data de jogo, abre inscrições
-                $newStatus = 'registrations_open';
-            }
+                // 1. Verificar se terminou (End Date)
+                if ($champ->end_date && $now->isAfter($champ->end_date->endOfDay())) {
+                    $newStatus = 'finished';
+                }
+                // 2. Verificar se está em andamento (Start Date ou fim das inscrições)
+                else if (
+                    ($champ->start_date && $now->isAfter($champ->start_date->startOfDay())) ||
+                    ($champ->registration_end_date && $now->isAfter($champ->registration_end_date->endOfDay()))
+                ) {
+                    // Se já não estiver finalizado, passa para em andamento
+                    $newStatus = 'ongoing';
+                }
+                // 3. Verificar se as inscrições abriram (Registration Start)
+                else if ($champ->registration_start_date && $now->isAfter($champ->registration_start_date)) {
+                    // Se as inscrições começaram e ainda não é data de jogo, abre inscrições
+                    $newStatus = 'registrations_open';
+                }
 
-            // Se o status mudou, salva mantendo o is_status_auto como true (pois foi auto)
-            if ($newStatus !== $champ->status) {
-                // Usamos update direto para evitar disparar o observador que poderia setar auto=false se tivéssemos um
-                $champ->status = $newStatus;
-                $champ->save();
+                // Se o status mudou, salva mantendo o is_status_auto como true (pois foi auto)
+                if ($newStatus !== $champ->status) {
+                    // Usamos update direto para evitar disparar o observador 
+                    $champ->status = $newStatus;
+                    $champ->save();
+                }
             }
+        } catch (\Exception $e) {
+            // Silenciosamente falha se a coluna não existir (migration não rodada)
+            \Log::warning("Erro ao sincronizar status: " . $e->getMessage());
         }
     }
 
