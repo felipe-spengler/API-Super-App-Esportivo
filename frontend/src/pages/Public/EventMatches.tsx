@@ -64,7 +64,7 @@ export function EventMatches() {
         const st = match.match_details?.sync_timer;
 
         switch (status) {
-            case 'finished': return <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px] font-bold uppercase border border-gray-200">Finalizada</span>;
+
             case 'live':
                 return (
                     <div className="flex flex-col items-center gap-1">

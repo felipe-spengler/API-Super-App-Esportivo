@@ -58,7 +58,7 @@ export function EventLeaderboard() {
                 }
 
                 // Load Standings if applicable
-                if (['league', 'groups', 'group_knockout', 'racing'].includes(format)) {
+                if (['league', 'groups', 'group_knockout', 'racing', 'running_points'].includes(format)) {
                     const response = await api.get(`/championships/${id}/leaderboard${categoryId ? `?category_id=${categoryId}` : ''}`);
                     setStandings(response.data);
                 }
@@ -206,14 +206,21 @@ export function EventLeaderboard() {
                             </div>
                         )}
 
-                        {(championshipFormat === 'league' || championshipFormat === 'racing') && standings.length === 0 && (
-                            <div className="text-center py-10 bg-white rounded-xl shadow-sm border border-gray-100">
-                                <p className="text-gray-500">Classificação não disponível.</p>
-                            </div>
+                        {/* PONTOS CORRIDOS (LEAGUE / RUNNING_POINTS / RACING) */}
+                        {['league', 'racing', 'running_points'].includes(championshipFormat) && (
+                            <>
+                                {standings.length === 0 ? (
+                                    <div className="text-center py-10 bg-white rounded-xl shadow-sm border border-gray-100">
+                                        <p className="text-gray-500">Classificação não disponível.</p>
+                                    </div>
+                                ) : (
+                                    renderLeagueTable()
+                                )}
+                            </>
                         )}
-                        {(championshipFormat === 'league' || championshipFormat === 'racing') && standings.length > 0 && renderLeagueTable()}
 
-                        {(championshipFormat === 'group_knockout') && (
+                        {/* FASE DE GRUPOS (GROUPS / GROUP_KNOCKOUT) */}
+                        {['groups', 'group_knockout'].includes(championshipFormat) && (
                             <>
                                 {standings.length > 0 ? (
                                     <>
@@ -226,22 +233,25 @@ export function EventLeaderboard() {
                                     </div>
                                 )}
 
-                                <div className="mt-12">
-                                    <h3 className="text-xl font-bold text-gray-800 mb-4 px-2 border-l-4 border-indigo-600">Fase Final (Mata-mata)</h3>
-                                    {knockoutMatches.length > 0 ? (
-                                        <TournamentBracket matches={knockoutMatches} />
-                                    ) : (
-                                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
-                                            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                                <span className="text-3xl">🏆</span>
+                                {/* Somente mostra Mata-Mata se for Group_Knockout */}
+                                {championshipFormat === 'group_knockout' && (
+                                    <div className="mt-12">
+                                        <h3 className="text-xl font-bold text-gray-800 mb-4 px-2 border-l-4 border-indigo-600">Fase Final (Mata-mata)</h3>
+                                        {knockoutMatches.length > 0 ? (
+                                            <TournamentBracket matches={knockoutMatches} />
+                                        ) : (
+                                            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
+                                                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                    <span className="text-3xl">🏆</span>
+                                                </div>
+                                                <h4 className="text-lg font-bold text-gray-800 mb-2">Chaveamento Indefinido</h4>
+                                                <p className="text-gray-500 max-w-sm mx-auto">
+                                                    O chaveamento da fase final será gerado automaticamente após o término da fase de grupos.
+                                                </p>
                                             </div>
-                                            <h4 className="text-lg font-bold text-gray-800 mb-2">Chaveamento Indefinido</h4>
-                                            <p className="text-gray-500 max-w-sm mx-auto">
-                                                O chaveamento da fase final será gerado automaticamente após o término da fase de grupos.
-                                            </p>
-                                        </div>
-                                    )}
-                                </div>
+                                        )}
+                                    </div>
+                                )}
                             </>
                         )}
                     </>
