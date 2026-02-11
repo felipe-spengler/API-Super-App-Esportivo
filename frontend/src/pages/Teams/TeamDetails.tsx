@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Users, Shield, Trophy, Loader2, Plus, User as UserIcon, CheckCircle, Clock, Trash2, X, Edit } from 'lucide-react';
 import api from '../../services/api';
 import { PlayerEditModal } from '../Players/PlayerEditModal';
@@ -36,6 +36,8 @@ interface Team {
 export function TeamDetails() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
+    const fromChampionshipId = location.state?.fromChampionshipId;
     const [team, setTeam] = useState<Team | null>(null);
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
@@ -65,7 +67,11 @@ export function TeamDetails() {
     async function loadTeam() {
         setLoading(true);
         try {
-            const response = await api.get(`/admin/teams/${id}`);
+            const response = await api.get(`/admin/teams/${id}`, {
+                params: {
+                    championship_id: fromChampionshipId
+                }
+            });
             setTeam(response.data);
         } catch (error) {
             console.error("Erro ao carregar time:", error);
@@ -95,6 +101,10 @@ export function TeamDetails() {
             }
             if (photoFile) {
                 formData.append('photo_file', photoFile);
+            }
+
+            if (fromChampionshipId) {
+                formData.append('championship_id', fromChampionshipId);
             }
 
             await api.post(`/teams/${id}/players`, formData, {
@@ -131,7 +141,11 @@ export function TeamDetails() {
     async function handleRemovePlayer(playerId: number) {
         if (!window.confirm('Remover jogador da equipe?')) return;
         try {
-            await api.delete(`/admin/teams/${id}/players/${playerId}`);
+            await api.delete(`/admin/teams/${id}/players/${playerId}`, {
+                params: {
+                    championship_id: fromChampionshipId
+                }
+            });
             loadTeam();
         } catch (error) {
             console.error(error);
@@ -155,12 +169,21 @@ export function TeamDetails() {
         <div className="animate-in fade-in duration-500 space-y-6">
             <div className="flex items-center gap-4">
                 <button
-                    onClick={() => navigate('/admin/teams')}
+                    onClick={() => {
+                        if (fromChampionshipId) {
+                            navigate(`/admin/championships/${fromChampionshipId}/teams`);
+                        } else {
+                            navigate('/admin/teams');
+                        }
+                    }}
                     className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 >
                     <ArrowLeft className="w-5 h-5 text-gray-600" />
                 </button>
-                <h1 className="text-2xl font-bold text-gray-800 flex-1">Detalhes da equipe</h1>
+                <h1 className="text-2xl font-bold text-gray-800 flex-1">
+                    Detalhes da equipe
+                    {fromChampionshipId && <span className="text-sm font-normal text-gray-500 ml-2">(Contexto: Campeonato)</span>}
+                </h1>
                 <button
                     onClick={() => navigate(`/admin/teams/${id}/edit`)}
                     className="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium flex items-center gap-2 shadow-sm"

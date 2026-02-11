@@ -35,9 +35,19 @@ class AdminTeamController extends Controller
     }
 
     // Show team details
-    public function show($id)
+    public function show(Request $request, $id)
     {
-        $team = Team::with(['club', 'players', 'championships.sport', 'championships.categories'])->findOrFail($id);
+        $team = Team::with(['club', 'championships.sport', 'championships.categories'])
+            ->with([
+                'players' => function ($q) use ($request) {
+                    if ($request->has('championship_id')) {
+                        $q->where('team_players.championship_id', $request->championship_id);
+                    } else {
+                        $q->whereNull('team_players.championship_id');
+                    }
+                }
+            ])
+            ->findOrFail($id);
 
         // Map the category name to each championship
         $team->championships->each(function ($championship) {
@@ -167,10 +177,22 @@ class AdminTeamController extends Controller
     }
 
     // Remove player from team
-    public function removePlayer($teamId, $playerId)
+    public function removePlayer(Request $request, $teamId, $playerId)
     {
         $team = Team::findOrFail($teamId);
-        $team->players()->detach($playerId);
+
+        $champId = $request->championship_id;
+
+        // Use standard DB logic for pivot to distinguish specific row
+        \DB::table('team_players')
+            ->where('team_id', $teamId)
+            ->where('user_id', $playerId)
+            ->when($champId, function ($q) use ($champId) {
+                return $q->where('championship_id', $champId);
+            }, function ($q) {
+                return $q->whereNull('championship_id');
+            })
+            ->delete();
 
         return response()->json(['message' => 'Player removed from team']);
     }

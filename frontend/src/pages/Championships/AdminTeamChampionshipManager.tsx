@@ -130,7 +130,7 @@ export function AdminTeamChampionshipManager() {
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <button
-                                            onClick={() => navigate(`/admin/teams/${team.id}`)}
+                                            onClick={() => navigate(`/admin/teams/${team.id}`, { state: { fromChampionshipId: id } })}
                                             className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex items-center gap-1 text-xs font-bold"
                                             title="Gerenciar Jogadores"
                                         >

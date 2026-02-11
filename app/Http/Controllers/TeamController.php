@@ -69,7 +69,8 @@ class TeamController extends Controller
             'birth_date' => 'nullable|date',
             'number' => 'nullable|string',
             'document_file' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120', // Max 5MB
-            'photo_file' => 'nullable|image|max:2048' // Max 2MB
+            'photo_file' => 'nullable|image|max:2048', // Max 2MB
+            'championship_id' => 'nullable|integer|exists:championships,id'
         ]);
 
         $userData = null;
@@ -178,7 +179,8 @@ class TeamController extends Controller
             'position' => $request->position,
             'number' => $request->number,
             'user_id' => $userData ? $userData->id : null,
-            'is_approved' => $userData ? 1 : 0 // Se criado agora ou já existe, está "aprovado" no time. Se for só nome temp, status pendente? Ou aprovado direto pois foi o capitão? Aprovado direto.
+            'is_approved' => $userData ? 1 : 0, // Se criado agora ou já existe, está "aprovado" no time.
+            'championship_id' => $request->championship_id
         ]);
 
         return response()->json(['message' => 'Jogador adicionado e vinculado com sucesso!'], 201);
