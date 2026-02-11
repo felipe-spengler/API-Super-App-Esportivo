@@ -185,7 +185,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/championships/{championshipId}/bracket/shuffle', [\App\Http\Controllers\Admin\BracketController::class, 'shuffle']);
         Route::post('/championships/{championshipId}/bracket/generate-from-groups', [\App\Http\Controllers\Admin\BracketController::class, 'generateFromGroups']);
 
-        // Gestão Manual de Grupos (NEW)
+        // Gestão Manual de Grupos (NEW) // Trigger Deploy
         Route::get('/championships/{championshipId}/groups', [\App\Http\Controllers\Admin\BracketController::class, 'getGroups']);
         Route::post('/championships/{championshipId}/groups', [\App\Http\Controllers\Admin\BracketController::class, 'saveGroups']);
 

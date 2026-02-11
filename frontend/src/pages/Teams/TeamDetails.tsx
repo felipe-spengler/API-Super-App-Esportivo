@@ -226,7 +226,7 @@ export function TeamDetails() {
             </div>
 
 
-            {/* Selector Mode */}
+            {/*  Selector Mode */}
             {
                 team && viewMode === 'selector' && (
                     <div className="space-y-6">
