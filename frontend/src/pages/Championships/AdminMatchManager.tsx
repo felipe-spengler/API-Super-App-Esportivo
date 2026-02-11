@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Calendar, Trophy, Save, Plus, Trash2, CheckCircle, AlertCircle, List, Edit2, X, MapPin, Clock as ClockIcon, Loader2, Play, Printer, Users, Star, Shuffle } from 'lucide-react';
+import { ArrowLeft, Calendar, Trophy, Save, Plus, Trash2, CheckCircle, AlertCircle, List, Edit2, X, MapPin, Clock as ClockIcon, Loader2, Play, Printer, Users, Star, Shuffle, ImageIcon } from 'lucide-react';
 import api from '../../services/api';
 
 interface Match {
@@ -822,6 +822,15 @@ export function AdminMatchManager() {
                                                                 >
                                                                     <Edit2 className="w-4 h-4" />
                                                                     <span className="text-[10px] font-bold uppercase md:hidden">Editar</span>
+                                                                </button>
+
+                                                                <button
+                                                                    onClick={() => window.open(`${api.defaults.baseURL}/art/match/${match.id}/scheduled`, '_blank')}
+                                                                    className="flex-1 md:flex-none flex items-center justify-center gap-1 px-3 py-2 text-orange-600 bg-orange-50 border border-orange-100 rounded-lg transition-all hover:bg-orange-100"
+                                                                    title="Gerar Arte Jogo Programado"
+                                                                >
+                                                                    <ImageIcon className="w-4 h-4" />
+                                                                    <span className="text-[10px] font-bold uppercase md:hidden">Arte</span>
                                                                 </button>
 
                                                                 <button

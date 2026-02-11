@@ -24,11 +24,23 @@ class ArtGeneratorController extends Controller
      */
     public function matchFaceoff($matchId)
     {
-        $match = GameMatch::with(['homeTeam', 'awayTeam', 'championship.club'])->findOrFail($matchId);
+        $match = GameMatch::with(['homeTeam', 'awayTeam', 'championship.club', 'championship.sport'])->findOrFail($matchId);
         $club = $match->championship->club;
         $this->loadClubResources($club);
 
         return $this->generateConfrontationArt($match, $club);
+    }
+
+    /**
+     * Gera Arte de Jogo Programado (Scheduled Match)
+     */
+    public function matchScheduled($matchId)
+    {
+        $match = GameMatch::with(['homeTeam', 'awayTeam', 'championship.club', 'championship.sport'])->findOrFail($matchId);
+        $club = $match->championship->club;
+        $this->loadClubResources($club);
+
+        return $this->generateScheduledArt($match, $club);
     }
 
     /**
@@ -136,6 +148,61 @@ class ArtGeneratorController extends Controller
     public function downloadArt($matchId, Request $request)
     {
         return $this->mvpArt($matchId, $request);
+    }
+
+    private function generateScheduledArt($match, $club = null)
+    {
+        $sport = $match->championship->sport->name ?? 'Futebol';
+        $bgFile = $this->getBackgroundFile($sport, 'jogo_programado', $club);
+        $img = $this->initImage($bgFile);
+
+        if (!$img)
+            return response("Erro fundo: $bgFile", 500);
+
+        $width = imagesx($img);
+
+        // Cores do Clube
+        $primaryColorStr = $club->primary_color ?? '#000000';
+        $secondaryColorStr = $club->secondary_color ?? '#FFFFFF';
+
+        $pRGB = $this->hexToRgb($primaryColorStr);
+        $sRGB = $this->hexToRgb($secondaryColorStr);
+
+        $primaryColor = imagecolorallocate($img, $pRGB['r'], $pRGB['g'], $pRGB['b']);
+        $secondaryColor = imagecolorallocate($img, $sRGB['r'], $sRGB['g'], $sRGB['b']);
+        $white = imagecolorallocate($img, 255, 255, 255);
+
+        // 1. Topo: Nome do Campeonato e Esporte
+        $champName = mb_strtoupper($match->championship->name);
+        $this->drawCenteredText($img, 35, 120, $white, $champName, true); // Fonte Secundária
+        $this->drawCenteredText($img, 55, 220, $white, mb_strtoupper($sport), false); // Fonte Primária
+
+        // 2. Meio: Rodada e Brasões
+        $roundText = mb_strtoupper($match->round_name ?? "RODADA " . ($match->round_number ?? 1));
+        $this->drawCenteredText($img, 25, 320, $white, $roundText, true);
+
+        $badgeSize = 350;
+        $yBadges = 450;
+        $centerDist = 300;
+
+        // Mandante
+        $xA = ($width / 2) - $centerDist - ($badgeSize / 2);
+        $this->drawTeamBadge($img, $match->homeTeam, $xA, $yBadges, $badgeSize, $white);
+        $this->drawCenteredTextInBox($img, 30, $xA, $yBadges + $badgeSize + 20, $badgeSize, $white, mb_strtoupper($match->homeTeam->name));
+
+        // Visitante
+        $xB = ($width / 2) + $centerDist - ($badgeSize / 2);
+        $this->drawTeamBadge($img, $match->awayTeam, $xB, $yBadges, $badgeSize, $white);
+        $this->drawCenteredTextInBox($img, 30, $xB, $yBadges + $badgeSize + 20, $badgeSize, $white, mb_strtoupper($match->awayTeam->name));
+
+        // 3. Rodapé: Data, Horário e Local
+        $dateStr = \Carbon\Carbon::parse($match->start_time)->translatedFormat('d M \à\s H:i\h');
+        $location = mb_strtoupper($match->location ?? 'LOCAL NÃO DEFINIDO');
+
+        $this->drawCenteredText($img, 45, 1100, $white, mb_strtoupper($dateStr), false);
+        $this->drawCenteredText($img, 35, 1200, $white, $location, true);
+
+        return $this->outputImage($img, 'jogo_programado_' . $match->id);
     }
 
     private function generateConfrontationArt($match, $club = null)
@@ -407,7 +474,8 @@ class ArtGeneratorController extends Controller
         // Mapeamento Futebol (e outros)
         $map = [
             'confronto' => 'fundo_confronto.jpg',
-            'craque' => 'fundo_craque_do_jogo.jpg', // ou bg_mvp.jpg
+            'jogo_programado' => 'fundo_confronto.jpg', // Fallback
+            'craque' => 'fundo_craque_do_jogo.jpg',
             'goleiro' => 'fundo_melhor_goleiro.jpg',
             'artilheiro' => 'fundo_melhor_artilheiro.jpg',
             'zagueiro' => 'fundo_melhor_zagueiro.jpg',
@@ -555,6 +623,21 @@ class ArtGeneratorController extends Controller
             imagedestroy($playerImg);
             imagedestroy($resizedImg);
         }
+    }
+
+    private function hexToRgb($hex)
+    {
+        $hex = str_replace("#", "", $hex);
+        if (strlen($hex) == 3) {
+            $r = hexdec(substr($hex, 0, 1) . substr($hex, 0, 1));
+            $g = hexdec(substr($hex, 1, 1) . substr($hex, 1, 1));
+            $b = hexdec(substr($hex, 2, 1) . substr($hex, 2, 1));
+        } else {
+            $r = hexdec(substr($hex, 0, 2));
+            $g = hexdec(substr($hex, 2, 2));
+            $b = hexdec(substr($hex, 4, 2));
+        }
+        return ['r' => $r, 'g' => $g, 'b' => $b];
     }
 
     private function drawTeamBadge($img, $team, $x, $y, $size, $fallbackColor)

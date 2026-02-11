@@ -63,6 +63,15 @@ const ART_SECTIONS = [
             { key: 'bloqueadora', label: 'Melhor Bloqueador(a)', defaultFile: 'volei_maior_bloqueadora.jpg' },
             { key: 'estreante', label: 'Melhor Estreante', defaultFile: 'volei_melhor_estreante.jpg' },
         ]
+    },
+    {
+        title: 'Tênis',
+        sportSlug: 'tenis',
+        items: [
+            { key: 'confronto', label: 'Confronto (Padrão)', defaultFile: 'tenis_confronto.jpg' },
+            { key: 'craque', label: 'Melhor da Partida', defaultFile: 'tenis_melhor_da_partida.jpg' },
+            { key: 'estreante', label: 'Melhor Estreante', defaultFile: 'tenis_melhor_estreante.jpg' },
+        ]
     }
 ];
 

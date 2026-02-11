@@ -8,10 +8,10 @@ interface Championship {
     name: string;
     start_date: string;
     end_date: string;
-    status: 'active' | 'upcoming' | 'finished';
+    status: 'draft' | 'registrations_open' | 'ongoing' | 'upcoming' | 'finished';
     sport: string;
     logo_url?: string;
-    is_active?: boolean;
+    is_status_auto?: boolean;
 }
 
 export function Championships() {
@@ -51,16 +51,22 @@ export function Championships() {
         }
     }
 
-    async function handleToggleStatus(camp: Championship) {
-        // Logic to toggle status or active state could go here if API supports specific toggle
-        // For now, let's just use Delete as the primary "Disable" or "Remove" action requested.
-        // Or we could implement a basic status toggle update
+    async function handleToggleAuto(id: number, currentAuto: boolean) {
         try {
-            // Example: Toggle active status
-            // await api.put(`/admin/championships/${camp.id}`, { is_active: !camp.is_active });
-            // loadChampionships();
+            await api.put(`/admin/championships/${id}`, { is_status_auto: !currentAuto });
+            setChampionships(prev => prev.map(c => c.id === id ? { ...c, is_status_auto: !currentAuto } : c));
         } catch (err) {
-            console.error(err);
+            alert('Erro ao atualizar modo automático.');
+        }
+    }
+
+    async function handleUpdateStatus(id: number, newStatus: string) {
+        try {
+            await api.put(`/admin/championships/${id}`, { status: newStatus });
+            // Quando muda status manual, o backend já deve setar is_status_auto como false
+            setChampionships(prev => prev.map(c => c.id === id ? { ...c, status: newStatus as any, is_status_auto: false } : c));
+        } catch (err) {
+            alert('Erro ao atualizar status.');
         }
     }
 
@@ -131,12 +137,33 @@ export function Championships() {
                                         <Trophy className="w-16 h-16 opacity-50" />
                                     </div>
                                 )}
-                                <div className="absolute top-3 right-3">
-                                    <span className={`px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider backdrop-blur-md shadow-lg
-                                        ${camp.status === 'active' ? 'bg-green-500/90 text-white' :
-                                            camp.status === 'finished' ? 'bg-gray-500/90 text-white' : 'bg-yellow-500/90 text-white'}`}>
-                                        {camp.status === 'active' ? 'Em Andamento' : camp.status === 'finished' ? 'Finalizado' : 'Próximo'}
-                                    </span>
+                                <div className="absolute top-3 right-3 flex flex-col items-end gap-1">
+                                    <select
+                                        value={camp.status}
+                                        onClick={(e) => e.stopPropagation()}
+                                        onChange={(e) => handleUpdateStatus(camp.id, e.target.value)}
+                                        className={`px-2 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider backdrop-blur-md shadow-lg border-none outline-none cursor-pointer
+                                        ${camp.status === 'ongoing' ? 'bg-green-500/90 text-white' :
+                                                camp.status === 'finished' ? 'bg-gray-800/90 text-white' :
+                                                    camp.status === 'draft' ? 'bg-orange-500/90 text-white' : 'bg-blue-500/90 text-white'}`}
+                                    >
+                                        <option value="draft">Rascunho</option>
+                                        <option value="upcoming">Em Breve</option>
+                                        <option value="registrations_open">Inscrições</option>
+                                        <option value="ongoing">Em Andamento</option>
+                                        <option value="finished">Finalizado</option>
+                                    </select>
+
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); handleToggleAuto(camp.id, !!camp.is_status_auto); }}
+                                        className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-tighter backdrop-blur-sm border transition-all
+                                            ${camp.is_status_auto
+                                                ? 'bg-indigo-500/20 text-white border-indigo-400/50 hover:bg-indigo-500/40'
+                                                : 'bg-gray-500/20 text-gray-300 border-gray-400/30 hover:bg-gray-500/40'}`}
+                                        title={camp.is_status_auto ? "Modo Automático Ativado" : "Modo Manual (Clique para ativar automático)"}
+                                    >
+                                        {camp.is_status_auto ? '🤖 AUTO' : '👤 MANUAL'}
+                                    </button>
                                 </div>
                                 <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
                                     <span className="text-white text-xs font-bold">Ver Detalhes</span>

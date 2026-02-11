@@ -69,6 +69,14 @@ export function Settings() {
                 { key: 'assistencia', label: 'Rei das Assistências', defaultFile: 'fundo_melhor_assistencia.jpg' },
                 { key: 'estreante', label: 'Estreante', defaultFile: 'fundo_melhor_estreiante.jpg' },
             ]
+        },
+        "tenis": {
+            name: "Tênis",
+            positions: [
+                { key: 'confronto', label: 'Confronto (Faceoff)', defaultFile: 'tenis_confronto.jpg' },
+                { key: 'craque', label: 'Melhor da Partida', defaultFile: 'tenis_melhor_da_partida.jpg' },
+                { key: 'estreante', label: 'Estreante', defaultFile: 'tenis_melhor_estreante.jpg' },
+            ]
         }
     };
 

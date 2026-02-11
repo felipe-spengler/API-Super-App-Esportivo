@@ -25,7 +25,8 @@ class Championship extends Model
         'cover_image_url', // URL completa da capa
         'branding_settings',
         'art_generator_settings',
-        'awards'
+        'awards',
+        'is_status_auto'
     ];
 
     protected $casts = [
@@ -36,6 +37,7 @@ class Championship extends Model
         'branding_settings' => 'array',
         'art_generator_settings' => 'array',
         'awards' => 'array',
+        'is_status_auto' => 'boolean',
     ];
 
     public function club()

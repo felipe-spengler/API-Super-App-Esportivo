@@ -61,6 +61,7 @@ import { SumulaFutsal } from './pages/Matches/SumulaFutsal';
 import { SumulaBasquete } from './pages/Matches/SumulaBasquete';
 import { SumulaHandebol } from './pages/Matches/SumulaHandebol';
 import { SumulaBeachTennis } from './pages/Matches/SumulaBeachTennis';
+import { SumulaTenis } from './pages/Matches/SumulaTenis';
 import { SumulaFutebol7 } from './pages/Matches/SumulaFutebol7';
 import { SumulaFutevolei } from './pages/Matches/SumulaFutevolei';
 import { SumulaVoleiPraia } from './pages/Matches/SumulaVoleiPraia';
@@ -153,6 +154,7 @@ function App() {
             <Route path="matches/:id/sumula-basquete" element={<SumulaBasquete />} />
             <Route path="matches/:id/sumula-handebol" element={<SumulaHandebol />} />
             <Route path="matches/:id/sumula-beach-tennis" element={<SumulaBeachTennis />} />
+            <Route path="matches/:id/sumula-tenis" element={<SumulaTenis />} />
             <Route path="matches/:id/sumula-futebol7" element={<SumulaFutebol7 />} />
             <Route path="matches/:id/sumula-futevolei" element={<SumulaFutevolei />} />
             <Route path="matches/:id/sumula-volei-praia" element={<SumulaVoleiPraia />} />

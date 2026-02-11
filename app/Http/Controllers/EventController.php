@@ -23,6 +23,8 @@ class EventController extends Controller
 
     public function publicList(Request $request)
     {
+        $this->syncStatuses();
+
         $query = Championship::with(['club', 'sport']);
 
         if ($request->has('status')) {
@@ -34,11 +36,13 @@ class EventController extends Controller
             } elseif ($status === 'finished') {
                 $query->where('status', 'finished');
             } elseif ($status === 'upcoming') {
-                $query->where('status', 'upcoming');
+                // 'upcoming' and 'Agendado' (legacy/import) are future events
+                $query->whereIn('status', ['upcoming', 'scheduled', 'Agendado']);
             }
         } else {
-            // Default: All active/future
-            $query->whereIn('status', ['upcoming', 'ongoing', 'in_progress', 'registrations_open', 'live']);
+            // Default (Todos Ativos): Anything NOT in 'draft' or 'finished'
+            // We want to show 'upcoming', 'registrations_open', 'ongoing', 'scheduled', etc.
+            $query->whereNotIn('status', ['draft', 'finished']);
         }
 
         if ($request->has('sport_id')) {
@@ -654,6 +658,45 @@ class EventController extends Controller
             'server_time' => now()->timestamp * 1000, // milisegundos
             'sport' => $match->championship->sport->slug ?? 'football'
         ]);
+    }
+
+    // 12. Sincronizar Statuses com base nas datas (Automático)
+    protected function syncStatuses()
+    {
+        $now = now();
+        // Apenas campeonatos que estão marcados para atualização automática e não são rascunhos 'draft'
+        $championships = Championship::where('is_status_auto', true)
+            ->where('status', '!=', 'draft')
+            ->get();
+
+        foreach ($championships as $champ) {
+            $newStatus = $champ->status;
+
+            // 1. Verificar se terminou (End Date)
+            if ($champ->end_date && $now->isAfter($champ->end_date->endOfDay())) {
+                $newStatus = 'finished';
+            }
+            // 2. Verificar se está em andamento (Start Date ou fim das inscrições)
+            else if (
+                ($champ->start_date && $now->isAfter($champ->start_date->startOfDay())) ||
+                ($champ->registration_end_date && $now->isAfter($champ->registration_end_date->endOfDay()))
+            ) {
+                // Se já não estiver finalizado, passa para em andamento
+                $newStatus = 'ongoing';
+            }
+            // 3. Verificar se as inscrições abriram (Registration Start)
+            else if ($champ->registration_start_date && $now->isAfter($champ->registration_start_date)) {
+                // Se as inscrições começaram e ainda não é data de jogo, abre inscrições
+                $newStatus = 'registrations_open';
+            }
+
+            // Se o status mudou, salva mantendo o is_status_auto como true (pois foi auto)
+            if ($newStatus !== $champ->status) {
+                // Usamos update direto para evitar disparar o observador que poderia setar auto=false se tivéssemos um
+                $champ->status = $newStatus;
+                $champ->save();
+            }
+        }
     }
 
     // Helper para formatar elenco

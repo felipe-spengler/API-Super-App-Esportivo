@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Play, Pause, Clock, Users, X, Timer, Flame, Trash2 } from 'lucide-react';
 import api from '../../services/api';
@@ -30,34 +30,46 @@ export function SumulaBasquete() {
     const [playerFouls, setPlayerFouls] = useState<{ home: PlayerFouls; away: PlayerFouls }>({ home: {}, away: {} });
     const [timeouts, setTimeouts] = useState({ home: 5, away: 5 }); // 5 pedidos de tempo por equipe
     const [events, setEvents] = useState<any[]>([]);
+    const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'error'>('synced');
 
     // Modal State
     const [showEventModal, setShowEventModal] = useState(false);
     const [selectedTeam, setSelectedTeam] = useState<'home' | 'away' | null>(null);
     const [eventType, setEventType] = useState<'1_point' | '2_points' | '3_points' | 'foul' | 'free_throw' | 'field_goal_2' | 'field_goal_3' | null>(null);
 
-    const fetchMatchDetails = async (silent = false) => {
+    // Refs for stable sync
+    const timerRef = useRef({ time, isRunning, currentQuarter, matchData });
+    useEffect(() => {
+        timerRef.current = { time, isRunning, currentQuarter, matchData };
+    }, [time, isRunning, currentQuarter, matchData]);
+
+    const fetchMatchDetails = async (isInitial = false) => {
         try {
-            if (!silent) setLoading(true);
+            if (isInitial) setLoading(true);
             const response = await api.get(`/admin/matches/${id}/full-details`);
             const data = response.data;
             if (data.match) {
-                setMatchData({
-                    ...data.match,
-                    scoreHome: parseInt(data.match.home_score || 0),
-                    scoreAway: parseInt(data.match.away_score || 0)
-                });
+                // 🔒 ONLY update matchData on initial load to prevent race conditions
+                if (isInitial) {
+                    setMatchData({
+                        ...data.match,
+                        scoreHome: parseInt(data.match.home_score || 0),
+                        scoreAway: parseInt(data.match.away_score || 0)
+                    });
 
-                // Sync timer if not yet loaded from server or if someone else is running it
-                if (data.match.match_details?.sync_timer && !serverTimerLoaded) {
-                    const st = data.match.match_details.sync_timer;
-                    setTime(st.time || 600);
-                    setIsRunning(st.isRunning || false);
-                    if (st.currentPeriod) setCurrentQuarter(st.currentPeriod as Quarter);
-                    setServerTimerLoaded(true);
+                    // Sync timer ONLY on initial load
+                    if (data.match.match_details?.sync_timer && !serverTimerLoaded) {
+                        const st = data.match.match_details.sync_timer;
+                        setTime(st.time || quarterDuration);
+                        if (st.currentPeriod) setCurrentQuarter(st.currentPeriod as Quarter);
+                        setServerTimerLoaded(true);
+                    }
+
+                    if (data.rosters) setRosters(data.rosters);
+                } else {
+                    // 🔄 On periodic sync, ONLY update rosters and events, NOT matchData
+                    if (data.rosters) setRosters(data.rosters);
                 }
-
-                if (data.rosters) setRosters(data.rosters);
 
                 // Process History
                 const history = (data.details?.events || []).map((e: any) => ({
@@ -78,110 +90,127 @@ export function SumulaBasquete() {
             }
         } catch (e) {
             console.error(e);
-            if (!silent) alert('Erro ao carregar jogo.');
+            if (isInitial) alert('Erro ao carregar jogo.');
         } finally {
-            if (!silent) setLoading(false);
+            if (isInitial) setLoading(false);
         }
     };
 
     // --- PERSISTENCE LOGIC ---
     const STORAGE_KEY = `match_state_basquete_${id}`;
 
+    // 1. Load State on Mount
     useEffect(() => {
-        // Initial Fetch
-        if (id) fetchMatchDetails();
+        if (!id) return;
 
-        // Sync Interval (Every 5s check for server updates to keep in sync)
-        const syncInterval = setInterval(() => {
-            if (id) fetchMatchDetails(true);
-        }, 2000);
-
-        if (id) {
-            const saved = localStorage.getItem(STORAGE_KEY);
-            if (saved) {
-                try {
-                    const parsed = JSON.parse(saved);
-                    if (parsed.currentQuarter) setCurrentQuarter(parsed.currentQuarter);
-                    if (parsed.teamFouls) setTeamFouls(parsed.teamFouls);
-                    if (parsed.playerFouls) setPlayerFouls(parsed.playerFouls);
-                    if (parsed.timeouts) setTimeouts(parsed.timeouts);
-
-                    let restoredTime = parsed.time || quarterDuration;
-                    if (parsed.isRunning && parsed.lastTimestamp) {
-                        const secondsPassed = Math.floor((Date.now() - parsed.lastTimestamp) / 1000);
-                        restoredTime -= secondsPassed; // Regressivo
-                        if (restoredTime < 0) restoredTime = 0;
-                        setIsRunning(true);
-                    } else {
-                        setIsRunning(false);
-                    }
-                    setTime(restoredTime);
-                } catch (e) {
-                    console.error("Failed to recover state", e);
-                }
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                setTime(parsed.time || quarterDuration);
+                setIsRunning(parsed.isRunning || false);
+                setCurrentQuarter(parsed.currentQuarter || '1º Quarto');
+                if (parsed.teamFouls) setTeamFouls(parsed.teamFouls);
+                if (parsed.playerFouls) setPlayerFouls(parsed.playerFouls || { home: {}, away: {} });
+                if (parsed.timeouts) setTimeouts(parsed.timeouts);
+            } catch (e) {
+                console.error("Failed to parse saved state", e);
             }
         }
+
+        fetchMatchDetails(true);
+
+        const syncInterval = setInterval(() => {
+            fetchMatchDetails();
+        }, 3000);
 
         return () => clearInterval(syncInterval);
     }, [id]);
 
+    // 2. Save State on Change
     useEffect(() => {
         if (!id || loading) return;
-
-        const stateToSave = {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
             time,
             isRunning,
             currentQuarter,
             teamFouls,
             playerFouls,
-            timeouts,
-            lastTimestamp: Date.now()
-        };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
-
+            timeouts
+        }));
     }, [time, isRunning, currentQuarter, teamFouls, playerFouls, timeouts, id, loading]);
 
     // Countdown Timer
     useEffect(() => {
         let interval: any = null;
         if (isRunning && time > 0) {
-            interval = setInterval(() => setTime(t => Math.max(0, t - 1)), 1000);
+            console.log(`🎬 TIMER BASKET INICIADO`);
+            interval = setInterval(() => {
+                setTime(t => {
+                    const newTime = Math.max(0, t - 1);
+                    if (newTime === 0) console.log(`🏁 TIMER BASKET ZERADO`);
+                    return newTime;
+                });
+            }, 1000);
 
-            // If match is still scheduled, set to live on first play
             if (matchData && (matchData.status === 'scheduled' || matchData.status === 'Agendado')) {
                 registerSystemEvent('match_start', 'Início da Partida');
             }
         } else if (time === 0 && isRunning) {
-            setIsRunning(false); // Auto-pause ao chegar a 0
+            console.log(`⏸️ TIMER BASKET AUTO-PAUSE (00:00)`);
+            setIsRunning(false); // Auto-pause at 0
+        } else if (!isRunning) {
+            console.log(`⏸️ TIMER BASKET PAUSADO`);
         }
-        return () => clearInterval(interval);
-    }, [isRunning, time, matchData]);
+        return () => {
+            if (interval) {
+                console.log(`🛑 TIMER BASKET PARADO`);
+                clearInterval(interval);
+            }
+        };
+    }, [isRunning, time]);
 
     // PING - Sync local state TO server (Every 3 seconds)
     useEffect(() => {
-        if (!id || loading || !matchData) return;
+        if (!id) return;
 
         const pingInterval = setInterval(async () => {
+            const { time: t, isRunning: ir, currentQuarter: cp, matchData: md } = timerRef.current;
+            if (!md) return;
+
             try {
-                // Update server with our current time
+                setSyncStatus('syncing');
+
+                // 🔍 DEBUG LOG - O que está sendo enviado para o servidor
+                console.group(`📤 ENVIANDO TIMER BASKET PARA SERVIDOR - ${new Date().toLocaleTimeString()}`);
+                console.log(`⏰ Timer Local:`, `${formatTime(t)} (${t}s)`);
+                console.log(`▶️ Estado:`, ir ? '🟢 RODANDO' : '🔴 PARADO');
+                console.log(`📍 Período:`, cp);
+                console.log(`🕐 Timestamp Envio:`, new Date().toLocaleTimeString());
+
                 await api.patch(`/admin/matches/${id}`, {
                     match_details: {
-                        ...matchData.match_details,
+                        ...md.match_details,
                         sync_timer: {
-                            time,
-                            isRunning,
-                            currentPeriod: currentQuarter,
-                            updated_at: Date.now()
+                            time: t,
+                            isRunning: ir,
+                            currentPeriod: cp
                         }
                     }
                 });
+
+                setSyncStatus('synced');
+                console.log(`✅ SYNC BASKET COMPLETO`);
+                console.groupEnd();
             } catch (e) {
-                console.error("Timer sync failed", e);
+                setSyncStatus('error');
+                console.error(`❌ ERRO NO SYNC BASKET:`, e);
+                console.groupEnd();
             }
         }, 3000);
 
         return () => clearInterval(pingInterval);
-    }, [id, isRunning, time, currentQuarter]);
+    }, [id]);
 
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
@@ -194,6 +223,7 @@ export function SumulaBasquete() {
         let newPeriod: Quarter | '' = '';
 
         if (currentQuarter === '1º Quarto') {
+            if (!window.confirm("Encerrar 1º Quarto?")) return;
             setIsRunning(false);
             newPeriod = '2º Quarto';
             setTime(quarterDuration);
@@ -201,6 +231,7 @@ export function SumulaBasquete() {
             registerSystemEvent('period_end', `Fim do ${oldPeriod}`);
             registerSystemEvent('period_start', `Início do ${newPeriod}`);
         } else if (currentQuarter === '2º Quarto') {
+            if (!window.confirm("Encerrar 2º Quarto (Ir para Intervalo)?")) return;
             newPeriod = 'Intervalo';
             setTime(0);
             setIsRunning(false);
@@ -208,9 +239,11 @@ export function SumulaBasquete() {
         } else if (currentQuarter === 'Intervalo') {
             newPeriod = '3º Quarto';
             setTime(quarterDuration);
+            setIsRunning(true);
             setTeamFouls({ home: 0, away: 0 });
             registerSystemEvent('period_start', `Início do ${newPeriod}`);
         } else if (currentQuarter === '3º Quarto') {
+            if (!window.confirm("Encerrar 3º Quarto?")) return;
             setIsRunning(false);
             newPeriod = '4º Quarto';
             setTime(quarterDuration);
@@ -218,6 +251,7 @@ export function SumulaBasquete() {
             registerSystemEvent('period_end', `Fim do ${oldPeriod}`);
             registerSystemEvent('period_start', `Início do ${newPeriod}`);
         } else if (currentQuarter === '4º Quarto') {
+            if (!window.confirm("Encerrar 4º Quarto?")) return;
             setIsRunning(false);
             registerSystemEvent('period_end', `Fim do ${oldPeriod}`);
             if (matchData.scoreHome === matchData.scoreAway) {
@@ -227,14 +261,19 @@ export function SumulaBasquete() {
                     setTeamFouls({ home: 0, away: 0 });
                     registerSystemEvent('period_start', `Início da ${newPeriod}`);
                 } else {
-                    newPeriod = 'Fim de Jogo';
+                    handleFinish();
+                    return;
                 }
             } else {
-                newPeriod = 'Fim de Jogo';
+                handleFinish();
+                return;
             }
         } else if (currentQuarter === 'Prorrogação') {
+            if (!window.confirm("Encerrar Prorrogação?")) return;
             newPeriod = 'Fim de Jogo';
             registerSystemEvent('period_end', `Fim da ${oldPeriod}`);
+            handleFinish();
+            return;
         }
 
         if (newPeriod) setCurrentQuarter(newPeriod);
@@ -450,7 +489,12 @@ export function SumulaBasquete() {
                     </button>
                     <div className="flex flex-col items-center">
                         <span className="text-[10px] font-bold tracking-widest text-orange-200">SÚMULA DIGITAL - BASQUETE</span>
-                        {(matchData.details?.arbitration?.referee) && <span className="text-[10px] text-orange-300">{matchData.details.arbitration.referee}</span>}
+                        <div className="flex items-center gap-2 mt-0.5">
+                            {matchData.details?.arbitration?.referee && <span className="text-[10px] text-orange-300">{matchData.details.arbitration.referee}</span>}
+                            {syncStatus === 'syncing' && <span className="flex h-2 w-2 rounded-full bg-yellow-400 animate-pulse" title="Sincronizando..."></span>}
+                            {syncStatus === 'error' && <span className="flex h-2 w-2 rounded-full bg-red-500" title="Erro de conexão"></span>}
+                            {syncStatus === 'synced' && <span className="flex h-2 w-2 rounded-full bg-green-400" title="Sincronizado"></span>}
+                        </div>
                     </div>
                     <button onClick={handleQuarterChange} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase transition-all shadow-lg ${currentQuarter === 'Intervalo' ? 'bg-yellow-500 text-black animate-pulse' :
                         currentQuarter === 'Fim de Jogo' ? 'bg-red-700 text-white' :

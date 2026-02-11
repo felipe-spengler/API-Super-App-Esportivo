@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Play, Pause, Save, Clock, Users, X, Flag, Timer, Trash2 } from 'lucide-react';
 import api from '../../services/api';
@@ -21,6 +21,7 @@ export function SumulaFutebol7() {
     const [fouls, setFouls] = useState({ home: 0, away: 0 });
     const [penaltyScore, setPenaltyScore] = useState({ home: 0, away: 0 });
     const [events, setEvents] = useState<any[]>([]);
+    const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'error'>('synced');
 
     // Modal State
     const [showEventModal, setShowEventModal] = useState(false);
@@ -30,29 +31,41 @@ export function SumulaFutebol7() {
     const [selectedPlayer, setSelectedPlayer] = useState<any>(null);
     const [isSelectingOwnGoal, setIsSelectingOwnGoal] = useState(false);
 
-    const fetchMatchDetails = async (silent = false) => {
+    // Refs for stable sync
+    const timerRef = useRef({ time, isRunning, currentPeriod, matchData });
+    useEffect(() => {
+        timerRef.current = { time, isRunning, currentPeriod, matchData };
+    }, [time, isRunning, currentPeriod, matchData]);
+
+    const fetchMatchDetails = async (isInitial = false) => {
         try {
-            if (!silent) setLoading(true);
+            if (isInitial) setLoading(true);
             const response = await api.get(`/admin/matches/${id}/full-details`);
             const data = response.data;
             if (data.match) {
-                setMatchData({
-                    ...data.match,
-                    scoreHome: parseInt(data.match.home_score || 0),
-                    scoreAway: parseInt(data.match.away_score || 0)
-                });
+                // 🔒 ONLY update matchData on initial load to prevent race conditions
+                if (isInitial) {
+                    setMatchData({
+                        ...data.match,
+                        scoreHome: parseInt(data.match.home_score || 0),
+                        scoreAway: parseInt(data.match.away_score || 0)
+                    });
 
-                // Sync timer if not yet loaded from server or if someone else is running it
-                if (data.match.match_details?.sync_timer && !serverTimerLoaded) {
-                    const st = data.match.match_details.sync_timer;
-                    setTime(st.time || 0);
-                    setIsRunning(st.isRunning || false);
-                    if (st.currentPeriod) setCurrentPeriod(st.currentPeriod);
-                    setServerTimerLoaded(true);
+                    // Sync timer ONLY on initial load
+                    if (data.match.match_details?.sync_timer && !serverTimerLoaded) {
+                        const st = data.match.match_details.sync_timer;
+                        setTime(st.time || 0);
+                        if (st.currentPeriod) setCurrentPeriod(st.currentPeriod);
+                        setServerTimerLoaded(true);
+                    }
+
+                    if (data.rosters) setRosters(data.rosters);
+                } else {
+                    // 🔄 On periodic sync, ONLY update rosters and events, NOT matchData
+                    if (data.rosters) setRosters(data.rosters);
                 }
 
-                if (data.rosters) setRosters(data.rosters);
-
+                // Process History
                 const history = (data.details?.events || []).map((e: any) => ({
                     id: e.id,
                     type: e.type,
@@ -67,108 +80,125 @@ export function SumulaFutebol7() {
                 const awayFouls = history.filter((e: any) => e.team === 'away' && e.type === 'foul').length;
                 setFouls({ home: homeFouls, away: awayFouls });
 
-                const homePenalties = history.filter((e: any) => e.team === 'home' && e.type === 'shootout_goal').length;
-                const awayPenalties = history.filter((e: any) => e.team === 'away' && e.type === 'shootout_goal').length;
+                const homePenalties = history.filter((e: any) => e.team === 'home' && (e.type === 'shootout_goal' || e.type === 'penalty_goal')).length;
+                const awayPenalties = history.filter((e: any) => e.team === 'away' && (e.type === 'shootout_goal' || e.type === 'penalty_goal')).length;
                 setPenaltyScore({ home: homePenalties, away: awayPenalties });
             }
         } catch (e) {
             console.error(e);
-            if (!silent) alert('Erro ao carregar jogo.');
+            if (isInitial) alert('Erro ao carregar jogo.');
         } finally {
-            if (!silent) setLoading(false);
+            if (isInitial) setLoading(false);
         }
     };
 
     // --- PERSISTENCE ---
     const STORAGE_KEY = `match_state_futebol7_${id}`;
 
-    // 1. Load State on Mount & Sync
+    // 1. Load State on Mount
     useEffect(() => {
-        // Initial Fetch
-        if (id) fetchMatchDetails();
+        if (!id) return;
 
-        // Sync Interval
-        const syncInterval = setInterval(() => {
-            if (id) fetchMatchDetails(true);
-        }, 2000);
-
-        // Load Local State
-        if (id) {
-            const saved = localStorage.getItem(STORAGE_KEY);
-            if (saved) {
-                try {
-                    const parsed = JSON.parse(saved);
-                    if (parsed.currentPeriod) setCurrentPeriod(parsed.currentPeriod);
-                    if (parsed.fouls) setFouls(parsed.fouls);
-
-                    let restoredTime = parsed.time || 0;
-                    if (parsed.isRunning && parsed.lastTimestamp) {
-                        const secondsPassed = Math.floor((Date.now() - parsed.lastTimestamp) / 1000);
-                        restoredTime += secondsPassed;
-                        setIsRunning(true);
-                    } else {
-                        setIsRunning(false);
-                    }
-                    setTime(restoredTime);
-                } catch (e) {
-                    console.error("Failed to recover state", e);
-                }
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                setTime(parsed.time || 0);
+                setIsRunning(parsed.isRunning || false);
+                setCurrentPeriod(parsed.currentPeriod || '1º Tempo');
+                if (parsed.fouls) setFouls(parsed.fouls);
+            } catch (e) {
+                console.error("Failed to parse saved state", e);
             }
         }
+
+        fetchMatchDetails(true);
+
+        const syncInterval = setInterval(() => {
+            fetchMatchDetails();
+        }, 3000);
 
         return () => clearInterval(syncInterval);
     }, [id]);
 
+    // 2. Save State on Change
     useEffect(() => {
         if (!id || loading) return;
-        const stateToSave = {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
             time,
             isRunning,
             currentPeriod,
-            fouls,
-            lastTimestamp: Date.now()
-        };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+            fouls
+        }));
     }, [time, isRunning, currentPeriod, fouls, id, loading]);
 
     useEffect(() => {
         let interval: any = null;
         if (isRunning) {
-            interval = setInterval(() => setTime(t => t + 1), 1000);
+            console.log(`🎬 TIMER F7 INICIADO`);
+            interval = setInterval(() => {
+                setTime(t => {
+                    const newTime = t + 1;
+                    console.log(`⏰ TICK F7: ${formatTime(newTime)}`);
+                    return newTime;
+                });
+            }, 1000);
 
-            // If match is still scheduled, try to set to live on first play
             if (matchData && (matchData.status === 'scheduled' || matchData.status === 'Agendado')) {
                 registerSystemEvent('match_start', 'Início da Partida');
             }
+        } else {
+            console.log(`⏸️ TIMER F7 PAUSADO`);
         }
-        return () => clearInterval(interval);
-    }, [isRunning, matchData]);
+        return () => {
+            if (interval) {
+                console.log(`🛑 TIMER F7 PARADO`);
+                clearInterval(interval);
+            }
+        };
+    }, [isRunning]);
 
     // PING - Sync local state TO server (Every 3 seconds)
     useEffect(() => {
-        if (!id || loading || !matchData) return;
+        if (!id) return;
 
         const pingInterval = setInterval(async () => {
+            const { time: t, isRunning: ir, currentPeriod: cp, matchData: md } = timerRef.current;
+            if (!md) return;
+
             try {
-                // Update server with our current time
+                setSyncStatus('syncing');
+
+                // 🔍 DEBUG LOG - O que está sendo enviado para o servidor
+                console.group(`📤 ENVIANDO TIMER F7 PARA SERVIDOR - ${new Date().toLocaleTimeString()}`);
+                console.log(`⏰ Timer Local:`, `${formatTime(t)} (${t}s)`);
+                console.log(`▶️ Estado:`, ir ? '🟢 RODANDO' : '🔴 PARADO');
+                console.log(`📍 Período:`, cp);
+                console.log(`🕐 Timestamp Envio:`, new Date().toLocaleTimeString());
+
                 await api.patch(`/admin/matches/${id}`, {
                     match_details: {
-                        ...matchData.match_details,
+                        ...md.match_details,
                         sync_timer: {
-                            time,
-                            isRunning,
-                            currentPeriod,
-                            updated_at: Date.now()
+                            time: t,
+                            isRunning: ir,
+                            currentPeriod: cp
                         }
                     }
                 });
+
+                setSyncStatus('synced');
+                console.log(`✅ SYNC F7 COMPLETO`);
+                console.groupEnd();
             } catch (e) {
-                console.error("Timer sync failed", e);
+                setSyncStatus('error');
+                console.error(`❌ ERRO NO SYNC F7:`, e);
+                console.groupEnd();
             }
         }, 3000);
 
         return () => clearInterval(pingInterval);
-    }, [id, isRunning, time, currentPeriod]);
+    }, [id]);
 
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
@@ -206,6 +236,7 @@ export function SumulaFutebol7() {
         let newPeriod = '';
 
         if (currentPeriod === '1º Tempo') {
+            if (!window.confirm("Encerrar 1º Tempo?")) return;
             setIsRunning(false);
             newPeriod = 'Intervalo';
             registerSystemEvent('period_end', `Fim do ${oldPeriod}`);
@@ -214,9 +245,28 @@ export function SumulaFutebol7() {
             setIsRunning(true);
             registerSystemEvent('period_start', `Início do ${newPeriod}`);
         } else if (currentPeriod === '2º Tempo') {
+            if (!window.confirm("Encerrar Tempo Normal?")) return;
             setIsRunning(false);
-            newPeriod = 'Fim de Tempo Normal';
             registerSystemEvent('period_end', `Fim do ${oldPeriod}`);
+
+            const choice = window.confirm("Tempo Normal encerrado! Deseja prosseguir para Prorrogação/Pênaltis?\n\n'OK' para escolher Prorrogação ou Pênaltis.\n'Cancelar' para ENCERRAR a súmula agora (ex: Fase de Grupos).");
+
+            if (choice) {
+                if (window.confirm("Deseja iniciar a PRORROGAÇÃO?")) {
+                    newPeriod = 'Prorrogação';
+                    setIsRunning(true);
+                    registerSystemEvent('period_start', `Início da ${newPeriod}`);
+                } else if (window.confirm("Deseja ir DIRETO para os PÊNALTIS?")) {
+                    newPeriod = 'Pênaltis';
+                    setIsRunning(false);
+                    registerSystemEvent('period_start', `Início dos Pênaltis`);
+                } else {
+                    newPeriod = 'Fim de Tempo Normal';
+                }
+            } else {
+                handleFinish();
+                return;
+            }
         } else if (currentPeriod === 'Fim de Tempo Normal') {
             if (window.confirm("Iniciar Prorrogação?")) {
                 newPeriod = 'Prorrogação';
@@ -227,20 +277,26 @@ export function SumulaFutebol7() {
                 setIsRunning(false);
                 registerSystemEvent('period_start', `Início dos ${newPeriod}`);
             } else {
-                newPeriod = 'Fim de Jogo';
+                handleFinish();
+                return;
             }
         } else if (currentPeriod === 'Prorrogação') {
+            if (!window.confirm("Encerrar Prorrogação?")) return;
             setIsRunning(false);
             registerSystemEvent('period_end', `Fim da ${oldPeriod}`);
             if (window.confirm("Ir para Pênaltis?")) {
                 newPeriod = 'Pênaltis';
                 registerSystemEvent('period_start', `Início dos Pênaltis`);
             } else {
-                newPeriod = 'Fim de Jogo';
+                handleFinish();
+                return;
             }
         } else if (currentPeriod === 'Pênaltis') {
+            if (!window.confirm("Encerrar Disputa de Pênaltis?")) return;
             newPeriod = 'Fim de Jogo';
             registerSystemEvent('period_end', `Fim dos Pênaltis`);
+            handleFinish();
+            return;
         }
 
         if (newPeriod) setCurrentPeriod(newPeriod);
@@ -282,7 +338,7 @@ export function SumulaFutebol7() {
         setShowEventModal(true);
     };
 
-    const registerSimpleEvent = async (team: 'home' | 'away', type: 'foul' | 'timeout') => {
+    const registerSimpleEvent = async (team: 'home' | 'away', type: 'timeout') => {
         if (!isRunning) {
             alert('Atenção: Inicie o cronômetro para poder lançar eventos!');
             return;
@@ -291,15 +347,13 @@ export function SumulaFutebol7() {
         const teamId = team === 'home' ? matchData.home_team_id : matchData.away_team_id;
         const currentTime = formatTime(time);
 
-        setFouls(prev => ({ ...prev, [team]: prev[team] + 1 }));
-
         const newEvent = {
             id: Date.now(),
             type: type,
             team: team,
             time: currentTime,
             period: currentPeriod,
-            player_name: type === 'timeout' ? 'Pedido de Tempo' : 'Falta de Equipe'
+            player_name: 'Pedido de Tempo'
         };
         setEvents(prev => [newEvent, ...prev]);
 
@@ -370,6 +424,10 @@ export function SumulaFutebol7() {
                         scoreAway: (prev.scoreAway || 0) + awayInc
                     };
                 });
+            }
+
+            if (eventType === 'foul') {
+                setFouls(prev => ({ ...prev, [selectedTeam]: prev[selectedTeam] + 1 }));
             }
             setShowEventModal(false);
             setSelectedPlayer(null);
@@ -493,8 +551,13 @@ export function SumulaFutebol7() {
                         <ArrowLeft className="w-5 h-5" />
                     </button>
                     <div className="flex flex-col items-center">
-                        <span className="text-[10px] font-bold tracking-widest text-green-100">SÚMULA - FUTEBOL 7 (SOCIETY)</span>
-                        {matchData.details?.arbitration?.referee && <span className="text-[10px] text-green-200">{matchData.details.arbitration.referee}</span>}
+                        <span className="text-[10px] font-bold tracking-widest text-green-100 uppercase">SÚMULA - FUTEBOL 7 (SOCIETY)</span>
+                        <div className="flex items-center gap-2 mt-0.5">
+                            {matchData.details?.arbitration?.referee && <span className="text-[10px] text-green-200">{matchData.details.arbitration.referee}</span>}
+                            {syncStatus === 'syncing' && <span className="flex h-2 w-2 rounded-full bg-yellow-400 animate-pulse" title="Sincronizando..."></span>}
+                            {syncStatus === 'error' && <span className="flex h-2 w-2 rounded-full bg-red-500" title="Erro de conexão"></span>}
+                            {syncStatus === 'synced' && <span className="flex h-2 w-2 rounded-full bg-green-400" title="Sincronizado"></span>}
+                        </div>
                     </div>
                     <button onClick={handlePeriodChange} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase transition-all ${currentPeriod === 'Intervalo' ? 'bg-yellow-500 text-black' :
                         currentPeriod === 'Fim de Jogo' ? 'bg-red-600 text-white' :
@@ -596,7 +659,7 @@ export function SumulaFutebol7() {
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                         <button
-                            onClick={() => registerSimpleEvent('home', 'foul')}
+                            onClick={() => openEventModal('home', 'foul')}
                             disabled={!isRunning}
                             className="py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold text-xs flex items-center justify-center gap-1 active:scale-95 border-b-2 border-gray-900 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
                         >
@@ -663,7 +726,7 @@ export function SumulaFutebol7() {
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                         <button
-                            onClick={() => registerSimpleEvent('away', 'foul')}
+                            onClick={() => openEventModal('away', 'foul')}
                             disabled={!isRunning}
                             className="py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold text-xs flex items-center justify-center gap-1 active:scale-95 border-b-2 border-gray-900 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
                         >
@@ -718,7 +781,11 @@ export function SumulaFutebol7() {
                                         {ev.type === 'mvp' && '⭐ Craque'}
                                         {ev.type === 'timeout' && '⏱ Pedido de Tempo'}
                                     </span>
-                                    {ev.player_name && <span className="text-xs text-gray-400">{ev.player_name}</span>}
+                                    {ev.player_name && ev.player_name !== '?' ? (
+                                        <span className="text-xs text-gray-400">{ev.player_name}</span>
+                                    ) : (
+                                        <span className="text-[10px] text-gray-500 italic">Evento de Partida</span>
+                                    )}
                                     {ev.type === 'shootout_miss' && (
                                         <span className="text-[10px] text-red-400 uppercase font-bold ml-1">
                                             {/* Note if available */}
@@ -784,7 +851,7 @@ export function SumulaFutebol7() {
 
                         <div className="overflow-y-auto p-4 space-y-2 custom-scrollbar flex-1 bg-gray-900/30">
                             {/* Opções Específicas para GOL */}
-                            {eventType === 'goal' && (
+                            {(eventType === 'goal' || eventType === 'foul') && (
                                 <div className="grid grid-cols-2 gap-2 mb-4">
                                     <button
                                         onClick={() => confirmEvent({ id: 'unknown', name: 'Jogador Desconhecido' })}

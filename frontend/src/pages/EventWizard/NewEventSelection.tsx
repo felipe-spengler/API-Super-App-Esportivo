@@ -27,7 +27,7 @@ export function NewEventSelection() {
                     </p>
 
                     <div className="flex flex-wrap gap-2 mb-8">
-                        {['Futebol', 'Futsal', 'Vôlei', 'Basquete', 'Handebol'].map(s => (
+                        {['Futebol', 'Futsal', 'Vôlei', 'Basquete', 'Tênis', 'Beach Tennis'].map(s => (
                             <span key={s} className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-bold uppercase">{s}</span>
                         ))}
                     </div>

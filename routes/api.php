@@ -213,6 +213,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Gerador de Artes (NEW)
         Route::get('/art/match/{matchId}/faceoff', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'matchFaceoff']);
+        Route::get('/art/match/{matchId}/scheduled', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'matchScheduled']);
         Route::get('/art/match/{matchId}/mvp', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'mvpArt']);
         Route::get('/art/championship/{championshipId}/award/{category}', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'championshipAwardArt']);
         Route::get('/art/championship/{championshipId}/standings', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'standingsArt']);

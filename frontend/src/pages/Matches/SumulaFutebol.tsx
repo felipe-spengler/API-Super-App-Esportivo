@@ -135,11 +135,11 @@ export function SumulaFutebol() {
     useEffect(() => {
         let interval: any = null;
         if (isRunning) {
-            console.log(`🎬 TIMER DA SÚMULA INICIADO`);
+            console.log(`🎬 TIMER FUTEBOL INICIADO`);
             interval = setInterval(() => {
                 setTime(t => {
                     const newTime = t + 1;
-                    console.log(`⏰ TICK SÚMULA: ${formatTime(newTime)}`);
+                    console.log(`⏰ TICK FUTEBOL: ${formatTime(newTime)}`);
                     return newTime;
                 });
             }, 1000);
@@ -148,11 +148,11 @@ export function SumulaFutebol() {
                 registerSystemEvent('match_start', 'Início da Partida');
             }
         } else {
-            console.log(`⏸️ TIMER DA SÚMULA PAUSADO`);
+            console.log(`⏸️ TIMER FUTEBOL PAUSADO`);
         }
         return () => {
             if (interval) {
-                console.log(`🛑 TIMER DA SÚMULA PARADO`);
+                console.log(`🛑 TIMER FUTEBOL PARADO`);
                 clearInterval(interval);
             }
         };
@@ -170,13 +170,12 @@ export function SumulaFutebol() {
                 setSyncStatus('syncing');
 
                 // 🔍 DEBUG LOG - O que está sendo enviado para o servidor
-                console.group(`📤 ENVIANDO TIMER PARA SERVIDOR - ${new Date().toLocaleTimeString()}`);
+                console.group(`📤 ENVIANDO TIMER FUTEBOL PARA SERVIDOR - ${new Date().toLocaleTimeString()}`);
                 console.log(`⏰ Timer Local:`, `${formatTime(t)} (${t}s)`);
                 console.log(`▶️ Estado:`, ir ? '🟢 RODANDO' : '🔴 PARADO');
                 console.log(`📍 Período:`, cp);
                 console.log(`🕐 Timestamp Envio:`, new Date().toLocaleTimeString());
 
-                // We send WITHOUT updated_at, the server controller will set it.
                 await api.patch(`/admin/matches/${id}`, {
                     match_details: {
                         ...md.match_details,
@@ -189,27 +188,17 @@ export function SumulaFutebol() {
                 });
 
                 setSyncStatus('synced');
-                console.log(`✅ SYNC COMPLETO - Servidor atualizado com sucesso`);
+                console.log(`✅ SYNC FUTEBOL COMPLETO`);
                 console.groupEnd();
             } catch (e) {
                 setSyncStatus('error');
-                console.error(`❌ ERRO NO SYNC:`, e);
+                console.error(`❌ ERRO NO SYNC FUTEBOL:`, e);
                 console.groupEnd();
-                // On error, we don't do anything, the local timer continues to be the source of truth
             }
         }, 3000);
 
         return () => clearInterval(pingInterval);
     }, [id]);
-
-    // When server data comes back, we may need to correct our local state
-    // BUT we must be careful not to override our local timer if it's running ahead
-    // Strategy: 
-    // 1. If server says "live" and we are "scheduled", switch to live.
-    // 2. If server has more events than us, reload events.
-    // 3. We trust our local timer while running. If we refreshed page, we try to recover from persisted state or server start time if available in future features.
-    // For now, persistence logic below handles page refresh.
-
 
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
@@ -233,8 +222,26 @@ export function SumulaFutebol() {
         } else if (currentPeriod === '2º Tempo') {
             if (!window.confirm("Encerrar Tempo Normal?")) return;
             setIsRunning(false);
-            newPeriod = 'Encerrado (Normal)';
             registerSystemEvent('period_end', `Fim do ${oldPeriod}`);
+
+            const choice = window.confirm("Tempo Normal encerrado! Deseja prosseguir para Prorrogação/Pênaltis?\n\n'OK' para escolher Prorrogação ou Pênaltis.\n'Cancelar' para ENCERRAR a súmula agora (ex: Fase de Grupos).");
+
+            if (choice) {
+                if (window.confirm("Deseja iniciar a PRORROGAÇÃO?")) {
+                    newPeriod = 'Prorrogação';
+                    setIsRunning(true);
+                    registerSystemEvent('period_start', `Início da ${newPeriod}`);
+                } else if (window.confirm("Deseja ir DIRETO para os PÊNALTIS?")) {
+                    newPeriod = 'Pênaltis';
+                    setIsRunning(false);
+                    registerSystemEvent('period_start', `Início dos Pênaltis`);
+                } else {
+                    newPeriod = 'Encerrado (Normal)';
+                }
+            } else {
+                handleFinish();
+                return;
+            }
         } else if (currentPeriod === 'Encerrado (Normal)') {
             if (window.confirm("Iniciar Prorrogação? Cancelar para ir para Pênaltis ou Encerrar.")) {
                 newPeriod = 'Prorrogação';
@@ -247,6 +254,7 @@ export function SumulaFutebol() {
                     registerSystemEvent('period_start', `Início dos Pênaltis`);
                 } else {
                     handleFinish();
+                    return;
                 }
             }
         } else if (currentPeriod === 'Prorrogação') {
@@ -258,12 +266,14 @@ export function SumulaFutebol() {
                 registerSystemEvent('period_start', `Início dos Pênaltis`);
             } else {
                 handleFinish();
+                return;
             }
         } else if (currentPeriod === 'Pênaltis') {
             if (!window.confirm("Encerrar Disputa de Pênaltis?")) return;
             newPeriod = 'Prorrogação Finalizada';
             registerSystemEvent('period_end', `Fim dos Pênaltis`);
             handleFinish();
+            return;
         }
 
         if (newPeriod) setCurrentPeriod(newPeriod);
