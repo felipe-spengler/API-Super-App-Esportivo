@@ -26,8 +26,15 @@ class BracketController extends Controller
             ], 403);
         }
 
+        \Log::info("BracketController@generate - Iniciando geração", [
+            'championship_id' => $championshipId,
+            'format' => $request->input('format'),
+            'category_id' => $request->input('category_id'),
+            'user_id' => $user->id
+        ]);
+
         $validated = $request->validate([
-            'format' => 'required|in:league,knockout,groups,league_playoffs',
+            'format' => 'required|in:league,knockout,groups,league_playoffs,group_knockout', // Added group_knockout
             'category_id' => 'nullable|exists:categories,id',
             'start_date' => 'required|date',
             'match_interval_days' => 'nullable|integer|min:1|max:30',
@@ -45,6 +52,11 @@ class BracketController extends Controller
         }
         $teams = $teamsQuery->get();
 
+        \Log::info("BracketController@generate - Equipes encontradas", [
+            'count' => $teams->count(),
+            'teams' => $teams->pluck('name')
+        ]);
+
         if ($teams->count() < 2) {
             return response()->json([
                 'message' => 'É necessário pelo menos 2 equipes para gerar o chaveamento.'
@@ -54,17 +66,30 @@ class BracketController extends Controller
         // Gera chaveamento baseado no formato
         $matches = [];
 
-        switch ($format) {
-            case 'league':
-            case 'league_playoffs': // League Playoffs should act as a single league for the first phase
-                $matches = $this->generateLeagueBracket($championship, $teams, $startDate, $intervalDays, $categoryId);
-                break;
+        try {
+            switch ($format) {
+                case 'league':
+                case 'league_playoffs': // League Playoffs should act as a single league for the first phase
+                    $matches = $this->generateLeagueBracket($championship, $teams, $startDate, $intervalDays, $categoryId);
+                    break;
 
-            case 'knockout':
-                $customGroups = $request->input('custom_groups'); // Array of arrays of team IDs
-                $matches = $this->generateGroupsBracket($championship, $teams, $startDate, $intervalDays, $categoryId, $customGroups);
-                break;
+                case 'knockout':
+                    $customGroups = $request->input('custom_groups'); // Array of arrays of team IDs
+                    $matches = $this->generateGroupsBracket($championship, $teams, $startDate, $intervalDays, $categoryId, $customGroups);
+                    break;
+
+                case 'groups':
+                case 'group_knockout':
+                    $customGroups = $request->input('custom_groups');
+                    $matches = $this->generateGroupsBracket($championship, $teams, $startDate, $intervalDays, $categoryId, $customGroups);
+                    break;
+            }
+        } catch (\Exception $e) {
+            \Log::error("BracketController@generate - Erro ao gerar: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json(['message' => 'Erro interno ao gerar jogos: ' . $e->getMessage()], 500);
         }
+
+        \Log::info("BracketController@generate - Sucesso", ['matches_created' => count($matches)]);
 
         return response()->json([
             'message' => 'Chaveamento gerado com sucesso!',
@@ -350,6 +375,12 @@ class BracketController extends Controller
         $currentRound = $validated['current_round'];
         $categoryId = $validated['category_id'] ?? null;
 
+        \Log::info("BracketController@advancePhase - Iniciando", [
+            'championship_id' => $championshipId,
+            'current_round' => $currentRound,
+            'category_id' => $categoryId
+        ]);
+
         // Busca partidas finalizadas da rodada atual
         $matchesQuery = MatchModel::where('championship_id', $championshipId)
             ->where('round_number', $currentRound)
@@ -457,6 +488,11 @@ class BracketController extends Controller
         $championship = Championship::findOrFail($championshipId);
         $categoryId = $request->input('category_id');
 
+        \Log::info("BracketController@generateFromGroups - Iniciando", [
+            'championship_id' => $championshipId,
+            'category_id' => $categoryId
+        ]);
+
         // 1. Identificar Grupos e Times
         $matches = MatchModel::where('championship_id', $championshipId)
             ->whereNotNull('group_name')
@@ -548,6 +584,11 @@ class BracketController extends Controller
             // Pega top 2
             $qualifiedTeams[$gName] = array_slice($teamIds, 0, 2);
         }
+
+        \Log::info("BracketController@generateFromGroups - Classificação calculada", [
+            'stats' => $teamStats,
+            'qualified' => $qualifiedTeams
+        ]);
 
         // 3. Determinar Confrontos (Cruzamento)
         // Regra simples: 
