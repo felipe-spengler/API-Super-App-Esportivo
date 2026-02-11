@@ -57,11 +57,9 @@ export function EventLeaderboard() {
                     setKnockoutMatches(matchesRes.data);
                 }
 
-                // Load Standings if applicable
-                if (['league', 'groups', 'group_knockout', 'racing', 'running_points'].includes(format)) {
-                    const response = await api.get(`/championships/${id}/leaderboard${categoryId ? `?category_id=${categoryId}` : ''}`);
-                    setStandings(response.data);
-                }
+                // Always try to load standings if there's any chance they exist
+                const response = await api.get(`/championships/${id}/leaderboard${categoryId ? `?category_id=${categoryId}` : ''}`);
+                setStandings(response.data);
             } catch (error) {
                 console.error("Erro ao carregar classificação", error);
             } finally {
@@ -200,23 +198,27 @@ export function EventLeaderboard() {
                     </div>
                 ) : (
                     <>
-                        {championshipFormat === 'knockout' && (
+                        {/* Show Standings Table if we have data, regardless of format name */}
+                        {standings.length > 0 && (
                             <div className="mb-8">
-                                <TournamentBracket matches={knockoutMatches} />
-                            </div>
-                        )}
-
-                        {/* PONTOS CORRIDOS (LEAGUE / RUNNING_POINTS / RACING) */}
-                        {['league', 'racing', 'running_points'].includes(championshipFormat) && (
-                            <>
-                                {standings.length === 0 ? (
-                                    <div className="text-center py-10 bg-white rounded-xl shadow-sm border border-gray-100">
-                                        <p className="text-gray-500">Classificação não disponível.</p>
-                                    </div>
+                                {(['groups', 'group_knockout'].includes(championshipFormat) || standings.some(s => s.group_name && s.group_name !== 'Geral')) ? (
+                                    <>
+                                        <h3 className="text-xl font-bold text-gray-800 mb-4 px-2 border-l-4 border-indigo-600">
+                                            {championshipFormat === 'group_knockout' ? 'Fase de Grupos' : 'Classificação'}
+                                        </h3>
+                                        {renderGroupStage()}
+                                    </>
                                 ) : (
                                     renderLeagueTable()
                                 )}
-                            </>
+                            </div>
+                        )}
+
+                        {/* PONTOS CORRIDOS (LEAGUE / RUNNING_POINTS / RACING) - Fallback if no standings */}
+                        {['league', 'racing', 'running_points'].includes(championshipFormat) && standings.length === 0 && (
+                            <div className="text-center py-10 bg-white rounded-xl shadow-sm border border-gray-100">
+                                <p className="text-gray-500">Classificação não disponível.</p>
+                            </div>
                         )}
 
                         {/* FASE DE GRUPOS (GROUPS / GROUP_KNOCKOUT) */}

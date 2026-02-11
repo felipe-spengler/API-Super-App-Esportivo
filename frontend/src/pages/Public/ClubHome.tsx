@@ -149,7 +149,7 @@ export function ClubHome() {
                                 <button
                                     key={sport.id}
                                     className="aspect-square bg-white rounded-2xl flex flex-col items-center justify-center gap-3 shadow-sm border border-gray-100 hover:shadow-md hover:-translate-y-1 transition-all"
-                                    onClick={() => navigate(`/explore?sport=${sport.name}&club=${club.id}`)}
+                                    onClick={() => navigate(`/club-home/${clubSlug}/explore?sport=${sport.name}`)}
                                 >
                                     <div
                                         className="w-12 h-12 rounded-full flex items-center justify-center shadow-sm"

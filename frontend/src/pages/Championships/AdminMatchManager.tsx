@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Calendar, Trophy, Save, Plus, Trash2, CheckCircle, AlertCircle, List, Edit2, X, MapPin, Clock as ClockIcon, Loader2, Play, Printer, Users, Star, Shuffle, ImageIcon } from 'lucide-react';
+import { ArrowLeft, Calendar, Trophy, Save, Plus, Trash2, CheckCircle, AlertCircle, List, Edit2, X, MapPin, Clock as ClockIcon, Loader2, Play, Printer, Users, Star, Shuffle, ImageIcon, Share2, Download } from 'lucide-react';
 import api from '../../services/api';
 
 interface Match {
@@ -47,6 +47,7 @@ export function AdminMatchManager() {
     const [loadingRosters, setLoadingRosters] = useState(false);
     const [selectedMvpId, setSelectedMvpId] = useState<string | number>('');
     const [isSavingMvp, setIsSavingMvp] = useState(false);
+    const [activeTab, setActiveTab] = useState('summary'); // Tab state for modal
 
     // Group Management State
     const [showGroupsModal, setShowGroupsModal] = useState(false);
@@ -376,6 +377,13 @@ export function AdminMatchManager() {
 
         openArbitration(match);
     };
+
+    // Reset tab when opening modal
+    useEffect(() => {
+        if (isSummaryOpen) {
+            setActiveTab('summary');
+        }
+    }, [isSummaryOpen]);
 
     // Group matches by round and sort them by date
     const rounds = matches.reduce((acc, match) => {
@@ -990,109 +998,182 @@ export function AdminMatchManager() {
                                 <X size={20} />
                             </button>
                         </div>
-                        <div className="p-8">
-                            <div className="flex items-center justify-between mb-8">
-                                <div className="text-center flex-1">
-                                    <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-2 border">
-                                        {selectedMatch.home_team?.logo_url ? <img src={selectedMatch.home_team.logo_url} className="w-12 h-12" /> : <Trophy className="text-gray-300" />}
+
+
+                        {/* Tabs Navigation */}
+                        <div className="flex border-b border-gray-100 bg-gray-50/50">
+                            <button
+                                onClick={() => setActiveTab('summary')}
+                                className={`flex-1 py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'summary' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                            >
+                                Resumo
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('art')}
+                                className={`flex-1 py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'art' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                            >
+                                <span className="flex items-center justify-center gap-2">
+                                    <ImageIcon className="w-4 h-4" /> Arte
+                                </span>
+                            </button>
+                        </div>
+
+                        {activeTab === 'summary' && (
+                            <div className="p-8">
+                                <div className="flex items-center justify-between mb-8">
+                                    <div className="text-center flex-1">
+                                        <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-2 border">
+                                            {selectedMatch.home_team?.logo_url ? <img src={selectedMatch.home_team.logo_url} className="w-12 h-12" /> : <Trophy className="text-gray-300" />}
+                                        </div>
+                                        <div className="font-bold text-gray-900 leading-tight">{selectedMatch.home_team?.name}</div>
                                     </div>
-                                    <div className="font-bold text-gray-900 leading-tight">{selectedMatch.home_team?.name}</div>
+                                    <div className="flex flex-col items-center">
+                                        <div className="flex items-center gap-4 px-6">
+                                            <span className="text-5xl font-black text-gray-900">{selectedMatch.home_score || 0}</span>
+                                            <span className="text-gray-300 font-bold">X</span>
+                                            <span className="text-5xl font-black text-gray-900">{selectedMatch.away_score || 0}</span>
+                                        </div>
+                                        {(selectedMatch.home_penalty_score != null || selectedMatch.away_penalty_score != null) && (selectedMatch.home_penalty_score > 0 || selectedMatch.away_penalty_score > 0) && (
+                                            <span className="text-sm font-bold text-gray-500 mt-2">
+                                                ({selectedMatch.home_penalty_score} x {selectedMatch.away_penalty_score} Pênaltis)
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="text-center flex-1">
+                                        <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-2 border">
+                                            {selectedMatch.away_team?.logo_url ? <img src={selectedMatch.away_team.logo_url} className="w-12 h-12" /> : <Trophy className="text-gray-300" />}
+                                        </div>
+                                        <div className="font-bold text-gray-900 leading-tight">{selectedMatch.away_team?.name}</div>
+                                    </div>
                                 </div>
-                                <div className="flex flex-col items-center">
-                                    <div className="flex items-center gap-4 px-6">
-                                        <span className="text-5xl font-black text-gray-900">{selectedMatch.home_score || 0}</span>
-                                        <span className="text-gray-300 font-bold">X</span>
-                                        <span className="text-5xl font-black text-gray-900">{selectedMatch.away_score || 0}</span>
+
+                                <div className="space-y-4 border-t pt-6">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 text-center">
+                                            <div className="text-[10px] text-gray-400 font-bold uppercase mb-1">Status</div>
+                                            <div className="text-sm font-bold text-green-600 self-center">Finalizado</div>
+                                        </div>
+                                        <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 text-center">
+                                            <div className="text-[10px] text-gray-400 font-bold uppercase mb-1">Data</div>
+                                            <div className="text-sm font-bold text-gray-900">{new Date(selectedMatch.start_time).toLocaleDateString('pt-BR')}</div>
+                                        </div>
                                     </div>
-                                    {(selectedMatch.home_penalty_score != null || selectedMatch.away_penalty_score != null) && (selectedMatch.home_penalty_score > 0 || selectedMatch.away_penalty_score > 0) && (
-                                        <span className="text-sm font-bold text-gray-500 mt-2">
-                                            ({selectedMatch.home_penalty_score} x {selectedMatch.away_penalty_score} Pênaltis)
-                                        </span>
+                                </div>
+
+                                {/* Craque do Jogo (MVP) */}
+                                <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 mb-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-center gap-2">
+                                            <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                                            <div className="text-[10px] text-amber-600 font-black uppercase tracking-wider">Craque do Jogo (MVP)</div>
+                                        </div>
+                                    </div>
+
+                                    {loadingRosters ? (
+                                        <div className="flex items-center gap-2 text-xs text-amber-400 py-2">
+                                            <Loader2 className="w-3 h-3 animate-spin" />
+                                            Carregando elencos...
+                                        </div>
+                                    ) : (
+                                        <div className="flex gap-2">
+                                            <select
+                                                value={selectedMvpId}
+                                                onChange={e => setSelectedMvpId(e.target.value)}
+                                                className="flex-1 bg-white border border-amber-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500 transition-all font-medium text-gray-700"
+                                            >
+                                                <option value="">Selecione o Craque...</option>
+                                                {rosters.home.length > 0 && (
+                                                    <optgroup label={selectedMatch.home_team?.name}>
+                                                        {rosters.home.map(p => (
+                                                            <option key={p.id} value={p.id}>{p.number ? `#${p.number}` : ''} {p.name}</option>
+                                                        ))}
+                                                    </optgroup>
+                                                )}
+                                                {rosters.away.length > 0 && (
+                                                    <optgroup label={selectedMatch.away_team?.name}>
+                                                        {rosters.away.map(p => (
+                                                            <option key={p.id} value={p.id}>{p.number ? `#${p.number}` : ''} {p.name}</option>
+                                                        ))}
+                                                    </optgroup>
+                                                )}
+                                            </select>
+                                            <button
+                                                onClick={handleSaveMvp}
+                                                disabled={isSavingMvp || !selectedMvpId}
+                                                className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg text-sm transition-all disabled:opacity-50 shadow-sm shadow-amber-200 active:scale-95"
+                                            >
+                                                {isSavingMvp ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Definir'}
+                                            </button>
+                                        </div>
                                     )}
                                 </div>
-                                <div className="text-center flex-1">
-                                    <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-2 border">
-                                        {selectedMatch.away_team?.logo_url ? <img src={selectedMatch.away_team.logo_url} className="w-12 h-12" /> : <Trophy className="text-gray-300" />}
-                                    </div>
-                                    <div className="font-bold text-gray-900 leading-tight">{selectedMatch.away_team?.name}</div>
-                                </div>
-                            </div>
 
-                            <div className="space-y-4 border-t pt-6">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 text-center">
-                                        <div className="text-[10px] text-gray-400 font-bold uppercase mb-1">Status</div>
-                                        <div className="text-sm font-bold text-green-600 self-center">Finalizado</div>
-                                    </div>
-                                    <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 text-center">
-                                        <div className="text-[10px] text-gray-400 font-bold uppercase mb-1">Data</div>
-                                        <div className="text-sm font-bold text-gray-900">{new Date(selectedMatch.start_time).toLocaleDateString('pt-BR')}</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Craque do Jogo (MVP) */}
-                            <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 mb-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                                <div className="flex items-center justify-between mb-3">
-                                    <div className="flex items-center gap-2">
-                                        <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
-                                        <div className="text-[10px] text-amber-600 font-black uppercase tracking-wider">Craque do Jogo (MVP)</div>
-                                    </div>
-                                </div>
-
-                                {loadingRosters ? (
-                                    <div className="flex items-center gap-2 text-xs text-amber-400 py-2">
-                                        <Loader2 className="w-3 h-3 animate-spin" />
-                                        Carregando elencos...
-                                    </div>
-                                ) : (
-                                    <div className="flex gap-2">
-                                        <select
-                                            value={selectedMvpId}
-                                            onChange={e => setSelectedMvpId(e.target.value)}
-                                            className="flex-1 bg-white border border-amber-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500 transition-all font-medium text-gray-700"
-                                        >
-                                            <option value="">Selecione o Craque...</option>
-                                            {rosters.home.length > 0 && (
-                                                <optgroup label={selectedMatch.home_team?.name}>
-                                                    {rosters.home.map(p => (
-                                                        <option key={p.id} value={p.id}>{p.number ? `#${p.number}` : ''} {p.name}</option>
-                                                    ))}
-                                                </optgroup>
-                                            )}
-                                            {rosters.away.length > 0 && (
-                                                <optgroup label={selectedMatch.away_team?.name}>
-                                                    {rosters.away.map(p => (
-                                                        <option key={p.id} value={p.id}>{p.number ? `#${p.number}` : ''} {p.name}</option>
-                                                    ))}
-                                                </optgroup>
-                                            )}
-                                        </select>
-                                        <button
-                                            onClick={handleSaveMvp}
-                                            disabled={isSavingMvp || !selectedMvpId}
-                                            className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg text-sm transition-all disabled:opacity-50 shadow-sm shadow-amber-200 active:scale-95"
-                                        >
-                                            {isSavingMvp ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Definir'}
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
-                                <div className="text-[10px] text-indigo-400 font-bold uppercase mb-2">Equipe de Arbitragem</div>
-                                <div className="text-sm font-medium text-indigo-900">
-                                    {/* @ts-ignore */}
-                                    <b>Árbitro:</b> {selectedMatch.match_details?.arbitration?.referee || 'Não informado'}
-                                </div>
-                                {(selectedMatch as any).match_details?.arbitration?.assistant1 && (
-                                    <div className="text-sm text-indigo-700 mt-1">
+                                <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                                    <div className="text-[10px] text-indigo-400 font-bold uppercase mb-2">Equipe de Arbitragem</div>
+                                    <div className="text-sm font-medium text-indigo-900">
                                         {/* @ts-ignore */}
-                                        <b>Assistentes:</b> {(selectedMatch as any).match_details?.arbitration?.assistant1} {(selectedMatch as any).match_details?.arbitration?.assistant2 ? ` / ${(selectedMatch as any).match_details?.arbitration?.assistant2}` : ''}
+                                        <b>Árbitro:</b> {selectedMatch.match_details?.arbitration?.referee || 'Não informado'}
                                     </div>
-                                )}
+                                    {(selectedMatch as any).match_details?.arbitration?.assistant1 && (
+                                        <div className="text-sm text-indigo-700 mt-1">
+                                            {/* @ts-ignore */}
+                                            <b>Assistentes:</b> {(selectedMatch as any).match_details?.arbitration?.assistant1} {(selectedMatch as any).match_details?.arbitration?.assistant2 ? ` / ${(selectedMatch as any).match_details?.arbitration?.assistant2}` : ''}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                        </div>
+                        )}
+
+                        {activeTab === 'art' && (
+                            <div className="p-6">
+                                <div className="text-center space-y-2 mb-6">
+                                    <h3 className="font-bold text-gray-900">Gerador de Arte</h3>
+                                    <p className="text-sm text-gray-500">Arte oficial para divulgação do jogo nas redes sociais.</p>
+                                </div>
+                                <div className="flex flex-col items-center gap-6">
+                                    <div className="relative aspect-[4/5] w-full max-w-[280px] bg-slate-900 rounded-lg shadow-xl overflow-hidden group">
+                                        <img
+                                            src={`${api.defaults.baseURL}/public/art/match/${selectedMatch.id}/scheduled?t=${Date.now()}`}
+                                            className="w-full h-full object-cover"
+                                            alt="Arte do Jogo"
+                                        />
+                                    </div>
+                                    <div className="flex flex-col w-full max-w-[280px] gap-2">
+                                        <a
+                                            href={`${api.defaults.baseURL}/public/art/match/${selectedMatch.id}/scheduled?download=true`}
+                                            download={`jogo-${selectedMatch.id}.jpg`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all shadow-md active:scale-95"
+                                        >
+                                            <Download className="w-4 h-4" /> Baixar Imagem
+                                        </a>
+                                        {/* @ts-ignore */}
+                                        {navigator.share && (
+                                            <button
+                                                onClick={async () => {
+                                                    try {
+                                                        const response = await fetch(`${api.defaults.baseURL}/public/art/match/${selectedMatch.id}/scheduled`);
+                                                        const blob = await response.blob();
+                                                        const file = new File([blob], `jogo-${selectedMatch.id}.jpg`, { type: 'image/jpeg' });
+                                                        await navigator.share({
+                                                            title: `Jogo: ${selectedMatch.home_team?.name} vs ${selectedMatch.away_team?.name}`,
+                                                            text: 'Confira os detalhes da nossa próxima partida!',
+                                                            files: [file]
+                                                        });
+                                                    } catch (err) {
+                                                        console.error('Error sharing:', err);
+                                                    }
+                                                }}
+                                                className="w-full py-3 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-gray-50 transition-all"
+                                            >
+                                                <Share2 className="w-4 h-4" /> Compartilhar
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         <div className="p-4 bg-gray-50 border-t border-gray-100 flex gap-3">
                             <button
@@ -1109,8 +1190,9 @@ export function AdminMatchManager() {
                             </button>
                         </div>
                     </div>
-                </div>
-            )}
+                </div >
+            )
+            }
 
             {/* Add Modal */}
             {

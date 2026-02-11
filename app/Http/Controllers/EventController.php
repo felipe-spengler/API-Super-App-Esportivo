@@ -147,11 +147,11 @@ class EventController extends Controller
                 $groupName = $m->group_name ?? ($teamGroups[$homeId] ?? 'Geral');
 
                 if (!isset($teamsData[$homeId])) {
-                    $teamsData[$homeId] = $initStats($m->homeTeam->name ?? 'Time A', $m->homeTeam->logo_url ?? null);
+                    $teamsData[$homeId] = $initStats($m->homeTeam?->name ?? 'Time A', $m->homeTeam?->logo_url ?? null);
                     $teamsData[$homeId]['group_name'] = $groupName;
                 }
                 if (!isset($teamsData[$awayId])) {
-                    $teamsData[$awayId] = $initStats($m->awayTeam->name ?? 'Time B', $m->awayTeam->logo_url ?? null);
+                    $teamsData[$awayId] = $initStats($m->awayTeam?->name ?? 'Time B', $m->awayTeam?->logo_url ?? null);
                     $teamsData[$awayId]['group_name'] = $groupName;
                 }
 
@@ -218,15 +218,18 @@ class EventController extends Controller
             $allTeams = $teamsQuery->get();
 
             foreach ($allTeams as $team) {
+                $groupFromPivot = $team->pivot->group_name ?? null;
+
                 if (!isset($teamsData[$team->id])) {
                     $teamsData[$team->id] = $initStats($team->name, $team->logo_url);
                     $teamsData[$team->id]['id'] = $team->id;
-                    $teamsData[$team->id]['group_name'] = $teamGroups[$team->id] ?? 'Geral';
+                    $teamsData[$team->id]['group_name'] = $groupFromPivot ?? $teamGroups[$team->id] ?? 'Geral';
                 } else {
                     // Ensure ID is set
                     $teamsData[$team->id]['id'] = $team->id;
-                    if (($teamsData[$team->id]['group_name'] ?? 'Geral') === 'Geral' && isset($teamGroups[$team->id])) {
-                        $teamsData[$team->id]['group_name'] = $teamGroups[$team->id];
+                    // Update group if it was 'Geral' but pivot has something better
+                    if ($groupFromPivot && ($teamsData[$team->id]['group_name'] ?? 'Geral') === 'Geral') {
+                        $teamsData[$team->id]['group_name'] = $groupFromPivot;
                     }
                 }
             }
@@ -423,14 +426,15 @@ class EventController extends Controller
 
             // Add detail
             if ($event->gameMatch) {
-                $home = $event->gameMatch->homeTeam->name ?? 'TBA';
-                $away = $event->gameMatch->awayTeam->name ?? 'TBA';
+                $home = $event->gameMatch->homeTeam?->name ?? 'TBA';
+                $away = $event->gameMatch->awayTeam?->name ?? 'TBA';
                 $playerStats[$pName]['details'][] = [
                     'match_id' => $event->gameMatch->id,
                     'match_label' => "$home vs $away",
                     'game_time' => $event->game_time,
                     'period' => $event->period,
-                    'match_date' => $event->gameMatch->start_time
+                    'match_date' => $event->gameMatch->start_time,
+                    'round' => $event->gameMatch->round_name ?? $event->gameMatch->round_number ?? null,
                 ];
             }
         }

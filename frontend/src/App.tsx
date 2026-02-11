@@ -32,6 +32,7 @@ import { AdminProductManager } from './pages/Shop/AdminProductManager';
 import { TemporaryAccess } from './pages/Settings/TemporaryAccess';
 
 import { Explore } from './pages/Public/Explore';
+import { ClubExplore } from './pages/Public/ClubExplore';
 import { EventDetails } from './pages/Public/EventDetails';
 import { EventMatches } from './pages/Public/EventMatches';
 import { EventLeaderboard } from './pages/Public/EventLeaderboard';
@@ -80,6 +81,8 @@ function App() {
             <Route path="/explore" element={<Explore />} />
             <Route path="/club-home" element={<ClubHome />} />
             <Route path="/club-home/:slug" element={<ClubHome />} />
+            <Route path="/club-home/:slug/explore" element={<ClubExplore />} />
+            <Route path="/club-home/:slug/championships" element={<ClubExplore />} />
             <Route path="/wallet" element={<Wallet />} />
             <Route path="/agenda" element={<Agenda />} />
             <Route path="/shop" element={<Shop />} />
