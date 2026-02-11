@@ -100,6 +100,7 @@ export function EventMatches() {
                     </div>
                 );
             case 'upcoming': return <span className="px-2 py-0.5 bg-blue-100 text-blue-600 rounded text-[10px] font-bold uppercase border border-blue-200">Agendada</span>;
+            case 'scheduled': return <span className="px-2 py-0.5 bg-blue-100 text-blue-600 rounded text-[10px] font-bold uppercase border border-blue-200">Agendado</span>;
             default: return <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-[10px] font-bold uppercase border border-yellow-200">{status}</span>;
         }
     };
@@ -160,13 +161,21 @@ export function EventMatches() {
                     {/* Score Board */}
                     <div className="flex flex-col items-center px-4 w-28">
                         <div className="flex items-center gap-3">
-                            <span className={`text-2xl font-black ${match.home_score > match.away_score ? 'text-gray-900' : 'text-gray-600'}`}>
-                                {match.home_score ?? '-'}
-                            </span>
-                            <span className="text-xs text-gray-400 font-bold">X</span>
-                            <span className={`text-2xl font-black ${match.away_score > match.home_score ? 'text-gray-900' : 'text-gray-600'}`}>
-                                {match.away_score ?? '-'}
-                            </span>
+                            {match.status === 'scheduled' || match.status === 'upcoming' ? (
+                                <div className="flex flex-col items-center">
+                                    <span className="text-xl font-black text-gray-300">VS</span>
+                                </div>
+                            ) : (
+                                <>
+                                    <span className={`text-2xl font-black ${match.home_score > match.away_score ? 'text-gray-900' : 'text-gray-600'}`}>
+                                        {match.home_score ?? '-'}
+                                    </span>
+                                    <span className="text-xs text-gray-400 font-bold">X</span>
+                                    <span className={`text-2xl font-black ${match.away_score > match.home_score ? 'text-gray-900' : 'text-gray-600'}`}>
+                                        {match.away_score ?? '-'}
+                                    </span>
+                                </>
+                            )}
                         </div>
                         <div className="mt-2 text-center scale-90 origin-top">
                             {getStatusBadge(match)}
