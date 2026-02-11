@@ -68,6 +68,10 @@ Route::get('/public/matches/{id}/pdf', [EventController::class, 'matchPdf']);
 Route::get('/public/matches/{id}', [EventController::class, 'matchDetails']); // NEW Public Match Details
 Route::get('/public/matches/{id}/full-details', [\App\Http\Controllers\MatchOperationController::class, 'show']); // NEW Public Full Details for Print
 
+// Public Art Generation Routes (Matching /api/art structure)
+Route::get('/art/match/{matchId}/scheduled', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'downloadScheduledArt']);
+Route::get('/art/match/{matchId}/mvp', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'downloadMvpArt']);
+
 // Loja (Público)
 Route::get('/clubs/{clubId}/products', [ShopController::class, 'products']);
 Route::get('/public/products', [ShopController::class, 'allProducts']); // NEW

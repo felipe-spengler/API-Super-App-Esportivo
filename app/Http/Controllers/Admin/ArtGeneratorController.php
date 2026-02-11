@@ -88,7 +88,18 @@ class ArtGeneratorController extends Controller
             return response('Erro ao inicializar imagem de classificação.', 500);
         }
 
-        $this->drawCenteredText($img, 50, 1700, null, mb_strtoupper($championship->name), true);
+        // Cores
+        $club = $championship->club;
+        $primaryColorStr = $club->primary_color ?? '#FFB700';
+        $pRGB = $this->hexToRgb($primaryColorStr);
+        $primaryColor = imagecolorallocate($img, $pRGB['r'], $pRGB['g'], $pRGB['b']);
+        $black = imagecolorallocate($img, 0, 0, 0);
+
+        $text = mb_strtoupper($championship->name);
+        // Shadow
+        $this->drawCenteredText($img, 50, 1700 + 4, $black, $text, true);
+        // Text
+        $this->drawCenteredText($img, 50, 1700, $primaryColor, $text, true);
 
         return $this->outputImage($img, 'classificacao_' . $championshipId);
     }
@@ -165,9 +176,10 @@ class ArtGeneratorController extends Controller
             return response("Erro fundo: $bgFile", 500);
 
         $width = imagesx($img);
+        $height = imagesy($img);
 
         // Cores do Clube
-        $primaryColorStr = $club->primary_color ?? '#000000';
+        $primaryColorStr = $club->primary_color ?? '#FFB700'; // Default Yellow/Gold
         $secondaryColorStr = $club->secondary_color ?? '#FFFFFF';
 
         $pRGB = $this->hexToRgb($primaryColorStr);
@@ -176,36 +188,66 @@ class ArtGeneratorController extends Controller
         $primaryColor = imagecolorallocate($img, $pRGB['r'], $pRGB['g'], $pRGB['b']);
         $secondaryColor = imagecolorallocate($img, $sRGB['r'], $sRGB['g'], $sRGB['b']);
         $white = imagecolorallocate($img, 255, 255, 255);
+        $black = imagecolorallocate($img, 0, 0, 0);
 
-        // 1. Topo: Nome do Campeonato e Esporte
+        // Helper para desenhar com Sombra
+        $drawText = function ($size, $y, $color, $text, $useSecFont) use ($img, $width, $black) {
+            // Sombra
+            $this->drawCenteredText($img, $size, $y + 4, $black, $text, $useSecFont);
+            // Texto
+            $this->drawCenteredText($img, $size, $y, $color, $text, $useSecFont);
+        };
+
+        // 1. Topo: Nome do Campeonato e Esporte (Mais compacto)
         $champName = mb_strtoupper($match->championship->name);
-        $this->drawCenteredText($img, 35, 120, $white, $champName, true); // Fonte Secundária
-        $this->drawCenteredText($img, 55, 220, $white, mb_strtoupper($sport), false); // Fonte Primária
+        // Usar Cor Secundária para o Camp
+        $drawText(35, 100, $secondaryColor, $champName, true);
+        // Usar Cor Primária para o Esporte (Destaque)
+        $drawText(65, 190, $primaryColor, mb_strtoupper($sport), false);
 
         // 2. Meio: Rodada e Brasões
         $roundText = mb_strtoupper($match->round_name ?? "RODADA " . ($match->round_number ?? 1));
-        $this->drawCenteredText($img, 25, 320, $white, $roundText, true);
+        $drawText(30, 280, $white, $roundText, true);
 
-        $badgeSize = 350;
-        $yBadges = 450;
-        $centerDist = 300;
+        // Tamanho dinâmico do brasão baseado na altura da imagem (para 1080x1080 vs 1080x1920)
+        // Se for quadrado, usa um pouco menor
+        $isSquare = abs($width - $height) < 100;
+        $badgeSize = $isSquare ? 320 : 380;
+
+        // Centralizar verticalmente na área disponível
+        // Topo acaba ~200. Rodapé começa ~Height-300.
+        // Vamos fixar um pouco mais pra cima para garantir
+        $yBadges = ($height / 2) - ($badgeSize / 2) - 50;
+        $centerDist = $isSquare ? 280 : 320;
 
         // Mandante
         $xA = ($width / 2) - $centerDist - ($badgeSize / 2);
         $this->drawTeamBadge($img, $match->homeTeam, $xA, $yBadges, $badgeSize, $white);
-        $this->drawCenteredTextInBox($img, 30, $xA, $yBadges + $badgeSize + 20, $badgeSize, $white, mb_strtoupper($match->homeTeam->name));
+        // Nome do Time Mandante
+        $this->drawCenteredTextInBox($img, 30, $xA - 50, $yBadges + $badgeSize + 10, $badgeSize + 100, $white, mb_strtoupper($match->homeTeam->name));
+
 
         // Visitante
         $xB = ($width / 2) + $centerDist - ($badgeSize / 2);
         $this->drawTeamBadge($img, $match->awayTeam, $xB, $yBadges, $badgeSize, $white);
-        $this->drawCenteredTextInBox($img, 30, $xB, $yBadges + $badgeSize + 20, $badgeSize, $white, mb_strtoupper($match->awayTeam->name));
+        // Nome do Time Visitante
+        $this->drawCenteredTextInBox($img, 30, $xB - 50, $yBadges + $badgeSize + 10, $badgeSize + 100, $white, mb_strtoupper($match->awayTeam->name));
 
-        // 3. Rodapé: Data, Horário e Local
-        $dateStr = \Carbon\Carbon::parse($match->start_time)->translatedFormat('d M \à\s H:i\h');
-        $location = mb_strtoupper($match->location ?? 'LOCAL NÃO DEFINIDO');
+        // VS (Versus) no meio
+        $drawText(60, $yBadges + ($badgeSize / 2) + 20, $primaryColor, "X", false);
 
-        $this->drawCenteredText($img, 45, 1100, $white, mb_strtoupper($dateStr), false);
-        $this->drawCenteredText($img, 35, 1200, $white, $location, true);
+
+        // 3. Rodapé: Data, Horário e Local (Mais pra cima para não cortar)
+        $yDate = $height - 300;
+        $yLoc = $height - 180;
+
+        $dateStr = \Carbon\Carbon::parse($match->start_time)->translatedFormat('d \d\e F \à\s H:i');
+        $location = mb_strtoupper($match->location ?? 'LOCAL A DEFINIR');
+
+        // Data com Cor Primária
+        $drawText(55, $yDate, $primaryColor, mb_strtoupper($dateStr), false);
+        // Local com Branco/Secundário
+        $drawText(40, $yLoc, $white, $location, true);
 
         return $this->outputImage($img, 'jogo_programado_' . $match->id);
     }
@@ -220,10 +262,23 @@ class ArtGeneratorController extends Controller
 
         $width = imagesx($img);
 
-        // Auto Contrast for Default Colors (used if not passed explicitly)
-        // Mas para textos complexos, vamos deixar o drawCenteredText calcular
+        // Cores do Clube
+        $primaryColorStr = $club->primary_color ?? '#FFB700';
+        $secondaryColorStr = $club->secondary_color ?? '#FFFFFF';
+
+        $pRGB = $this->hexToRgb($primaryColorStr);
+        $sRGB = $this->hexToRgb($secondaryColorStr);
+
+        $primaryColor = imagecolorallocate($img, $pRGB['r'], $pRGB['g'], $pRGB['b']);
+        $secondaryColor = imagecolorallocate($img, $sRGB['r'], $sRGB['g'], $sRGB['b']);
         $white = imagecolorallocate($img, 255, 255, 255);
-        $black = imagecolorallocate($img, 30, 30, 30);
+        $black = imagecolorallocate($img, 0, 0, 0);
+
+        // Helper para desenhar com Sombra
+        $drawText = function ($size, $y, $color, $text, $useSecFont) use ($img, $black) {
+            $this->drawCenteredText($img, $size, $y + 4, $black, $text, $useSecFont);
+            $this->drawCenteredText($img, $size, $y, $color, $text, $useSecFont);
+        };
 
         // Dados
         $homeTeam = $match->homeTeam;
@@ -232,34 +287,43 @@ class ArtGeneratorController extends Controller
 
         // 1. Brasões Grandes
         $badgeSize = 300;
-        $yBadges = 1170 - 280; // Ajuste baseado no legado (1170 base - offset)
+        $yBadges = 1170 - 280; // Legacy Position
         $centerDist = 400;
 
         // Team A (Left)
         $xA = 102 + ($width / 2) - $centerDist - ($badgeSize / 2);
-        $this->drawTeamBadge($img, $homeTeam, $xA, $yBadges, $badgeSize, $black);
+        // Usar cor secundária como fallback de caixa para brasão
+        $this->drawTeamBadge($img, $homeTeam, $xA, $yBadges, $badgeSize, $secondaryColor);
 
         // Team B (Right)
         $xB = -94 + ($width / 2) + $centerDist - ($badgeSize / 2);
-        $this->drawTeamBadge($img, $awayTeam, $xB, $yBadges, $badgeSize, $white);
+        $this->drawTeamBadge($img, $awayTeam, $xB, $yBadges, $badgeSize, $secondaryColor);
 
         // 2. Placar
         $placarY = 1170 + 130;
-        $placarSize = 80;
+        $placarSize = 100; // Increased size
         list($scoreA, $scoreB) = explode(' x ', $placar);
-        // Placar usa Fonte Primária
-        // Cor do placa: Tenta calcular contraste na região
-        $colorScore = $this->getAutoContrastColor($img, ($width / 2) - 180, $placarY - $placarSize, 360, $placarSize);
 
-        imagettftext($img, $placarSize, 0, -145 + ($width / 2) - 180, $placarY, $colorScore, $this->fontPath, trim($scoreA));
-        imagettftext($img, $placarSize, 0, ($width / 2) + 180 + 80, $placarY, $colorScore, $this->fontPath, trim($scoreB));
+        // Usar Cor Primária para o Placar (com sombra)
+        // Manual shadow for imagettftext since drawCenteredText is centered globaly
+        $shadowOffset = 5;
+
+        // Score Home
+        imagettftext($img, $placarSize, 0, -145 + ($width / 2) - 180 + $shadowOffset, $placarY + $shadowOffset, $black, $this->fontPath, trim($scoreA));
+        imagettftext($img, $placarSize, 0, -145 + ($width / 2) - 180, $placarY, $primaryColor, $this->fontPath, trim($scoreA));
+
+        // Score Away
+        imagettftext($img, $placarSize, 0, ($width / 2) + 180 + 80 + $shadowOffset, $placarY + $shadowOffset, $black, $this->fontPath, trim($scoreB));
+        imagettftext($img, $placarSize, 0, ($width / 2) + 180 + 80, $placarY, $primaryColor, $this->fontPath, trim($scoreB));
 
         // 3. Campeonato e Rodada
         $champName = mb_strtoupper($match->championship->name);
         $roundName = mb_strtoupper($match->round_name ?? 'Rodada');
 
-        $this->drawCenteredText($img, 40, 1700, null, $champName, true); // Use Secondary Font
-        $this->drawCenteredText($img, 30, 1750, null, $roundName, true); // Use Secondary Font
+        // Secundária para o campeonato
+        $drawText(40, 1600, $secondaryColor, $champName, true);
+        // Primária para a rodada
+        $drawText(30, 1660, $primaryColor, $roundName, true);
 
         return $this->outputImage($img, 'confronto_' . $match->id);
     }
@@ -310,9 +374,24 @@ class ArtGeneratorController extends Controller
             return response("Erro fundo: $bgFile", 500);
 
         $width = imagesx($img);
-        // Colors defined for fallback, but text calls will function with null for auto-contrast
+
+        // Cores do Clube
+        $primaryColorStr = $club->primary_color ?? '#FFB700';
+        $secondaryColorStr = $club->secondary_color ?? '#FFFFFF';
+
+        $pRGB = $this->hexToRgb($primaryColorStr);
+        $sRGB = $this->hexToRgb($secondaryColorStr);
+
+        $primaryColor = imagecolorallocate($img, $pRGB['r'], $pRGB['g'], $pRGB['b']);
+        $secondaryColor = imagecolorallocate($img, $sRGB['r'], $sRGB['g'], $sRGB['b']);
         $white = imagecolorallocate($img, 255, 255, 255);
-        $black = imagecolorallocate($img, 30, 30, 30);
+        $black = imagecolorallocate($img, 0, 0, 0);
+
+        // Helper para desenhar com Sombra
+        $drawText = function ($size, $y, $color, $text, $useSecFont) use ($img, $black) {
+            $this->drawCenteredText($img, $size, $y + 4, $black, $text, $useSecFont);
+            $this->drawCenteredText($img, $size, $y, $color, $text, $useSecFont);
+        };
 
         // 2. Foto do Jogador
         $this->drawPlayerPhoto($img, $player);
@@ -336,33 +415,30 @@ class ArtGeneratorController extends Controller
         }
 
         $playerName = mb_strtoupper($finalName);
-        $this->drawCenteredText($img, 70, 1230, $white, $playerName, false); // White name
+        // Nome do Jogador em Primária com Destaque
+        $drawText(75, 1230, $primaryColor, $playerName, false);
 
         $champName = mb_strtoupper($championship->name);
-        $this->drawCenteredText($img, 40, 1700, $white, $champName, true); // White champ
+        // Campeonato em Secundária
+        $drawText(40, 1660, $secondaryColor, $champName, true);
 
         if ($roundName) {
-            $this->drawCenteredText($img, 30, 1750, $white, mb_strtoupper($roundName), true); // White round
+            // Rodada em Branco (ou Secundária)
+            $drawText(30, 1710, $white, mb_strtoupper($roundName), true);
         }
 
         // Título da Categoria para Vôlei (Legacy)
-        // Se for Futebol, geralmente o fundo já tem o texto escrito (ex: MELHOR GOLEIRO)
-        // Mas se quisermos forçar:
         if (str_contains($sport, 'volei') || str_contains($sport, 'volley')) {
             $catTitle = mb_strtoupper(str_replace('_', ' ', $category));
-            // Ajuste de tradução simples
             $mapTitles = [
-                'levantador' => 'MELHOR LEVANTADORA', // ou LEVANTADOR, dependendo do genero
+                'levantador' => 'MELHOR LEVANTADORA',
                 'ponteira' => 'MELHOR PONTEIRA',
-                // ...
             ];
-            // Se não estiver no mapa, usa o category limpo
             $title = $mapTitles[$category] ?? $catTitle;
-            $this->drawCenteredText($img, 50, 1150, null, $title, true);
+            $drawText(50, 1150, $secondaryColor, $title, true);
         }
 
         // 4. Layout: MVP (com Placar) vs Award (sem Placar, só time)
-        // MVP geralmente tem placar se vier de uma partida
         if ($match && in_array($category, ['craque', 'mvp', 'melhor_jogador', 'melhor_quadra'])) {
 
             // Layout MVP com Placar
@@ -372,38 +448,37 @@ class ArtGeneratorController extends Controller
 
             // Home Team
             $xA = 102 + ($width / 2) - $centerDist - ($badgeSize / 2);
-            // Auto-detect color for home team based on background
-            $colorA = $this->getAutoContrastColor($img, $xA, $yBadges, $badgeSize, $badgeSize);
-            $this->drawTeamBadge($img, $match->homeTeam, $xA, $yBadges, $badgeSize, $colorA);
+            $this->drawTeamBadge($img, $match->homeTeam, $xA, $yBadges, $badgeSize, $secondaryColor);
 
             // Away Team
             $xB = -94 + ($width / 2) + $centerDist - ($badgeSize / 2);
-            // Auto-detect color for away team based on background
-            $colorB = $this->getAutoContrastColor($img, $xB, $yBadges, $badgeSize, $badgeSize);
-            $this->drawTeamBadge($img, $match->awayTeam, $xB, $yBadges, $badgeSize, $colorB);
+            $this->drawTeamBadge($img, $match->awayTeam, $xB, $yBadges, $badgeSize, $secondaryColor);
 
             // Placar
             $scoreY = 1535;
             $scoreA = $match->home_score ?? 0;
             $scoreB = $match->away_score ?? 0;
 
-            $boxA = imagettfbbox(100, 0, $this->fontPath, $scoreA);
+            // Use Primary Color for Score with Shadow
+            $shadowOffset = 4;
+            $placarSize = 100;
+
+            $boxA = imagettfbbox($placarSize, 0, $this->fontPath, $scoreA);
             $wA = $boxA[2] - $boxA[0];
 
-            // Auto Color for Scores
-            $scoreColor = $this->getAutoContrastColor($img, ($width / 2) - 180, $scoreY - 100, 360, 100);
+            // Score A
+            imagettftext($img, $placarSize, 0, ($width / 2) - 180 - $wA + $shadowOffset, $scoreY + $shadowOffset, $black, $this->fontPath, $scoreA);
+            imagettftext($img, $placarSize, 0, ($width / 2) - 180 - $wA, $scoreY, $primaryColor, $this->fontPath, $scoreA);
 
-            imagettftext($img, 100, 0, ($width / 2) - 180 - $wA, $scoreY, $scoreColor, $this->fontPath, $scoreA);
-            imagettftext($img, 100, 0, ($width / 2) + 180 + 40, $scoreY, $scoreColor, $this->fontPath, $scoreB);
+            // Score B
+            imagettftext($img, $placarSize, 0, ($width / 2) + 180 + 40 + $shadowOffset, $scoreY + $shadowOffset, $black, $this->fontPath, $scoreB);
+            imagettftext($img, $placarSize, 0, ($width / 2) + 180 + 40, $scoreY, $primaryColor, $this->fontPath, $scoreB);
 
         } else {
             // Layout Award: Apenas Brasão da Equipe do Jogador
             $targetTeam = $playerTeam;
 
-            // Se não veio time explícito, mas veio partida, tenta deduzir
             if (!$targetTeam && $match) {
-                // Tenta achar em qual time o jogador está
-                // Nota: Usamos query simples aqui para ser rápido
                 $isHome = \DB::table('team_players')
                     ->where('team_id', $match->home_team_id)
                     ->where('user_id', $player->id)
@@ -421,9 +496,7 @@ class ArtGeneratorController extends Controller
                 $yBadges = 1535 - 280;
                 $xCenter = ($width / 2) - ($badgeSize / 2);
 
-                $fallbackColor = str_contains($sport, 'volei') ? $white : $black;
-
-                $this->drawTeamBadge($img, $targetTeam, $xCenter, $yBadges, $badgeSize, $fallbackColor);
+                $this->drawTeamBadge($img, $targetTeam, $xCenter, $yBadges, $badgeSize, $secondaryColor);
             }
         }
 
