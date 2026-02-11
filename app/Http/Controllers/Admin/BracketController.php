@@ -640,7 +640,7 @@ class BracketController extends Controller
                     'start_time' => $baseDate,
                     'location' => $championship->location,
                     'status' => 'scheduled',
-                    'round' => $nextRoundName,
+                    'round_name' => $nextRoundName,
                     'is_knockout' => true
                 ]);
             }
@@ -655,7 +655,7 @@ class BracketController extends Controller
                     'start_time' => $baseDate,
                     'location' => $championship->location,
                     'status' => 'scheduled',
-                    'round' => $nextRoundName,
+                    'round_name' => $nextRoundName,
                     'is_knockout' => true
                 ]);
             }

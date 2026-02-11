@@ -261,22 +261,49 @@ export function EventMatches() {
 
         return (
             <div className="space-y-8">
-                {sortedKeys.map(round => (
-                    <div key={round}>
-                        <div className="flex items-center justify-center mb-6 mt-4">
-                            <div className="h-px bg-gray-300 flex-1 opacity-50"></div>
-                            <span className="mx-4 text-sm font-black text-white uppercase tracking-widest bg-gray-900 px-6 py-2 rounded-lg shadow-md border border-gray-800">
-                                {round}
-                            </span>
-                            <div className="h-px bg-gray-300 flex-1 opacity-50"></div>
+                {sortedKeys.map(round => {
+                    const roundMatches = groups[round];
+
+                    // Group by group_name
+                    const matchesByGroup = roundMatches.reduce((acc, match) => {
+                        const gName = match.group_name || 'Unico';
+                        if (!acc[gName]) acc[gName] = [];
+                        acc[gName].push(match);
+                        return acc;
+                    }, {} as Record<string, any[]>);
+
+                    const sortedGroupNames = Object.keys(matchesByGroup).sort();
+
+                    return (
+                        <div key={round}>
+                            <div className="flex items-center justify-center mb-6 mt-4">
+                                <div className="h-px bg-gray-300 flex-1 opacity-50"></div>
+                                <span className="mx-4 text-sm font-black text-white uppercase tracking-widest bg-gray-900 px-6 py-2 rounded-lg shadow-md border border-gray-800">
+                                    {round}
+                                </span>
+                                <div className="h-px bg-gray-300 flex-1 opacity-50"></div>
+                            </div>
+
+                            {sortedGroupNames.map(groupName => (
+                                <div key={groupName} className="mb-4">
+                                    {groupName !== 'Unico' && (
+                                        <div className="px-4 py-2 bg-gray-100/50 text-gray-500 text-xs font-bold uppercase tracking-wider mb-2 rounded-lg border border-gray-100">
+                                            {groupName.includes('Grupo') ? groupName : `Grupo ${groupName}`}
+                                        </div>
+                                    )}
+                                    <div className="space-y-3">
+                                        {matchesByGroup[groupName].map(match => (
+                                            <MatchCard key={match.id} match={match} />
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
-                        {groups[round].map(match => (
-                            <MatchCard key={match.id} match={match} />
-                        ))}
-                    </div>
-                ))}
+                    );
+                })}
             </div>
         );
+
     };
 
     return (

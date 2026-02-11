@@ -220,6 +220,16 @@ class EventController extends Controller
                         // Saldo
                         $balA = $a['stats']['goals_for'] - $a['stats']['goals_against'];
                         $balB = $b['stats']['goals_for'] - $b['stats']['goals_against'];
+
+                        if ($balA === $balB) {
+                            // Gols Pró (Opcional, mas comum)
+                            if ($a['stats']['goals_for'] === $b['stats']['goals_for']) {
+                                // Ordem Alfabética
+                                return strcmp($a['name'], $b['name']);
+                            }
+                            return $b['stats']['goals_for'] <=> $a['stats']['goals_for'];
+                        }
+
                         return $balB <=> $balA;
                     }
                     return $b['stats']['wins'] <=> $a['stats']['wins'];
@@ -264,8 +274,8 @@ class EventController extends Controller
     {
         $query = GameMatch::where('championship_id', $championshipId)
             ->with(['homeTeam', 'awayTeam'])
-            ->whereNotNull('round') // Apenas jogos de mata-mata têm 'round' definida
-            ->orderByRaw("FIELD(round, 'round_of_16', 'quarter', 'semi', 'final')");
+            ->whereNotNull('round_name') // Apenas jogos de mata-mata têm 'round_name' definida
+            ->orderByRaw("FIELD(round_name, 'round_of_16', 'quarter', 'semi', 'final')");
 
         if ($request->has('category_id') && $request->category_id != 'null') {
             $query->where('category_id', $request->category_id);
@@ -283,7 +293,7 @@ class EventController extends Controller
                 'team2_logo' => $match->awayTeam->logo_url ?? null,
                 'team1_score' => $match->home_score,
                 'team2_score' => $match->away_score,
-                'round' => $match->round, // 'round_of_16', 'quarter', 'semi', 'final'
+                'round' => $match->round_name, // 'round_of_16', 'quarter', 'semi', 'final'
                 'match_date' => $match->start_time,
                 'location' => $match->location,
                 'status' => $match->status,
