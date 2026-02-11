@@ -450,6 +450,19 @@ class ArtGeneratorController extends Controller
             return $sysSetting->value;
         }
 
+        // Custom Naming for Scheduled Games (User request)
+        if ($category === 'jogo_programado') {
+            $sportSlug = Str::slug($sport, '_');
+            $specific = $sportSlug . '_jogo_programado.jpg';
+            if (file_exists($this->templatesPath . $specific)) {
+                return $specific;
+            }
+            // Fallbacks
+            if (str_contains($sport, 'volei'))
+                return 'volei_confronto.jpg';
+            return 'fundo_confronto.jpg';
+        }
+
         // Mapeamento Volei (Default)
         if (str_contains($sport, 'volei')) {
             $map = [
@@ -474,7 +487,6 @@ class ArtGeneratorController extends Controller
         // Mapeamento Futebol (e outros)
         $map = [
             'confronto' => 'fundo_confronto.jpg',
-            'jogo_programado' => 'fundo_confronto.jpg', // Fallback
             'craque' => 'fundo_craque_do_jogo.jpg',
             'goleiro' => 'fundo_melhor_goleiro.jpg',
             'artilheiro' => 'fundo_melhor_artilheiro.jpg',
