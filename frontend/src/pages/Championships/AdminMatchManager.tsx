@@ -40,12 +40,19 @@ export function AdminMatchManager() {
     const [savingArbitration, setSavingArbitration] = useState(false);
     const [selectedCategoryId, setSelectedCategoryId] = useState<number | 'no-category' | null>(null);
     const [legs, setLegs] = useState(1); // Number of times teams play each other (1 = single round, 2 = home & away)
+    const [numGroups, setNumGroups] = useState(4); // Default groups count
     const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
     const [isGeneratingKnockout, setIsGeneratingKnockout] = useState(false);
     const [rosters, setRosters] = useState<{ home: any[], away: any[] }>({ home: [], away: [] });
     const [loadingRosters, setLoadingRosters] = useState(false);
     const [selectedMvpId, setSelectedMvpId] = useState<string | number>('');
     const [isSavingMvp, setIsSavingMvp] = useState(false);
+
+    // Group Management State
+    const [showGroupsModal, setShowGroupsModal] = useState(false);
+    const [groupAssignments, setGroupAssignments] = useState<Record<string, string>>({}); // teamId -> groupName
+    const [availableGroupNames, setAvailableGroupNames] = useState<string[]>(['A', 'B', 'C', 'D']);
+    const [loadingGroups, setLoadingGroups] = useState(false);
 
     useEffect(() => {
         if (isSummaryOpen && selectedMatch) {
@@ -104,6 +111,20 @@ export function AdminMatchManager() {
             // Handle teams response (could be array or paginated object)
             const loadedTeams = Array.isArray(teamsRes.data) ? teamsRes.data : (teamsRes.data.data || []);
             setTeams(loadedTeams);
+
+            // Also fetch groups to populate numGroups/assignments if any
+            try {
+                const groupsRes = await api.get(`/championships/${id}/groups`);
+                const groupsData = groupsRes.data.groups || {};
+                // If we have groups, set numGroups accordingly
+                const groupCount = Object.keys(groupsData).length;
+                if (groupCount > 0) {
+                    setNumGroups(groupCount);
+                    setAvailableGroupNames(Object.keys(groupsData).sort());
+                }
+            } catch (e) {
+                console.warn("Could not fetch groups info yet", e);
+            }
 
             // Determine category to use
             let categoryToUse = selectedCategoryId;
@@ -186,7 +207,8 @@ export function AdminMatchManager() {
                 start_date: championship.start_date,
                 match_interval_days: 7,
                 category_id: selectedCategoryId,
-                legs: legs
+                legs: legs,
+                num_groups: numGroups
             });
             const res = data.data;
             alert(`Tabela gerada com sucesso!\n\nForam criados ${res.matches_created} jogos para ${res.teams_count} equipes:\n${res.teams_list?.join(', ') || ''}`);
@@ -389,6 +411,78 @@ export function AdminMatchManager() {
         }
     };
 
+    const fetchGroups = async () => {
+        setLoadingGroups(true);
+        try {
+            const response = await api.get(`/championships/${id}/groups`);
+
+            // Transform response to state
+            // response.data.groups is { "A": [{...}, {...}], "B": [...] }
+            const groupsMap = response.data.groups || {};
+            const assignments: Record<string, string> = {};
+
+            // Collect all group names found
+            const foundNames = Object.keys(groupsMap).sort();
+
+            Object.entries(groupsMap).forEach(([gName, teamsList]: [string, any]) => {
+                if (Array.isArray(teamsList)) {
+                    teamsList.forEach(team => {
+                        assignments[team.id] = gName;
+                    });
+                }
+            });
+
+            setGroupAssignments(assignments);
+
+            // Update available names if we found more/different ones, OR defaults
+            if (foundNames.length > 0) {
+                setAvailableGroupNames(prev => {
+                    // Merge unique names
+                    const combined = Array.from(new Set([...prev, ...foundNames])).sort();
+                    return combined;
+                });
+                setNumGroups(Math.max(foundNames.length, numGroups));
+            }
+
+        } catch (error) {
+            console.error("Erro ao buscar grupos", error);
+            alert("Erro ao carregar configuração de grupos.");
+        } finally {
+            setLoadingGroups(false);
+        }
+    };
+
+    const handleSaveGroups = async () => {
+        setLoadingGroups(true);
+        try {
+            // Transform assignments local state to API format
+            // API expects: { groups: { "A": [id1, id2], "B": [id3] } }
+
+            const groupsPayload: Record<string, number[]> = {};
+
+            Object.entries(groupAssignments).forEach(([teamId, groupName]) => {
+                if (!groupsPayload[groupName]) groupsPayload[groupName] = [];
+                groupsPayload[groupName].push(Number(teamId));
+            });
+
+            // Clean empty groups from payload if desired? No, send partial if exists.
+
+            await api.post(`/championships/${id}/groups`, {
+                groups: groupsPayload
+            });
+
+            alert("Grupos salvos com sucesso!");
+            setShowGroupsModal(false);
+            setNumGroups(Object.keys(groupsPayload).length); // Update main UI counter
+
+        } catch (error) {
+            console.error(error);
+            alert("Erro ao salvar grupos.");
+        } finally {
+            setLoadingGroups(false);
+        }
+    };
+
     if (loading) return <div className="p-8 text-center">Carregando...</div>;
 
     return (
@@ -416,6 +510,19 @@ export function AdminMatchManager() {
                         >
                             {isGeneratingKnockout ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trophy className="w-4 h-4" />}
                             <span className="hidden sm:inline">Gerar Mata-mata</span>
+                        </button>
+                    )}
+                    {/* Botão Gerenciar Grupos Manualmente */}
+                    {(championship?.format === 'groups' || championship?.format === 'group_knockout') && matches.length === 0 && (
+                        <button
+                            onClick={() => {
+                                fetchGroups();
+                                setShowGroupsModal(true);
+                            }}
+                            className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-all shadow-sm text-sm font-bold mx-2"
+                        >
+                            <Users className="w-4 h-4" />
+                            <span className="hidden sm:inline">Definir Grupos</span>
                         </button>
                     )}
                     {(matches.length > 0 || teams.length > 0) && (
@@ -517,6 +624,20 @@ export function AdminMatchManager() {
                                             <option value={4}>4 Turnos</option>
                                         </select>
                                     </div>
+
+                                    {(championship?.format === 'groups' || championship?.format === 'group_knockout') && (
+                                        <div className="flex items-center gap-3 bg-gray-50 p-2 rounded-lg border border-gray-200">
+                                            <label className="text-sm font-bold text-gray-600">Grupos:</label>
+                                            <input
+                                                type="number"
+                                                min={2}
+                                                max={16}
+                                                value={numGroups}
+                                                onChange={(e) => setNumGroups(parseInt(e.target.value))}
+                                                className="w-16 bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 font-bold text-center"
+                                            />
+                                        </div>
+                                    )}
                                     <button
                                         onClick={() => handleGenerate(championship.format)}
                                         disabled={generating}
@@ -1029,6 +1150,176 @@ export function AdminMatchManager() {
                                 </button>
                                 <button onClick={handleSaveAdd} className="flex-1 px-4 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all">
                                     Criar Jogo
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* Groups Management Modal */}
+            {
+                showGroupsModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                        <div className="bg-white w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
+                            <div className="p-6 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-xl font-bold text-gray-900">Gerenciar Grupos</h3>
+                                    <p className="text-sm text-gray-500">Distribua as equipes nos grupos manualmente.</p>
+                                </div>
+                                <button onClick={() => setShowGroupsModal(false)} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
+                                    <X size={24} />
+                                </button>
+                            </div>
+
+                            <div className="p-6 flex-1 overflow-y-auto">
+                                {loadingGroups ? (
+                                    <div className="text-center py-12">
+                                        <Loader2 className="w-8 h-8 animate-spin mx-auto text-indigo-600 mb-4" />
+                                        <p className="text-gray-500">Carregando grupos...</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-8">
+                                        {/* Controls */}
+                                        <div className="flex items-center gap-4 bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                                            <div className="flex-1">
+                                                <label className="block text-xs font-bold text-indigo-800 uppercase mb-1">Grupos Disponíveis</label>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {availableGroupNames.map(name => (
+                                                        <div key={name} className="px-3 py-1 bg-white border border-indigo-200 rounded-lg text-sm font-bold text-indigo-600 shadow-sm flex items-center gap-2">
+                                                            Grupo {name}
+                                                            {name === availableGroupNames[availableGroupNames.length - 1] && availableGroupNames.length > 2 && (
+                                                                <button
+                                                                    onClick={() => setAvailableGroupNames(prev => prev.slice(0, -1))}
+                                                                    className="text-indigo-300 hover:text-red-500"
+                                                                    title="Remover Grupo"
+                                                                >
+                                                                    <X size={12} />
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                    <button
+                                                        onClick={() => {
+                                                            const nextChar = String.fromCharCode(65 + availableGroupNames.length); // A=65
+                                                            if (availableGroupNames.length < 16) {
+                                                                setAvailableGroupNames(prev => [...prev, nextChar]);
+                                                            }
+                                                        }}
+                                                        className="px-3 py-1 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 transition-colors shadow-sm flex items-center gap-1"
+                                                    >
+                                                        <Plus size={14} /> Adicionar
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="text-2xl font-black text-indigo-900">{teams.length}</div>
+                                                <div className="text-xs font-bold text-indigo-600 uppercase">Equipes</div>
+                                            </div>
+                                        </div>
+
+                                        {/* Assignment Table */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                            {/* Unassigned Column */}
+                                            <div className="bg-gray-50 rounded-xl border-2 border-dashed border-gray-300 p-4">
+                                                <h4 className="font-bold text-gray-500 mb-4 flex items-center gap-2">
+                                                    <AlertCircle size={16} /> Sem Grupo / Disponíveis
+                                                </h4>
+                                                <div className="space-y-2">
+                                                    {teams.filter(t => !groupAssignments[t.id]).map(team => (
+                                                        <div key={team.id} className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm flex items-center justify-between group">
+                                                            <span className="font-medium text-gray-700">{team.name}</span>
+                                                            <div className="flex gap-1 opacity-100 transition-opacity">
+                                                                {availableGroupNames.slice(0, 4).map(group => (
+                                                                    <button
+                                                                        key={group}
+                                                                        onClick={() => setGroupAssignments(prev => ({ ...prev, [team.id]: group }))}
+                                                                        className="w-6 h-6 flex items-center justify-center bg-gray-100 hover:bg-indigo-100 text-gray-600 hover:text-indigo-600 rounded text-xs font-bold transition-colors"
+                                                                        title={`Mover para Grupo ${group}`}
+                                                                    >
+                                                                        {group}
+                                                                    </button>
+                                                                ))}
+                                                                {availableGroupNames.length > 4 && (
+                                                                    <select
+                                                                        className="w-6 h-6 bg-gray-100 rounded text-xs font-bold outline-none"
+                                                                        onChange={(e) => {
+                                                                            if (e.target.value) setGroupAssignments(prev => ({ ...prev, [team.id]: e.target.value }))
+                                                                        }}
+                                                                    >
+                                                                        <option value="">+</option>
+                                                                        {availableGroupNames.slice(4).map(g => <option key={g} value={g}>{g}</option>)}
+                                                                    </select>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                    {teams.filter(t => !groupAssignments[t.id]).length === 0 && (
+                                                        <div className="text-center py-8 text-gray-400 text-sm italic">
+                                                            Todas as equipes foram atribuídas!
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Group Columns */}
+                                            {availableGroupNames.map(groupName => {
+                                                const groupTeams = teams.filter(t => groupAssignments[t.id] === groupName);
+                                                return (
+                                                    <div key={groupName} className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 h-fit">
+                                                        <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-100">
+                                                            <h4 className="font-bold text-gray-800 flex items-center gap-2">
+                                                                <span className="w-6 h-6 flex items-center justify-center bg-indigo-100 text-indigo-700 rounded text-xs">
+                                                                    {groupName}
+                                                                </span>
+                                                                Grupo {groupName}
+                                                            </h4>
+                                                            <span className="text-xs font-bold bg-gray-100 text-gray-500 px-2 py-1 rounded-full">{groupTeams.length}</span>
+                                                        </div>
+                                                        <div className="space-y-2 min-h-[50px]">
+                                                            {groupTeams.map(team => (
+                                                                <div key={team.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                                                    <span className="text-sm font-medium text-gray-700">{team.name}</span>
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            const newAssignments = { ...groupAssignments };
+                                                                            delete newAssignments[team.id];
+                                                                            setGroupAssignments(newAssignments);
+                                                                        }}
+                                                                        className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                                                                        title="Remover do grupo"
+                                                                    >
+                                                                        <X size={14} />
+                                                                    </button>
+                                                                </div>
+                                                            ))}
+                                                            {groupTeams.length === 0 && (
+                                                                <div className="text-center py-4 text-xs text-gray-400 border border-dashed border-gray-200 rounded-lg">
+                                                                    Arraste ou selecione times
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+                                <button
+                                    onClick={() => setShowGroupsModal(false)}
+                                    className="px-6 py-3 bg-white border border-gray-300 text-gray-700 font-bold rounded-xl hover:bg-gray-100 transition-all"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={handleSaveGroups}
+                                    disabled={loadingGroups}
+                                    className="px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all disabled:opacity-50"
+                                >
+                                    {loadingGroups ? 'Salvando...' : 'Salvar Grupos'}
                                 </button>
                             </div>
                         </div>

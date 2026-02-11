@@ -185,6 +185,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/championships/{championshipId}/bracket/shuffle', [\App\Http\Controllers\Admin\BracketController::class, 'shuffle']);
         Route::post('/championships/{championshipId}/bracket/generate-from-groups', [\App\Http\Controllers\Admin\BracketController::class, 'generateFromGroups']);
 
+        // Gestão Manual de Grupos (NEW)
+        Route::get('/championships/{championshipId}/groups', [\App\Http\Controllers\Admin\BracketController::class, 'getGroups']);
+        Route::post('/championships/{championshipId}/groups', [\App\Http\Controllers\Admin\BracketController::class, 'saveGroups']);
+
         // Estatísticas e Relatórios (NEW)
         Route::get('/championships/{championshipId}/stats/goals', [\App\Http\Controllers\Admin\StatisticsController::class, 'goalsByPlayer']);
         Route::get('/championships/{championshipId}/stats/top-scorers', [\App\Http\Controllers\Admin\StatisticsController::class, 'topScorers']);

@@ -299,7 +299,7 @@ class BracketController extends Controller
         $legs = request()->input('legs', 1);
 
         if ($customGroups && is_array($customGroups)) {
-            // Use custom groups provided by frontend
+            // Use custom groups provided by frontend (Legacy / Override)
             $groups = [];
             foreach ($customGroups as $groupTeamIds) {
                 $groupTeams = $teams->filter(function ($team) use ($groupTeamIds) {
@@ -311,28 +311,66 @@ class BracketController extends Controller
                 }
             }
         } else {
-            // Default random generation
-            $teamsArray = $teams->shuffle()->toArray();
-            $totalTeams = count($teamsArray);
+            // Check if groups are already defined in Database (Manual Groups)
+            $dbGroups = [];
+            $hasDbGroups = false;
 
-            // Divide em 4 grupos (ou menos se houver poucas equipes)
-            $numGroups = min(4, ceil($totalTeams / 3));
-            if ($numGroups < 1)
-                $numGroups = 1; // Safety
-            $teamsPerGroup = ceil($totalTeams / $numGroups);
+            foreach ($teams as $team) {
+                if (!empty($team->pivot->group_name)) {
+                    $gName = $team->pivot->group_name;
+                    if (!isset($dbGroups[$gName]))
+                        $dbGroups[$gName] = [];
+                    $dbGroups[$gName][] = $team->toArray();
+                    $hasDbGroups = true;
+                }
+            }
 
-            $groups = array_chunk($teamsArray, $teamsPerGroup);
+            if ($hasDbGroups) {
+                // If we found database groups, enforce them regardless of num_groups
+                // Sort by group name to have A, B, C order
+                ksort($dbGroups);
+                $groups = $dbGroups;
+            } else {
+                // Default random generation (Auto)
+                $teamsArray = $teams->shuffle()->toArray();
+                $totalTeams = count($teamsArray);
+
+                // Verify if user requested specific number of groups
+                $requestedNumGroups = request()->input('num_groups');
+
+                if ($requestedNumGroups && is_numeric($requestedNumGroups) && $requestedNumGroups > 0) {
+                    $numGroups = (int) $requestedNumGroups;
+                } else {
+                    // Default logic: Divide into 4 groups (or less if few teams)
+                    $numGroups = max(1, ceil($totalTeams / 4));
+
+                    if ($numGroups > 8)
+                        $numGroups = 8;
+                }
+
+                // Distribute teams using Round Robin
+                $groups = array_fill(0, $numGroups, []);
+
+                foreach ($teamsArray as $index => $team) {
+                    $groupIndex = $index % $numGroups;
+                    $groups[$groupIndex][] = $team;
+                }
+            }
         }
 
         // Validação: Mínimo 2 grupos
         if (count($groups) < 2) {
-            // Se for custom groups e veio só 1, ou calculamos e deu 1
             abort(400, 'Para o formato de Grupos, é necessário haver pelo menos 2 grupos. Adicione mais times ou configure os grupos manualmente.');
         }
 
         // Gera partidas dentro de cada grupo
-        foreach ($groups as $groupIndex => $groupTeams) {
-            $groupName = chr(65 + $groupIndex); // A, B, C, D...
+        foreach ($groups as $key => $groupTeams) {
+            // Determine Group Name
+            if (is_string($key)) {
+                $groupName = $key;
+            } else {
+                $groupName = chr(65 + $key); // A, B, C...
+            }
 
             // Use Round Robin per group
             $groupMatches = $this->generateScheduleFromTeams(
@@ -666,5 +704,116 @@ class BracketController extends Controller
             'matches' => $newMatches,
             'round_name' => $nextRoundName
         ]);
+    }
+    /**
+     * Obter grupos atuais e equipes
+     */
+    public function getGroups(Request $request, $championshipId)
+    {
+        $championship = Championship::with(['teams'])->findOrFail($championshipId);
+
+        // Group teams by group_name
+        $groups = [];
+        $ungrouped = [];
+
+        foreach ($championship->teams as $team) {
+            $groupName = $team->pivot->group_name;
+            if ($groupName) {
+                if (!isset($groups[$groupName])) {
+                    $groups[$groupName] = [];
+                }
+                $groups[$groupName][] = $team;
+            } else {
+                $ungrouped[] = $team;
+            }
+        }
+
+        // Sort groups by name (A, B, C...)
+        ksort($groups);
+
+        return response()->json([
+            'groups' => $groups,
+            'ungrouped' => $ungrouped
+        ]);
+    }
+
+    /**
+     * Salvar configuração de grupos
+     */
+    public function saveGroups(Request $request, $championshipId)
+    {
+        $championship = Championship::findOrFail($championshipId);
+
+        $user = $request->user();
+        if ($user->club_id !== null && $championship->club_id !== $user->club_id) {
+            return response()->json([
+                'message' => 'Você não tem permissão para editar este campeonato.'
+            ], 403);
+        }
+
+        // Validate: teams must belong to this championship (implicit check on sync but good to be careful)
+        // Expected payload: { "groups": { "A": [teamId1, teamId2], "B": [teamId3, teamId4] } }
+        // Or Flat list: { "team_groups": [ { "team_id": 1, "group": "A" }, ... ] }
+        // Let's use the flat list approach for simpler validation or Object approach. 
+        // Let's support: { groups: { "A": [id, id], "B": [id, id] } }
+
+        $data = $request->validate([
+            'groups' => 'required|array',
+            'groups.*' => 'array'
+        ]);
+
+        try {
+            // Process each group
+            foreach ($data['groups'] as $groupName => $teamIds) {
+                // Sanitize group Name (Uppercase single letter usually, but allow string)
+                $groupName = strtoupper(trim($groupName));
+
+                if (empty($groupName))
+                    continue;
+
+                foreach ($teamIds as $teamId) {
+                    // Update pivot
+                    // Use updateExistingPivot to adhere to existing relationships
+                    $championship->teams()->updateExistingPivot($teamId, [
+                        'group_name' => $groupName
+                    ]);
+                }
+            }
+
+            // Handle ungrouped? The frontend should send a "clearing" mechanism if needed.
+            // For now, assume this endpoint sets groups. Clearing happens if we send null?
+            // Let's assume frontend manages state.
+            // A more robust way: Reset all group_names to NULL first? 
+            // Yes, let's reset all group_names for this championship first to ensure clean state based on submission
+
+            // RESET ALL FIRST
+            \DB::table('championship_team')
+                ->where('championship_id', $championshipId)
+                ->update(['group_name' => null]);
+
+            // APPLY NEW
+            foreach ($data['groups'] as $groupName => $teamIds) {
+                $groupName = strtoupper(trim($groupName));
+                if (empty($groupName))
+                    continue;
+
+                foreach ($teamIds as $teamId) {
+                    // Check if team is actually in championship to avoid errors
+                    $exists = \DB::table('championship_team')
+                        ->where('championship_id', $championshipId)
+                        ->where('team_id', $teamId)
+                        ->exists();
+
+                    if ($exists) {
+                        $championship->teams()->updateExistingPivot($teamId, ['group_name' => $groupName]);
+                    }
+                }
+            }
+
+            return response()->json(['message' => 'Grupos salvos com sucesso!']);
+
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Erro ao salvar grupos: ' . $e->getMessage()], 500);
+        }
     }
 }
