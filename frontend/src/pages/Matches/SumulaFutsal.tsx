@@ -214,7 +214,7 @@ export function SumulaFutsal() {
             if (!window.confirm("Iniciar Partida?")) return;
             setIsRunning(true);
             setMatchData((prev: any) => ({ ...prev, status: 'live' }));
-            registerSystemEvent('match_start', 'Início da Partida');
+            registerSystemEvent('match_start', 'Início de partida. Que vença o melhor!');
             return;
         }
 
@@ -225,15 +225,15 @@ export function SumulaFutsal() {
             if (!window.confirm("Encerrar 1º Tempo?")) return;
             setIsRunning(false);
             newPeriod = 'Intervalo';
-            registerSystemEvent('period_end', `Fim do ${oldPeriod}`);
+            registerSystemEvent('period_end', 'Fim do 1º Tempo. Intervalo!');
         } else if (currentPeriod === 'Intervalo') {
             newPeriod = '2º Tempo';
             setIsRunning(true);
-            registerSystemEvent('period_start', `Início do ${newPeriod}`);
+            registerSystemEvent('period_start', 'Começa o 2º Tempo! Vamos pro jogo!');
         } else if (currentPeriod === '2º Tempo') {
             if (!window.confirm("Encerrar Tempo Normal?")) return;
             setIsRunning(false);
-            registerSystemEvent('period_end', `Fim do ${oldPeriod}`);
+            registerSystemEvent('period_end', 'Fim do Tempo Normal. A batalha continua?');
 
             const choice = window.confirm("Tempo Normal encerrado! Deseja prosseguir para Prorrogação/Pênaltis?\n\n'OK' para escolher Prorrogação ou Pênaltis.\n'Cancelar' para ENCERRAR a súmula agora (ex: Fase de Grupos).");
 
@@ -241,11 +241,11 @@ export function SumulaFutsal() {
                 if (window.confirm("Deseja iniciar a PRORROGAÇÃO?")) {
                     newPeriod = 'Prorrogação';
                     setIsRunning(true);
-                    registerSystemEvent('period_start', `Início da ${newPeriod}`);
+                    registerSystemEvent('period_start', 'Início da Prorrogação. Haja coração!');
                 } else if (window.confirm("Deseja ir DIRETO para os PÊNALTIS?")) {
                     newPeriod = 'Pênaltis';
                     setIsRunning(false);
-                    registerSystemEvent('period_start', `Início dos Pênaltis`);
+                    registerSystemEvent('period_start', 'Início dos Pênaltis. É agora!');
                 } else {
                     newPeriod = 'Fim de Tempo Normal';
                 }
@@ -258,12 +258,12 @@ export function SumulaFutsal() {
             if (window.confirm("Iniciar Prorrogação? Cancelar para ir direto para Pênaltis ou Encerrar.")) {
                 newPeriod = 'Prorrogação';
                 setIsRunning(true);
-                registerSystemEvent('period_start', `Início da ${newPeriod}`);
+                registerSystemEvent('period_start', 'Início da Prorrogação. Decisão!');
             } else {
                 if (window.confirm("Iniciar Pênaltis?")) {
                     newPeriod = 'Pênaltis';
                     setIsRunning(false);
-                    registerSystemEvent('period_start', `Início dos ${newPeriod}`);
+                    registerSystemEvent('period_start', 'Início dos Pênaltis. Preparar corações!');
                 } else {
                     handleFinish();
                     return;
@@ -272,10 +272,10 @@ export function SumulaFutsal() {
         } else if (currentPeriod === 'Prorrogação') {
             if (!window.confirm("Encerrar Prorrogação?")) return;
             setIsRunning(false);
-            registerSystemEvent('period_end', `Fim da ${oldPeriod}`);
+            registerSystemEvent('period_end', 'Fim da Prorrogação.');
             if (window.confirm("Iniciar Pênaltis?")) {
                 newPeriod = 'Pênaltis';
-                registerSystemEvent('period_start', `Início dos Pênaltis`);
+                registerSystemEvent('period_start', 'Início dos Pênaltis. Momentos finais!');
             } else {
                 handleFinish();
                 return;
@@ -283,7 +283,7 @@ export function SumulaFutsal() {
         } else if (currentPeriod === 'Pênaltis') {
             if (!window.confirm("Encerrar Disputa de Pênaltis?")) return;
             newPeriod = 'Fim de Jogo';
-            registerSystemEvent('period_end', `Fim dos Pênaltis`);
+            registerSystemEvent('period_end', 'Fim dos Pênaltis.');
             handleFinish();
             return;
         }
@@ -840,11 +840,14 @@ export function SumulaFutsal() {
                                         {ev.type === 'foul' && '⚠️ Falta'}
                                         {ev.type === 'mvp' && '⭐ Craque'}
                                         {ev.type === 'timeout' && '⏱ Pedido de Tempo'}
+
+                                        {ev.type === 'match_start' && <span className="text-green-400 font-bold uppercase">🏁 {ev.player_name || 'Início de Partida'}</span>}
+                                        {ev.type === 'match_end' && <span className="text-red-400 font-bold uppercase">🛑 {ev.player_name || 'Fim de Jogo'}</span>}
+                                        {ev.type === 'period_start' && <span className="text-blue-300 font-bold uppercase">▶️ {ev.player_name || 'Início de Período'}</span>}
+                                        {ev.type === 'period_end' && <span className="text-orange-300 font-bold uppercase">⏸️ {ev.player_name || 'Fim de Período'}</span>}
                                     </span>
-                                    {ev.player_name && ev.player_name !== '?' ? (
+                                    {ev.player_name && !['match_start', 'match_end', 'period_start', 'period_end'].includes(ev.type) && (
                                         <span className="text-xs text-gray-400">{ev.player_name}</span>
-                                    ) : (
-                                        <span className="text-[10px] text-gray-500 italic">Evento de Partida</span>
                                     )}
                                     {ev.type === 'shootout_miss' && (
                                         <span className="text-[10px] text-red-400 uppercase font-bold ml-1">

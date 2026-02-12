@@ -237,7 +237,7 @@ export function SumulaFutebol7() {
             if (!window.confirm("Iniciar Partida?")) return;
             setIsRunning(true);
             setMatchData((prev: any) => ({ ...prev, status: 'live' }));
-            registerSystemEvent('match_start', 'Início da Partida');
+            registerSystemEvent('match_start', 'Bola rolando! Que vença o melhor!');
             return;
         }
 
@@ -248,15 +248,15 @@ export function SumulaFutebol7() {
             if (!window.confirm("Encerrar 1º Tempo?")) return;
             setIsRunning(false);
             newPeriod = 'Intervalo';
-            registerSystemEvent('period_end', `Fim do ${oldPeriod}`);
+            registerSystemEvent('period_end', 'Fim do 1º Tempo. Respirem!');
         } else if (currentPeriod === 'Intervalo') {
             newPeriod = '2º Tempo';
             setIsRunning(true);
-            registerSystemEvent('period_start', `Início do ${newPeriod}`);
+            registerSystemEvent('period_start', 'Começa o 2º Tempo! Decisão!');
         } else if (currentPeriod === '2º Tempo') {
             if (!window.confirm("Encerrar Tempo Normal?")) return;
             setIsRunning(false);
-            registerSystemEvent('period_end', `Fim do ${oldPeriod}`);
+            registerSystemEvent('period_end', 'Fim do Tempo Normal de Jogo.');
 
             const choice = window.confirm("Tempo Normal encerrado! Deseja prosseguir para Prorrogação/Pênaltis?\n\n'OK' para escolher Prorrogação ou Pênaltis.\n'Cancelar' para ENCERRAR a súmula agora (ex: Fase de Grupos).");
 
@@ -264,11 +264,11 @@ export function SumulaFutebol7() {
                 if (window.confirm("Deseja iniciar a PRORROGAÇÃO?")) {
                     newPeriod = 'Prorrogação';
                     setIsRunning(true);
-                    registerSystemEvent('period_start', `Início da ${newPeriod}`);
+                    registerSystemEvent('period_start', 'Início da Prorrogação. Aguenta coração!');
                 } else if (window.confirm("Deseja ir DIRETO para os PÊNALTIS?")) {
                     newPeriod = 'Pênaltis';
                     setIsRunning(false);
-                    registerSystemEvent('period_start', `Início dos Pênaltis`);
+                    registerSystemEvent('period_start', 'Início dos Shoot-outs. É agora ou nunca!');
                 } else {
                     newPeriod = 'Fim de Tempo Normal';
                 }
@@ -280,11 +280,11 @@ export function SumulaFutebol7() {
             if (window.confirm("Iniciar Prorrogação?")) {
                 newPeriod = 'Prorrogação';
                 setIsRunning(true);
-                registerSystemEvent('period_start', `Início da ${newPeriod}`);
+                registerSystemEvent('period_start', 'Início da Prorrogação. Aguenta coração!');
             } else if (window.confirm("Ir para Pênaltis?")) {
                 newPeriod = 'Pênaltis';
                 setIsRunning(false);
-                registerSystemEvent('period_start', `Início dos ${newPeriod}`);
+                registerSystemEvent('period_start', 'Início dos Shoot-outs. É agora ou nunca!');
             } else {
                 handleFinish();
                 return;
@@ -292,10 +292,10 @@ export function SumulaFutebol7() {
         } else if (currentPeriod === 'Prorrogação') {
             if (!window.confirm("Encerrar Prorrogação?")) return;
             setIsRunning(false);
-            registerSystemEvent('period_end', `Fim da ${oldPeriod}`);
+            registerSystemEvent('period_end', 'Fim da Prorrogação.');
             if (window.confirm("Ir para Pênaltis?")) {
                 newPeriod = 'Pênaltis';
-                registerSystemEvent('period_start', `Início dos Pênaltis`);
+                registerSystemEvent('period_start', 'Início dos Pênaltis');
             } else {
                 handleFinish();
                 return;
@@ -303,7 +303,7 @@ export function SumulaFutebol7() {
         } else if (currentPeriod === 'Pênaltis') {
             if (!window.confirm("Encerrar Disputa de Pênaltis?")) return;
             newPeriod = 'Fim de Jogo';
-            registerSystemEvent('period_end', `Fim dos Pênaltis`);
+            registerSystemEvent('period_end', 'Fim dos Pênaltis. Quem levou a melhor?');
             handleFinish();
             return;
         }
@@ -318,11 +318,20 @@ export function SumulaFutebol7() {
         try {
             const response = await api.post(`/admin/matches/${id}/events`, {
                 event_type: type,
-                team_id: matchData.home_team_id,
+                team_id: (matchData.home_team_id || matchData.away_team_id) ?? null,
                 minute: currentTime,
                 period: currentPeriod,
                 metadata: { label }
             });
+
+            setEvents(prev => [{
+                id: response.data.id,
+                type: type,
+                team: 'home', // System events can be neutral or attributed to home for simplicity in rendering
+                time: currentTime,
+                period: currentPeriod,
+                player_name: label
+            }, ...prev]);
 
             // If we successfully started the match, update status locally
             if (type === 'match_start') {
@@ -823,11 +832,16 @@ export function SumulaFutebol7() {
                                         {ev.type === 'foul' && '⚠️ Falta'}
                                         {ev.type === 'mvp' && '⭐ Craque'}
                                         {ev.type === 'timeout' && '⏱ Pedido de Tempo'}
+
+                                        {ev.type === 'match_start' && <span className="text-green-400 font-bold uppercase">🏁 {ev.player_name || 'Início'}</span>}
+                                        {ev.type === 'match_end' && <span className="text-red-400 font-bold uppercase">🛑 {ev.player_name || 'Fim'}</span>}
+                                        {ev.type === 'period_start' && <span className="text-blue-300 font-bold uppercase">▶️ {ev.player_name || 'Início Período'}</span>}
+                                        {ev.type === 'period_end' && <span className="text-orange-300 font-bold uppercase">⏸️ {ev.player_name || 'Fim Período'}</span>}
                                     </span>
-                                    {ev.player_name && ev.player_name !== '?' ? (
+                                    {ev.player_name && ev.player_name !== '?' && !['match_start', 'match_end', 'period_start', 'period_end'].includes(ev.type) ? (
                                         <span className="text-xs text-gray-400">{ev.player_name}</span>
                                     ) : (
-                                        <span className="text-[10px] text-gray-500 italic">Evento de Partida</span>
+                                        null
                                     )}
                                     {ev.type === 'shootout_miss' && (
                                         <span className="text-[10px] text-red-400 uppercase font-bold ml-1">

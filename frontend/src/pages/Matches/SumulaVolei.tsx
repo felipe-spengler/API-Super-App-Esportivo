@@ -144,7 +144,7 @@ export function SumulaVolei() {
                 minute: 0,
                 period: `${volleyState.current_set}º Set`,
                 metadata: {
-                    label: 'Pedido de Tempo'
+                    label: 'Tempo Técnico solicitado!'
                 }
             });
             alert("Tempo registrado!");
@@ -228,7 +228,7 @@ export function SumulaVolei() {
     const startNextSet = async () => {
         try {
             const nextSet = (volleyState.current_set || 0) + 1;
-            registerSystemEvent('period_start', `Início do ${nextSet}º Set`);
+            registerSystemEvent('period_start', `Início do ${nextSet}º Set. Vai começar!`);
             await api.post(`/admin/matches/${id}/volley/set-start`, {
                 set_number: nextSet,
                 serving_team_id: matchData.home_team_id,
@@ -249,8 +249,8 @@ export function SumulaVolei() {
             if (!window.confirm("Times incompletos (menos de 6). Deseja iniciar mesmo assim?")) return;
         }
 
-        registerSystemEvent('match_start', 'Início da Partida');
-        registerSystemEvent('period_start', 'Início do 1º Set');
+        registerSystemEvent('match_start', 'Saque inicial! Começa a partida de Vôlei!');
+        registerSystemEvent('period_start', 'Início do 1º Set. Bola em jogo!');
 
         await api.post(`/admin/matches/${id}/volley/set-start`, {
             set_number: 1,
@@ -432,7 +432,7 @@ export function SumulaVolei() {
                     <button
                         onClick={async () => {
                             if (!window.confirm('Encerrar partida e voltar?')) return;
-                            await registerSystemEvent('match_end', 'Partida Finalizada');
+                            await registerSystemEvent('match_end', 'Partida Finalizada. Grande jogo!');
                             navigate(-1);
                         }}
                         className="w-full py-4 bg-red-600 hover:bg-red-500 rounded-xl font-bold text-xl shadow-lg uppercase"

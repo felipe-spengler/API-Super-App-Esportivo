@@ -129,7 +129,7 @@ export function SumulaTenis() {
 
         // If match is still scheduled, try to set to live on first point
         if (matchData && (matchData.status === 'scheduled' || matchData.status === 'Agendado')) {
-            registerSystemEvent('match_start', 'Início da Partida');
+            registerSystemEvent('match_start', 'Saque inicial! Começa o duelo!');
         }
 
         const newScore = { ...gameScore };
@@ -222,18 +222,20 @@ export function SumulaTenis() {
         if (homeSetsWon === 2 || awaySetsWon === 2) {
             setMatchFinished(true);
             alert(`🏆 Partida encerrada! ${homeSetsWon > awaySetsWon ? matchData.home_team?.name : matchData.away_team?.name} venceu!`);
+            registerSystemEvent('match_end', `Game, Set and Match! Vitória de ${homeSetsWon > awaySetsWon ? matchData.home_team?.name : matchData.away_team?.name}`);
         } else {
             // Start new set
             setCurrentSet(currentSet + 1);
             setGamesWon({ home: 0, away: 0 });
             setGameScore({ home: 0, away: 0 });
+            registerSystemEvent('period_start', `Início do ${currentSet + 1}º Set`);
         }
     };
 
     const handleFinish = async () => {
         if (!window.confirm('Encerrar e salvar partida?')) return;
         try {
-            await registerSystemEvent('match_end', 'Partida Finalizada');
+            await registerSystemEvent('match_end', 'Partida Finalizada. Que jogo!');
 
             await api.post(`/admin/matches/${id}/finish`, {
                 home_score: matchData.scoreHome,

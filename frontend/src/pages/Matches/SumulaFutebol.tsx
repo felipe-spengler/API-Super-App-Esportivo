@@ -213,7 +213,7 @@ export function SumulaFutebol() {
             setIsRunning(true);
             // Update local status immediately to update button text
             setMatchData((prev: any) => ({ ...prev, status: 'live' }));
-            registerSystemEvent('match_start', 'Início da Partida');
+            registerSystemEvent('match_start', 'Início de partida, que vença o melhor!');
             return;
         }
 
@@ -224,15 +224,15 @@ export function SumulaFutebol() {
             if (!window.confirm("Encerrar 1º Tempo?")) return;
             setIsRunning(false);
             newPeriod = 'Intervalo';
-            registerSystemEvent('period_end', `Fim do ${oldPeriod}`);
+            registerSystemEvent('period_end', 'Fim do 1º Tempo. Intervalo!');
         } else if (currentPeriod === 'Intervalo') {
             newPeriod = '2º Tempo';
             setIsRunning(true);
-            registerSystemEvent('period_start', `Início do ${newPeriod}`);
+            registerSystemEvent('period_start', 'Começa o 2º Tempo! Vamos pro jogo!');
         } else if (currentPeriod === '2º Tempo') {
             if (!window.confirm("Encerrar Tempo Normal?")) return;
             setIsRunning(false);
-            registerSystemEvent('period_end', `Fim do ${oldPeriod}`);
+            registerSystemEvent('period_end', 'Fim do Tempo Normal. A batalha continua?');
 
             const choice = window.confirm("Tempo Normal encerrado! Deseja prosseguir para Prorrogação/Pênaltis?\n\n'OK' para escolher Prorrogação ou Pênaltis.\n'Cancelar' para ENCERRAR a súmula agora (ex: Fase de Grupos).");
 
@@ -240,11 +240,11 @@ export function SumulaFutebol() {
                 if (window.confirm("Deseja iniciar a PRORROGAÇÃO?")) {
                     newPeriod = 'Prorrogação';
                     setIsRunning(true);
-                    registerSystemEvent('period_start', `Início da ${newPeriod}`);
+                    registerSystemEvent('period_start', 'Início da Prorrogação. Haja coração!');
                 } else if (window.confirm("Deseja ir DIRETO para os PÊNALTIS?")) {
                     newPeriod = 'Pênaltis';
                     setIsRunning(false);
-                    registerSystemEvent('period_start', `Início dos Pênaltis`);
+                    registerSystemEvent('period_start', 'Início dos Pênaltis. É agora!');
                 } else {
                     newPeriod = 'Encerrado (Normal)';
                 }
@@ -256,12 +256,12 @@ export function SumulaFutebol() {
             if (window.confirm("Iniciar Prorrogação? Cancelar para ir para Pênaltis ou Encerrar.")) {
                 newPeriod = 'Prorrogação';
                 setIsRunning(true);
-                registerSystemEvent('period_start', `Início da ${newPeriod}`);
+                registerSystemEvent('period_start', 'Início da Prorrogação. Haja coração!');
             } else {
                 if (window.confirm("Iniciar Pênaltis?")) {
                     newPeriod = 'Pênaltis';
                     setIsRunning(false);
-                    registerSystemEvent('period_start', `Início dos Pênaltis`);
+                    registerSystemEvent('period_start', 'Início dos Pênaltis. É agora!');
                 } else {
                     handleFinish();
                     return;
@@ -270,10 +270,10 @@ export function SumulaFutebol() {
         } else if (currentPeriod === 'Prorrogação') {
             if (!window.confirm("Encerrar Prorrogação?")) return;
             setIsRunning(false);
-            registerSystemEvent('period_end', `Fim da Prorrogação`);
+            registerSystemEvent('period_end', 'Fim da Prorrogação.');
             if (window.confirm("Iniciar Pênaltis?")) {
                 newPeriod = 'Pênaltis';
-                registerSystemEvent('period_start', `Início dos Pênaltis`);
+                registerSystemEvent('period_start', 'Início dos Pênaltis. Haja coração!');
             } else {
                 handleFinish();
                 return;
@@ -281,7 +281,7 @@ export function SumulaFutebol() {
         } else if (currentPeriod === 'Pênaltis') {
             if (!window.confirm("Encerrar Disputa de Pênaltis?")) return;
             newPeriod = 'Prorrogação Finalizada';
-            registerSystemEvent('period_end', `Fim dos Pênaltis`);
+            registerSystemEvent('period_end', 'Fim dos Pênaltis. Temos um vencedor?');
             handleFinish();
             return;
         }
@@ -801,8 +801,15 @@ export function SumulaFutebol() {
                                         {ev.type === 'foul' && '⚠️ Falta'}
                                         {ev.type === 'mvp' && '⭐ Craque do Jogo'}
                                         {ev.type === 'timeout' && '⏱ Pedido de Tempo'}
+
+                                        {ev.type === 'match_start' && <span className="text-green-400 font-bold uppercase">🏁 {ev.player_name || 'Início de Partida'}</span>}
+                                        {ev.type === 'match_end' && <span className="text-red-400 font-bold uppercase">🛑 {ev.player_name || 'Fim de Jogo'}</span>}
+                                        {ev.type === 'period_start' && <span className="text-blue-300 font-bold uppercase">▶️ {ev.player_name || 'Início de Período'}</span>}
+                                        {ev.type === 'period_end' && <span className="text-orange-300 font-bold uppercase">⏸️ {ev.player_name || 'Fim de Período'}</span>}
                                     </span>
-                                    {ev.player_name && <span className="text-xs text-gray-400">{ev.player_name}</span>}
+                                    {ev.player_name && !['match_start', 'match_end', 'period_start', 'period_end'].includes(ev.type) && (
+                                        <span className="text-xs text-gray-400">{ev.player_name}</span>
+                                    )}
                                     {ev.type === 'shootout_miss' && (
                                         <span className="text-[10px] text-red-400 uppercase font-bold ml-1">
                                             {/* Note: metadata might not be local in 'events' array unless populated on creation. 

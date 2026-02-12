@@ -224,7 +224,7 @@ export function SumulaBasquete() {
             if (!window.confirm("Iniciar Partida?")) return;
             setIsRunning(true);
             setMatchData((prev: any) => ({ ...prev, status: 'live' }));
-            registerSystemEvent('match_start', 'Início da Partida');
+            registerSystemEvent('match_start', 'Bola ao alto! Começa a partida!');
             return;
         }
 
@@ -237,38 +237,38 @@ export function SumulaBasquete() {
             newPeriod = '2º Quarto';
             setTime(quarterDuration);
             setTeamFouls({ home: 0, away: 0 });
-            registerSystemEvent('period_end', `Fim do ${oldPeriod}`);
-            registerSystemEvent('period_start', `Início do ${newPeriod}`);
+            registerSystemEvent('period_end', 'Fim do 1º Quarto.');
+            registerSystemEvent('period_start', 'Início do 2º Quarto.');
         } else if (currentQuarter === '2º Quarto') {
             if (!window.confirm("Encerrar 2º Quarto (Ir para Intervalo)?")) return;
             newPeriod = 'Intervalo';
             setTime(0);
             setIsRunning(false);
-            registerSystemEvent('period_end', `Fim do ${oldPeriod}`);
+            registerSystemEvent('period_end', 'Fim do 2º Quarto. Intervalo!');
         } else if (currentQuarter === 'Intervalo') {
             newPeriod = '3º Quarto';
             setTime(quarterDuration);
             setIsRunning(true);
             setTeamFouls({ home: 0, away: 0 });
-            registerSystemEvent('period_start', `Início do ${newPeriod}`);
+            registerSystemEvent('period_start', 'Início do 3º Quarto. O jogo recomeça!');
         } else if (currentQuarter === '3º Quarto') {
             if (!window.confirm("Encerrar 3º Quarto?")) return;
             setIsRunning(false);
             newPeriod = '4º Quarto';
             setTime(quarterDuration);
             setTeamFouls({ home: 0, away: 0 });
-            registerSystemEvent('period_end', `Fim do ${oldPeriod}`);
-            registerSystemEvent('period_start', `Início do ${newPeriod}`);
+            registerSystemEvent('period_end', 'Fim do 3º Quarto.');
+            registerSystemEvent('period_start', 'Início do 4º Quarto. Decisão!');
         } else if (currentQuarter === '4º Quarto') {
             if (!window.confirm("Encerrar 4º Quarto?")) return;
             setIsRunning(false);
-            registerSystemEvent('period_end', `Fim do ${oldPeriod}`);
+            registerSystemEvent('period_end', 'Fim do Tempo Regular!');
             if (matchData.scoreHome === matchData.scoreAway) {
                 if (window.confirm("Placar empatado. Iniciar Prorrogação (5 min)?")) {
                     newPeriod = 'Prorrogação';
                     setTime(300);
                     setTeamFouls({ home: 0, away: 0 });
-                    registerSystemEvent('period_start', `Início da ${newPeriod}`);
+                    registerSystemEvent('period_start', 'Início da Prorrogação! Haja coração!');
                 } else {
                     handleFinish();
                     return;
@@ -280,7 +280,7 @@ export function SumulaBasquete() {
         } else if (currentQuarter === 'Prorrogação') {
             if (!window.confirm("Encerrar Prorrogação?")) return;
             newPeriod = 'Fim de Jogo';
-            registerSystemEvent('period_end', `Fim da ${oldPeriod}`);
+            registerSystemEvent('period_end', 'Fim da Prorrogação.');
             handleFinish();
             return;
         }
@@ -678,8 +678,15 @@ export function SumulaBasquete() {
                                         {ev.type === 'field_goal_3' && `🔥 +3 Pontos`}
                                         {ev.type === 'foul' && `⚠️ Falta`}
                                         {ev.type === 'timeout' && `⏱ Pedido de Tempo`}
+
+                                        {ev.type === 'match_start' && <span className="text-green-400 font-bold uppercase">🏁 {ev.player_name || 'Início de Partida'}</span>}
+                                        {ev.type === 'match_end' && <span className="text-red-400 font-bold uppercase">🛑 {ev.player_name || 'Fim de Jogo'}</span>}
+                                        {ev.type === 'period_start' && <span className="text-blue-300 font-bold uppercase">▶️ {ev.player_name || 'Início de Período'}</span>}
+                                        {ev.type === 'period_end' && <span className="text-orange-300 font-bold uppercase">⏸️ {ev.player_name || 'Fim de Período'}</span>}
                                     </span>
-                                    {ev.player_name && <span className="text-xs text-gray-400">{ev.player_name}</span>}
+                                    {ev.player_name && !['match_start', 'match_end', 'period_start', 'period_end'].includes(ev.type) && (
+                                        <span className="text-xs text-gray-400">{ev.player_name}</span>
+                                    )}
                                 </div>
                             </div>
                             <div className="flex items-center gap-3">

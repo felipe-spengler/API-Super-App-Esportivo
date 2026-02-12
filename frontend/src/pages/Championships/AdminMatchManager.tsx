@@ -16,6 +16,7 @@ interface Match {
     status: 'scheduled' | 'finished' | 'live' | 'canceled';
     location?: string;
     group_name?: string;
+    round_name?: string; // Enhanced round support
 }
 
 export function AdminMatchManager() {
@@ -401,16 +402,20 @@ export function AdminMatchManager() {
 
 
     const handleGenerateFromGroups = async () => {
-        if (!window.confirm("Isso calculará a classificação dos grupos e gerará automaticamente os jogos da próxima fase (mata-mata). Deseja continuar?")) {
-            return;
-        }
+        const proceed = window.confirm("Isso calculará a classificação dos grupos e gerará automaticamente os jogos da próxima fase (mata-mata). Deseja continuar?");
+        if (!proceed) return;
+
+        const legsInput = window.prompt("Deseja jogos de Ida e Volta? Digite '2' para Ida e Volta, ou deixe vazio para Jogo Único (Padrão).", "1");
+        const legs = legsInput === '2' ? 2 : 1;
+
         setIsGeneratingKnockout(true);
         try {
             const response = await api.post(`/admin/championships/${id}/bracket/generate-from-groups`, {
-                category_id: selectedCategoryId === 'no-category' ? null : selectedCategoryId
+                category_id: selectedCategoryId === 'no-category' ? null : selectedCategoryId,
+                legs: legs
             });
-            alert(`Sucesso! ${response.data.matches?.length || 0} jogos gerados.`);
-            loadData(); // Reusing loadData instead of loadMatches which doesn't exist
+            alert(`Sucesso! ${response.data.matches?.length || 0} jogos gerados para a fase ${response.data.round_name}.`);
+            loadData();
         } catch (error: any) {
             console.error("Erro ao gerar mata-mata", error);
             alert(error.response?.data?.message || "Erro ao gerar mata-mata.");
@@ -715,7 +720,21 @@ export function AdminMatchManager() {
                                 <div key={round} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                                     <div className="bg-gray-50 px-6 py-3 border-b border-gray-200 flex justify-between items-center">
                                         <div className="flex items-center gap-3">
-                                            <h3 className="font-bold text-gray-800 text-lg">Rodada {round}</h3>
+                                            <h3 className="font-bold text-gray-800 text-lg">
+                                                {(() => {
+                                                    const rNum = Number(round);
+                                                    if (rNum >= 50 && roundMatches[0]?.round_name) {
+                                                        const name = roundMatches[0].round_name;
+                                                        if (name === 'round_of_32') return '32-avos de Final';
+                                                        if (name === 'round_of_16') return 'Oitavas de Final';
+                                                        if (name === 'quarter') return 'Quartas de Final';
+                                                        if (name === 'semi') return 'Semifinal';
+                                                        if (name === 'final') return 'Final';
+                                                        if (name === 'third_place') return 'Disputa de 3º Lugar';
+                                                    }
+                                                    return `Rodada ${round}`;
+                                                })()}
+                                            </h3>
                                             <span className="text-[10px] font-bold text-gray-500 bg-gray-200 px-2 py-1 rounded-full uppercase tracking-wider">{roundMatches.length} JOGOS</span>
                                         </div>
                                         <button

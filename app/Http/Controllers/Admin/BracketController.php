@@ -679,7 +679,9 @@ class BracketController extends Controller
         // Verifica se já existem jogos para essa rodada (quartas, semi, etc)
         $existing = MatchModel::where('championship_id', $championshipId)
             ->where('round_name', $nextRoundName)
-            ->where('category_id', $categoryId) // Importante filtrar por categoria se houver multiplas
+            ->when($categoryId, function ($q) use ($categoryId) {
+                return $q->where('category_id', $categoryId);
+            })
             ->get();
 
         if ($existing->isNotEmpty()) {
@@ -694,45 +696,56 @@ class BracketController extends Controller
                 ], 200); // 200 OK, apenas informativo
             }
 
-            // Se todos forem 'scheduled', assumimos que o usuário quer REGERAR (talvez mudou resultado da fase de grupos)
-            // Então deletamos os antigos para criar os novos corretamente
-            foreach ($existing as $ex) {
-                $ex->delete();
-            }
+            MatchModel::destroy($existing->pluck('id'));
         }
+
+        // Map round name to logic round number
+        $roundNumberMap = [
+            'round_of_32' => 50,
+            'round_of_16' => 51,
+            'quarter' => 52,
+            'semi' => 53,
+            'final' => 54,
+        ];
+        $roundNumber = $nextRoundName ? ($roundNumberMap[$nextRoundName] ?? 60) : 60;
+
+        // Check for legs (ida e volta)
+        $legs = $request->input('legs', 1); // Default 1
 
         for ($i = 0; $i < $numGroups; $i += 2) {
             $g1 = $groupNames[$i];   // ex: A
             $g2 = $groupNames[$i + 1]; // ex: B
 
-            // Jogo 1: 1º do G1 vs 2º do G2
-            if (isset($qualifiedTeams[$g1][0]) && isset($qualifiedTeams[$g2][1])) {
-                $newMatches[] = MatchModel::create([
-                    'championship_id' => $championshipId,
-                    'category_id' => $categoryId,
-                    'home_team_id' => $qualifiedTeams[$g1][0],
-                    'away_team_id' => $qualifiedTeams[$g2][1],
-                    'start_time' => $baseDate,
-                    'location' => $championship->location,
-                    'status' => 'scheduled',
-                    'round_name' => $nextRoundName,
-                    'is_knockout' => true
-                ]);
-            }
+            // Cruzamentos Padrão: 1o x 2o
+            $crossings = [
+                ['home' => $qualifiedTeams[$g1][0] ?? null, 'away' => $qualifiedTeams[$g2][1] ?? null], // 1A x 2B
+                ['home' => $qualifiedTeams[$g2][0] ?? null, 'away' => $qualifiedTeams[$g1][1] ?? null]  // 1B x 2A
+            ];
 
-            // Jogo 2: 1º do G2 vs 2º do G1
-            if (isset($qualifiedTeams[$g2][0]) && isset($qualifiedTeams[$g1][1])) {
-                $newMatches[] = MatchModel::create([
-                    'championship_id' => $championshipId,
-                    'category_id' => $categoryId,
-                    'home_team_id' => $qualifiedTeams[$g2][0],
-                    'away_team_id' => $qualifiedTeams[$g1][1],
-                    'start_time' => $baseDate,
-                    'location' => $championship->location,
-                    'status' => 'scheduled',
-                    'round_name' => $nextRoundName,
-                    'is_knockout' => true
-                ]);
+            foreach ($crossings as $crossing) {
+                if ($crossing['home'] && $crossing['away']) {
+                    for ($l = 1; $l <= $legs; $l++) {
+                        // Se for jogo de volta, inverte mando
+                        $home = ($l % 2 != 0) ? $crossing['home'] : $crossing['away'];
+                        $away = ($l % 2 != 0) ? $crossing['away'] : $crossing['home'];
+
+                        $matchDate = ($l == 1) ? $baseDate : Carbon::parse($baseDate)->addDays(7);
+
+                        $newMatches[] = MatchModel::create([
+                            'championship_id' => $championshipId,
+                            'category_id' => $categoryId,
+                            'home_team_id' => $home,
+                            'away_team_id' => $away,
+                            'start_time' => $matchDate,
+                            'location' => $championship->location,
+                            'status' => 'scheduled',
+                            'round_name' => $nextRoundName,
+                            'round_number' => $roundNumber,
+                            'is_knockout' => true,
+                            'match_details' => $legs > 1 ? ['leg' => $l] : null
+                        ]);
+                    }
+                }
             }
         }
 

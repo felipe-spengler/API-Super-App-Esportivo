@@ -187,26 +187,38 @@ class AdminMatchController extends Controller
     private function checkAndAdvanceBracket($match)
     {
         // Só processa se for jogo de mata-mata com rodada definida
-        if (empty($match->round) || empty($match->championship_id)) {
+        if (empty($match->round_name) || empty($match->championship_id)) {
             return;
         }
 
         $roundsOrder = ['round_of_32', 'round_of_16', 'quarter', 'semi', 'final'];
-        $currentRoundIndex = array_search($match->round, $roundsOrder);
-        $isSemi = ($match->round === 'semi');
+        $currentRoundIndex = array_search($match->round_name, $roundsOrder);
+        $isSemi = ($match->round_name === 'semi');
 
         // Se não achou, não tem pra onde ir. Se for final, acabou.
-        // A MENOS que precise gerar 3o lugar, mas 3o lugar é gerado NA semi.
         if ($currentRoundIndex === false || ($currentRoundIndex >= count($roundsOrder) - 1 && !$isSemi)) {
             return;
         }
 
         $nextRoundName = isset($roundsOrder[$currentRoundIndex + 1]) ? $roundsOrder[$currentRoundIndex + 1] : null;
 
-        // Busca todos os jogos desta rodada neste campeonato
+        // Map round name to a logical round number for sorting (Group stage usually 1-20, so we start knockout at 50 or 100)
+        $roundNumberMap = [
+            'round_of_32' => 50,
+            'round_of_16' => 51,
+            'quarter' => 52,
+            'semi' => 53,
+            'final' => 54,
+            'third_place' => 53 // Same level as semi/final or separate? usually happens before final.
+        ];
+        $nextRoundNumber = $nextRoundName ? ($roundNumberMap[$nextRoundName] ?? 60) : null;
+
+        // Busca todos os jogos desta rodada neste campeonato, na mesma categoria!
         $roundMatches = GameMatch::where('championship_id', $match->championship_id)
-            ->where('round', $match->round)
-            ->where('category_id', $match->category_id) // Add category check
+            ->where('round_name', $match->round_name)
+            ->when($match->category_id, function ($q) use ($match) {
+                return $q->where('category_id', $match->category_id);
+            })
             ->orderBy('id', 'asc')
             ->get();
 
@@ -219,6 +231,8 @@ class AdminMatchController extends Controller
             return;
 
         // Determina o índice do "Par" (vizinho)
+        // Regra: 0 e 1, 2 e 3...
+        // Se myIndex é par (0, 2), partner é +1. Se ímpar (1, 3), partner é -1.
         $metrics = $myIndex % 2; // 0 ou 1
         $partnerIndex = ($metrics === 0) ? $myIndex + 1 : $myIndex - 1;
 
@@ -232,15 +246,30 @@ class AdminMatchController extends Controller
         // --- Vencedores -> Próxima Fase ---
         if ($nextRoundName) {
             $myWinnerId = $match->home_score > $match->away_score ? $match->home_team_id : $match->away_team_id;
+            // Se empatou (penalties)
+            if ($match->home_score == $match->away_score) {
+                $myWinnerId = $match->home_penalty_score > $match->away_penalty_score ? $match->home_team_id : $match->away_team_id;
+            }
+
             $partnerWinnerId = $partnerMatch->home_score > $partnerMatch->away_score ? $partnerMatch->home_team_id : $partnerMatch->away_team_id;
+            if ($partnerMatch->home_score == $partnerMatch->away_score) {
+                $partnerWinnerId = $partnerMatch->home_penalty_score > $partnerMatch->away_penalty_score ? $partnerMatch->home_team_id : $partnerMatch->away_team_id;
+            }
 
             if ($myWinnerId && $partnerWinnerId) {
                 // Checa duplicação
                 $exists = GameMatch::where('championship_id', $match->championship_id)
-                    ->where('round', $nextRoundName)
-                    ->where('category_id', $match->category_id)
+                    ->where('round_name', $nextRoundName)
+                    ->when($match->category_id, function ($q) use ($match) {
+                        return $q->where('category_id', $match->category_id);
+                    })
                     ->where(function ($q) use ($myWinnerId, $partnerWinnerId) {
-                        $q->where('home_team_id', $myWinnerId)->orWhere('home_team_id', $partnerWinnerId);
+                        // Verifica se JÁ EXISTE um jogo com esses dois times, em qualquer ordem
+                        $q->where(function ($q2) use ($myWinnerId, $partnerWinnerId) {
+                            $q2->where('home_team_id', $myWinnerId)->where('away_team_id', $partnerWinnerId);
+                        })->orWhere(function ($q3) use ($myWinnerId, $partnerWinnerId) {
+                            $q3->where('home_team_id', $partnerWinnerId)->where('away_team_id', $myWinnerId);
+                        });
                     })->exists();
 
                 if (!$exists) {
@@ -248,43 +277,7 @@ class AdminMatchController extends Controller
                     $awayTeamId = ($myIndex < $partnerIndex) ? $partnerWinnerId : $myWinnerId;
 
                     // Data prevista: Pega a data mais tardia dos dois jogos e soma intervalo (ex: 7 dias)
-                    // Idealmente pegaria intervalo do campeonato, mas aqui vamos hardcoded por segurança ou 7 dias
                     $baseDate = $match->start_time > $partnerMatch->start_time ? $match->start_time : $partnerMatch->start_time;
-                    $nextDate = \Carbon\Carbon::parse($baseDate)->addDays(7); // Default +7 dias
-
-                    GameMatch::create([
-                        'championship_id' => $match->championship_id,
-                        'category_id' => $match->category_id,
-                        'home_team_id' => $homeTeamId,
-                        'away_team_id' => $awayTeamId,
-                        'start_time' => $nextDate,
-                        'location' => $match->location ?? 'A Definir',
-                        'status' => 'scheduled',
-                        'round' => $nextRoundName,
-                        'is_knockout' => true
-                    ]);
-                }
-            }
-        }
-
-        // --- Perdedores -> Disputa de 3º Lugar (Apenas na Semi) ---
-        if ($isSemi) {
-            $myLoserId = $match->home_score < $match->away_score ? $match->home_team_id : $match->away_team_id;
-            $partnerLoserId = $partnerMatch->home_score < $partnerMatch->away_score ? $partnerMatch->home_team_id : $partnerMatch->away_team_id;
-
-            if ($myLoserId && $partnerLoserId) {
-                // Checa duplicação
-                $exists3rd = GameMatch::where('championship_id', $match->championship_id)
-                    ->where('round', 'third_place')
-                    ->where('category_id', $match->category_id)
-                    ->exists();
-
-                if (!$exists3rd) {
-                    $homeTeamId = ($myIndex < $partnerIndex) ? $myLoserId : $partnerLoserId;
-                    $awayTeamId = ($myIndex < $partnerIndex) ? $partnerLoserId : $myLoserId;
-
-                    $baseDate = $match->start_time > $partnerMatch->start_time ? $match->start_time : $partnerMatch->start_time;
-                    // Geralmente mesmo dia da final ou antes
                     $nextDate = \Carbon\Carbon::parse($baseDate)->addDays(7);
 
                     GameMatch::create([
@@ -295,7 +288,51 @@ class AdminMatchController extends Controller
                         'start_time' => $nextDate,
                         'location' => $match->location ?? 'A Definir',
                         'status' => 'scheduled',
-                        'round' => 'third_place',
+                        'round_name' => $nextRoundName,
+                        'round_number' => $nextRoundNumber,
+                        'is_knockout' => true
+                    ]);
+                }
+            }
+        }
+
+        // --- Perdedores -> Disputa de 3º Lugar (Apenas na Semi) ---
+        if ($isSemi) {
+            // Lógica para perdedores (incluindo pênaltis)
+            $myLoserId = $match->home_score < $match->away_score ? $match->home_team_id : $match->away_team_id;
+            if ($match->home_score == $match->away_score) {
+                $myLoserId = $match->home_penalty_score < $match->away_penalty_score ? $match->home_team_id : $match->away_team_id;
+            }
+
+            $partnerLoserId = $partnerMatch->home_score < $partnerMatch->away_score ? $partnerMatch->home_team_id : $partnerMatch->away_team_id;
+            if ($partnerMatch->home_score == $partnerMatch->away_score) {
+                $partnerLoserId = $partnerMatch->home_penalty_score < $partnerMatch->away_penalty_score ? $partnerMatch->home_team_id : $partnerMatch->away_team_id;
+            }
+
+            if ($myLoserId && $partnerLoserId) {
+                // Checa duplicação
+                $exists3rd = GameMatch::where('championship_id', $match->championship_id)
+                    ->where('round_name', 'third_place')
+                    ->where('category_id', $match->category_id)
+                    ->exists();
+
+                if (!$exists3rd) {
+                    $homeTeamId = ($myIndex < $partnerIndex) ? $myLoserId : $partnerLoserId;
+                    $awayTeamId = ($myIndex < $partnerIndex) ? $partnerLoserId : $myLoserId;
+
+                    $baseDate = $match->start_time > $partnerMatch->start_time ? $match->start_time : $partnerMatch->start_time;
+                    $nextDate = \Carbon\Carbon::parse($baseDate)->addDays(7);
+
+                    GameMatch::create([
+                        'championship_id' => $match->championship_id,
+                        'category_id' => $match->category_id,
+                        'home_team_id' => $homeTeamId,
+                        'away_team_id' => $awayTeamId,
+                        'start_time' => $nextDate,
+                        'location' => $match->location ?? 'A Definir',
+                        'status' => 'scheduled',
+                        'round_name' => 'third_place',
+                        'round_number' => 53, // Same as Semi/Final context
                         'is_knockout' => true
                     ]);
                 }

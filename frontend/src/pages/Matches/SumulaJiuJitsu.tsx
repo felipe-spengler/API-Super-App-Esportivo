@@ -138,7 +138,7 @@ export function SumulaJiuJitsu() {
         if (isRunning && time > 0) {
             // Set match to live on start
             if (matchData && (matchData.status === 'scheduled' || matchData.status === 'Agendado')) {
-                registerSystemEvent('match_start', 'Início da Partida');
+                registerSystemEvent('match_start', 'Combate Iniciado! Oss!');
             }
 
             interval = setInterval(() => setTime(t => {
@@ -272,7 +272,7 @@ export function SumulaJiuJitsu() {
     const handleFinish = async () => {
         if (!window.confirm('Encerrar luta e salvar resultado?')) return;
         try {
-            await registerSystemEvent('match_end', 'Partida Finalizada');
+            await registerSystemEvent('match_end', 'Luta Finalizada. Oss!');
 
             await api.post(`/admin/matches/${id}/finish`, {
                 home_score: points.home,
@@ -474,6 +474,8 @@ export function SumulaJiuJitsu() {
                                     {ev.type === 'back_control' && '🎯 Costas (4pts)'}
                                     {ev.type === 'advantage' && '✅ Vantagem'}
                                     {ev.type === 'penalty' && '⚠️ Penalidade'}
+                                    {ev.type === 'match_start' && <span className="text-green-400 font-bold uppercase">🏁 {ev.player_name || 'Início de Luta'}</span>}
+                                    {ev.type === 'match_end' && <span className="text-red-400 font-bold uppercase">🛑 {ev.player_name || 'Fim de Luta'}</span>}
                                 </div>
                             </div>
                         </div>
