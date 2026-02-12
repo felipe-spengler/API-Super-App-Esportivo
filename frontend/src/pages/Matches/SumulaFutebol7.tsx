@@ -833,10 +833,30 @@ export function SumulaFutebol7() {
                                         {ev.type === 'mvp' && '⭐ Craque'}
                                         {ev.type === 'timeout' && '⏱ Pedido de Tempo'}
 
-                                        {ev.type === 'match_start' && <span className="text-green-400 font-bold uppercase">🏁 {ev.player_name || 'Início'}</span>}
-                                        {ev.type === 'match_end' && <span className="text-red-400 font-bold uppercase">🛑 {ev.player_name || 'Fim'}</span>}
-                                        {ev.type === 'period_start' && <span className="text-blue-300 font-bold uppercase">▶️ {ev.player_name || 'Início Período'}</span>}
-                                        {ev.type === 'period_end' && <span className="text-orange-300 font-bold uppercase">⏸️ {ev.player_name || 'Fim Período'}</span>}
+                                        {ev.type === 'match_start' && (
+                                            <div className="flex flex-col">
+                                                <span className="text-green-400 font-bold uppercase">🏁 Início de Partida</span>
+                                                <span className="text-xs text-gray-400 font-normal normal-case italic">{ev.player_name}</span>
+                                            </div>
+                                        )}
+                                        {ev.type === 'match_end' && (
+                                            <div className="flex flex-col">
+                                                <span className="text-red-400 font-bold uppercase">🛑 Fim de Partida</span>
+                                                <span className="text-xs text-gray-400 font-normal normal-case italic">{ev.player_name}</span>
+                                            </div>
+                                        )}
+                                        {ev.type === 'period_start' && (
+                                            <div className="flex flex-col">
+                                                <span className="text-blue-300 font-bold uppercase">▶️ Início de Período</span>
+                                                <span className="text-xs text-gray-400 font-normal normal-case italic">{ev.player_name}</span>
+                                            </div>
+                                        )}
+                                        {ev.type === 'period_end' && (
+                                            <div className="flex flex-col">
+                                                <span className="text-orange-300 font-bold uppercase">⏸️ Fim de Período</span>
+                                                <span className="text-xs text-gray-400 font-normal normal-case italic">{ev.player_name}</span>
+                                            </div>
+                                        )}
                                     </span>
                                     {ev.player_name && ev.player_name !== '?' && !['match_start', 'match_end', 'period_start', 'period_end'].includes(ev.type) ? (
                                         <span className="text-xs text-gray-400">{ev.player_name}</span>

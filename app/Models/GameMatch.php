@@ -89,8 +89,12 @@ class GameMatch extends Model
                 $playerName = 'Desconhecido';
                 if ($e->metadata) {
                     $metadata = is_string($e->metadata) ? json_decode($e->metadata, true) : $e->metadata;
-                    if (is_array($metadata) && isset($metadata['original_player_name'])) {
-                        $playerName = $metadata['original_player_name'];
+                    if (is_array($metadata)) {
+                        if (isset($metadata['original_player_name'])) {
+                            $playerName = $metadata['original_player_name'];
+                        } elseif (isset($metadata['label'])) {
+                            $playerName = $metadata['label'];
+                        }
                     }
                 }
 
