@@ -536,12 +536,17 @@ class ArtGeneratorController extends Controller
         // 1. Check Club Art Settings (Custom Backgrounds)
         if ($club && !empty($club->art_settings)) {
             $settings = $club->art_settings;
-            // Structure: art_settings[sport][category] = 'path/to/image.jpg'
+
+            // Tenta pegar pelo nome direto (ex: 'futebol')
             if (isset($settings[$sport]) && isset($settings[$sport][$category])) {
                 return $settings[$sport][$category];
             }
-            // Check fallback without sport key if structure is flat? User suggested "atrelado ao esporte".
-            // Implementation assumes nested: sport -> position
+
+            // Tenta pegar pelo Slug (ex: 'futebol-7' para 'Futebol 7')
+            $sportSlug = Str::slug($sport);
+            if (isset($settings[$sportSlug]) && isset($settings[$sportSlug][$category])) {
+                return $settings[$sportSlug][$category];
+            }
         }
 
         // 2. Check Global System Defaults (SystemSetting)
