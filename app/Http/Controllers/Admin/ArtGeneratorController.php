@@ -555,13 +555,29 @@ class ArtGeneratorController extends Controller
         // Custom Naming for Scheduled Games (User request)
         if ($category === 'jogo_programado') {
             $sportSlug = Str::slug($sport, '_');
-            $specific = $sportSlug . '_jogo_programado.jpg';
-            if (file_exists($this->templatesPath . $specific)) {
-                return $specific;
+
+            // Candidates to search for
+            $candidates = [
+                $sportSlug . '_jogo_programado.jpg', // ex: futebol_7_jogo_programado.jpg
+                str_replace('_', '', $sportSlug) . '_jogo_programado.jpg', // ex: futebol7_jogo_programado.jpg
+                str_replace('_', '-', $sportSlug) . '_jogo_programado.jpg' // ex: futebol-7_jogo_programado.jpg
+            ];
+
+            foreach ($candidates as $specific) {
+                if (file_exists($this->templatesPath . $specific)) {
+                    return $specific;
+                }
             }
-            // Fallbacks
+
+            // Fallbacks based on Sport Group
             if (str_contains($sport, 'volei'))
                 return 'volei_confronto.jpg';
+
+            // Try to find a confrontation art that matches the sport as a better fallback than generic
+            if (file_exists($this->templatesPath . 'confronto_' . $sportSlug . '.jpg')) {
+                return 'confronto_' . $sportSlug . '.jpg';
+            }
+
             return 'fundo_confronto.jpg';
         }
 

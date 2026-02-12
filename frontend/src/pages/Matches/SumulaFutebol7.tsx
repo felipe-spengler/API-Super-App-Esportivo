@@ -530,9 +530,43 @@ export function SumulaFutebol7() {
         }
     };
 
+    const deleteSystemEvents = async (types: string[], currentPeriodOnly = false) => {
+        const targets = events.filter(e => {
+            const typeMatch = types.includes(e.type);
+            const periodMatch = currentPeriodOnly ? e.period === currentPeriod : true;
+            return typeMatch && periodMatch;
+        });
+
+        if (targets.length === 0) return;
+
+        // Optimistic update
+        setEvents(prev => prev.filter(e => !targets.find(t => t.id === e.id)));
+
+        for (const ev of targets) {
+            try {
+                await api.delete(`/admin/matches/${id}/events/${ev.id}`);
+            } catch (e) { console.error(e); }
+        }
+    };
+
+    const handleToggleTimer = () => {
+        if (!isRunning) {
+            // RESUMING GAME
+            deleteSystemEvents(['period_end'], true); // Remove period_end for THIS period
+            deleteSystemEvents(['match_end']); // Remove match_end (global)
+
+            setIsRunning(true);
+        } else {
+            setIsRunning(false);
+        }
+    };
+
     const handleFinish = async () => {
         if (!window.confirm('Encerrar partida completamente?')) return;
         try {
+            // Remove previous match_end to avoid duplicates
+            await deleteSystemEvents(['match_end']);
+
             await registerSystemEvent('match_end', 'Partida Finalizada');
 
             await api.post(`/admin/matches/${id}/finish`, {
@@ -599,7 +633,7 @@ export function SumulaFutebol7() {
                     </div>
 
                     <div className="flex flex-col items-center w-28 bg-black/50 backdrop-blur rounded-xl py-2 border border-green-500/50">
-                        <div onClick={() => setIsRunning(!isRunning)} className="cursor-pointer mb-1">
+                        <div onClick={handleToggleTimer} className="cursor-pointer mb-1">
                             {isRunning
                                 ? <Pause className="w-5 h-5 text-green-400 fill-current animate-pulse" />
                                 : <Play className="w-5 h-5 text-gray-500 fill-current" />
