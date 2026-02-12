@@ -220,14 +220,14 @@ class ArtGeneratorController extends Controller
         $ySport = $isStory ? 350 : 190;
         $yRound = $isStory ? 450 : 280;
 
-        // Usar Branco para o Camp (Solicitado)
-        $drawText($isStory ? 45 : 35, $yTop, $white, $champName, true);
+        // Usar Cor Secundária para o Camp
+        $drawText($isStory ? 45 : 35, $yTop, $secondaryColor, $champName, true);
         // Usar Cor Primária para o Esporte (Destaque)
         $drawText($isStory ? 80 : 65, $ySport, $primaryColor, mb_strtoupper($sport), false);
 
         // 2. Meio: Rodada e Brasões
         $roundText = mb_strtoupper($match->round_name ?? "RODADA " . ($match->round_number ?? 1));
-        $drawText($isStory ? 40 : 30, $yRound, $white, $roundText, true);
+        $drawText($isStory ? 40 : 30, $yRound, $secondaryColor, $roundText, true);
 
         // Tamanho do brasão
         // Story: 400px. Quadrado: 300px. Retângulo Wide: 380px.
@@ -239,20 +239,20 @@ class ArtGeneratorController extends Controller
 
         // Mandante
         $xA = ($width / 2) - $centerDist - ($badgeSize / 2);
-        $this->drawTeamBadge($img, $match->homeTeam, $xA, $yBadges, $badgeSize, $white);
+        $this->drawTeamBadge($img, $match->homeTeam, $xA, $yBadges, $badgeSize, $secondaryColor);
 
         // Nome do Time Mandante
         $xCenterA = $xA + ($badgeSize / 2);
         $yName = $yBadges + $badgeSize + ($isStory ? 55 : 45);
-        $drawTextAt($isStory ? 35 : 28, $xCenterA, $yName, $white, mb_strtoupper($match->homeTeam->name), false);
+        $drawTextAt($isStory ? 35 : 28, $xCenterA, $yName, $secondaryColor, mb_strtoupper($match->homeTeam->name), false);
 
         // Visitante
         $xB = ($width / 2) + $centerDist - ($badgeSize / 2);
-        $this->drawTeamBadge($img, $match->awayTeam, $xB, $yBadges, $badgeSize, $white);
+        $this->drawTeamBadge($img, $match->awayTeam, $xB, $yBadges, $badgeSize, $secondaryColor);
 
         // Nome do Time Visitante
         $xCenterB = $xB + ($badgeSize / 2);
-        $drawTextAt($isStory ? 35 : 28, $xCenterB, $yName, $white, mb_strtoupper($match->awayTeam->name), false);
+        $drawTextAt($isStory ? 35 : 28, $xCenterB, $yName, $secondaryColor, mb_strtoupper($match->awayTeam->name), false);
 
         // VS (Versus) no meio
         $drawText($isStory ? 80 : 60, $yBadges + ($badgeSize / 2) + 20, $primaryColor, "X", false);
@@ -271,7 +271,7 @@ class ArtGeneratorController extends Controller
         // Data com Cor Primária
         $drawText($dateSize, $yDate, $primaryColor, mb_strtoupper($dateStr), false);
         // Local com Branco/Secundário
-        $drawText($locSize, $yLoc, $white, $location, true);
+        $drawText($locSize, $yLoc, $secondaryColor, $location, true);
 
         return $this->outputImage($img, 'jogo_programado_' . $match->id);
     }
