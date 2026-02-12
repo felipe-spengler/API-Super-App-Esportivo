@@ -71,6 +71,7 @@ Route::get('/public/matches/{id}/full-details', [\App\Http\Controllers\MatchOper
 // Public Art Generation Routes (Matching /api/art structure)
 Route::get('/art/match/{matchId}/scheduled', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'downloadScheduledArt']);
 Route::get('/art/match/{matchId}/mvp', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'downloadMvpArt']);
+Route::get('/art/championship/{championshipId}/award/{category}', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'championshipAwardArt']);
 
 // Loja (Público)
 Route::get('/clubs/{clubId}/products', [ShopController::class, 'products']);
