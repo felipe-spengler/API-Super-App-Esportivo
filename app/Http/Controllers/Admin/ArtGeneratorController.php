@@ -211,62 +211,67 @@ class ArtGeneratorController extends Controller
             imagettftext($img, $size, 0, $x, $y, $color, $font, $text);
         };
 
-        // 1. Topo: Nome do Campeonato e Esporte (Mais compacto)
+        $isStory = $height > $width; // Detecta formato Story (1080x1920)
+
+        // 1. Topo: Nome do Campeonato e Esporte
         $champName = mb_strtoupper($match->championship->name);
+
+        $yTop = $isStory ? 250 : 100;
+        $ySport = $isStory ? 350 : 190;
+        $yRound = $isStory ? 450 : 280;
+
         // Usar Branco para o Camp (Solicitado)
-        $drawText(35, 100, $white, $champName, true);
+        $drawText($isStory ? 45 : 35, $yTop, $white, $champName, true);
         // Usar Cor Primária para o Esporte (Destaque)
-        $drawText(65, 190, $primaryColor, mb_strtoupper($sport), false);
+        $drawText($isStory ? 80 : 65, $ySport, $primaryColor, mb_strtoupper($sport), false);
 
         // 2. Meio: Rodada e Brasões
         $roundText = mb_strtoupper($match->round_name ?? "RODADA " . ($match->round_number ?? 1));
-        $drawText(30, 280, $white, $roundText, true);
+        $drawText($isStory ? 40 : 30, $yRound, $white, $roundText, true);
 
-        // Tamanho dinâmico do brasão baseado na altura da imagem (para 1080x1080 vs 1080x1920)
-        // Se for quadrado, usa um pouco menor
-        $isSquare = abs($width - $height) < 100;
-        $badgeSize = $isSquare ? 300 : 380;
+        // Tamanho do brasão
+        // Story: 400px. Quadrado: 300px. Retângulo Wide: 380px.
+        $badgeSize = $isStory ? 400 : (abs($width - $height) < 100 ? 300 : 380);
 
-        // Centralizar verticalmente na área disponível
-        // Topo acaba ~200. Rodapé começa ~Height-300.
-        // Vamos fixar um pouco mais pra cima para garantir
-        $yBadges = ($height / 2) - ($badgeSize / 2) - 40;
-        $centerDist = $isSquare ? 260 : 320;
+        // Centralizar verticalmente
+        $yBadges = ($height / 2) - ($badgeSize / 2) - ($isStory ? 0 : 40);
+        $centerDist = $isStory ? 280 : 320;
 
         // Mandante
         $xA = ($width / 2) - $centerDist - ($badgeSize / 2);
         $this->drawTeamBadge($img, $match->homeTeam, $xA, $yBadges, $badgeSize, $white);
 
-        // Nome do Time Mandante (Colado embaixo)
+        // Nome do Time Mandante
         $xCenterA = $xA + ($badgeSize / 2);
-        $yName = $yBadges + $badgeSize + 45;
-        $drawTextAt(28, $xCenterA, $yName, $white, mb_strtoupper($match->homeTeam->name), false);
-
+        $yName = $yBadges + $badgeSize + ($isStory ? 55 : 45);
+        $drawTextAt($isStory ? 35 : 28, $xCenterA, $yName, $white, mb_strtoupper($match->homeTeam->name), false);
 
         // Visitante
         $xB = ($width / 2) + $centerDist - ($badgeSize / 2);
         $this->drawTeamBadge($img, $match->awayTeam, $xB, $yBadges, $badgeSize, $white);
 
-        // Nome do Time Visitante (Colado embaixo)
+        // Nome do Time Visitante
         $xCenterB = $xB + ($badgeSize / 2);
-        $drawTextAt(28, $xCenterB, $yName, $white, mb_strtoupper($match->awayTeam->name), false);
+        $drawTextAt($isStory ? 35 : 28, $xCenterB, $yName, $white, mb_strtoupper($match->awayTeam->name), false);
 
         // VS (Versus) no meio
-        $drawText(60, $yBadges + ($badgeSize / 2) + 20, $primaryColor, "X", false);
-
+        $drawText($isStory ? 80 : 60, $yBadges + ($badgeSize / 2) + 20, $primaryColor, "X", false);
 
         // 3. Rodapé: Data, Horário e Local
-        // Ajustado para ficar mais embaixo e próximo
-        $yLoc = $height - 80;
-        $yDate = $yLoc - 80;
+        $yLoc = $isStory ? ($height - 250) : ($height - 80);
+        $yDate = $yLoc - ($isStory ? 100 : 80);
 
         $dateStr = \Carbon\Carbon::parse($match->start_time)->translatedFormat('d \d\e F \à\s H:i');
         $location = mb_strtoupper($match->location ?? 'LOCAL A DEFINIR');
 
+        // Aumentar fonte no story
+        $dateSize = $isStory ? 60 : 50;
+        $locSize = $isStory ? 40 : 35;
+
         // Data com Cor Primária
-        $drawText(50, $yDate, $primaryColor, mb_strtoupper($dateStr), false);
+        $drawText($dateSize, $yDate, $primaryColor, mb_strtoupper($dateStr), false);
         // Local com Branco/Secundário
-        $drawText(35, $yLoc, $white, $location, true);
+        $drawText($locSize, $yLoc, $white, $location, true);
 
         return $this->outputImage($img, 'jogo_programado_' . $match->id);
     }
