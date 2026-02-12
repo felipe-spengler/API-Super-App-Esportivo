@@ -406,7 +406,7 @@ export function AdminMatchManager() {
         }
         setIsGeneratingKnockout(true);
         try {
-            const response = await api.post(`/championships/${id}/bracket/generate-from-groups`, {
+            const response = await api.post(`/admin/championships/${id}/bracket/generate-from-groups`, {
                 category_id: selectedCategoryId === 'no-category' ? null : selectedCategoryId
             });
             alert(`Sucesso! ${response.data.matches?.length || 0} jogos gerados.`);
@@ -422,7 +422,7 @@ export function AdminMatchManager() {
     const fetchGroups = async () => {
         setLoadingGroups(true);
         try {
-            const response = await api.get(`/championships/${id}/groups`);
+            const response = await api.get(`/admin/championships/${id}/groups`);
 
             // Transform response to state
             // response.data.groups is { "A": [{...}, {...}], "B": [...] }
@@ -540,8 +540,8 @@ export function AdminMatchManager() {
                             className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-lg hover:from-purple-600 hover:to-indigo-700 transition-all shadow-sm text-sm font-bold disabled:opacity-50 mx-2"
                             title="Calcula classificação e gera próxima fase"
                         >
-                            {isGeneratingKnockout ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trophy className="w-4 h-4" />}
-                            <span className="hidden sm:inline">Gerar Mata-mata</span>
+                            {isGeneratingKnockout ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trophy className="w-4 h-4 hidden sm:block" />}
+                            <span className="">Gerar Mata-mata</span>
                         </button>
                     )}
                     {/* Botão Gerenciar Grupos Manualmente */}

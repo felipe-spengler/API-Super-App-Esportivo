@@ -543,6 +543,17 @@ class BracketController extends Controller
             return response()->json(['message' => 'Nenhum jogo de fase de grupos encontrado.'], 400);
         }
 
+        // Verificação de Segurança: Todos os jogos devem estar finalizados
+        $pendingMatches = $matches->filter(function ($m) {
+            return $m->status !== 'finished' && $m->status !== 'canceled';
+        });
+
+        if ($pendingMatches->isNotEmpty()) {
+            return response()->json([
+                'message' => 'Não é possível gerar o mata-mata pois existem ' . $pendingMatches->count() . ' jogos da fase de grupos pendentes. Finalize todas as partidas (lance as súmulas) antes de continuar.'
+            ], 400);
+        }
+
         $groups = [];
         $teamStats = [];
 
