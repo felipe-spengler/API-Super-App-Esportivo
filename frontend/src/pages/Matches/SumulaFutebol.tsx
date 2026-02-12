@@ -207,6 +207,16 @@ export function SumulaFutebol() {
     };
 
     const handlePeriodChange = () => {
+        // Fix for "Start Game" button triggering "End 1st Half"
+        if (matchData && (matchData.status === 'scheduled' || matchData.status === 'Agendado') && time === 0 && !isRunning) {
+            if (!window.confirm("Iniciar Partida?")) return;
+            setIsRunning(true);
+            // Update local status immediately to update button text
+            setMatchData((prev: any) => ({ ...prev, status: 'live' }));
+            registerSystemEvent('match_start', 'Início da Partida');
+            return;
+        }
+
         const oldPeriod = currentPeriod;
         let newPeriod = '';
 

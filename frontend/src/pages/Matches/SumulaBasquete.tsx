@@ -219,6 +219,15 @@ export function SumulaBasquete() {
     };
 
     const handleQuarterChange = () => {
+        // Fix for "Start Game" button triggering "End 1st Quarter"
+        if (matchData && (matchData.status === 'scheduled' || matchData.status === 'Agendado') && !isRunning) {
+            if (!window.confirm("Iniciar Partida?")) return;
+            setIsRunning(true);
+            setMatchData((prev: any) => ({ ...prev, status: 'live' }));
+            registerSystemEvent('match_start', 'Início da Partida');
+            return;
+        }
+
         const oldPeriod = currentQuarter;
         let newPeriod: Quarter | '' = '';
 
