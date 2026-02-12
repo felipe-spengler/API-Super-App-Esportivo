@@ -127,7 +127,7 @@ export function Championships() {
                     {filtered.map(camp => (
                         <div
                             key={camp.id}
-                            className="group bg-white rounded-2xl shadow-sm border border-gray-100 hover:border-indigo-500 hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col"
+                            className="group bg-white rounded-2xl shadow-sm border border-gray-100 hover:border-indigo-500 hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col relative"
                         >
                             <Link to={`/admin/championships/${camp.id}`} className="h-40 bg-gray-100 relative overflow-hidden block">
                                 {camp.logo_url ? (
@@ -137,38 +137,40 @@ export function Championships() {
                                         <Trophy className="w-16 h-16 opacity-50" />
                                     </div>
                                 )}
-                                <div className="absolute top-3 right-3 flex flex-col items-end gap-1">
-                                    <select
-                                        value={camp.status}
-                                        onClick={(e) => e.stopPropagation()}
-                                        onChange={(e) => handleUpdateStatus(camp.id, e.target.value)}
-                                        className={`px-2 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider backdrop-blur-md shadow-lg border-none outline-none cursor-pointer
-                                        ${camp.status === 'ongoing' ? 'bg-green-500/90 text-white' :
-                                                camp.status === 'finished' ? 'bg-gray-800/90 text-white' :
-                                                    camp.status === 'draft' ? 'bg-orange-500/90 text-white' : 'bg-blue-500/90 text-white'}`}
-                                    >
-                                        <option value="draft">Rascunho</option>
-                                        <option value="upcoming">Em Breve</option>
-                                        <option value="registrations_open">Inscrições</option>
-                                        <option value="ongoing">Em Andamento</option>
-                                        <option value="finished">Finalizado</option>
-                                    </select>
 
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); handleToggleAuto(camp.id, !!camp.is_status_auto); }}
-                                        className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-tighter backdrop-blur-sm border transition-all
-                                            ${camp.is_status_auto
-                                                ? 'bg-indigo-500/20 text-white border-indigo-400/50 hover:bg-indigo-500/40'
-                                                : 'bg-gray-500/20 text-gray-300 border-gray-400/30 hover:bg-gray-500/40'}`}
-                                        title={camp.is_status_auto ? "Modo Automático Ativado" : "Modo Manual (Clique para ativar automático)"}
-                                    >
-                                        {camp.is_status_auto ? '🤖 AUTO' : '👤 MANUAL'}
-                                    </button>
-                                </div>
                                 <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
                                     <span className="text-white text-xs font-bold">Ver Detalhes</span>
                                 </div>
                             </Link>
+
+                            <div className="absolute top-3 right-3 flex flex-col items-end gap-1 z-10 pointer-events-auto">
+                                <select
+                                    value={camp.status}
+                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                    onChange={(e) => { e.preventDefault(); e.stopPropagation(); handleUpdateStatus(camp.id, e.target.value); }}
+                                    className={`px-2 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider backdrop-blur-md shadow-lg border-none outline-none cursor-pointer
+                                    ${camp.status === 'ongoing' ? 'bg-green-500/90 text-white' :
+                                            camp.status === 'finished' ? 'bg-gray-800/90 text-white' :
+                                                camp.status === 'draft' ? 'bg-orange-500/90 text-white' : 'bg-blue-500/90 text-white'}`}
+                                >
+                                    <option value="draft">Rascunho</option>
+                                    <option value="upcoming">Em Breve</option>
+                                    <option value="registrations_open">Inscrições</option>
+                                    <option value="ongoing">Em Andamento</option>
+                                    <option value="finished">Finalizado</option>
+                                </select>
+
+                                <button
+                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleToggleAuto(camp.id, !!camp.is_status_auto); }}
+                                    className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-tighter backdrop-blur-sm border transition-all
+                                        ${camp.is_status_auto
+                                            ? 'bg-indigo-500/20 text-white border-indigo-400/50 hover:bg-indigo-500/40'
+                                            : 'bg-gray-500/20 text-gray-300 border-gray-400/30 hover:bg-gray-500/40'}`}
+                                    title={camp.is_status_auto ? "Modo Automático Ativado" : "Modo Manual (Clique para ativar automático)"}
+                                >
+                                    {camp.is_status_auto ? '🤖 AUTO' : '👤 MANUAL'}
+                                </button>
+                            </div>
 
                             <div className="p-4 md:p-6 flex-1 flex flex-col">
                                 <h3 className="text-lg font-black text-gray-900 mb-1 group-hover:text-indigo-600 transition-colors leading-tight">{camp.name}</h3>
