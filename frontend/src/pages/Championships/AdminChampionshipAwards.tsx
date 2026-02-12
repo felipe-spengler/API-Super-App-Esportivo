@@ -47,7 +47,7 @@ export function AdminChampionshipAwards() {
         try {
             const [campRes, teamsRes, catsRes] = await Promise.all([
                 api.get(`/championships/${id}`),
-                api.get(`/admin/championships/${id}/teams?with_players=true`),
+                api.get(`/championships/${id}/teams?with_players=true`),
                 api.get(`/admin/championships/${id}/categories`)
             ]);
 
@@ -133,6 +133,17 @@ export function AdminChampionshipAwards() {
 
     const handleTeamFilterChange = (awardType: string, teamId: string) => {
         setTeamFilters(prev => ({ ...prev, [awardType]: teamId }));
+    };
+
+    const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+    const handlePreview = (awardKey: string) => {
+        let url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/art/championship/${id}/award/${awardKey}`;
+        if (selectedCategory) {
+            url += `?categoryId=${selectedCategory}`;
+        }
+        // Force reload or just set URL
+        setPreviewImage(url);
     };
 
     const handleSave = async () => {
@@ -222,8 +233,8 @@ export function AdminChampionshipAwards() {
                                 key={cat.id}
                                 onClick={() => setSelectedCategory(cat.id)}
                                 className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors ${selectedCategory === cat.id
-                                        ? 'bg-indigo-600 text-white shadow-md'
-                                        : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+                                    ? 'bg-indigo-600 text-white shadow-md'
+                                    : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
                                     }`}
                             >
                                 {cat.name}
@@ -286,16 +297,25 @@ export function AdminChampionshipAwards() {
                                     </div>
 
                                     {/* 3. Action */}
-                                    <div className="md:col-span-2 flex justify-end">
+                                    <div className="md:col-span-2 flex justify-end gap-2">
                                         {savedPlayerId && (
-                                            <button
-                                                onClick={() => handleDownload(award.key)}
-                                                className="text-indigo-600 hover:text-indigo-800 text-sm font-medium flex items-center gap-1 border border-indigo-200 px-3 py-2 rounded-lg hover:bg-indigo-50 transition-colors h-10 mt-5"
-                                                title="Gerar Arte"
-                                            >
-                                                <Download className="w-4 h-4" />
-                                                Baixar
-                                            </button>
+                                            <>
+                                                <button
+                                                    onClick={() => handlePreview(award.key)}
+                                                    className="text-indigo-600 hover:text-indigo-800 text-sm font-medium flex items-center gap-1 border border-indigo-200 px-3 py-2 rounded-lg hover:bg-indigo-50 transition-colors h-10 mt-5"
+                                                    title="Ver Arte"
+                                                >
+                                                    <Users className="w-4 h-4" /> Ver
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDownload(award.key)}
+                                                    className="text-white bg-indigo-600 hover:bg-indigo-700 text-sm font-medium flex items-center gap-1 px-3 py-2 rounded-lg transition-colors h-10 mt-5 shadow-sm"
+                                                    title="Baixar Arte"
+                                                >
+                                                    <Download className="w-4 h-4" />
+                                                    Baixar
+                                                </button>
+                                            </>
                                         )}
                                     </div>
                                 </div>
@@ -304,6 +324,21 @@ export function AdminChampionshipAwards() {
                     })}
                 </div>
             </div>
+
+            {/* Preview Modal */}
+            {previewImage && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80" onClick={() => setPreviewImage(null)}>
+                    <div className="relative max-w-4xl max-h-[90vh] bg-transparent" onClick={e => e.stopPropagation()}>
+                        <button
+                            onClick={() => setPreviewImage(null)}
+                            className="absolute -top-10 right-0 text-white hover:text-gray-300"
+                        >
+                            <span className="text-4xl">&times;</span>
+                        </button>
+                        <img src={previewImage} className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl" />
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

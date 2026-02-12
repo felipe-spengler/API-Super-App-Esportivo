@@ -526,6 +526,10 @@ class EventController extends Controller
             $query->wherePivot('category_id', $request->category_id);
         }
 
+        if ($request->has('with_players') && $request->with_players == 'true') {
+            $query->with('players');
+        }
+
         $teams = $query->orderBy('name')->get();
         return response()->json($teams);
     }

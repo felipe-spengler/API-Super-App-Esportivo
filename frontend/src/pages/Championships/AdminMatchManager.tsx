@@ -784,13 +784,19 @@ export function AdminMatchManager() {
                                                                 {/* Score */}
                                                                 <div className="flex flex-col items-center">
                                                                     <div className="flex items-center gap-2 md:gap-4 bg-white px-3 md:px-6 py-1.5 md:py-2 rounded-xl border border-gray-200 shadow-sm min-w-[90px] md:min-w-[120px] justify-center">
-                                                                        <span className={`text-xl md:text-2xl font-black ${match.home_score !== null ? 'text-gray-900' : 'text-gray-300'}`}>
-                                                                            {match.home_score ?? 0}
-                                                                        </span>
-                                                                        <span className="text-gray-300 font-bold text-[10px]">X</span>
-                                                                        <span className={`text-xl md:text-2xl font-black ${match.away_score !== null ? 'text-gray-900' : 'text-gray-300'}`}>
-                                                                            {match.away_score ?? 0}
-                                                                        </span>
+                                                                        {match.home_score !== null && match.away_score !== null ? (
+                                                                            <>
+                                                                                <span className="text-xl md:text-2xl font-black text-gray-900">
+                                                                                    {match.home_score}
+                                                                                </span>
+                                                                                <span className="text-gray-300 font-bold text-[10px]">X</span>
+                                                                                <span className="text-xl md:text-2xl font-black text-gray-900">
+                                                                                    {match.away_score}
+                                                                                </span>
+                                                                            </>
+                                                                        ) : (
+                                                                            <span className="text-gray-300 font-bold text-lg md:text-xl">VS</span>
+                                                                        )}
                                                                     </div>
                                                                     {(match.home_penalty_score != null || match.away_penalty_score != null) && (match.home_penalty_score > 0 || match.away_penalty_score > 0) && (
                                                                         <span className="text-[10px] font-bold text-gray-500 mt-1">
