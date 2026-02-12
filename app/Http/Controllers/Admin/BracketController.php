@@ -675,6 +675,32 @@ class BracketController extends Controller
 
         $baseDate = $lastMatchDate ? Carbon::parse($lastMatchDate)->addDays(7) : Carbon::now()->addDays(7);
 
+        // Prevenção de Duplicatas e Regeneração
+        // Verifica se já existem jogos para essa rodada (quartas, semi, etc)
+        $existing = MatchModel::where('championship_id', $championshipId)
+            ->where('round_name', $nextRoundName)
+            ->where('category_id', $categoryId) // Importante filtrar por categoria se houver multiplas
+            ->get();
+
+        if ($existing->isNotEmpty()) {
+            // Se houver algum jogo já finalizado ou em andamento, não mexemos e avisamos
+            $hasStarted = $existing->where('status', '!=', 'scheduled')->first();
+
+            if ($hasStarted) {
+                return response()->json([
+                    'message' => "A fase de mata-mata ($nextRoundName) já possui jogos em andamento ou finalizados. Não é possível regenerar.",
+                    'matches' => $existing, // Retorna os existentes para o frontend não quebrar se esperar algo
+                    'round_name' => $nextRoundName
+                ], 200); // 200 OK, apenas informativo
+            }
+
+            // Se todos forem 'scheduled', assumimos que o usuário quer REGERAR (talvez mudou resultado da fase de grupos)
+            // Então deletamos os antigos para criar os novos corretamente
+            foreach ($existing as $ex) {
+                $ex->delete();
+            }
+        }
+
         for ($i = 0; $i < $numGroups; $i += 2) {
             $g1 = $groupNames[$i];   // ex: A
             $g2 = $groupNames[$i + 1]; // ex: B

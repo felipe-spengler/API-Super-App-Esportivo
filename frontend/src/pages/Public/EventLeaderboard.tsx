@@ -224,12 +224,7 @@ export function EventLeaderboard() {
                         {/* FASE DE GRUPOS (GROUPS / GROUP_KNOCKOUT) */}
                         {['groups', 'group_knockout'].includes(championshipFormat) && (
                             <>
-                                {standings.length > 0 ? (
-                                    <>
-                                        <h3 className="text-xl font-bold text-gray-800 mb-4 px-2 border-l-4 border-indigo-600">Fase de Grupos</h3>
-                                        {renderGroupStage()}
-                                    </>
-                                ) : (
+                                {standings.length === 0 && (
                                     <div className="text-center py-10 bg-white rounded-xl shadow-sm border border-gray-100 mb-6">
                                         <p className="text-gray-500">Fase de Grupos ainda não iniciada ou sem times.</p>
                                     </div>

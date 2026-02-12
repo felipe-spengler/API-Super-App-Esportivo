@@ -115,7 +115,7 @@ export function AdminMatchManager() {
 
             // Also fetch groups to populate numGroups/assignments if any
             try {
-                const groupsRes = await api.get(`/championships/${id}/groups`);
+                const groupsRes = await api.get(`/admin/championships/${id}/groups`);
                 const groupsData = groupsRes.data.groups || {};
                 // If we have groups, set numGroups accordingly
                 const groupCount = Object.keys(groupsData).length;
@@ -475,7 +475,7 @@ export function AdminMatchManager() {
 
             // Clean empty groups from payload if desired? No, send partial if exists.
 
-            await api.post(`/championships/${id}/groups`, {
+            await api.post(`/admin/championships/${id}/groups`, {
                 groups: groupsPayload
             });
 
