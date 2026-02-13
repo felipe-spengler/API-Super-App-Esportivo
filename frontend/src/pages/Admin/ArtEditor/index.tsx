@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Save, Upload, Type, Image as ImageIcon, Layout, Move, Plus, Trash2, Smartphone, Monitor, X } from 'lucide-react';
+import { Save, Upload, Type, Image as ImageIcon, Layout, Move, Plus, Trash2, Smartphone, Monitor, X, ChevronDown, ChevronRight } from 'lucide-react';
 import api from '../../../services/api';
 import toast from 'react-hot-toast';
 
@@ -43,8 +43,13 @@ export function ArtEditor() {
     const [templateName, setTemplateName] = useState('Craque do Jogo');
     const [bgImage, setBgImage] = useState<string | null>(null); // URL of background
     const [loading, setLoading] = useState(false);
-
+    const [showHelp, setShowHelp] = useState(true);
     const [previewMode, setPreviewMode] = useState(false);
+
+    // Sidebar sections
+    const [showSettings, setShowSettings] = useState(false);
+    const [showElements, setShowElements] = useState(true);
+    const [showProps, setShowProps] = useState(true);
 
     // Load template or default settings
     useEffect(() => {
@@ -144,180 +149,223 @@ export function ArtEditor() {
                 @font-face { font-family: 'Teko'; src: url('${api.defaults.baseURL}/assets-fonts/Teko.ttf'); }
             `}</style>
             {/* Sidebar Controls */}
-            <div className="w-80 bg-white border-r border-gray-200 flex flex-col z-20 shadow-xl">
-                <div className="p-4 border-b border-gray-100">
+            <div className="w-80 bg-white border-r border-gray-200 flex flex-col z-20 shadow-xl overflow-hidden">
+                <div className="p-4 border-b border-gray-100 shrink-0">
                     <h2 className="font-bold text-gray-800 flex items-center gap-2">
                         <Layout className="w-5 h-5 text-indigo-600" /> Editor de Artes
                     </h2>
-                    <p className="text-xs text-gray-500 mt-1">Personalize os cards gerados pelo sistema.</p>
                 </div>
 
-                <div className="p-4 border-b border-gray-100 flex flex-col gap-3">
-                    <label className="text-xs font-bold text-gray-500">TEMPLATE</label>
-                    <select
-                        value={templateName}
-                        onChange={e => setTemplateName(e.target.value)}
-                        className="w-full p-2 border border-gray-200 rounded-lg text-sm font-bold"
-                    >
-                        <option>Craque do Jogo</option>
-                        <option>Jogo Programado</option>
-                        <option>Confronto</option>
-                    </select>
+                <div className="flex-1 overflow-y-auto">
+                    {/* Settings Section */}
+                    <div className="border-b border-gray-100">
+                        <button
+                            className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
+                            onClick={() => setShowSettings(!showSettings)}
+                        >
+                            <span className="text-xs font-bold text-gray-500 uppercase">Configurações Base</span>
+                            {showSettings ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                        </button>
 
-                    <button className="flex items-center justify-center gap-2 w-full py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-bold transition-colors">
-                        <Upload className="w-4 h-4" /> Alterar Fundo Padrão
-                    </button>
-                    {bgImage && <img src={bgImage} className="w-full h-20 object-cover rounded border" />}
-                </div>
+                        {showSettings && (
+                            <div className="p-4 pt-0 space-y-3">
+                                <label className="text-xs font-bold text-gray-500 block mb-1">TEMPLATE</label>
+                                <select
+                                    value={templateName}
+                                    onChange={e => setTemplateName(e.target.value)}
+                                    className="w-full p-2 border border-gray-200 rounded-lg text-sm font-bold bg-white"
+                                >
+                                    <option>Craque do Jogo</option>
+                                    <option>Jogo Programado</option>
+                                    <option>Confronto</option>
+                                </select>
 
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                    <div className="flex justify-between items-center mb-2">
-                        <label className="text-xs font-bold text-gray-500">ELEMENTOS</label>
-                        <button className="text-indigo-600 hover:bg-indigo-50 p-1 rounded"><Plus size={16} /></button>
+                                {bgImage && <img src={bgImage} className="w-full h-24 object-cover rounded border mt-2" />}
+                            </div>
+                        )}
                     </div>
 
-                    {elements.map(el => (
-                        <div
-                            key={el.id}
-                            onClick={() => setActiveElementId(el.id)}
-                            className={`p-3 rounded-lg border flex items-center gap-3 cursor-pointer transition-all ${activeElementId === el.id ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300 bg-white'
-                                }`}
+                    {/* Elements List */}
+                    <div className="border-b border-gray-100">
+                        <button
+                            className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
+                            onClick={() => setShowElements(!showElements)}
                         >
-                            {el.type === 'text' ? <Type size={16} className="text-gray-400" /> : <ImageIcon size={16} className="text-gray-400" />}
-                            <div className="flex-1 min-w-0">
-                                <span className="text-sm font-bold text-gray-700 block truncate">{el.label}</span>
-                                <span className="text-[10px] text-gray-400 font-mono">X:{el.x} Y:{el.y}</span>
+                            <span className="text-xs font-bold text-gray-500 uppercase">Elementos ({elements.length})</span>
+                            <div className="flex items-center gap-2">
+                                <span className="p-1 hover:bg-indigo-50 rounded text-indigo-600 cursor-pointer" onClick={(e) => {
+                                    e.stopPropagation();
+                                    // Add logic if needed
+                                }}><Plus size={14} /></span>
+                                {showElements ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                             </div>
-                            <div className={`w-2 h-2 rounded-full ${activeElementId === el.id ? 'bg-indigo-500' : 'bg-gray-300'}`} />
-                        </div>
-                    ))}
-                </div>
+                        </button>
 
-                {activeElement && (
-                    <div className="p-4 bg-gray-50 border-t border-gray-200">
-                        <h3 className="text-xs font-bold text-gray-600 mb-3 uppercase flex justify-between items-center">
-                            Propriedades
-                            <button className="text-red-500 hover:text-red-700"><Trash2 size={14} /></button>
-                        </h3>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="col-span-1">
-                                <label className="text-[10px] text-gray-400 block mb-1">Posição X</label>
-                                <input
-                                    type="number"
-                                    value={activeElement.x}
-                                    onChange={e => handleElementChange(activeElement.id, { x: parseInt(e.target.value) })}
-                                    className="w-full p-1.5 border rounded text-sm font-mono"
-                                />
-                            </div>
-                            <div className="col-span-1">
-                                <label className="text-[10px] text-gray-400 block mb-1">Posição Y</label>
-                                <input
-                                    type="number"
-                                    value={activeElement.y}
-                                    onChange={e => handleElementChange(activeElement.id, { y: parseInt(e.target.value) })}
-                                    className="w-full p-1.5 border rounded text-sm font-mono"
-                                />
-                            </div>
-                            {activeElement.type === 'text' && (
-                                <>
-                                    <div className="col-span-1">
-                                        <label className="text-[10px] text-gray-400 block mb-1">Tamanho (px)</label>
-                                        <input
-                                            type="number"
-                                            value={activeElement.fontSize}
-                                            onChange={e => handleElementChange(activeElement.id, { fontSize: parseInt(e.target.value) })}
-                                            className="w-full p-1.5 border rounded text-sm font-mono"
-                                        />
+                        {showElements && (
+                            <div className="p-4 pt-0 space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
+                                {elements.map(el => (
+                                    <div
+                                        key={el.id}
+                                        onClick={() => setActiveElementId(el.id)}
+                                        className={`p-2 rounded-lg border flex items-center gap-2 cursor-pointer transition-all text-xs ${activeElementId === el.id ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300 bg-white'
+                                            }`}
+                                    >
+                                        {el.type === 'text' ? <Type size={14} className="text-gray-400" /> : <ImageIcon size={14} className="text-gray-400" />}
+                                        <div className="flex-1 min-w-0">
+                                            <span className="font-bold text-gray-700 block truncate">{el.label}</span>
+                                        </div>
+                                        <div className={`w-1.5 h-1.5 rounded-full ${activeElementId === el.id ? 'bg-indigo-500' : 'bg-gray-300'}`} />
                                     </div>
-                                    <div className="col-span-1">
-                                        <label className="text-[10px] text-gray-400 block mb-1">Cor</label>
-                                        <div className="flex items-center gap-2">
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Properties Section (Sticky or at bottom if active) */}
+                    {activeElement && (
+                        <div className="border-b border-gray-100 bg-gray-50/50">
+                            <button
+                                className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-100 transition-colors"
+                                onClick={() => setShowProps(!showProps)}
+                            >
+                                <span className="text-xs font-bold text-indigo-600 uppercase flex items-center gap-2">
+                                    Propriedades: {activeElement.label}
+                                </span>
+                                {showProps ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                            </button>
+
+                            {showProps && (
+                                <div className="p-4 pt-0">
+                                    <h3 className="text-[10px] font-bold text-gray-400 mb-3 uppercase flex justify-end">
+                                        <button className="text-red-500 hover:text-red-700 flex items-center gap-1 bg-white border border-red-100 px-2 py-1 rounded shadow-sm">
+                                            <Trash2 size={12} /> Excluir
+                                        </button>
+                                    </h3>
+
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div className="col-span-1">
+                                            <label className="text-[9px] text-gray-400 block mb-0.5">X</label>
                                             <input
-                                                type="color"
-                                                value={activeElement.color}
-                                                onChange={e => handleElementChange(activeElement.id, { color: e.target.value })}
-                                                className="w-full h-8 border rounded cursor-pointer"
+                                                type="number"
+                                                value={activeElement.x}
+                                                onChange={e => handleElementChange(activeElement.id, { x: parseInt(e.target.value) })}
+                                                className="w-full p-1 border rounded text-xs font-mono"
                                             />
                                         </div>
-                                    </div>
-                                    <div className="col-span-2">
-                                        <label className="text-[10px] text-gray-400 block mb-1">Alinhamento</label>
-                                        <div className="flex border rounded overflow-hidden">
-                                            {['left', 'center', 'right'].map(align => (
-                                                <button
-                                                    key={align}
-                                                    onClick={() => handleElementChange(activeElement.id, { align: align as any })}
-                                                    className={`flex-1 py-1 text-xs capitalize ${activeElement.align === align ? 'bg-indigo-100 text-indigo-700 font-bold' : 'bg-white hover:bg-gray-50'}`}
-                                                >
-                                                    {align}
-                                                </button>
-                                            ))}
+                                        <div className="col-span-1">
+                                            <label className="text-[9px] text-gray-400 block mb-0.5">Y</label>
+                                            <input
+                                                type="number"
+                                                value={activeElement.y}
+                                                onChange={e => handleElementChange(activeElement.id, { y: parseInt(e.target.value) })}
+                                                className="w-full p-1 border rounded text-xs font-mono"
+                                            />
                                         </div>
+
+                                        {activeElement.type === 'text' && (
+                                            <>
+                                                <div className="col-span-1">
+                                                    <label className="text-[9px] text-gray-400 block mb-0.5">Tamanho</label>
+                                                    <input
+                                                        type="number"
+                                                        value={activeElement.fontSize}
+                                                        onChange={e => handleElementChange(activeElement.id, { fontSize: parseInt(e.target.value) })}
+                                                        className="w-full p-1 border rounded text-xs font-mono"
+                                                    />
+                                                </div>
+                                                <div className="col-span-1">
+                                                    <label className="text-[9px] text-gray-400 block mb-0.5">Cor</label>
+                                                    <div className="flex items-center gap-1">
+                                                        <input
+                                                            type="color"
+                                                            value={activeElement.color}
+                                                            onChange={e => handleElementChange(activeElement.id, { color: e.target.value })}
+                                                            className="w-full h-6 border rounded cursor-pointer"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="col-span-2">
+                                                    <label className="text-[9px] text-gray-400 block mb-0.5">Fonte</label>
+                                                    <select
+                                                        value={activeElement.fontFamily || 'Roboto'}
+                                                        onChange={e => handleElementChange(activeElement.id, { fontFamily: e.target.value })}
+                                                        className="w-full p-1 border rounded text-xs font-mono"
+                                                    >
+                                                        <option value="Roboto">Roboto</option>
+                                                        <option value="Roboto-Bold">Roboto Bold</option>
+                                                        <option value="Anton">Anton</option>
+                                                        <option value="Archivo Black">Archivo Black</option>
+                                                        <option value="Bebas Neue">Bebas Neue</option>
+                                                        <option value="Cinzel">Cinzel</option>
+                                                        <option value="Lato">Lato</option>
+                                                        <option value="Lexend">Lexend</option>
+                                                        <option value="Lora">Lora</option>
+                                                        <option value="Merriweather">Merriweather</option>
+                                                        <option value="Montserrat">Montserrat</option>
+                                                        <option value="Open Sans">Open Sans</option>
+                                                        <option value="Oswald">Oswald</option>
+                                                        <option value="Playfair Display">Playfair Display</option>
+                                                        <option value="Poppins">Poppins</option>
+                                                        <option value="Source Sans 3">Source Sans 3</option>
+                                                        <option value="Teko">Teko</option>
+                                                    </select>
+                                                </div>
+                                                <div className="col-span-2">
+                                                    <label className="text-[9px] text-gray-400 block mb-0.5">Alinhamento</label>
+                                                    <div className="flex border rounded overflow-hidden">
+                                                        {['left', 'center', 'right'].map(align => (
+                                                            <button
+                                                                key={align}
+                                                                onClick={() => handleElementChange(activeElement.id, { align: align as any })}
+                                                                className={`flex-1 py-1 text-[10px] capitalize ${activeElement.align === align ? 'bg-indigo-100 text-indigo-700 font-bold' : 'bg-white hover:bg-gray-50'}`}
+                                                            >
+                                                                {align}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                                <div className="col-span-2">
+                                                    <label className="text-[9px] text-gray-400 block mb-0.5">Conteúdo</label>
+                                                    <input
+                                                        type="text"
+                                                        value={activeElement.content}
+                                                        onChange={e => handleElementChange(activeElement.id, { content: e.target.value })}
+                                                        className="w-full p-1 border rounded text-xs font-mono"
+                                                    />
+                                                </div>
+                                            </>
+                                        )}
+
+                                        {activeElement.type === 'image' && (
+                                            <>
+                                                <div className="col-span-1">
+                                                    <label className="text-[9px] text-gray-400 block mb-0.5">Largura</label>
+                                                    <input
+                                                        type="number"
+                                                        value={activeElement.width}
+                                                        onChange={e => handleElementChange(activeElement.id, { width: parseInt(e.target.value) })}
+                                                        className="w-full p-1 border rounded text-xs font-mono"
+                                                    />
+                                                </div>
+                                                <div className="col-span-1">
+                                                    <label className="text-[9px] text-gray-400 block mb-0.5">Altura</label>
+                                                    <input
+                                                        type="number"
+                                                        value={activeElement.height}
+                                                        onChange={e => handleElementChange(activeElement.id, { height: parseInt(e.target.value) })}
+                                                        className="w-full p-1 border rounded text-xs font-mono"
+                                                    />
+                                                </div>
+                                            </>
+                                        )}
                                     </div>
-                                    <div className="col-span-2">
-                                        <label className="text-[10px] text-gray-400 block mb-1">Fonte</label>
-                                        <select
-                                            value={activeElement.fontFamily || 'Roboto'}
-                                            onChange={e => handleElementChange(activeElement.id, { fontFamily: e.target.value })}
-                                            className="w-full p-1.5 border rounded text-sm font-mono"
-                                        >
-                                            <option value="Roboto">Roboto</option>
-                                            <option value="Roboto-Bold">Roboto Bold</option>
-                                            <option value="Anton">Anton</option>
-                                            <option value="Archivo Black">Archivo Black</option>
-                                            <option value="Bebas Neue">Bebas Neue</option>
-                                            <option value="Cinzel">Cinzel</option>
-                                            <option value="Lato">Lato</option>
-                                            <option value="Lexend">Lexend</option>
-                                            <option value="Lora">Lora</option>
-                                            <option value="Merriweather">Merriweather</option>
-                                            <option value="Montserrat">Montserrat</option>
-                                            <option value="Open Sans">Open Sans</option>
-                                            <option value="Oswald">Oswald</option>
-                                            <option value="Playfair Display">Playfair Display</option>
-                                            <option value="Poppins">Poppins</option>
-                                            <option value="Source Sans 3">Source Sans 3</option>
-                                            <option value="Teko">Teko</option>
-                                        </select>
-                                    </div>
-                                    <div className="col-span-2">
-                                        <label className="text-[10px] text-gray-400 block mb-1">Conteúdo (Placeholder)</label>
-                                        <input
-                                            type="text"
-                                            value={activeElement.content}
-                                            onChange={e => handleElementChange(activeElement.id, { content: e.target.value })}
-                                            className="w-full p-1.5 border rounded text-sm font-mono"
-                                        />
-                                    </div>
-                                </>
-                            )}
-                            {activeElement.type === 'image' && (
-                                <>
-                                    <div className="col-span-1">
-                                        <label className="text-[10px] text-gray-400 block mb-1">Largura</label>
-                                        <input
-                                            type="number"
-                                            value={activeElement.width}
-                                            onChange={e => handleElementChange(activeElement.id, { width: parseInt(e.target.value) })}
-                                            className="w-full p-1.5 border rounded text-sm font-mono"
-                                        />
-                                    </div>
-                                    <div className="col-span-1">
-                                        <label className="text-[10px] text-gray-400 block mb-1">Altura</label>
-                                        <input
-                                            type="number"
-                                            value={activeElement.height}
-                                            onChange={e => handleElementChange(activeElement.id, { height: parseInt(e.target.value) })}
-                                            className="w-full p-1.5 border rounded text-sm font-mono"
-                                        />
-                                    </div>
-                                </>
+                                </div>
                             )}
                         </div>
-                    </div>
-                )}
+                    )}
+                </div>
 
-                <div className="p-4 border-t border-gray-200">
+                <div className="p-4 border-t border-gray-200 shrink-0 bg-white z-10">
                     <button
                         onClick={saveTemplate}
                         disabled={loading}
@@ -389,7 +437,9 @@ export function ArtEditor() {
                                 color: el.color,
                                 fontFamily: el.fontFamily || 'Arial',
                                 textAlign: el.align || 'left',
-                                transform: 'translate(-50%, -50%)', // Centered anchor
+                                transform: el.type === 'text'
+                                    ? `translate(${el.align === 'left' ? '0' : el.align === 'right' ? '-100%' : '-50%'}, -50%)`
+                                    : 'translate(-50%, -50%)',
                                 whiteSpace: 'nowrap',
                                 cursor: 'move'
                             }}
@@ -417,15 +467,23 @@ export function ArtEditor() {
             </div>
 
             {/* Shortcuts / Help */}
-            <div className="absolute bottom-4 right-4 bg-white p-4 rounded-xl shadow-lg border border-gray-100 max-w-xs">
-                <h4 className="font-bold text-gray-800 text-sm mb-2 flex items-center gap-2">
-                    <Smartphone size={16} /> Modo Admin
-                </h4>
-                <p className="text-xs text-gray-500">
-                    Arraste os elementos para posicionar. Use o painel lateral para ajuste fino (cores, tamanho).
-                    As alterações são salvas para todos os esportes ao clicar em Salvar.
-                </p>
-            </div>
+            {showHelp && (
+                <div className="absolute bottom-4 right-4 bg-white p-4 rounded-xl shadow-lg border border-gray-100 max-w-xs z-20">
+                    <button
+                        onClick={() => setShowHelp(false)}
+                        className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
+                    >
+                        <X size={14} />
+                    </button>
+                    <h4 className="font-bold text-gray-800 text-sm mb-2 flex items-center gap-2">
+                        <Smartphone size={16} /> Modo Admin
+                    </h4>
+                    <p className="text-xs text-gray-500">
+                        Arraste os elementos para posicionar. Use o painel lateral para ajuste fino (cores, tamanho).
+                        As alterações são salvas para todos os esportes ao clicar em Salvar.
+                    </p>
+                </div>
+            )}
 
             {/* Preview Modal */}
             {previewMode && (
@@ -473,7 +531,9 @@ export function ArtEditor() {
                                     color: el.color,
                                     fontFamily: el.fontFamily || 'Arial',
                                     textAlign: el.align || 'left',
-                                    transform: 'translate(-50%, -50%)',
+                                    transform: el.type === 'text'
+                                        ? `translate(${el.align === 'left' ? '0' : el.align === 'right' ? '-100%' : '-50%'}, -50%)`
+                                        : 'translate(-50%, -50%)',
                                     whiteSpace: 'nowrap',
                                     zIndex: el.zIndex,
                                 }}

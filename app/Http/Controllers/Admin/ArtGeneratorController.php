@@ -38,12 +38,30 @@ class ArtGeneratorController extends Controller
             'name' => $name
         ];
 
+        // Check if user is Club Admin
+        $user = auth()->user();
+        if ($user && $user->club_id) {
+            $club = \App\Models\Club::find($user->club_id);
+            if ($club) {
+                $settings = $club->art_settings ?? []; // JSON column
+                if (!isset($settings['templates'])) {
+                    $settings['templates'] = [];
+                }
+                $settings['templates'][$key] = $data;
+                $club->art_settings = $settings;
+                $club->save();
+
+                return response()->json(['message' => 'Template salvo para o clube com sucesso']);
+            }
+        }
+
+        // Global System Setting (Super Admin)
         SystemSetting::updateOrCreate(
             ['key' => $key],
             ['value' => json_encode($data), 'group' => 'art_templates']
         );
 
-        return response()->json(['message' => 'Template salvo com sucesso']);
+        return response()->json(['message' => 'Template salvo com sucesso (Sistema)']);
     }
 
     public function getTemplate(Request $request)
@@ -51,6 +69,16 @@ class ArtGeneratorController extends Controller
         $name = $request->query('name');
         $key = $this->getTemplateKey($name);
 
+        // 1. Try Club Settings
+        $user = auth()->user();
+        if ($user && $user->club_id) {
+            $club = \App\Models\Club::find($user->club_id);
+            if ($club && !empty($club->art_settings['templates'][$key])) {
+                return response()->json($club->art_settings['templates'][$key]);
+            }
+        }
+
+        // 2. Try System Settings
         $setting = SystemSetting::where('key', $key)->first();
 
         if ($setting) {
@@ -63,10 +91,13 @@ class ArtGeneratorController extends Controller
     private function getTemplateKey($name)
     {
         $map = [
+            'Craque do Jogo' => 'art_layout_mvp_vertical',
             'Craque do Jogo (Geral)' => 'art_layout_mvp_vertical',
-            'Craque do Jogo (Vertical)' => 'art_layout_mvp_vertical', // Alias validation
+            'Craque do Jogo (Vertical)' => 'art_layout_mvp_vertical',
+            'Jogo Programado' => 'art_layout_scheduled_feed',
             'Jogo Programado (Feed)' => 'art_layout_scheduled_feed',
             'Jogo Programado (Story)' => 'art_layout_scheduled_story',
+            'Confronto' => 'art_layout_faceoff',
             'Confronto (Placar)' => 'art_layout_faceoff'
         ];
         return $map[$name] ?? 'art_layout_custom_' . Str::slug($name);
@@ -227,6 +258,28 @@ class ArtGeneratorController extends Controller
 
         if (!$img)
             return response("Erro fundo: $bgFile", 500);
+
+        // --- DYNAMIC RENDERING START ---
+        $templateKey = 'art_layout_scheduled_feed';
+        if ($club && !empty($club->art_settings['templates'][$templateKey])) {
+            $elements = $club->art_settings['templates'][$templateKey]['elements'];
+
+            $replacements = [
+                '{CAMPEONATO}' => mb_strtoupper($match->championship->name),
+                '{RODADA}' => mb_strtoupper($match->round_name ?? "RODADA " . ($match->round_number ?? 1)),
+                'X' => 'X',
+                'DD/MM HH:MM' => \Carbon\Carbon::parse($match->start_time)->translatedFormat('d/m H:i'),
+                'Local da Partida' => mb_strtoupper($match->location ?? 'LOCAL A DEFINIR'),
+            ];
+
+            // Images
+            $replacements['team_a'] = $this->getTeamLogoPath($match->homeTeam);
+            $replacements['team_b'] = $this->getTeamLogoPath($match->awayTeam);
+
+            $this->renderDynamicElements($img, $elements, $replacements);
+            return $this->outputImage($img, 'jogo_programado_' . $match->id);
+        }
+        // --- DYNAMIC RENDERING END ---
 
         $width = imagesx($img);
         $height = imagesy($img);
@@ -454,6 +507,64 @@ class ArtGeneratorController extends Controller
             return response("Erro fundo: $bgFile", 500);
 
         $width = imagesx($img);
+
+        // --- DYNAMIC RENDERING START ---
+        $templateKey = null;
+        if (in_array($category, ['craque', 'mvp', 'melhor_jogador', 'melhor_quadra'])) {
+            $templateKey = 'art_layout_mvp_vertical';
+        }
+        // Add other mappings if/when editor supports them (e.g. Award types)
+
+        if ($templateKey && $club && !empty($club->art_settings['templates'][$templateKey])) {
+            $elements = $club->art_settings['templates'][$templateKey]['elements'];
+
+            // Prepare Data
+            $name = !empty($player->nickname) ? $player->nickname : $player->name;
+            // Logic for short name if needed, or just use full
+
+            $replacements = [
+                '{JOGADOR}' => mb_strtoupper($name),
+                '{CAMPEONATO}' => mb_strtoupper($championship->name),
+                '{RODADA}' => $roundName ? mb_strtoupper($roundName) : '',
+                'X' => 'X', // Placeholder
+                '3' => '3', // Placeholder score
+                '1' => '1', // Placeholder score
+            ];
+
+            if ($match) {
+                $replacements['{PLACAR_CASA}'] = $match->home_score ?? 0;
+                $replacements['{PLACAR_FORA}'] = $match->away_score ?? 0;
+                // Add specific placeholders used in editor defaults?
+                // Editor Default: "3x1" text? Or separate score boxes?
+                // Editor Default: "3" and "1" not explicit.
+                // Actually default editor has "3 x 1".
+            }
+
+            // Images
+            // Player Photo
+            $playerPhotoPath = null;
+            if ($player->photo_path) {
+                $p = storage_path('app/public/' . $player->photo_path);
+                if (!file_exists($p))
+                    $p = public_path('storage/' . $player->photo_path);
+                if (file_exists($p))
+                    $playerPhotoPath = $p;
+            }
+            $replacements['player_photo'] = $playerPhotoPath;
+
+            // Team Badges
+            if ($match) {
+                $replacements['team_a'] = $this->getTeamLogoPath($match->homeTeam);
+                $replacements['team_b'] = $this->getTeamLogoPath($match->awayTeam);
+            } elseif ($playerTeam) {
+                $replacements['team_logo'] = $this->getTeamLogoPath($playerTeam);
+                // If template expects team_a for single team?
+            }
+
+            $this->renderDynamicElements($img, $elements, $replacements);
+            return $this->outputImage($img, 'card_' . $category . '_' . $player->id);
+        }
+        // --- DYNAMIC RENDERING END ---
 
         // Cores do Clube
         $primaryColorStr = $club->primary_color ?? '#FFB700';
@@ -958,6 +1069,105 @@ class ArtGeneratorController extends Controller
         } else {
             return imagecolorallocate($img, 255, 255, 255); // White text
         }
+    }
+
+    /**
+     * Renderiza Elementos Dinâmicos Salvos no Editor
+     */
+    private function renderDynamicElements($img, $elements, $replaceMap)
+    {
+        if (!$elements || !is_array($elements))
+            return;
+
+        foreach ($elements as $el) {
+            $x = $el['x'] ?? 0;
+            $y = $el['y'] ?? 0;
+            $width = $el['width'] ?? 0;
+            $height = $el['height'] ?? 0;
+
+            if ($el['type'] === 'text') {
+                $text = $el['content'] ?? '';
+                // Substituições em chaves {}
+                foreach ($replaceMap as $key => $val) {
+                    if (is_string($val) || is_numeric($val)) {
+                        $text = str_replace($key, $val, $text);
+                    }
+                }
+
+                $fontSize = $el['fontSize'] ?? 40;
+                $rgb = $this->hexToRgb($el['color'] ?? '#FFFFFF');
+                $color = imagecolorallocate($img, $rgb['r'], $rgb['g'], $rgb['b']);
+                $fontName = $el['fontFamily'] ?? 'Roboto';
+
+                $fontPath = $this->fontPath;
+                if (file_exists(public_path('assets/fonts/' . $fontName . '.ttf'))) {
+                    $fontPath = public_path('assets/fonts/' . $fontName . '.ttf');
+                } elseif (file_exists(public_path('assets/fonts/' . $fontName))) {
+                    $fontPath = public_path('assets/fonts/' . $fontName);
+                }
+
+                $align = $el['align'] ?? 'left';
+                $box = imagettfbbox($fontSize, 0, $fontPath, $text);
+                $textWidth = abs($box[2] - $box[0]);
+                $textHeight = abs($box[5] - $box[1]);
+
+                $drawX = $x;
+                if ($align === 'center') {
+                    $drawX = $x - ($textWidth / 2);
+                } elseif ($align === 'right') {
+                    $drawX = $x - $textWidth;
+                }
+
+                // Adjust Y (Frontend center -> PHP baseline)
+                // Approximate baseline offset
+                $drawY = $y + ($textHeight / 2.5);
+
+                imagettftext($img, $fontSize, 0, $drawX, $drawY, $color, $fontPath, $text);
+
+            } elseif ($el['type'] === 'image') {
+                $contentKey = $el['content'];
+                $sourceImage = null;
+
+                // Check if mapped resource is available
+                if (isset($replaceMap[$contentKey]) && $replaceMap[$contentKey]) {
+                    $res = $replaceMap[$contentKey];
+                    // If it's a path
+                    if (is_string($res) && file_exists($res)) {
+                        $info = getimagesize($res);
+                        if ($info['mime'] == 'image/png')
+                            $sourceImage = @imagecreatefrompng($res);
+                        else
+                            $sourceImage = @imagecreatefromjpeg($res);
+                    }
+                }
+
+                if ($sourceImage) {
+                    $dstX = $x - ($width / 2);
+                    $dstY = $y - ($height / 2);
+                    imagecopyresampled($img, $sourceImage, $dstX, $dstY, 0, 0, $width, $height, imagesx($sourceImage), imagesy($sourceImage));
+                    imagedestroy($sourceImage);
+                }
+            }
+        }
+    }
+
+    private function getTeamLogoPath($team)
+    {
+        if (!$team || !$team->logo_path)
+            return null;
+
+        $possiblePaths = [
+            storage_path('app/public/' . $team->logo_path),
+            public_path('storage/' . $team->logo_path),
+            public_path('brasoes/' . basename($team->logo_path))
+        ];
+
+        foreach ($possiblePaths as $p) {
+            if (file_exists($p)) {
+                return $p;
+            }
+        }
+        return null;
     }
 
     private function drawCenteredTextInBox($image, $fontSize, $xBox, $yBox, $boxSize, $color, $text)
