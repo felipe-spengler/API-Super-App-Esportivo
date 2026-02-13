@@ -13,7 +13,7 @@ class MatchOperationController extends Controller
     // RETORNA DADOS COMPLETOS PARA A SÚMULA (Players, histórico, sets, etc)
     public function show($id)
     {
-        $match = GameMatch::with(['homeTeam.players', 'awayTeam.players', 'championship.sport', 'events.player'])->findOrFail($id);
+        $match = GameMatch::with(['championship.sport', 'events.player'])->findOrFail($id);
 
         $details = $match->match_details ?? [];
 
@@ -41,6 +41,19 @@ class MatchOperationController extends Controller
             $details['sets'] = [];
         if (!isset($details['positions']))
             $details['positions'] = [];
+
+        // Load players valid for THIS championship
+        // Assuming the relationship user <-> team_players has 'championship_id'
+        $champId = $match->championship_id;
+
+        $match->load([
+            'homeTeam.players' => function ($q) use ($champId) {
+                $q->wherePivot('championship_id', $champId);
+            },
+            'awayTeam.players' => function ($q) use ($champId) {
+                $q->wherePivot('championship_id', $champId);
+            }
+        ]);
 
         // Carregar jogadores reais dos times
         $rosters = [

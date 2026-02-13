@@ -803,7 +803,7 @@ export function AdminMatchManager() {
                                                                 {/* Score */}
                                                                 <div className="flex flex-col items-center">
                                                                     <div className="flex items-center gap-2 md:gap-4 bg-white px-3 md:px-6 py-1.5 md:py-2 rounded-xl border border-gray-200 shadow-sm min-w-[90px] md:min-w-[120px] justify-center">
-                                                                        {match.home_score !== null && match.away_score !== null ? (
+                                                                        {(match.status === 'live' || match.status === 'finished' || match.status === 'ongoing') && match.home_score !== null && match.away_score !== null ? (
                                                                             <>
                                                                                 <span className="text-xl md:text-2xl font-black text-gray-900">
                                                                                     {match.home_score}

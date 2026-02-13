@@ -204,15 +204,21 @@ export function EventStats() {
                             ) : (
                                 <div className="space-y-3">
                                     {selectedStat.details.map((detail: any, idx: number) => (
-                                        <div key={idx} className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 border border-gray-100">
-                                            <div className="bg-white p-2 rounded-md font-bold text-indigo-600 shadow-sm border border-gray-100 min-w-[3rem] text-center text-sm">
-                                                {detail.game_time || detail.minute || "-"}
+                                        <div key={idx} className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 border border-gray-100 mb-2">
+                                            <div className="bg-white p-2 rounded-md font-bold text-indigo-600 shadow-sm border border-gray-100 min-w-[3.5rem] text-center text-sm flex flex-col justify-center">
+                                                <span>{detail.game_time || detail.minute || "-"}</span>
+                                                <span className="text-[9px] font-normal text-gray-400">{detail.period === '1º Tempo' ? '1ºT' : detail.period === '2º Tempo' ? '2ºT' : detail.period}</span>
                                             </div>
                                             <div className="flex-1">
-                                                <p className="text-[10px] text-gray-400 uppercase font-bold mb-0.5">
-                                                    {detail.match_date ? new Date(detail.match_date).toLocaleDateString('pt-BR') : ''} • {detail.period || 'Jogo'} {detail.round ? ` • ${detail.round}` : ''}
+                                                <p className="text-[10px] text-gray-500 font-bold uppercase mb-0.5 tracking-wider">
+                                                    {detail.phase ? <span className="text-indigo-600">{detail.phase}</span> : null}
+                                                    {detail.phase && detail.round ? ' • ' : ''}
+                                                    {detail.round ? <span>{detail.round}</span> : null}
                                                 </p>
-                                                <p className="font-medium text-gray-800 text-sm">{detail.match_label || 'Partida'}</p>
+                                                <p className="font-bold text-gray-800 text-sm leading-tight">{detail.match_label || 'Partida'}</p>
+                                                <p className="text-[10px] text-gray-400 mt-0.5">
+                                                    {detail.match_date ? new Date(detail.match_date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}
+                                                </p>
                                             </div>
                                         </div>
                                     ))}
@@ -221,7 +227,8 @@ export function EventStats() {
                         </div>
                     </div>
                 </div>
-            )}
-        </div>
+            )
+            }
+        </div >
     );
 }

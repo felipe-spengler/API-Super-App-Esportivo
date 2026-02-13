@@ -435,6 +435,7 @@ class EventController extends Controller
                     'period' => $event->period,
                     'match_date' => $event->gameMatch->start_time,
                     'round' => $event->gameMatch->round_name ?? $event->gameMatch->round_number ?? null,
+                    'phase' => $event->gameMatch->phase ?? null,
                 ];
             }
         }
@@ -622,7 +623,17 @@ class EventController extends Controller
     // 11. Detalhes da Partida (Público - para Modal Ao Vivo/Súmula)
     public function matchDetails($id)
     {
-        $match = GameMatch::with(['homeTeam.players', 'awayTeam.players', 'championship.sport', 'events.player', 'mvp'])->findOrFail($id);
+        $match = GameMatch::with(['championship.sport', 'events.player', 'mvp'])->findOrFail($id);
+
+        $champId = $match->championship_id;
+        $match->load([
+            'homeTeam.players' => function ($q) use ($champId) {
+                $q->wherePivot('championship_id', $champId);
+            },
+            'awayTeam.players' => function ($q) use ($champId) {
+                $q->wherePivot('championship_id', $champId);
+            }
+        ]);
 
         $details = $match->match_details ?? [];
 
