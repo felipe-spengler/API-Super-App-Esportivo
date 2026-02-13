@@ -394,8 +394,8 @@ class ArtGeneratorController extends Controller
                 'X' => 'X',
                 'DD/MM HH:MM' => \Carbon\Carbon::parse($match->start_time)->translatedFormat('d/m H:i'),
                 'Local da Partida' => mb_strtoupper($match->location ?? 'LOCAL A DEFINIR'),
-                '{TIME_CASA}' => mb_strtoupper($match->homeTeam->name),
-                '{TIME_FORA}' => mb_strtoupper($match->awayTeam->name),
+                '{TC}' => mb_strtoupper($match->homeTeam->name),
+                '{TF}' => mb_strtoupper($match->awayTeam->name),
             ];
 
             // Images
@@ -568,10 +568,10 @@ class ArtGeneratorController extends Controller
                 'X' => 'X',
                 'DD/MM HH:MM' => \Carbon\Carbon::parse($match->start_time)->translatedFormat('d/m H:i'),
                 'Local da Partida' => mb_strtoupper($match->location ?? 'LOCAL A DEFINIR'),
-                '{PLACAR_CASA}' => $match->home_score ?? 0,
-                '{PLACAR_FORA}' => $match->away_score ?? 0,
-                '{TIME_CASA}' => mb_strtoupper($match->homeTeam->name),
-                '{TIME_FORA}' => mb_strtoupper($match->awayTeam->name),
+                '{PC}' => $match->home_score ?? 0,
+                '{PF}' => $match->away_score ?? 0,
+                '{TC}' => mb_strtoupper($match->homeTeam->name),
+                '{TF}' => mb_strtoupper($match->awayTeam->name),
             ];
 
             // Images
@@ -1447,9 +1447,9 @@ class ArtGeneratorController extends Controller
                     if ($id === 'player_name')
                         $text = '{JOGADOR}';
                     elseif ($id === 'score_home')
-                        $text = '{PLACAR_CASA}';
+                        $text = '{PC}';
                     elseif ($id === 'score_away')
-                        $text = '{PLACAR_FORA}';
+                        $text = '{PF}';
                     elseif ($id === 'championship')
                         $text = '{CAMPEONATO}';
                     elseif ($id === 'round')
@@ -1460,13 +1460,17 @@ class ArtGeneratorController extends Controller
                         $text = 'DD/MM HH:MM';
                     elseif ($id === 'vs')
                         $text = 'X';
+                    elseif ($id === 'team_name_a')
+                        $text = '{TC}';
+                    elseif ($id === 'team_name_b') // Fix ID name
+                        $text = '{TF}';
                 }
                 // -------------------------------------
 
                 // Substituições em chaves {}
-                foreach ($replaceMap as $key => $val) {
+                foreach ($replaceMap as $k => $val) {
                     if (is_string($val) || is_numeric($val)) {
-                        $text = str_replace($key, $val, $text);
+                        $text = str_replace($k, $val, $text);
                     }
                 }
 
@@ -1476,8 +1480,13 @@ class ArtGeneratorController extends Controller
                 $fontName = $el['fontFamily'] ?? 'Roboto';
 
                 $fontPath = $this->fontPath;
-                if (file_exists(public_path('assets/fonts/' . $fontName . '.ttf'))) {
-                    $fontPath = public_path('assets/fonts/' . $fontName . '.ttf');
+                // Clean font name
+                $fontNameClean = str_replace('.ttf', '', $fontName);
+
+                if (file_exists(public_path('assets/fonts/' . $fontNameClean . '.ttf'))) {
+                    $fontPath = public_path('assets/fonts/' . $fontNameClean . '.ttf');
+                } elseif (file_exists(public_path('assets/fonts/' . $fontNameClean . '-Regular.ttf'))) {
+                    $fontPath = public_path('assets/fonts/' . $fontNameClean . '-Regular.ttf');
                 } elseif (file_exists(public_path('assets/fonts/' . $fontName))) {
                     $fontPath = public_path('assets/fonts/' . $fontName);
                 }
@@ -1703,8 +1712,8 @@ class ArtGeneratorController extends Controller
                     ["id" => "date", "type" => "text", "x" => 540, "y" => 1740, "fontSize" => 60, "color" => "#FFB700", "align" => "center", "label" => "Data", "zIndex" => 2, "content" => "DD/MM HH:MM", "fontFamily" => "Roboto"],
                     ["id" => "local", "type" => "text", "x" => 543, "y" => 1800, "fontSize" => 35, "color" => "#ffffff", "align" => "center", "label" => "Local", "zIndex" => 2, "content" => "Local da Partida", "fontFamily" => "Roboto"],
                     // New Team Names
-                    ["id" => "team_name_a", "type" => "text", "x" => 250, "y" => 1300, "fontSize" => 35, "color" => "#FFFFFF", "align" => "center", "label" => "Nome Mandante", "zIndex" => 2, "content" => "{TIME_CASA}", "fontFamily" => "Roboto"],
-                    ["id" => "team_name_b", "type" => "text", "x" => 830, "y" => 1300, "fontSize" => 35, "color" => "#FFFFFF", "align" => "center", "label" => "Nome Visitante", "zIndex" => 2, "content" => "{TIME_FORA}", "fontFamily" => "Roboto"]
+                    ["id" => "team_name_a", "type" => "text", "x" => 250, "y" => 1300, "fontSize" => 35, "color" => "#FFFFFF", "align" => "center", "label" => "Nome Mandante", "zIndex" => 2, "content" => "{TC}", "fontFamily" => "Roboto"],
+                    ["id" => "team_name_b", "type" => "text", "x" => 830, "y" => 1300, "fontSize" => 35, "color" => "#FFFFFF", "align" => "center", "label" => "Nome Visitante", "zIndex" => 2, "content" => "{TF}", "fontFamily" => "Roboto"]
                 ],
                 "canvas" => ["width" => 1080, "height" => 1920],
                 "bg_url" => null, // Let the system resolve based on sport
@@ -1742,8 +1751,8 @@ class ArtGeneratorController extends Controller
 
                     ["id" => "vs", "type" => "text", "x" => 540, "y" => 900, "fontSize" => 80, "color" => "#FFB700", "align" => "center", "label" => "X (Versus)", "zIndex" => 2, "content" => "X", "fontFamily" => "Roboto-Bold"],
 
-                    ["id" => "score_home", "type" => "text", "x" => 250, "y" => 1150, "fontSize" => 100, "color" => "#FFFFFF", "align" => "center", "label" => "Placar Casa", "zIndex" => 3, "content" => "{PLACAR_CASA}", "fontFamily" => "Roboto-Bold"],
-                    ["id" => "score_away", "type" => "text", "x" => 830, "y" => 1150, "fontSize" => 100, "color" => "#FFFFFF", "align" => "center", "label" => "Placar Visitante", "zIndex" => 3, "content" => "{PLACAR_FORA}", "fontFamily" => "Roboto-Bold"],
+                    ["id" => "score_home", "type" => "text", "x" => 250, "y" => 1150, "fontSize" => 100, "color" => "#FFFFFF", "align" => "center", "label" => "Placar Casa", "zIndex" => 3, "content" => "{PC}", "fontFamily" => "Roboto-Bold"],
+                    ["id" => "score_away", "type" => "text", "x" => 830, "y" => 1150, "fontSize" => 100, "color" => "#FFFFFF", "align" => "center", "label" => "Placar Visitante", "zIndex" => 3, "content" => "{PF}", "fontFamily" => "Roboto-Bold"],
 
                     // Scorers Placeholders - The Backend will inject the complex list here
                     ["id" => "scorers_home", "type" => "text", "x" => 250, "y" => 1300, "fontSize" => 30, "color" => "#FFFFFF", "align" => "center", "label" => "Gols Mandante", "zIndex" => 2, "content" => "{LISTA_GOLS_CASA}", "fontFamily" => "Roboto"],
