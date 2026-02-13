@@ -69,6 +69,39 @@ export function ArtEditor() {
         return null;
     };
 
+    const loadDefaults = (name: string) => {
+        setBgImage(getDefaultBg(name));
+
+        if (name === 'Craque do Jogo') {
+            setElements(DEFAULT_ELEMENTS);
+        } else if (name === 'Jogo Programado') {
+            setElements([
+                { id: 'championship', type: 'text', x: 540, y: 250, fontSize: 45, color: '#FFFFFF', align: 'center', label: 'Campeonato', zIndex: 2, content: '{CAMPEONATO}', fontFamily: 'Roboto' },
+                { id: 'team_a', type: 'image', x: 250, y: 800, width: 400, height: 400, label: 'Brasão Mandante', zIndex: 2, content: 'team_a' },
+                { id: 'team_b', type: 'image', x: 830, y: 800, width: 400, height: 400, label: 'Brasão Visitante', zIndex: 2, content: 'team_b' },
+                { id: 'vs', type: 'text', x: 540, y: 1000, fontSize: 80, color: '#FFB700', align: 'center', label: 'X (Versus)', zIndex: 2, content: 'X', fontFamily: 'Roboto-Bold' },
+                { id: 'date', type: 'text', x: 540, y: 1500, fontSize: 50, color: '#FFB700', align: 'center', label: 'Data', zIndex: 2, content: 'DD/MM HH:MM', fontFamily: 'Roboto' },
+                { id: 'local', type: 'text', x: 540, y: 1600, fontSize: 35, color: '#FFFFFF', align: 'center', label: 'Local', zIndex: 2, content: 'Local da Partida', fontFamily: 'Roboto' },
+            ]);
+        } else if (name === 'Confronto') {
+            setElements([
+                { id: 'bg', type: 'image', x: 540, y: 960, width: 1080, height: 1920, label: 'Background', zIndex: 0, content: 'bg_confronto' },
+                { id: 'championship', type: 'text', x: 540, y: 250, fontSize: 45, color: '#FFFFFF', align: 'center', label: 'Campeonato', zIndex: 2, content: '{CAMPEONATO}', fontFamily: 'Roboto' },
+                { id: 'team_a', type: 'image', x: 250, y: 800, width: 400, height: 400, label: 'Brasão Mandante', zIndex: 2, content: 'team_a' },
+                { id: 'team_b', type: 'image', x: 830, y: 800, width: 400, height: 400, label: 'Brasão Visitante', zIndex: 2, content: 'team_b' },
+
+                { id: 'score_home', type: 'text', x: 400, y: 1000, fontSize: 150, color: '#FFB700', align: 'center', label: 'Placar Casa', zIndex: 3, content: '{PLACAR_CASA}', fontFamily: 'Roboto-Bold' },
+                { id: 'vs', type: 'text', x: 540, y: 1000, fontSize: 80, color: '#FFFFFF', align: 'center', label: 'X (Versus)', zIndex: 2, content: 'X', fontFamily: 'Roboto' },
+                { id: 'score_away', type: 'text', x: 680, y: 1000, fontSize: 150, color: '#FFB700', align: 'center', label: 'Placar Visitante', zIndex: 3, content: '{PLACAR_FORA}', fontFamily: 'Roboto-Bold' },
+
+                { id: 'date', type: 'text', x: 540, y: 1500, fontSize: 50, color: '#FFB700', align: 'center', label: 'Data', zIndex: 2, content: 'DD/MM HH:MM', fontFamily: 'Roboto' },
+                { id: 'local', type: 'text', x: 540, y: 1600, fontSize: 35, color: '#FFFFFF', align: 'center', label: 'Local', zIndex: 2, content: 'Local da Partida', fontFamily: 'Roboto' },
+            ]);
+        } else {
+            setElements([]);
+        }
+    };
+
     const loadTemplate = async () => {
         setLoading(true);
         try {
@@ -78,42 +111,20 @@ export function ArtEditor() {
                 setElements(res.data.elements);
                 setBgImage(res.data.bg_url || getDefaultBg(templateName));
             } else {
-                // Load Defaults based on Type
-                setBgImage(getDefaultBg(templateName));
-
-                if (templateName === 'Craque do Jogo') {
-                    setElements(DEFAULT_ELEMENTS);
-                } else if (templateName === 'Jogo Programado') {
-                    setElements([
-                        { id: 'championship', type: 'text', x: 540, y: 250, fontSize: 45, color: '#FFFFFF', align: 'center', label: 'Campeonato', zIndex: 2, content: '{CAMPEONATO}', fontFamily: 'Roboto' },
-                        { id: 'team_a', type: 'image', x: 250, y: 800, width: 400, height: 400, label: 'Brasão Mandante', zIndex: 2, content: 'team_a' },
-                        { id: 'team_b', type: 'image', x: 830, y: 800, width: 400, height: 400, label: 'Brasão Visitante', zIndex: 2, content: 'team_b' },
-                        { id: 'vs', type: 'text', x: 540, y: 1000, fontSize: 80, color: '#FFB700', align: 'center', label: 'X (Versus)', zIndex: 2, content: 'X', fontFamily: 'Roboto-Bold' },
-                        { id: 'date', type: 'text', x: 540, y: 1500, fontSize: 50, color: '#FFB700', align: 'center', label: 'Data', zIndex: 2, content: 'DD/MM HH:MM', fontFamily: 'Roboto' },
-                        { id: 'local', type: 'text', x: 540, y: 1600, fontSize: 35, color: '#FFFFFF', align: 'center', label: 'Local', zIndex: 2, content: 'Local da Partida', fontFamily: 'Roboto' },
-                    ]);
-                } else if (templateName === 'Confronto') {
-                    setElements([
-                        { id: 'bg', type: 'image', x: 540, y: 960, width: 1080, height: 1920, label: 'Background', zIndex: 0, content: 'bg_confronto' },
-                        { id: 'championship', type: 'text', x: 540, y: 250, fontSize: 45, color: '#FFFFFF', align: 'center', label: 'Campeonato', zIndex: 2, content: '{CAMPEONATO}', fontFamily: 'Roboto' },
-                        { id: 'team_a', type: 'image', x: 250, y: 800, width: 400, height: 400, label: 'Brasão Mandante', zIndex: 2, content: 'team_a' },
-                        { id: 'team_b', type: 'image', x: 830, y: 800, width: 400, height: 400, label: 'Brasão Visitante', zIndex: 2, content: 'team_b' },
-
-                        { id: 'score_home', type: 'text', x: 400, y: 1000, fontSize: 150, color: '#FFB700', align: 'center', label: 'Placar Casa', zIndex: 3, content: '{PLACAR_CASA}', fontFamily: 'Roboto-Bold' },
-                        { id: 'vs', type: 'text', x: 540, y: 1000, fontSize: 80, color: '#FFFFFF', align: 'center', label: 'X (Versus)', zIndex: 2, content: 'X', fontFamily: 'Roboto' },
-                        { id: 'score_away', type: 'text', x: 680, y: 1000, fontSize: 150, color: '#FFB700', align: 'center', label: 'Placar Visitante', zIndex: 3, content: '{PLACAR_FORA}', fontFamily: 'Roboto-Bold' },
-
-                        { id: 'date', type: 'text', x: 540, y: 1500, fontSize: 50, color: '#FFB700', align: 'center', label: 'Data', zIndex: 2, content: 'DD/MM HH:MM', fontFamily: 'Roboto' },
-                        { id: 'local', type: 'text', x: 540, y: 1600, fontSize: 35, color: '#FFFFFF', align: 'center', label: 'Local', zIndex: 2, content: 'Local da Partida', fontFamily: 'Roboto' },
-                    ]);
-                } else {
-                    setElements([]);
-                }
+                loadDefaults(templateName);
             }
         } catch (error) {
             console.error("Erro ao carregar template", error);
+            loadDefaults(templateName);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const resetTemplate = () => {
+        if (confirm('Tem certeza que deseja restaurar o padrão? Suas alterações não salvas serão perdidas.')) {
+            loadDefaults(templateName);
+            toast.success('Padrão restaurado!');
         }
     };
 
@@ -385,6 +396,12 @@ export function ArtEditor() {
                 </div>
 
                 <div className="p-4 border-t border-gray-200 shrink-0 bg-white z-10">
+                    <button
+                        onClick={resetTemplate}
+                        className="w-full py-2 mb-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all active:scale-95 text-xs"
+                    >
+                        <Trash2 size={16} /> Restaurar Padrão
+                    </button>
                     <button
                         onClick={saveTemplate}
                         disabled={loading}
