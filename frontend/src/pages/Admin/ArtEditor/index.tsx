@@ -32,7 +32,12 @@ const DEFAULT_ELEMENTS: Element[] = [
     { id: 'player_name', type: 'text', x: 540, y: 1230, fontSize: 75, color: '#FFB700', align: 'center', label: 'Nome do Jogador', zIndex: 2, content: '{JOGADOR}', fontFamily: 'Roboto' },
     { id: 'team_badge_a', type: 'image', x: 265, y: 1255, width: 150, height: 150, label: 'Brasão Mandante', zIndex: 2, content: 'team_a' },
     { id: 'team_badge_b', type: 'image', x: 665, y: 1255, width: 150, height: 150, label: 'Brasão Visitante', zIndex: 2, content: 'team_b' },
-    { id: 'score', type: 'text', x: 540, y: 1535, fontSize: 100, color: '#000000', align: 'center', label: 'Placar', zIndex: 3, content: '3  X  1' },
+
+    // Placar Separado
+    { id: 'score_home', type: 'text', x: 450, y: 1535, fontSize: 100, color: '#000000', align: 'center', label: 'Placar Casa', zIndex: 3, content: '{PLACAR_CASA}', fontFamily: 'Roboto-Bold' },
+    { id: 'score_x', type: 'text', x: 540, y: 1535, fontSize: 60, color: '#000000', align: 'center', label: 'X (Divisor)', zIndex: 3, content: 'X', fontFamily: 'Roboto' },
+    { id: 'score_away', type: 'text', x: 630, y: 1535, fontSize: 100, color: '#000000', align: 'center', label: 'Placar Visitante', zIndex: 3, content: '{PLACAR_FORA}', fontFamily: 'Roboto-Bold' },
+
     { id: 'championship', type: 'text', x: 540, y: 1690, fontSize: 40, color: '#FFFFFF', align: 'center', label: 'Nome Campeonato', zIndex: 2, content: '{CAMPEONATO}' },
     { id: 'round', type: 'text', x: 540, y: 1750, fontSize: 30, color: '#FFFFFF', align: 'center', label: 'Rodada/Fase', zIndex: 2, content: '{RODADA}' },
 ];
@@ -84,6 +89,20 @@ export function ArtEditor() {
                         { id: 'team_a', type: 'image', x: 250, y: 800, width: 400, height: 400, label: 'Brasão Mandante', zIndex: 2, content: 'team_a' },
                         { id: 'team_b', type: 'image', x: 830, y: 800, width: 400, height: 400, label: 'Brasão Visitante', zIndex: 2, content: 'team_b' },
                         { id: 'vs', type: 'text', x: 540, y: 1000, fontSize: 80, color: '#FFB700', align: 'center', label: 'X (Versus)', zIndex: 2, content: 'X', fontFamily: 'Roboto-Bold' },
+                        { id: 'date', type: 'text', x: 540, y: 1500, fontSize: 50, color: '#FFB700', align: 'center', label: 'Data', zIndex: 2, content: 'DD/MM HH:MM', fontFamily: 'Roboto' },
+                        { id: 'local', type: 'text', x: 540, y: 1600, fontSize: 35, color: '#FFFFFF', align: 'center', label: 'Local', zIndex: 2, content: 'Local da Partida', fontFamily: 'Roboto' },
+                    ]);
+                } else if (templateName === 'Confronto') {
+                    setElements([
+                        { id: 'bg', type: 'image', x: 540, y: 960, width: 1080, height: 1920, label: 'Background', zIndex: 0, content: 'bg_confronto' },
+                        { id: 'championship', type: 'text', x: 540, y: 250, fontSize: 45, color: '#FFFFFF', align: 'center', label: 'Campeonato', zIndex: 2, content: '{CAMPEONATO}', fontFamily: 'Roboto' },
+                        { id: 'team_a', type: 'image', x: 250, y: 800, width: 400, height: 400, label: 'Brasão Mandante', zIndex: 2, content: 'team_a' },
+                        { id: 'team_b', type: 'image', x: 830, y: 800, width: 400, height: 400, label: 'Brasão Visitante', zIndex: 2, content: 'team_b' },
+
+                        { id: 'score_home', type: 'text', x: 400, y: 1000, fontSize: 150, color: '#FFB700', align: 'center', label: 'Placar Casa', zIndex: 3, content: '{PLACAR_CASA}', fontFamily: 'Roboto-Bold' },
+                        { id: 'vs', type: 'text', x: 540, y: 1000, fontSize: 80, color: '#FFFFFF', align: 'center', label: 'X (Versus)', zIndex: 2, content: 'X', fontFamily: 'Roboto' },
+                        { id: 'score_away', type: 'text', x: 680, y: 1000, fontSize: 150, color: '#FFB700', align: 'center', label: 'Placar Visitante', zIndex: 3, content: '{PLACAR_FORA}', fontFamily: 'Roboto-Bold' },
+
                         { id: 'date', type: 'text', x: 540, y: 1500, fontSize: 50, color: '#FFB700', align: 'center', label: 'Data', zIndex: 2, content: 'DD/MM HH:MM', fontFamily: 'Roboto' },
                         { id: 'local', type: 'text', x: 540, y: 1600, fontSize: 35, color: '#FFFFFF', align: 'center', label: 'Local', zIndex: 2, content: 'Local da Partida', fontFamily: 'Roboto' },
                     ]);
