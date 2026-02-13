@@ -108,15 +108,21 @@ export function ArtEditor() {
 
     const loadTemplate = async () => {
         setLoading(true);
+        console.log(`Frontend: Loading Template [${templateName}] for Sport [${selectedSport}]`);
         try {
             const res = await api.get('/admin/art-templates', { params: { name: templateName, sport: selectedSport } });
+            console.log('Frontend: API Response', res.data);
 
             if (res.data && res.data.elements) {
                 setElements(res.data.elements);
                 // Priority: Saved BG -> Preview/Dynamic BG -> Default BG
+                const bgToUse = res.data.bg_url || res.data.preview_bg_url || getDefaultBg(templateName);
+                console.log('Frontend: Resolved BG to use:', bgToUse);
+
                 setPersistedBgUrl(res.data.bg_url || null);
-                setBgImage(res.data.bg_url || res.data.preview_bg_url || getDefaultBg(templateName));
+                setBgImage(bgToUse);
             } else {
+                console.warn('Frontend: No data found, loading defaults');
                 loadDefaults(templateName);
             }
         } catch (error) {
@@ -139,10 +145,6 @@ export function ArtEditor() {
     };
 
 
-
-    // We will use a ref driven approach for updates to avoid re-renders on every pixel drag if possible,
-    // or just let it re-render.
-
     const saveTemplate = async () => {
         setLoading(true);
         try {
@@ -161,8 +163,112 @@ export function ArtEditor() {
         }
     };
 
-
     const activeElement = elements.find(el => el.id === activeElementId);
+
+    // --- MODAL EDITOR COMPONENTS ---
+    const CanvasRenderer = ({ scale = 1, interactable = false }) => (
+        <div
+            className="bg-white shadow-2xl relative overflow-hidden select-none shrink-0"
+            style={{
+                width: CANVAS_WIDTH * scale,
+                height: CANVAS_HEIGHT * scale,
+                transformOrigin: 'top left',
+            }}
+            onClick={e => interactable && e.stopPropagation()}
+        >
+            {/* Background Layer */}
+            <div className="absolute inset-0 bg-gray-300 flex items-center justify-center text-gray-400">
+                {bgImage ? (
+                    <img src={bgImage} className="w-full h-full object-cover" />
+                ) : (
+                    <div className="text-center font-bold opacity-30 text-2xl">
+                        BACKGROUND PADRÃO
+                    </div>
+                )}
+            </div>
+
+            {/* Rendering Elements */}
+            {elements.sort((a, b) => a.zIndex - b.zIndex).map(el => (
+                interactable ? (
+                    <motion.div
+                        drag
+                        dragMomentum={false}
+                        key={el.id}
+                        onDragEnd={(_, info) => {
+                            const deltaX = info.offset.x / scale;
+                            const deltaY = info.offset.y / scale;
+                            handleElementChange(el.id, { x: Math.round(el.x + deltaX), y: Math.round(el.y + deltaY) });
+                        }}
+                        onClick={(e) => { e.stopPropagation(); setActiveElementId(el.id); }}
+                        className={`absolute hover:outline hover:outline-2 hover:outline-blue-400 ${activeElementId === el.id ? 'outline outline-2 outline-blue-600 z-[100]' : ''}`}
+                        style={{
+                            left: el.x * scale,
+                            top: el.y * scale,
+                            width: el.width ? el.width * scale : 'auto',
+                            height: el.height ? el.height * scale : 'auto',
+                            fontSize: el.fontSize ? el.fontSize * scale : undefined,
+                            color: el.color,
+                            fontFamily: el.fontFamily || 'Arial',
+                            textAlign: el.align || 'left',
+                            transform: el.type === 'text'
+                                ? `translate(${el.align === 'left' ? '0' : el.align === 'right' ? '-100%' : '-50%'}, -50%)`
+                                : 'translate(-50%, -50%)',
+                            whiteSpace: 'pre',
+                            lineHeight: 1,
+                            cursor: 'move'
+                        }}
+                    >
+                        {el.type === 'image' ? (
+                            <div className="w-full h-full bg-gray-200/50 border border-gray-400/30 flex items-center justify-center relative overflow-hidden"
+                                style={{ borderRadius: (el.borderRadius || 0) * scale }}
+                            >
+                                {el.content === 'player_photo' ? <img src="https://ui-avatars.com/api/?name=Jogador&background=random&size=512" className="w-full h-full object-cover" /> :
+                                    el.content?.includes('team') ? <div className="text-[10px] font-bold">Logo</div> : null}
+                            </div>
+                        ) : (
+                            <span>{el.content}</span>
+                        )}
+                        {/* Label only in main editor not modal to keep clean? Or keep it. */}
+                        <div className="absolute -top-6 left-0 bg-blue-600 text-white text-[8px] px-1 rounded opacity-0 hover:opacity-100 whitespace-nowrap pointer-events-none">
+                            {el.label} (X:{el.x}, Y:{el.y})
+                        </div>
+                    </motion.div>
+                ) : (
+                    <div
+                        key={el.id}
+                        style={{
+                            position: 'absolute',
+                            left: el.x * scale,
+                            top: el.y * scale,
+                            width: el.width ? el.width * scale : undefined,
+                            height: el.height ? el.height * scale : undefined,
+                            fontSize: el.fontSize ? el.fontSize * scale : undefined,
+                            color: el.color,
+                            fontFamily: el.fontFamily || 'Arial',
+                            textAlign: el.align || 'left',
+                            transform: el.type === 'text'
+                                ? `translate(${el.align === 'left' ? '0' : el.align === 'right' ? '-100%' : '-50%'}, -50%)`
+                                : 'translate(-50%, -50%)',
+                            whiteSpace: 'pre',
+                            lineHeight: 1,
+                            zIndex: el.zIndex,
+                        }}
+                    >
+                        {el.type === 'image' ? (
+                            <div className="w-full h-full bg-gray-200/50 flex items-center justify-center overflow-hidden"
+                                style={{ borderRadius: (el.borderRadius || 0) * scale }}
+                            >
+                                {el.content === 'player_photo' ? <img src="https://ui-avatars.com/api/?name=Jogador&background=random&size=512" className="w-full h-full object-cover" /> : null}
+                                {el.content?.includes('team') ? <div className="text-sm font-bold opacity-50">Logo</div> : null}
+                            </div>
+                        ) : (
+                            <span>{el.content}</span>
+                        )}
+                    </div>
+                )
+            ))}
+        </div>
+    );
 
     return (
         <div className="flex h-[calc(100vh-64px)] bg-gray-100 overflow-hidden">
@@ -185,8 +291,10 @@ export function ArtEditor() {
                 @font-face { font-family: 'Source Sans 3'; src: url('${api.defaults.baseURL}/assets-fonts/Source Sans 3.ttf'); font-display: block; }
                 @font-face { font-family: 'Teko'; src: url('${api.defaults.baseURL}/assets-fonts/Teko.ttf'); font-display: block; }
             `}</style>
+
             {/* Sidebar Controls */}
-            <div className="w-80 bg-white border-r border-gray-200 flex flex-col z-20 shadow-xl overflow-hidden">
+            <div className="w-80 bg-white border-r border-gray-200 flex flex-col z-20 shadow-xl overflow-hidden shrink-0 h-full">
+                {/* ... Sidebar content identical to before ... */}
                 <div className="p-4 border-b border-gray-100 shrink-0">
                     <h2 className="font-bold text-gray-800 flex items-center gap-2">
                         <Layout className="w-5 h-5 text-indigo-600" /> Editor de Artes
@@ -231,14 +339,17 @@ export function ArtEditor() {
                                     <option value="handebol">Handebol</option>
                                 </select>
 
-
-                                {bgImage && <img src={bgImage} className="w-full h-24 object-cover rounded border mt-2" />}
+                                {/* Preview Image Check */}
+                                <div className="mt-2 p-2 border border-gray-100 rounded bg-gray-50 text-[10px] text-gray-500 break-words">
+                                    <strong>Debug BG:</strong> {bgImage ? bgImage.split('/').pop() : 'Nenhum'}
+                                </div>
                             </div>
                         )}
                     </div>
 
                     {/* Elements List */}
                     <div className="border-b border-gray-100">
+                        {/* ... Same Elements List Logic ... */}
                         <button
                             className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
                             onClick={() => setShowElements(!showElements)}
@@ -247,7 +358,6 @@ export function ArtEditor() {
                             <div className="flex items-center gap-2">
                                 <span className="p-1 hover:bg-indigo-50 rounded text-indigo-600 cursor-pointer" onClick={(e) => {
                                     e.stopPropagation();
-                                    // Add logic if needed
                                 }}><Plus size={14} /></span>
                                 {showElements ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                             </div>
@@ -276,6 +386,7 @@ export function ArtEditor() {
                     {/* Properties Section (Sticky or at bottom if active) */}
                     {activeElement && (
                         <div className="border-b border-gray-100 bg-gray-50/50">
+                            {/* ... Same Properties Logic ... */}
                             <button
                                 className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-100 transition-colors"
                                 onClick={() => setShowProps(!showProps)}
@@ -313,7 +424,7 @@ export function ArtEditor() {
                                                 className="w-full p-1 border rounded text-xs font-mono"
                                             />
                                         </div>
-
+                                        {/* ... (Properties Inputs Continued) ... */}
                                         {activeElement.type === 'text' && (
                                             <>
                                                 <div className="col-span-1">
@@ -336,6 +447,7 @@ export function ArtEditor() {
                                                         />
                                                     </div>
                                                 </div>
+
                                                 <div className="col-span-2">
                                                     <label className="text-[9px] text-gray-700 font-bold block mb-0.5">Fonte</label>
                                                     <select
@@ -362,6 +474,7 @@ export function ArtEditor() {
                                                         <option value="Teko">Teko</option>
                                                     </select>
                                                 </div>
+
                                                 <div className="col-span-2">
                                                     <label className="text-[9px] text-gray-700 font-bold block mb-0.5">Alinhamento</label>
                                                     <div className="flex border rounded overflow-hidden">
@@ -376,6 +489,7 @@ export function ArtEditor() {
                                                         ))}
                                                     </div>
                                                 </div>
+
                                                 <div className="col-span-2">
                                                     <label className="text-[9px] text-gray-700 font-bold block mb-0.5">Conteúdo</label>
                                                     <input
@@ -387,7 +501,6 @@ export function ArtEditor() {
                                                 </div>
                                             </>
                                         )}
-
                                         {activeElement.type === 'image' && (
                                             <>
                                                 <div className="col-span-1">
@@ -446,88 +559,17 @@ export function ArtEditor() {
                 {/* Scale controls */}
                 <div className="absolute top-4 right-4 bg-white/80 backdrop-blur rounded-lg p-2 shadow-sm flex items-center gap-2 z-10">
                     <Monitor size={16} className="text-gray-500" />
-                    <span className="text-xs font-bold text-gray-600">Visualização</span>
+                    <span className="text-xs font-bold text-gray-600">Miniatura Interativa ({Math.round(SCALE * 100)}%)</span>
                 </div>
 
-                <div
-                    className="bg-white shadow-2xl relative overflow-hidden select-none"
-                    style={{
-                        width: CANVAS_WIDTH * SCALE,
-                        height: CANVAS_HEIGHT * SCALE,
-                        transformOrigin: 'center',
-                    }}
-                >
-                    {/* Background Layer */}
-                    <div className="absolute inset-0 bg-gray-300 flex items-center justify-center text-gray-400">
-                        {bgImage ? (
-                            <img src={bgImage} className="w-full h-full object-cover" />
-                        ) : (
-                            <div className="text-center font-bold opacity-30">
-                                BACKGROUND PADRÃO<br />(Visualização)
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Rendering Elements */}
-                    {elements.sort((a, b) => a.zIndex - b.zIndex).map(el => (
-                        <motion.div
-                            drag
-                            dragMomentum={false}
-                            key={el.id}
-                            onDragEnd={(_, info) => {
-                                // Calculate new position based on drag delta relative to current scaled canvas
-                                // This is tricky with scale. A simpler approach is to rely on visual drag for simple moves
-                                // and assume user fine tunes with inputs. 
-                                // Proper implementation would calculate bounding client rects.
-                                // For MVP fast dev, let's update state with an approx delta.
-                                const deltaX = info.offset.x / SCALE;
-                                const deltaY = info.offset.y / SCALE;
-                                handleElementChange(el.id, { x: Math.round(el.x + deltaX), y: Math.round(el.y + deltaY) });
-                            }}
-                            onClick={(e) => { e.stopPropagation(); setActiveElementId(el.id); }}
-                            className={`absolute hover:outline hover:outline-2 hover:outline-blue-400 ${activeElementId === el.id ? 'outline outline-2 outline-blue-600 z-[100]' : ''}`}
-                            style={{
-                                left: el.x * SCALE,
-                                top: el.y * SCALE,
-                                width: el.width ? el.width * SCALE : 'auto',
-                                height: el.height ? el.height * SCALE : 'auto',
-                                fontSize: el.fontSize ? el.fontSize * SCALE : undefined,
-                                color: el.color,
-                                fontFamily: el.fontFamily || 'Arial',
-                                textAlign: el.align || 'left',
-                                transform: el.type === 'text'
-                                    ? `translate(${el.align === 'left' ? '0' : el.align === 'right' ? '-100%' : '-50%'}, -50%)`
-                                    : 'translate(-50%, -50%)',
-                                whiteSpace: 'pre',
-                                lineHeight: 1,
-                                cursor: 'move'
-                            }}
-                        >
-                            {el.type === 'image' ? (
-                                <div className="w-full h-full bg-gray-200/50 border border-gray-400/30 flex items-center justify-center relative overflow-hidden"
-                                    style={{ borderRadius: (el.borderRadius || 0) * SCALE }}
-                                >
-                                    {el.content === 'player_photo' ? <img src="https://ui-avatars.com/api/?name=Jogador&background=random&size=512" className="w-full h-full object-cover" /> :
-                                        el.content?.includes('team') ? <div className="text-[10px] font-bold">Logo</div> : null}
-                                </div>
-                            ) : (
-                                <span>{el.content}</span>
-                            )}
-
-                            {/* Visual Label on Hover */}
-                            <div className="absolute -top-6 left-0 bg-blue-600 text-white text-[8px] px-1 rounded opacity-0 hover:opacity-100 whitespace-nowrap pointer-events-none">
-                                {el.label} (X:{el.x}, Y:{el.y})
-                            </div>
-                        </motion.div>
-                    ))}
-
-                    {/* Grid/Guides could go here */}
-                </div>
+                {/* Rendering Canvas with React */}
+                <CanvasRenderer scale={SCALE} interactable={true} />
             </div>
 
             {/* Shortcuts / Help */}
             {showHelp && (
                 <div className="absolute bottom-4 right-4 bg-white p-4 rounded-xl shadow-lg border border-gray-100 max-w-xs z-20">
+                    {/* ... same help ... */}
                     <button
                         onClick={() => setShowHelp(false)}
                         className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
@@ -544,10 +586,10 @@ export function ArtEditor() {
                 </div>
             )}
 
-            {/* Preview Modal */}
+            {/* FULL SCREEN PREVIEW MODAL */}
             {previewMode && (
                 <div
-                    className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center backdrop-blur-sm overflow-auto p-4"
+                    className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center backdrop-blur-md overflow-hidden p-4"
                     onClick={() => setPreviewMode(false)}
                 >
                     <button
@@ -557,62 +599,14 @@ export function ArtEditor() {
                         <X size={24} />
                     </button>
 
-                    <div
-                        className="bg-white shadow-2xl relative overflow-hidden shrink-0 origin-center"
-                        style={{
-                            width: CANVAS_WIDTH,
-                            height: CANVAS_HEIGHT,
-                            transform: `scale(${Math.min(window.innerHeight / CANVAS_HEIGHT * 0.9, window.innerWidth / CANVAS_WIDTH * 0.9)})`,
-                        }}
-                        onClick={e => e.stopPropagation()}
-                    >
-                        {/* Background Layer */}
-                        <div className="absolute inset-0 bg-gray-300 flex items-center justify-center text-gray-400">
-                            {bgImage ? (
-                                <img src={bgImage} className="w-full h-full object-cover" />
-                            ) : (
-                                <div className="text-center font-bold opacity-30 text-4xl">
-                                    BACKGROUND PADRÃO
-                                </div>
-                            )}
+                    <div className="h-full w-full flex items-center justify-center overflow-auto" onClick={e => e.stopPropagation()}>
+                        {/* Calculate best fit scale for modal */}
+                        <div style={{ transform: `scale(${Math.min(window.innerHeight / CANVAS_HEIGHT * 0.95, window.innerWidth / CANVAS_WIDTH * 0.95)})`, transformOrigin: 'center' }}>
+                            <CanvasRenderer scale={1} interactable={false} />
                         </div>
-
-                        {elements.sort((a, b) => a.zIndex - b.zIndex).map(el => (
-                            <div
-                                key={el.id}
-                                style={{
-                                    position: 'absolute',
-                                    left: el.x,
-                                    top: el.y,
-                                    width: el.width,
-                                    height: el.height,
-                                    fontSize: el.fontSize,
-                                    color: el.color,
-                                    fontFamily: el.fontFamily || 'Arial',
-                                    textAlign: el.align || 'left',
-                                    transform: el.type === 'text'
-                                        ? `translate(${el.align === 'left' ? '0' : el.align === 'right' ? '-100%' : '-50%'}, -50%)`
-                                        : 'translate(-50%, -50%)',
-                                    whiteSpace: 'pre',
-                                    lineHeight: 1,
-                                    zIndex: el.zIndex,
-                                }}
-                            >
-                                {el.type === 'image' ? (
-                                    <div className="w-full h-full bg-gray-200/50 flex items-center justify-center overflow-hidden"
-                                        style={{ borderRadius: el.borderRadius || 0 }}
-                                    >
-                                        {el.content === 'player_photo' ? <img src="https://ui-avatars.com/api/?name=Jogador&background=random&size=512" className="w-full h-full object-cover" /> : null}
-                                        {el.content?.includes('team') ? <div className="text-sm font-bold opacity-50">Logo Time</div> : null}
-                                    </div>
-                                ) : (
-                                    <span>{el.content}</span>
-                                )}
-                            </div>
-                        ))}
                     </div>
                 </div>
             )}
         </div>
     );
-}
+};

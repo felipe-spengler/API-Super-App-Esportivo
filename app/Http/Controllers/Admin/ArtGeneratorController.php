@@ -1089,6 +1089,8 @@ class ArtGeneratorController extends Controller
     private function getBackgroundFile($sport, $category, $club = null)
     {
         $sport = strtolower($sport);
+        // Debug Log
+        error_log("ArtGen: Resolving BG for Sport: [$sport] Category: [$category]");
 
         // 1. Check Club Art Settings (Custom Backgrounds)
         if ($club && !empty($club->art_settings)) {
@@ -1096,6 +1098,7 @@ class ArtGeneratorController extends Controller
 
             // Tenta pegar pelo nome direto (ex: 'futebol')
             if (isset($settings[$sport]) && isset($settings[$sport][$category])) {
+                error_log("ArtGen: Found Club Custom BG for [$sport]");
                 return $settings[$sport][$category];
             }
 
@@ -1199,7 +1202,9 @@ class ArtGeneratorController extends Controller
             'estreante' => 'fundo_melhor_estreiante.jpg' // sic (erro digitação original)
         ];
 
-        return $map[$category] ?? 'fundo_craque_do_jogo.jpg';
+        $final = $map[$category] ?? 'fundo_craque_do_jogo.jpg';
+        error_log("ArtGen: Returning Generic BG [$final]");
+        return $final;
     }
 
     private function initImage($filename)
