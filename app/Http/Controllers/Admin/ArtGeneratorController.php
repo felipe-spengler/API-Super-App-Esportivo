@@ -84,9 +84,10 @@ class ArtGeneratorController extends Controller
         $club = null;
         if ($user && $user->club_id) {
             $club = \App\Models\Club::find($user->club_id);
-            if ($club && !empty($club->art_settings['templates'][$key])) {
-                return response()->json($club->art_settings['templates'][$key]);
-            }
+        }
+
+        if ($club && !empty($club->art_settings['templates'][$key])) {
+            return response()->json($club->art_settings['templates'][$key]);
         }
 
         // 2. Try System Settings (Global Saved Template)
@@ -95,7 +96,19 @@ class ArtGeneratorController extends Controller
             return response()->json(json_decode($setting->value, true));
         }
 
-        // 3. Fallback: Find Custom Background in Club Settings
+        // 3. Defaults
+        $default = $this->getDefaultTemplate($key);
+        if ($default) {
+            // Apply background from club settings if available (fallback logic from getTemplate original)
+            // ... actually the frontend expects the JSON. 
+            // If I return the default JSON, it has "bg_url" => null. 
+            // The frontend might need a bg_url. 
+            // But let's return the default structure at least.
+            return response()->json($default);
+        }
+
+        // 4. Fallback: Find Custom Background in Club Settings (Legacy logic)
+
         if ($club && !empty($club->art_settings)) {
             $cat = 'confronto';
             $n = strtolower($name);
@@ -161,7 +174,7 @@ class ArtGeneratorController extends Controller
      */
     public function matchFaceoff($matchId)
     {
-        $match = GameMatch::with(['homeTeam', 'awayTeam', 'championship.club', 'championship.sport'])->findOrFail($matchId);
+        $match = GameMatch::with(['homeTeam', 'awayTeam', 'championship.club', 'championship.sport', 'events.player'])->findOrFail($matchId);
         $club = $match->championship->club;
         $this->loadClubResources($club);
 
@@ -339,7 +352,11 @@ class ArtGeneratorController extends Controller
                     $bgFile = $customBg;
                 }
             }
+        } else {
+            $templateData = $this->getDefaultTemplate($templateKey);
         }
+
+
 
         $img = $this->initImage($bgFile);
 
@@ -347,7 +364,7 @@ class ArtGeneratorController extends Controller
             return response("Erro fundo: " . basename($bgFile), 500);
 
         // --- DYNAMIC RENDERING START ---
-        // --- DYNAMIC RENDERING START ---
+
         if ($templateData) {
             $elements = $templateData['elements'];
 
@@ -357,6 +374,8 @@ class ArtGeneratorController extends Controller
                 'X' => 'X',
                 'DD/MM HH:MM' => \Carbon\Carbon::parse($match->start_time)->translatedFormat('d/m H:i'),
                 'Local da Partida' => mb_strtoupper($match->location ?? 'LOCAL A DEFINIR'),
+                '{TIME_CASA}' => mb_strtoupper($match->homeTeam->name),
+                '{TIME_FORA}' => mb_strtoupper($match->awayTeam->name),
             ];
 
             // Images
@@ -579,6 +598,133 @@ class ArtGeneratorController extends Controller
         $drawText(40, 1600, $secondaryColor, $champName, true);
         // Primária para a rodada
         $drawText(30, 1660, $primaryColor, $roundName, true);
+
+
+
+
+        // --- 4. Goleadores (New Feature based on legacy) ---
+        // Filter goals
+        $goals = $match->events->where('event_type', 'goal');
+
+        // Group by Team -> Player
+        $scorersA = [];
+        $scorersB = [];
+
+        foreach ($goals as $goal) {
+            $pid = $goal->player_id;
+            $name = 'Desconhecido';
+
+            if ($goal->player) {
+                // Get short name
+                $parts = explode(' ', trim($goal->player->name));
+                $name = $parts[0];
+                if (isset($parts[1]) && strlen($parts[1]) > 2)
+                    $name .= ' ' . $parts[1];
+            } elseif (!empty($goal->metadata['label'])) {
+                $name = $goal->metadata['label'];
+            }
+
+            // check own goal
+            $isOwnGoal = !empty($goal->metadata['own_goal']);
+
+            // Logic: if own goal, it counts for the OPPONENT team score, but who committed it?
+            // Usually listed on the side that BENEFITED? Or the player who did it?
+            // In the visual representation, usually you list the valid goals for the team.
+            // If Team A scored, it appears on Team A side.
+            // If Team B player scored an own goal, it counts for Team A.
+
+            // Simple logic based on team_id of the event:
+            // The event system assigns team_id to the team that SCORED (benefited).
+            // So just use team_id.
+
+            if ($goal->team_id == $match->home_team_id) {
+                if (!isset($scorersA[$name]))
+                    $scorersA[$name] = 0;
+                $scorersA[$name]++;
+            } elseif ($goal->team_id == $match->away_team_id) {
+                if (!isset($scorersB[$name]))
+                    $scorersB[$name] = 0;
+                $scorersB[$name]++;
+            }
+        }
+
+        // Draw Logic
+        $tamanho_fonte_goleadores = 40;
+        $y_goleadores = 1170 + 200; // Legacy Y
+        $distancia_centro_brasao = 400;
+
+        $x_goleadores_a = ($width / 2) - $distancia_centro_brasao - 50;
+        $x_goleadores_b = ($width / 2) + $distancia_centro_brasao + 50;
+
+        $tamanho_bola = 40;
+        $espacamento_bola = 5;
+
+        // Try to load ball image
+        $ballPath = public_path('assets/img/bola.png');
+        $ballImg = null;
+        if (file_exists($ballPath)) {
+            $ballImg = @imagecreatefrompng($ballPath);
+        }
+
+        // Draw Team A Scorers (Left Aligned? In legacy it seems left aligned relative to badge)
+        // Legacy: $x_goleadores_a = 0 + ($largura_fundo / 2) - $distancia_centro_brasao - 50; 
+        // It draws balls then text.
+
+        $offset_y_a = 0;
+        foreach ($scorersA as $name => $count) {
+            $x_current = $x_goleadores_a;
+
+            // Draw balls
+            for ($i = 0; $i < $count; $i++) {
+                if ($ballImg) {
+                    imagecopyresampled($img, $ballImg, $x_current - ($count - 1) * $tamanho_bola, $y_goleadores + $offset_y_a - $tamanho_bola, 0, 0, $tamanho_bola, $tamanho_bola, imagesx($ballImg), imagesy($ballImg));
+                } else {
+                    // Fallback: Draw Circle
+                    imagefilledellipse($img, $x_current - ($count - 1) * $tamanho_bola + ($tamanho_bola / 2), $y_goleadores + $offset_y_a - $tamanho_bola + ($tamanho_bola / 2), $tamanho_bola, $tamanho_bola, $white);
+                }
+                $x_current += $tamanho_bola + $espacamento_bola;
+            }
+
+            // Draw Name
+            $x_text = $x_goleadores_a + $tamanho_bola + $espacamento_bola + 10;
+            // Shadow
+            imagettftext($img, $tamanho_fonte_goleadores, 0, $x_text + 2, $y_goleadores + $offset_y_a + 2, $black, $this->fontPath, mb_strtoupper($name));
+            imagettftext($img, $tamanho_fonte_goleadores, 0, $x_text, $y_goleadores + $offset_y_a, $white, $this->fontPath, mb_strtoupper($name));
+
+            $offset_y_a += 50;
+        }
+
+        // Draw Team B Scorers
+        // Legacy: $x_goleadores_b = -300 + ($largura_fundo / 2) + $distancia_centro_brasao + 50;
+        // Legacy code x_goleadores_b calculation seems a bit weird with the -300.
+        // Let's stick to the visual symmetry.
+        // If Team A is at Center - 400. Team B is at Center + 400.
+        // The scorers should be aligned somewhat under them.
+
+        $offset_y_b = 0;
+        foreach ($scorersB as $name => $count) {
+            $x_current = $x_goleadores_b;
+
+            for ($i = 0; $i < $count; $i++) {
+                if ($ballImg) {
+                    imagecopyresampled($img, $ballImg, $x_current - ($count - 1) * $tamanho_bola, $y_goleadores + $offset_y_b - $tamanho_bola, 0, 0, $tamanho_bola, $tamanho_bola, imagesx($ballImg), imagesy($ballImg));
+                } else {
+                    imagefilledellipse($img, $x_current - ($count - 1) * $tamanho_bola + ($tamanho_bola / 2), $y_goleadores + $offset_y_b - $tamanho_bola + ($tamanho_bola / 2), $tamanho_bola, $tamanho_bola, $white);
+                }
+                $x_current += $tamanho_bola + $espacamento_bola;
+            }
+
+            $x_text = $x_goleadores_b + $tamanho_bola + $espacamento_bola + 10;
+
+            imagettftext($img, $tamanho_fonte_goleadores, 0, $x_text + 2, $y_goleadores + $offset_y_b + 2, $black, $this->fontPath, mb_strtoupper($name));
+            imagettftext($img, $tamanho_fonte_goleadores, 0, $x_text, $y_goleadores + $offset_y_b, $white, $this->fontPath, mb_strtoupper($name));
+
+            $offset_y_b += 50;
+        }
+
+        if ($ballImg) {
+            imagedestroy($ballImg);
+        }
 
         return $this->outputImage($img, 'confronto_' . $match->id);
     }
@@ -1365,5 +1511,47 @@ class ArtGeneratorController extends Controller
         return response($content)
             ->header('Content-Type', 'image/jpeg')
             ->header('Content-Disposition', 'inline; filename="' . $filename . '.jpg"');
+    }
+    private function getDefaultTemplate($key)
+    {
+        if ($key === 'art_layout_scheduled_feed') {
+            return [
+                "elements" => [
+                    ["id" => "championship", "type" => "text", "x" => 1500, "y" => 281, "fontSize" => 45, "color" => "#FFFFFF", "align" => "center", "label" => "Campeonato", "zIndex" => 2, "content" => "{CAMPEONATO}", "fontFamily" => "Roboto"],
+                    ["id" => "team_a", "type" => "image", "x" => 250, "y" => 1050, "width" => 400, "height" => 400, "label" => "Brasão Mandante", "zIndex" => 2, "content" => "team_a"],
+                    ["id" => "team_b", "type" => "image", "x" => 830, "y" => 1050, "width" => 400, "height" => 400, "label" => "Brasão Visitante", "zIndex" => 2, "content" => "team_b"],
+                    ["id" => "vs", "type" => "text", "x" => 535, "y" => 1050, "fontSize" => 80, "color" => "#FFB700", "align" => "center", "label" => "X (Versus)", "zIndex" => 2, "content" => "X", "fontFamily" => "Roboto-Bold"],
+                    ["id" => "date", "type" => "text", "x" => 540, "y" => 1740, "fontSize" => 60, "color" => "#FFB700", "align" => "center", "label" => "Data", "zIndex" => 2, "content" => "DD/MM HH:MM", "fontFamily" => "Roboto"],
+                    ["id" => "local", "type" => "text", "x" => 543, "y" => 1800, "fontSize" => 35, "color" => "#ffffff", "align" => "center", "label" => "Local", "zIndex" => 2, "content" => "Local da Partida", "fontFamily" => "Roboto"],
+                    // New Team Names
+                    ["id" => "team_name_a", "type" => "text", "x" => 250, "y" => 1300, "fontSize" => 35, "color" => "#FFFFFF", "align" => "center", "label" => "Nome Mandante", "zIndex" => 2, "content" => "{TIME_CASA}", "fontFamily" => "Roboto"],
+                    ["id" => "team_name_b", "type" => "text", "x" => 830, "y" => 1300, "fontSize" => 35, "color" => "#FFFFFF", "align" => "center", "label" => "Nome Visitante", "zIndex" => 2, "content" => "{TIME_FORA}", "fontFamily" => "Roboto"]
+                ],
+                "canvas" => ["width" => 1080, "height" => 1920],
+                "bg_url" => null, // Let the system resolve based on sport
+                "name" => "Jogo Programado"
+            ];
+        }
+
+        if ($key === 'art_layout_mvp_vertical') {
+            return [
+                "elements" => [
+                    ["id" => "player_photo", "type" => "image", "x" => 540, "y" => 701, "width" => 700, "height" => 700, "label" => "Foto do Jogador", "zIndex" => 1, "content" => "player_photo", "borderRadius" => 0],
+                    ["id" => "player_name", "type" => "text", "x" => 550, "y" => 1140, "fontSize" => 75, "color" => "#FFB700", "align" => "center", "label" => "Nome do Jogador", "zIndex" => 2, "content" => "{JOGADOR}", "fontFamily" => "Roboto"],
+                    ["id" => "team_badge_a", "type" => "image", "x" => 295, "y" => 1329, "width" => 160, "height" => 160, "label" => "Brasão Mandante", "zIndex" => 2, "content" => "team_a"],
+                    ["id" => "team_badge_b", "type" => "image", "x" => 780, "y" => 1329, "width" => 160, "height" => 160, "label" => "Brasão Visitante", "zIndex" => 2, "content" => "team_b"],
+                    ["id" => "championship", "type" => "text", "x" => 540, "y" => 1720, "fontSize" => 40, "color" => "#FFFFFF", "align" => "center", "label" => "Nome Campeonato", "zIndex" => 2, "content" => "{CAMPEONATO}"],
+                    ["id" => "round", "type" => "text", "x" => 540, "y" => 1780, "fontSize" => 30, "color" => "#FFFFFF", "align" => "center", "label" => "Rodada/Fase", "zIndex" => 2, "content" => "{RODADA}"],
+                    ["id" => "score_home", "type" => "text", "x" => 290, "y" => 1495, "fontSize" => 100, "color" => "#000000", "align" => "center", "label" => "Placar Casa", "zIndex" => 3, "content" => "{PA}", "fontFamily" => "Roboto-Bold"],
+                    ["id" => "score_x", "type" => "text", "x" => 1597, "y" => 1335, "fontSize" => 60, "color" => "#000000", "align" => "center", "label" => "X (Divisor)", "zIndex" => 3, "content" => "X", "fontFamily" => "Roboto"],
+                    ["id" => "score_away", "type" => "text", "x" => 785, "y" => 1495, "fontSize" => 100, "color" => "#000000", "align" => "right", "label" => "Placar Visitante", "zIndex" => 3, "content" => "{PF}", "fontFamily" => "Roboto-Bold"]
+                ],
+                "canvas" => ["width" => 1080, "height" => 1920],
+                "bg_url" => null,
+                "name" => "Craque do Jogo"
+            ];
+        }
+
+        return null;
     }
 }

@@ -78,6 +78,7 @@ Route::get('/championships/{id}/teams', [EventController::class, 'teamsList']);
 Route::get('/championships/{id}/h2h', [EventController::class, 'h2h']);
 Route::get('/public/art/match/{matchId}/mvp', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'downloadMvpArt']);
 Route::get('/public/art/match/{matchId}/scheduled', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'downloadScheduledArt']);
+Route::get('/public/art/match/{matchId}/faceoff', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'matchFaceoff']);
 Route::get('/public/matches/{id}/pdf', [EventController::class, 'matchPdf']);
 Route::get('/public/matches/{id}', [EventController::class, 'matchDetails']); // NEW Public Match Details
 Route::get('/public/matches/{id}/full-details', [\App\Http\Controllers\MatchOperationController::class, 'show']); // NEW Public Full Details for Print
