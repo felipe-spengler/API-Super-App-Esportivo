@@ -86,24 +86,34 @@ class ArtGeneratorController extends Controller
             $club = \App\Models\Club::find($user->club_id);
         }
 
-        if ($club && !empty($club->art_settings['templates'][$key])) {
-            return response()->json($club->art_settings['templates'][$key]);
-        }
-
         // 2. Try System Settings (Global Saved Template)
         $setting = SystemSetting::where('key', $key)->first();
-        if ($setting) {
-            return response()->json(json_decode($setting->value, true));
-        }
 
         // 3. Defaults
         $default = $this->getDefaultTemplate($key);
+
+        $responseTemplate = null;
+
+        if ($club && !empty($club->art_settings['templates'][$key])) {
+            $responseTemplate = $club->art_settings['templates'][$key];
+        } elseif ($setting) {
+            $responseTemplate = json_decode($setting->value, true);
+        }
+
+        if ($responseTemplate) {
+            // MERGE MISSING DEFAULTS (Backwards Compatibility)
+            if ($default && isset($default['elements'])) {
+                $existingIds = array_column($responseTemplate['elements'] ?? [], 'id');
+                foreach ($default['elements'] as $defEl) {
+                    if (isset($defEl['id']) && !in_array($defEl['id'], $existingIds)) {
+                        $responseTemplate['elements'][] = $defEl;
+                    }
+                }
+            }
+            return response()->json($responseTemplate);
+        }
+
         if ($default) {
-            // Apply background from club settings if available (fallback logic from getTemplate original)
-            // ... actually the frontend expects the JSON. 
-            // If I return the default JSON, it has "bg_url" => null. 
-            // The frontend might need a bg_url. 
-            // But let's return the default structure at least.
             return response()->json($default);
         }
 
@@ -352,6 +362,16 @@ class ArtGeneratorController extends Controller
                     $bgFile = $customBg;
                 }
             }
+            // MERGE MISSING DEFAULTS
+            $default = $this->getDefaultTemplate($templateKey);
+            if ($default && isset($default['elements'])) {
+                $existingIds = array_column($templateData['elements'] ?? [], 'id');
+                foreach ($default['elements'] as $defEl) {
+                    if (isset($defEl['id']) && !in_array($defEl['id'], $existingIds)) {
+                        $templateData['elements'][] = $defEl;
+                    }
+                }
+            }
         } else {
             $templateData = $this->getDefaultTemplate($templateKey);
         }
@@ -504,6 +524,18 @@ class ArtGeneratorController extends Controller
                     $bgFile = $customBg;
                 }
             }
+            // MERGE MISSING DEFAULTS
+            $default = $this->getDefaultTemplate($templateKey);
+            if ($default && isset($default['elements'])) {
+                $existingIds = array_column($templateData['elements'] ?? [], 'id');
+                foreach ($default['elements'] as $defEl) {
+                    if (isset($defEl['id']) && !in_array($defEl['id'], $existingIds)) {
+                        $templateData['elements'][] = $defEl;
+                    }
+                }
+            }
+        } else {
+            $templateData = $this->getDefaultTemplate($templateKey);
         }
 
         $img = $this->initImage($bgFile);
@@ -514,6 +546,21 @@ class ArtGeneratorController extends Controller
         if ($templateData) {
             $elements = $templateData['elements'];
 
+            // Extract Scorers Config
+            $scorersHomeEl = null;
+            $scorersAwayEl = null;
+
+            foreach ($elements as $key => $el) {
+                if (isset($el['id']) && $el['id'] === 'scorers_home') {
+                    $scorersHomeEl = $el;
+                    unset($elements[$key]);
+                }
+                if (isset($el['id']) && $el['id'] === 'scorers_away') {
+                    $scorersAwayEl = $el;
+                    unset($elements[$key]);
+                }
+            }
+
             // Base Replacements
             $replacements = [
                 '{CAMPEONATO}' => mb_strtoupper($match->championship->name),
@@ -523,6 +570,8 @@ class ArtGeneratorController extends Controller
                 'Local da Partida' => mb_strtoupper($match->location ?? 'LOCAL A DEFINIR'),
                 '{PLACAR_CASA}' => $match->home_score ?? 0,
                 '{PLACAR_FORA}' => $match->away_score ?? 0,
+                '{TIME_CASA}' => mb_strtoupper($match->homeTeam->name),
+                '{TIME_FORA}' => mb_strtoupper($match->awayTeam->name),
             ];
 
             // Images
@@ -530,8 +579,15 @@ class ArtGeneratorController extends Controller
             $replacements['team_b'] = $this->getTeamLogoPath($match->awayTeam);
 
             $this->renderDynamicElements($img, $elements, $replacements);
+
+            // --- Render Scorers ---
+            if ($scorersHomeEl || $scorersAwayEl) {
+                $this->drawScorersList($img, $match, $scorersHomeEl, $scorersAwayEl);
+            }
+
             return $this->outputImage($img, 'confronto_' . $match->id);
         }
+        // --- DYNAMIC RENDERING END ---
         // --- DYNAMIC RENDERING END ---
 
         $width = imagesx($img);
@@ -1512,6 +1568,129 @@ class ArtGeneratorController extends Controller
             ->header('Content-Type', 'image/jpeg')
             ->header('Content-Disposition', 'inline; filename="' . $filename . '.jpg"');
     }
+    private function drawScorersList($img, $match, $configHome, $configAway)
+    {
+        // 4. Goleadores
+        $goals = $match->events->where('event_type', 'goal');
+
+        // Group by Team -> Player
+        $scorersA = [];
+        $scorersB = [];
+
+        foreach ($goals as $goal) {
+            $name = 'Desconhecido';
+            if ($goal->player) {
+                // Get short name
+                $parts = explode(' ', trim($goal->player->name));
+                $name = $parts[0];
+                if (isset($parts[1]) && strlen($parts[1]) > 2)
+                    $name .= ' ' . $parts[1];
+            } elseif (!empty($goal->metadata['label'])) {
+                $name = $goal->metadata['label'];
+            }
+
+            // Logic matches legacy
+            if ($goal->team_id == $match->home_team_id) {
+                if (!isset($scorersA[$name]))
+                    $scorersA[$name] = 0;
+                $scorersA[$name]++;
+            } elseif ($goal->team_id == $match->away_team_id) {
+                if (!isset($scorersB[$name]))
+                    $scorersB[$name] = 0;
+                $scorersB[$name]++;
+            }
+        }
+
+        // Try to load ball image
+        $ballPath = public_path('assets/img/bola.png');
+        $ballImg = null;
+        if (file_exists($ballPath)) {
+            $ballImg = @imagecreatefrompng($ballPath);
+        }
+        $tamanho_bola = 40;
+        $espacamento_bola = 5;
+        $white = imagecolorallocate($img, 255, 255, 255);
+        $black = imagecolorallocate($img, 0, 0, 0);
+
+        // Draw Home
+        if ($configHome) {
+            $x = $configHome['x'];
+            $y = $configHome['y'];
+            $fontSize = $configHome['fontSize'] ?? 30; // Reduced font size as requested
+            // Align center is default for the group in editor logic usually, but here we draw items. 
+            // We will center the *line* of items? Or left align?
+            // Legacy was complex. Let's assume X starts the "Ball Row"? Or Center of the name?
+            // "Editor" usually defines a point. 
+            // Let's assume Center Alignment for the whole block relative to X.
+
+            $offset_y = 0;
+            foreach ($scorersA as $name => $count) {
+                // Calculate Width of the line: (Balls) + (Space) + (Name)
+                $ballsWidth = ($count * $tamanho_bola) + (($count - 1) * $espacamento_bola);
+                $box = imagettfbbox($fontSize, 0, $this->fontPath, mb_strtoupper($name));
+                $nameWidth = abs($box[2] - $box[0]);
+
+                $totalWidth = $ballsWidth + 10 + $nameWidth;
+
+                // Start X (Centered at $x)
+                $startX = $x - ($totalWidth / 2);
+
+                $currX = $startX;
+                // Draw balls
+                for ($i = 0; $i < $count; $i++) {
+                    if ($ballImg) {
+                        imagecopyresampled($img, $ballImg, $currX, $y + $offset_y - $tamanho_bola + ($tamanho_bola / 2), 0, 0, $tamanho_bola, $tamanho_bola, imagesx($ballImg), imagesy($ballImg));
+                    } else {
+                        imagefilledellipse($img, $currX + ($tamanho_bola / 2), $y + $offset_y, $tamanho_bola, $tamanho_bola, $white);
+                    }
+                    $currX += $tamanho_bola + $espacamento_bola;
+                }
+
+                // Draw Name
+                imagettftext($img, $fontSize, 0, $currX + 10 + 2, $y + $offset_y + ($fontSize / 2.5) + 2, $black, $this->fontPath, mb_strtoupper($name));
+                imagettftext($img, $fontSize, 0, $currX + 10, $y + $offset_y + ($fontSize / 2.5), $white, $this->fontPath, mb_strtoupper($name));
+
+                $offset_y += ($fontSize + 15);
+            }
+        }
+
+        // Draw Away
+        if ($configAway) {
+            $x = $configAway['x'];
+            $y = $configAway['y'];
+            $fontSize = $configAway['fontSize'] ?? 30;
+
+            $offset_y = 0;
+            foreach ($scorersB as $name => $count) {
+                $ballsWidth = ($count * $tamanho_bola) + (($count - 1) * $espacamento_bola);
+                $box = imagettfbbox($fontSize, 0, $this->fontPath, mb_strtoupper($name));
+                $nameWidth = abs($box[2] - $box[0]);
+
+                $totalWidth = $ballsWidth + 10 + $nameWidth;
+                $startX = $x - ($totalWidth / 2); // Center alignment
+
+                $currX = $startX;
+                for ($i = 0; $i < $count; $i++) {
+                    if ($ballImg) {
+                        imagecopyresampled($img, $ballImg, $currX, $y + $offset_y - $tamanho_bola + ($tamanho_bola / 2), 0, 0, $tamanho_bola, $tamanho_bola, imagesx($ballImg), imagesy($ballImg));
+                    } else {
+                        imagefilledellipse($img, $currX + ($tamanho_bola / 2), $y + $offset_y, $tamanho_bola, $tamanho_bola, $white);
+                    }
+                    $currX += $tamanho_bola + $espacamento_bola;
+                }
+
+                imagettftext($img, $fontSize, 0, $currX + 10 + 2, $y + $offset_y + ($fontSize / 2.5) + 2, $black, $this->fontPath, mb_strtoupper($name));
+                imagettftext($img, $fontSize, 0, $currX + 10, $y + $offset_y + ($fontSize / 2.5), $white, $this->fontPath, mb_strtoupper($name));
+
+                $offset_y += ($fontSize + 15);
+            }
+        }
+
+        if ($ballImg) {
+            imagedestroy($ballImg);
+        }
+    }
+
     private function getDefaultTemplate($key)
     {
         if ($key === 'art_layout_scheduled_feed') {
@@ -1549,6 +1728,30 @@ class ArtGeneratorController extends Controller
                 "canvas" => ["width" => 1080, "height" => 1920],
                 "bg_url" => null,
                 "name" => "Craque do Jogo"
+            ];
+        }
+
+        if ($key === 'art_layout_faceoff') {
+            return [
+                "elements" => [
+                    ["id" => "championship", "type" => "text", "x" => 540, "y" => 1600, "fontSize" => 50, "color" => "#FFFFFF", "align" => "center", "label" => "Campeonato", "zIndex" => 2, "content" => "{CAMPEONATO}", "fontFamily" => "Roboto"],
+                    ["id" => "round", "type" => "text", "x" => 540, "y" => 1680, "fontSize" => 35, "color" => "#FFFFFF", "align" => "center", "label" => "Rodada", "zIndex" => 2, "content" => "{RODADA}", "fontFamily" => "Roboto"],
+
+                    ["id" => "team_a", "type" => "image", "x" => 250, "y" => 800, "width" => 350, "height" => 350, "label" => "Brasão Mandante", "zIndex" => 2, "content" => "team_a"],
+                    ["id" => "team_b", "type" => "image", "x" => 830, "y" => 800, "width" => 350, "height" => 350, "label" => "Brasão Visitante", "zIndex" => 2, "content" => "team_b"],
+
+                    ["id" => "vs", "type" => "text", "x" => 540, "y" => 900, "fontSize" => 80, "color" => "#FFB700", "align" => "center", "label" => "X (Versus)", "zIndex" => 2, "content" => "X", "fontFamily" => "Roboto-Bold"],
+
+                    ["id" => "score_home", "type" => "text", "x" => 250, "y" => 1150, "fontSize" => 100, "color" => "#FFFFFF", "align" => "center", "label" => "Placar Casa", "zIndex" => 3, "content" => "{PLACAR_CASA}", "fontFamily" => "Roboto-Bold"],
+                    ["id" => "score_away", "type" => "text", "x" => 830, "y" => 1150, "fontSize" => 100, "color" => "#FFFFFF", "align" => "center", "label" => "Placar Visitante", "zIndex" => 3, "content" => "{PLACAR_FORA}", "fontFamily" => "Roboto-Bold"],
+
+                    // Scorers Placeholders - The Backend will inject the complex list here
+                    ["id" => "scorers_home", "type" => "text", "x" => 250, "y" => 1300, "fontSize" => 30, "color" => "#FFFFFF", "align" => "center", "label" => "Gols Mandante", "zIndex" => 2, "content" => "{LISTA_GOLS_CASA}", "fontFamily" => "Roboto"],
+                    ["id" => "scorers_away", "type" => "text", "x" => 830, "y" => 1300, "fontSize" => 30, "color" => "#FFFFFF", "align" => "center", "label" => "Gols Visitante", "zIndex" => 2, "content" => "{LISTA_GOLS_FORA}", "fontFamily" => "Roboto"]
+                ],
+                "canvas" => ["width" => 1080, "height" => 1920],
+                "bg_url" => null,
+                "name" => "Confronto"
             ];
         }
 
