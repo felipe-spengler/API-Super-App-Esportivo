@@ -64,13 +64,24 @@ class ArtGeneratorController extends Controller
         return response()->json(['message' => 'Template salvo com sucesso (Sistema)']);
     }
 
+    private function pathToUrl($path)
+    {
+        if (str_contains($path, 'http'))
+            return $path;
+        if (file_exists(public_path('assets-templates/' . $path))) {
+            return asset('assets-templates/' . $path);
+        }
+        return asset('storage/' . $path);
+    }
+
     public function getTemplate(Request $request)
     {
         $name = $request->query('name');
         $key = $this->getTemplateKey($name);
 
-        // 1. Try Club Settings
+        // 1. Try Club Settings (Saved Template)
         $user = auth()->user();
+        $club = null;
         if ($user && $user->club_id) {
             $club = \App\Models\Club::find($user->club_id);
             if ($club && !empty($club->art_settings['templates'][$key])) {
@@ -78,11 +89,53 @@ class ArtGeneratorController extends Controller
             }
         }
 
-        // 2. Try System Settings
+        // 2. Try System Settings (Global Saved Template)
         $setting = SystemSetting::where('key', $key)->first();
-
         if ($setting) {
             return response()->json(json_decode($setting->value, true));
+        }
+
+        // 3. Fallback: Find Custom Background in Club Settings
+        if ($club && !empty($club->art_settings)) {
+            $cat = 'confronto';
+            $n = strtolower($name);
+            if (str_contains($n, 'programado'))
+                $cat = 'jogo_programado';
+            elseif (str_contains($n, 'craque') || str_contains($n, 'mvp'))
+                $cat = 'craque';
+
+            $sports = ['futebol', 'fut7', 'futebol 7', 'society', 'volei', 'futsal', 'basquete', 'handebol'];
+            $foundBg = null;
+
+            foreach ($sports as $s) {
+                $slug = Str::slug($s);
+                // Check clean name
+                if (isset($club->art_settings[$s][$cat])) {
+                    $foundBg = $club->art_settings[$s][$cat];
+                    break;
+                }
+                // Check slug
+                if (isset($club->art_settings[$slug][$cat])) {
+                    $foundBg = $club->art_settings[$slug][$cat];
+                    break;
+                }
+
+                // Fallback for Jogo Programado -> Confronto
+                if ($cat === 'jogo_programado') {
+                    if (isset($club->art_settings[$s]['confronto'])) {
+                        $foundBg = $club->art_settings[$s]['confronto'];
+                        break;
+                    }
+                    if (isset($club->art_settings[$slug]['confronto'])) {
+                        $foundBg = $club->art_settings[$slug]['confronto'];
+                        break;
+                    }
+                }
+            }
+
+            if ($foundBg) {
+                return response()->json(['bg_url' => $this->pathToUrl($foundBg), 'elements' => null]);
+            }
         }
 
         return response()->json(null);
@@ -811,6 +864,15 @@ class ArtGeneratorController extends Controller
             $sportSlug = Str::slug($sport);
             if (isset($settings[$sportSlug]) && isset($settings[$sportSlug][$category])) {
                 return $settings[$sportSlug][$category];
+            }
+
+            // --- FALLBACK FOR JOGO PROGRAMADO ---
+            // Se não achou fundo específico para jogo_programado, tenta usar o de confronto
+            if ($category === 'jogo_programado') {
+                if (isset($settings[$sport]['confronto']))
+                    return $settings[$sport]['confronto'];
+                if (isset($settings[$sportSlug]['confronto']))
+                    return $settings[$sportSlug]['confronto'];
             }
         }
 
