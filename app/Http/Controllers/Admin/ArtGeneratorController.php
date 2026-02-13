@@ -110,6 +110,28 @@ class ArtGeneratorController extends Controller
                     }
                 }
             }
+
+            // DYNAMIC BACKGROUND RESOLUTION (Preview Mode)
+            // If the template has no fixed bg_url OR user requested specific sport preview
+            // We try to find the sport specific background to show in editor.
+            $sport = $request->query('sport');
+            if ($sport && empty($responseTemplate['bg_url'])) { // Only override if template doesn't have a fixed custom BG
+                // Resolve category
+                $cat = 'confronto';
+                $n = strtolower($name);
+                if (str_contains($n, 'programado'))
+                    $cat = 'jogo_programado';
+                elseif (str_contains($n, 'craque') || str_contains($n, 'mvp'))
+                    $cat = 'craque';
+
+                // Use the helper logic
+                $bgFile = $this->getBackgroundFile($sport, $cat, $club);
+                // Convert file path to URL
+                if ($bgFile) {
+                    $responseTemplate['preview_bg_url'] = $this->pathToUrl($bgFile);
+                }
+            }
+
             return response()->json($responseTemplate);
         }
 

@@ -56,21 +56,25 @@ export function ArtEditor() {
     const [showElements, setShowElements] = useState(true);
     const [showProps, setShowProps] = useState(true);
 
+    const [selectedSport, setSelectedSport] = useState('futebol');
+    const [persistedBgUrl, setPersistedBgUrl] = useState<string | null>(null);
+
     // Load template or default settings
     useEffect(() => {
         loadTemplate();
-    }, [templateName]);
+    }, [templateName, selectedSport]);
 
     const getDefaultBg = (name: string) => {
         // Use default assets from backend
         if (name === 'Craque do Jogo') return `${api.defaults.baseURL}/assets-templates/fundo_craque_do_jogo.jpg`;
         if (name === 'Jogo Programado') return `${api.defaults.baseURL}/assets-templates/volei_confronto.jpg`; // Using a known existing one or generic
         if (name === 'Confronto') return `${api.defaults.baseURL}/assets-templates/fundo_confronto.jpg`;
-        return null;
+        return null; // fallback
     };
 
     const loadDefaults = (name: string) => {
         setBgImage(getDefaultBg(name));
+        setPersistedBgUrl(null); // Reset persisted to null to allow dynamic behavior
 
         if (name === 'Craque do Jogo') {
             setElements(DEFAULT_ELEMENTS);
@@ -105,11 +109,13 @@ export function ArtEditor() {
     const loadTemplate = async () => {
         setLoading(true);
         try {
-            const res = await api.get('/admin/art-templates', { params: { name: templateName } });
+            const res = await api.get('/admin/art-templates', { params: { name: templateName, sport: selectedSport } });
 
             if (res.data && res.data.elements) {
                 setElements(res.data.elements);
-                setBgImage(res.data.bg_url || getDefaultBg(templateName));
+                // Priority: Saved BG -> Preview/Dynamic BG -> Default BG
+                setPersistedBgUrl(res.data.bg_url || null);
+                setBgImage(res.data.bg_url || res.data.preview_bg_url || getDefaultBg(templateName));
             } else {
                 loadDefaults(templateName);
             }
@@ -142,7 +148,7 @@ export function ArtEditor() {
         try {
             await api.post('/admin/art-templates', {
                 name: templateName,
-                bg_url: bgImage,
+                bg_url: persistedBgUrl, // Only save if explicit custom BG
                 elements: elements,
                 canvas: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT }
             });
@@ -154,6 +160,7 @@ export function ArtEditor() {
             setLoading(false);
         }
     };
+
 
     const activeElement = elements.find(el => el.id === activeElementId);
 
@@ -209,6 +216,21 @@ export function ArtEditor() {
                                     <option>Jogo Programado</option>
                                     <option>Confronto</option>
                                 </select>
+
+                                <label className="text-xs font-bold text-gray-500 block mb-1 pt-2">ESPORTE (Visualização)</label>
+                                <select
+                                    value={selectedSport}
+                                    onChange={e => setSelectedSport(e.target.value)}
+                                    className="w-full p-2 border border-gray-200 rounded-lg text-sm font-bold bg-white"
+                                >
+                                    <option value="futebol">Futebol</option>
+                                    <option value="fut7">Fut7</option>
+                                    <option value="futsal">Futsal</option>
+                                    <option value="volei">Vôlei</option>
+                                    <option value="basquete">Basquete</option>
+                                    <option value="handebol">Handebol</option>
+                                </select>
+
 
                                 {bgImage && <img src={bgImage} className="w-full h-24 object-cover rounded border mt-2" />}
                             </div>
