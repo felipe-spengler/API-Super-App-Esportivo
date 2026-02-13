@@ -30,6 +30,20 @@ Route::get('/assets-templates/{filename}', function ($filename) {
     return response()->file($path);
 });
 
+// Serve fonts (visualização no admin)
+Route::get('/assets-fonts/{filename}', function ($filename) {
+    $path = public_path('assets/fonts/' . $filename);
+    if (!file_exists($path)) {
+        // Tenta adicionar extensão .ttf se não tiver
+        if (file_exists($path . '.ttf')) {
+            $path .= '.ttf';
+        } else {
+            abort(404);
+        }
+    }
+    return response()->file($path);
+});
+
 // Rotas Públicas (Core do App)
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -216,6 +230,10 @@ Route::middleware('auth:sanctum')->group(function () {
         // Exportação de Dados (NEW)
         Route::get('/export/players', [\App\Http\Controllers\Admin\ExportController::class, 'exportPlayers']);
         Route::get('/export/teams', [\App\Http\Controllers\Admin\ExportController::class, 'exportTeams']);
+
+        // Gerador de Artes Templates (NEW)
+        Route::get('/art-templates', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'getTemplate']);
+        Route::post('/art-templates', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'saveTemplate']);
 
         // Gerador de Artes (NEW)
         Route::get('/art/match/{matchId}/faceoff', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'matchFaceoff']);

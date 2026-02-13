@@ -30,6 +30,7 @@ import { SystemSettings } from './pages/SuperAdmin/SystemSettings';
 import { IaLaboratory } from './pages/SuperAdmin/IaLaboratory';
 import { AdminProductManager } from './pages/Shop/AdminProductManager';
 import { TemporaryAccess } from './pages/Settings/TemporaryAccess';
+import { ArtEditor } from './pages/Admin/ArtEditor';
 
 import { Explore } from './pages/Public/Explore';
 import { ClubExplore } from './pages/Public/ClubExplore';
@@ -149,6 +150,7 @@ function App() {
               <Route path="ia-lab" element={<IaLaboratory />} />
               <Route path="products" element={<AdminProductManager />} />
               <Route path="temporary-access" element={<TemporaryAccess />} />
+              <Route path="art-editor" element={<ArtEditor />} />
 
               <Route path="matches" element={<Matches />} />
             </Route>

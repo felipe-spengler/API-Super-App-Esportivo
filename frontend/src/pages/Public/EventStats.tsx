@@ -208,35 +208,35 @@ export function EventStats() {
                             </button>
                         </div>
 
-                        <div className="p-4 max-h-[60vh] overflow-y-auto">
-                            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
+                        <div className="p-5 max-h-[60vh] overflow-y-auto">
+                            <h4 className="text-sm font-bold text-gray-700 uppercase tracking-wider mb-4 pb-2 border-b border-gray-100">
                                 Detalhamento ({selectedStat.value} {getValueLabel()})
                             </h4>
 
                             {!selectedStat.details || selectedStat.details.length === 0 ? (
-                                <p className="text-gray-500 text-sm text-center py-4">Detalhes não disponíveis.</p>
+                                <p className="text-gray-500 text-base text-center py-6">Detalhes não disponíveis.</p>
                             ) : (
                                 <div className="space-y-3">
                                     {selectedStat.details.map((detail: any, idx: number) => (
-                                        <div key={idx} className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 border border-gray-100 mb-2">
-                                            <div className="bg-white p-2 rounded-md font-bold text-indigo-600 shadow-sm border border-gray-100 min-w-[3.5rem] text-center text-sm flex flex-col justify-center">
-                                                <span>{detail.game_time || detail.minute || "00:00"}</span>
-                                                <span className="text-[9px] font-normal text-gray-400 uppercase">{detail.period === '1º Tempo' ? '1ºT' : detail.period === '2º Tempo' ? '2ºT' : (detail.period || '-')}</span>
+                                        <div key={idx} className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 border border-gray-200 mb-2 shadow-sm transition-colors hover:bg-gray-100 hover:border-gray-300">
+                                            <div className="bg-white p-2 rounded-lg font-bold text-indigo-700 shadow-sm border border-gray-200 min-w-[4rem] text-center flex flex-col justify-center h-14">
+                                                <span className="text-lg leading-none mb-1">{detail.game_time || detail.minute || "00:00"}</span>
+                                                <span className="text-[10px] font-medium text-gray-500 uppercase leading-none">{detail.period === '1º Tempo' ? '1ºT' : detail.period === '2º Tempo' ? '2ºT' : (detail.period || '-')}</span>
                                             </div>
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-1.5 mb-1">
-                                                    <span className="text-[10px] font-bold uppercase text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center flex-wrap gap-2 mb-1">
+                                                    <span className="text-xs font-bold uppercase text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
                                                         {getPhaseLabel(detail.round)}
                                                     </span>
                                                     {detail.phase && (detail.phase !== detail.round) && (
-                                                        <span className="text-[10px] text-gray-400 font-medium border-l pl-1.5 border-gray-300">
+                                                        <span className="text-xs text-gray-600 font-medium border-l pl-2 border-gray-300">
                                                             {detail.phase}
                                                         </span>
                                                     )}
                                                 </div>
-                                                <p className="font-bold text-gray-800 text-sm leading-tight">{detail.match_label || 'Partida'}</p>
-                                                <p className="text-[10px] text-gray-400 mt-0.5 flex items-center gap-1">
-                                                    <Calendar className="w-3 h-3" />
+                                                <p className="font-bold text-gray-900 text-base leading-tight mb-1 truncate">{detail.match_label || 'Partida'}</p>
+                                                <p className="text-xs text-gray-500 flex items-center gap-1.5">
+                                                    <Calendar className="w-3.5 h-3.5" />
                                                     {detail.match_date ? new Date(detail.match_date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Data não informada'}
                                                 </p>
                                             </div>

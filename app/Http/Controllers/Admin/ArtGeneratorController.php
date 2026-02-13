@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use App\Models\GameMatch;
 use Illuminate\Support\Str;
 
+use App\Models\SystemSetting;
+
 class ArtGeneratorController extends Controller
 {
     private $fontPath;
@@ -19,6 +21,57 @@ class ArtGeneratorController extends Controller
         $this->secondaryFontPath = $this->fontPath;
         $this->templatesPath = public_path('assets/templates/');
     }
+
+    public function saveTemplate(Request $request)
+    {
+        $name = $request->input('name');
+        $elements = $request->input('elements');
+        $canvas = $request->input('canvas');
+        $bgUrl = $request->input('bg_url');
+
+        $key = $this->getTemplateKey($name);
+
+        $data = [
+            'elements' => $elements,
+            'canvas' => $canvas,
+            'bg_url' => $bgUrl,
+            'name' => $name
+        ];
+
+        SystemSetting::updateOrCreate(
+            ['key' => $key],
+            ['value' => json_encode($data), 'group' => 'art_templates']
+        );
+
+        return response()->json(['message' => 'Template salvo com sucesso']);
+    }
+
+    public function getTemplate(Request $request)
+    {
+        $name = $request->query('name');
+        $key = $this->getTemplateKey($name);
+
+        $setting = SystemSetting::where('key', $key)->first();
+
+        if ($setting) {
+            return response()->json(json_decode($setting->value, true));
+        }
+
+        return response()->json(null);
+    }
+
+    private function getTemplateKey($name)
+    {
+        $map = [
+            'Craque do Jogo (Geral)' => 'art_layout_mvp_vertical',
+            'Craque do Jogo (Vertical)' => 'art_layout_mvp_vertical', // Alias validation
+            'Jogo Programado (Feed)' => 'art_layout_scheduled_feed',
+            'Jogo Programado (Story)' => 'art_layout_scheduled_story',
+            'Confronto (Placar)' => 'art_layout_faceoff'
+        ];
+        return $map[$name] ?? 'art_layout_custom_' . Str::slug($name);
+    }
+
     /**
      * Gera Arte de Confronto (Faceoff)
      */
@@ -358,12 +411,15 @@ class ArtGeneratorController extends Controller
             return response('Jogador não definido.', 404);
 
         $sport = strtolower($match->championship->sport->name ?? 'futebol');
+
+        $roundText = $match->round_name ?? "RODADA " . ($match->round_number ?? 1);
+
         return $this->createCard(
             $player,
             $match->championship,
             $sport,
             $category,
-            $match->round_name ?? 'Rodada',
+            $roundText,
 
             $match, // Passa a partida para pegar placar e times se for MVP
             null,
@@ -444,11 +500,11 @@ class ArtGeneratorController extends Controller
 
         $champName = mb_strtoupper($championship->name);
         // Campeonato em Secundária
-        $drawText(40, 1660, $secondaryColor, $champName, true);
+        $drawText(40, 1690, $secondaryColor, $champName, true);
 
         if ($roundName) {
             // Rodada em Branco (ou Secundária)
-            $drawText(30, 1710, $white, mb_strtoupper($roundName), true);
+            $drawText(30, 1750, $white, mb_strtoupper($roundName), true);
         }
 
         // Título da Categoria para Vôlei (Legacy)
@@ -471,11 +527,13 @@ class ArtGeneratorController extends Controller
             $centerDist = 350;
 
             // Home Team
+            // Offset manual +102
             $xA = 102 + ($width / 2) - $centerDist - ($badgeSize / 2);
             $this->drawTeamBadge($img, $match->homeTeam, $xA, $yBadges, $badgeSize, $secondaryColor);
 
             // Away Team
-            $xB = -94 + ($width / 2) + $centerDist - ($badgeSize / 2);
+            // Offset manual -102 (Symmetry)
+            $xB = -102 + ($width / 2) + $centerDist - ($badgeSize / 2);
             $this->drawTeamBadge($img, $match->awayTeam, $xB, $yBadges, $badgeSize, $secondaryColor);
 
             // Placar
@@ -483,20 +541,29 @@ class ArtGeneratorController extends Controller
             $scoreA = $match->home_score ?? 0;
             $scoreB = $match->away_score ?? 0;
 
-            // Use Primary Color for Score with Shadow
-            $shadowOffset = 4;
             $placarSize = 100;
 
+            // Calcular centros baseados nas posições dos brasões
+            // Centro do Badge A = xA + badgeSize/2
+            // Centro do Badge B = xB + badgeSize/2
+
+            $centerA = $xA + ($badgeSize / 2);
+            $centerB = $xB + ($badgeSize / 2);
+
+            // Calculate text widths
             $boxA = imagettfbbox($placarSize, 0, $this->fontPath, $scoreA);
             $wA = $boxA[2] - $boxA[0];
 
+            $boxB = imagettfbbox($placarSize, 0, $this->fontPath, $scoreB);
+            $wB = $boxB[2] - $boxB[0];
+
+            // Draw Scores (Centered on Badges, Black Color)
+
             // Score A
-            imagettftext($img, $placarSize, 0, ($width / 2) - 180 - $wA + $shadowOffset, $scoreY + $shadowOffset, $black, $this->fontPath, $scoreA);
-            imagettftext($img, $placarSize, 0, ($width / 2) - 180 - $wA, $scoreY, $primaryColor, $this->fontPath, $scoreA);
+            imagettftext($img, $placarSize, 0, $centerA - ($wA / 2), $scoreY, $black, $this->fontPath, $scoreA);
 
             // Score B
-            imagettftext($img, $placarSize, 0, ($width / 2) + 180 + 40 + $shadowOffset, $scoreY + $shadowOffset, $black, $this->fontPath, $scoreB);
-            imagettftext($img, $placarSize, 0, ($width / 2) + 180 + 40, $scoreY, $primaryColor, $this->fontPath, $scoreB);
+            imagettftext($img, $placarSize, 0, $centerB - ($wB / 2), $scoreY, $black, $this->fontPath, $scoreB);
 
         } else {
             // Layout Award: Apenas Brasão da Equipe do Jogador
