@@ -459,7 +459,8 @@ export function ArtEditor() {
                                 transform: el.type === 'text'
                                     ? `translate(${el.align === 'left' ? '0' : el.align === 'right' ? '-100%' : '-50%'}, -50%)`
                                     : 'translate(-50%, -50%)',
-                                whiteSpace: 'nowrap',
+                                whiteSpace: 'pre',
+                                lineHeight: 1,
                                 cursor: 'move'
                             }}
                         >
@@ -553,7 +554,8 @@ export function ArtEditor() {
                                     transform: el.type === 'text'
                                         ? `translate(${el.align === 'left' ? '0' : el.align === 'right' ? '-100%' : '-50%'}, -50%)`
                                         : 'translate(-50%, -50%)',
-                                    whiteSpace: 'nowrap',
+                                    whiteSpace: 'pre',
+                                    lineHeight: 1,
                                     zIndex: el.zIndex,
                                 }}
                             >
