@@ -136,6 +136,21 @@ class ArtGeneratorController extends Controller
         }
 
         if ($default) {
+            // DYNAMIC BACKGROUND RESOLUTION (Preview Mode) For Defaults
+            $sport = $request->query('sport');
+            if ($sport) { // Defaults usually don't have fixes bg_url, so just resolve
+                $cat = 'confronto';
+                $n = strtolower($name);
+                if (str_contains($n, 'programado'))
+                    $cat = 'jogo_programado';
+                elseif (str_contains($n, 'craque') || str_contains($n, 'mvp'))
+                    $cat = 'craque';
+
+                $bgFile = $this->getBackgroundFile($sport, $cat, $club);
+                if ($bgFile) {
+                    $default['preview_bg_url'] = $this->pathToUrl($bgFile);
+                }
+            }
             return response()->json($default);
         }
 
@@ -1158,9 +1173,20 @@ class ArtGeneratorController extends Controller
             return $map[$category] ?? 'volei_melhor_quadra.jpg';
         }
 
-        // Mapeamento Futebol (e outros)
+        // Mapeamento Volei has specific block above.
+
+        // For other sports, we check if specific file exists first, otherwise default to generic
+        // E.g. futsal_confronto.jpg
+        $sportSlug = Str::slug($sport, '_');
+        $specificFile = $sportSlug . '_' . $category . '.jpg';
+        if (file_exists($this->templatesPath . $specificFile)) {
+            return $specificFile;
+        }
+
+        // Generic Map (Futebol / Default)
         $map = [
             'confronto' => 'fundo_confronto.jpg',
+            'jogo_programado' => 'fundo_confronto.jpg', // Fallback
             'craque' => 'fundo_craque_do_jogo.jpg',
             'goleiro' => 'fundo_melhor_goleiro.jpg',
             'artilheiro' => 'fundo_melhor_artilheiro.jpg',
