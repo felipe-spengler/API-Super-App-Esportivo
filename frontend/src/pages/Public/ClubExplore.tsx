@@ -75,32 +75,32 @@ export function ClubExplore() {
 
             <div className="max-w-lg mx-auto p-4">
                 {/* Status Tabs */}
-                <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide no-scrollbar">
-                    {[
-                        { id: 'active', label: 'Todos' },
-                        { id: 'open', label: 'Inscrições' },
-                        { id: 'ongoing', label: 'Em Andamento' },
-                        { id: 'upcoming', label: 'Em Breve' },
-                        { id: 'finished', label: 'Finalizados' },
-                    ].map(tab => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setStatusTab(tab.id)}
-                            style={{
-                                backgroundColor: statusTab === tab.id ? primaryColor : 'white',
-                                color: statusTab === tab.id ? 'white' : '#6b7280',
-                                borderColor: statusTab === tab.id ? primaryColor : '#e5e7eb'
-                            }}
-                            className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all border shadow-sm`}
-                        >
-                            {tab.label}
-                        </button>
-                    ))}
-                </div>
+                {statusTab && (
+                    <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide no-scrollbar">
+                        {[
+                            { id: 'active', label: 'Todos' },
+                            { id: 'open', label: 'Inscrições' },
+                            { id: 'ongoing', label: 'Em Andamento' },
+                            { id: 'upcoming', label: 'Em Breve' },
+                            { id: 'finished', label: 'Finalizados' },
+                        ].map(tab => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setStatusTab(tab.id)}
+                                className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all border shadow-sm ${statusTab === tab.id
+                                    ? 'bg-indigo-600 text-white border-indigo-600'
+                                    : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
+                                    }`}
+                            >
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
+                )}
 
                 {loading ? (
                     <div className="flex justify-center mt-10">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderBottomColor: primaryColor }}></div>
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
                     </div>
                 ) : championships.length === 0 ? (
                     <div className="text-center mt-10 text-gray-400 py-10 bg-white rounded-2xl border border-dashed border-gray-200">
@@ -115,7 +115,7 @@ export function ClubExplore() {
                                 to={item.format === 'racing' ? `/races/${item.id}` : `/events/${item.id}`}
                                 className="block bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 hover:shadow-md transition-all active:scale-[0.99]"
                             >
-                                <div className="h-2 w-full" style={{ backgroundColor: primaryColor }} />
+                                <div className="h-2 w-full bg-indigo-600" />
                                 <div className="p-4">
                                     <div className="flex justify-between items-start mb-2">
                                         <div className="flex-1 pr-2">
@@ -143,7 +143,7 @@ export function ClubExplore() {
                                     <div className="flex items-center justify-between border-t border-gray-100 pt-3">
                                         <div className="flex flex-col gap-1.5">
                                             <div className="flex items-center text-xs text-gray-700 font-bold">
-                                                <MapPin className="w-3.5 h-3.5 mr-1.5" style={{ color: primaryColor }} />
+                                                <MapPin className="w-3.5 h-3.5 mr-1.5 text-indigo-600" />
                                                 {item.club?.city || item.city || 'Local não definido'}
                                             </div>
                                             <div className="flex items-center text-xs text-gray-500 font-medium">

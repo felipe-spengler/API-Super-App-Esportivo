@@ -84,15 +84,11 @@ export function ClubHome() {
                 ) : (
                     // Fallback: Club Branding
                     <div
-                        style={{ backgroundColor: primaryColor }}
-                        className="rounded-3xl p-8 relative h-56 flex flex-col items-center justify-center shadow-lg overflow-hidden group hover:scale-[1.02] transition-transform"
+                        className="bg-indigo-900 rounded-3xl p-8 relative h-56 flex flex-col items-center justify-center shadow-lg overflow-hidden group hover:scale-[1.02] transition-transform"
                     >
                         {/* Background Pattern */}
-                        <div className="absolute inset-0 opacity-5"
-                            style={{
-                                backgroundImage: `radial-gradient(circle at 20% 50%, ${secondaryColor} 1px, transparent 1px), radial-gradient(circle at 80% 80%, ${secondaryColor} 1px, transparent 1px)`,
-                                backgroundSize: '50px 50px'
-                            }}
+                        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white/20 to-transparent"
+                            style={{ backgroundSize: '20px 20px' }}
                         />
 
                         <div className="relative z-10 flex flex-col items-center">
@@ -118,24 +114,24 @@ export function ClubHome() {
                     <h2 className="text-lg font-bold text-gray-800 mb-4 px-1">Acesso Rápido</h2>
                     <div className="bg-white rounded-2xl p-6 flex justify-around shadow-sm border border-gray-100">
                         <button className="flex flex-col items-center gap-2 group" onClick={() => navigate('/inscricoes')}>
-                            <div className="bg-gray-50 p-4 rounded-2xl group-hover:bg-gray-100 transition-colors">
-                                <Trophy className="w-6 h-6" style={{ color: primaryColor }} />
+                            <div className="bg-gray-50 p-4 rounded-2xl group-hover:bg-indigo-50 transition-colors">
+                                <Trophy className="w-6 h-6 text-indigo-600" />
                             </div>
-                            <span className="text-xs text-gray-600 font-medium">Inscrições</span>
+                            <span className="text-xs text-gray-600 font-medium group-hover:text-indigo-600 transition-colors">Inscrições</span>
                         </button>
 
                         <button className="flex flex-col items-center gap-2 group" onClick={() => navigate('/shop')}>
-                            <div className="bg-gray-50 p-4 rounded-2xl group-hover:bg-gray-100 transition-colors">
-                                <ShoppingBag className="w-6 h-6" style={{ color: primaryColor }} />
+                            <div className="bg-gray-50 p-4 rounded-2xl group-hover:bg-indigo-50 transition-colors">
+                                <ShoppingBag className="w-6 h-6 text-indigo-600" />
                             </div>
-                            <span className="text-xs text-gray-600 font-medium">Loja</span>
+                            <span className="text-xs text-gray-600 font-medium group-hover:text-indigo-600 transition-colors">Loja</span>
                         </button>
 
                         <button className="flex flex-col items-center gap-2 group" onClick={() => navigate('/agenda')}>
-                            <div className="bg-gray-50 p-4 rounded-2xl group-hover:bg-gray-100 transition-colors">
-                                <Calendar className="w-6 h-6" style={{ color: primaryColor }} />
+                            <div className="bg-gray-50 p-4 rounded-2xl group-hover:bg-indigo-50 transition-colors">
+                                <Calendar className="w-6 h-6 text-indigo-600" />
                             </div>
-                            <span className="text-xs text-gray-600 font-medium">Agenda</span>
+                            <span className="text-xs text-gray-600 font-medium group-hover:text-indigo-600 transition-colors">Agenda</span>
                         </button>
                     </div>
                 </div>
@@ -148,16 +144,15 @@ export function ClubHome() {
                             activeSports.map((sport) => (
                                 <button
                                     key={sport.id}
-                                    className="aspect-square bg-white rounded-2xl flex flex-col items-center justify-center gap-3 shadow-sm border border-gray-100 hover:shadow-md hover:-translate-y-1 transition-all"
+                                    className="aspect-square bg-white rounded-2xl flex flex-col items-center justify-center gap-3 shadow-sm border border-gray-100 hover:shadow-md hover:-translate-y-1 transition-all group"
                                     onClick={() => navigate(`/club-home/${clubSlug}/explore?sport=${sport.name}`)}
                                 >
                                     <div
-                                        className="w-12 h-12 rounded-full flex items-center justify-center shadow-sm"
-                                        style={{ backgroundColor: primaryColor }}
+                                        className="w-12 h-12 rounded-full flex items-center justify-center shadow-sm bg-indigo-600 group-hover:bg-indigo-700 transition-colors"
                                     >
                                         <Trophy className="w-5 h-5 text-white" />
                                     </div>
-                                    <span className="text-gray-700 font-medium text-xs">{sport.name}</span>
+                                    <span className="text-gray-700 font-medium text-xs group-hover:text-indigo-700 transition-colors">{sport.name}</span>
                                 </button>
                             ))
                         ) : (

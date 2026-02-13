@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Target, Shield, Hand, Star, AlertTriangle, AlertOctagon, Trophy, X } from 'lucide-react';
+import { ArrowLeft, Target, Shield, Hand, Star, AlertTriangle, AlertOctagon, Trophy, X, Calendar } from 'lucide-react';
 import api from '../../services/api';
 
 export function EventStats() {
@@ -71,6 +71,20 @@ export function EventStats() {
             case 'points': return 'Pts';
             default: return 'Total';
         }
+    };
+
+    const getPhaseLabel = (round: string | number) => {
+        if (!round) return 'Fase de Grupos';
+        const str = String(round);
+        if (str === 'round_of_32') return '32-avos de Final';
+        if (str === 'round_of_16') return 'Oitavas de Final';
+        if (str === 'quarter') return 'Quartas de Final';
+        if (str === 'semi') return 'Semifinal';
+        if (str === 'final') return 'Final';
+        if (str === 'third_place') return '3º Lugar';
+        // Check if numeric
+        if (!isNaN(Number(str)) && Number(str) < 50) return `Rodada ${str}`;
+        return str; // Fallback
     };
 
     return (
@@ -204,20 +218,26 @@ export function EventStats() {
                             ) : (
                                 <div className="space-y-3">
                                     {selectedStat.details.map((detail: any, idx: number) => (
-                                        <div key={idx} className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 border border-gray-100 mb-2">
+                                        <div key={idx} className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 border border-gray-100 mb-2">
                                             <div className="bg-white p-2 rounded-md font-bold text-indigo-600 shadow-sm border border-gray-100 min-w-[3.5rem] text-center text-sm flex flex-col justify-center">
-                                                <span>{detail.game_time || detail.minute || "-"}</span>
-                                                <span className="text-[9px] font-normal text-gray-400">{detail.period === '1º Tempo' ? '1ºT' : detail.period === '2º Tempo' ? '2ºT' : detail.period}</span>
+                                                <span>{detail.game_time || detail.minute || "00:00"}</span>
+                                                <span className="text-[9px] font-normal text-gray-400 uppercase">{detail.period === '1º Tempo' ? '1ºT' : detail.period === '2º Tempo' ? '2ºT' : (detail.period || '-')}</span>
                                             </div>
                                             <div className="flex-1">
-                                                <p className="text-[10px] text-gray-500 font-bold uppercase mb-0.5 tracking-wider">
-                                                    {detail.phase ? <span className="text-indigo-600">{detail.phase}</span> : null}
-                                                    {detail.phase && detail.round ? ' • ' : ''}
-                                                    {detail.round ? <span>{detail.round}</span> : null}
-                                                </p>
+                                                <div className="flex items-center gap-1.5 mb-1">
+                                                    <span className="text-[10px] font-bold uppercase text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">
+                                                        {getPhaseLabel(detail.round)}
+                                                    </span>
+                                                    {detail.phase && (detail.phase !== detail.round) && (
+                                                        <span className="text-[10px] text-gray-400 font-medium border-l pl-1.5 border-gray-300">
+                                                            {detail.phase}
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 <p className="font-bold text-gray-800 text-sm leading-tight">{detail.match_label || 'Partida'}</p>
-                                                <p className="text-[10px] text-gray-400 mt-0.5">
-                                                    {detail.match_date ? new Date(detail.match_date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}
+                                                <p className="text-[10px] text-gray-400 mt-0.5 flex items-center gap-1">
+                                                    <Calendar className="w-3 h-3" />
+                                                    {detail.match_date ? new Date(detail.match_date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Data não informada'}
                                                 </p>
                                             </div>
                                         </div>

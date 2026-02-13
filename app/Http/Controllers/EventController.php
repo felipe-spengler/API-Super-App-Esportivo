@@ -531,7 +531,8 @@ class EventController extends Controller
             $query->with('players');
         }
 
-        $teams = $query->orderBy('name')->get();
+        // Evita duplicatas se o time estiver em várias categorias
+        $teams = $query->select('teams.*')->distinct()->orderBy('teams.name')->get();
         return response()->json($teams);
     }
 

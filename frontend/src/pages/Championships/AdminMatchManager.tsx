@@ -30,7 +30,8 @@ export function AdminMatchManager() {
     const [championship, setChampionship] = useState<any>(null);
     const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
     const [showEditModal, setShowEditModal] = useState(false);
-    const [editData, setEditData] = useState({ start_time: '', location: '', round_number: 1, category_id: null as number | null });
+
+    const [editData, setEditData] = useState({ start_time: '', location: '', round_number: 1, category_id: null as number | null, home_score: undefined as number | undefined, away_score: undefined as number | undefined });
     const [showAddModal, setShowAddModal] = useState(false);
     const [newData, setNewData] = useState({ home_team_id: '', away_team_id: '', start_time: '', location: '', round_number: 1 });
 
@@ -250,7 +251,9 @@ export function AdminMatchManager() {
             start_time: formattedDate,
             location: match.location || '',
             round_number: match.round_number || 1,
-            category_id: (match as any).category_id || null
+            category_id: (match as any).category_id || null,
+            home_score: match.home_score !== null ? match.home_score : undefined,
+            away_score: match.away_score !== null ? match.away_score : undefined
         });
         setShowEditModal(true);
     };
@@ -285,12 +288,19 @@ export function AdminMatchManager() {
         if (!selectedMatch) return;
         try {
             // Using PUT to match common Laravel convention
-            await api.put(`/admin/matches/${selectedMatch.id}`, {
+            const payload: any = {
                 start_time: toUTCString(editData.start_time),
                 location: editData.location,
                 round_number: editData.round_number,
                 category_id: editData.category_id
-            });
+            };
+
+            if (selectedMatch.status === 'finished') {
+                payload.home_score = editData.home_score;
+                payload.away_score = editData.away_score;
+            }
+
+            await api.put(`/admin/matches/${selectedMatch.id}`, payload);
             alert('Jogo atualizado com sucesso!');
             setShowEditModal(false);
             loadData();
@@ -803,7 +813,7 @@ export function AdminMatchManager() {
                                                                 {/* Score */}
                                                                 <div className="flex flex-col items-center">
                                                                     <div className="flex items-center gap-2 md:gap-4 bg-white px-3 md:px-6 py-1.5 md:py-2 rounded-xl border border-gray-200 shadow-sm min-w-[90px] md:min-w-[120px] justify-center">
-                                                                        {(match.status === 'live' || match.status === 'finished' || match.status === 'ongoing') && match.home_score !== null && match.away_score !== null ? (
+                                                                        {['live', 'finished', 'ongoing'].includes(match.status) && match.home_score !== null && match.away_score !== null ? (
                                                                             <>
                                                                                 <span className="text-xl md:text-2xl font-black text-gray-900">
                                                                                     {match.home_score}
@@ -930,12 +940,38 @@ export function AdminMatchManager() {
 
                             {/* Category selection removed as per user request (teams belong to categories) */}
 
-                            <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 flex gap-3">
-                                <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
-                                <p className="text-xs text-amber-800 leading-relaxed">
-                                    O placar deve ser alterado através da <strong>Súmula Digital</strong> para garantir a consistência das estatísticas.
-                                </p>
-                            </div>
+                            {selectedMatch.status === 'finished' ? (
+                                <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                                    <div className="text-center">
+                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Placar Mandante</label>
+                                        <input
+                                            type="number"
+                                            value={editData.home_score ?? ''}
+                                            onChange={e => setEditData({ ...editData, home_score: parseInt(e.target.value) })}
+                                            className="w-full bg-white border border-gray-300 rounded-lg px-2 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-black text-xl text-center"
+                                        />
+                                    </div>
+                                    <div className="text-center">
+                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Placar Visitante</label>
+                                        <input
+                                            type="number"
+                                            value={editData.away_score ?? ''}
+                                            onChange={e => setEditData({ ...editData, away_score: parseInt(e.target.value) })}
+                                            className="w-full bg-white border border-gray-300 rounded-lg px-2 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-black text-xl text-center"
+                                        />
+                                    </div>
+                                    <p className="col-span-2 text-[10px] text-gray-400 text-center mt-1">
+                                        * Alterar o placar aqui não impacta a súmula, apenas o resultado final.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 flex gap-3">
+                                    <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+                                    <p className="text-xs text-amber-800 leading-relaxed">
+                                        O placar deve ser alterado através da <strong>Súmula Digital</strong> para garantir a consistência das estatísticas.
+                                    </p>
+                                </div>
+                            )}
                         </div>
                         <div className="p-4 bg-gray-50 border-t border-gray-100 flex gap-3">
                             <button onClick={() => setShowEditModal(false)} className="flex-1 px-4 py-3 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all">
