@@ -250,19 +250,53 @@ class ArtGeneratorController extends Controller
         return $this->mvpArt($matchId, $request);
     }
 
+    private function urlToPath($url)
+    {
+        if (empty($url))
+            return null;
+        $parsed = parse_url($url);
+        $path = $parsed['path'] ?? $url;
+        $path = urldecode($path);
+
+        if (strpos($path, '/assets-templates/') !== false) {
+            $rel = substr($path, strpos($path, '/assets-templates/'));
+            return public_path($rel);
+        }
+        if (strpos($path, '/storage/') !== false) {
+            $rel = substr($path, strpos($path, '/storage/'));
+            $rel = str_replace('/storage/', '', $rel);
+            return storage_path('app/public/' . $rel);
+        }
+        return $path;
+    }
+
     private function generateScheduledArt($match, $club = null)
     {
         $sport = $match->championship->sport->name ?? 'Futebol';
         $bgFile = $this->getBackgroundFile($sport, 'jogo_programado', $club);
+
+        // Check for Custom Template Background
+        $templateKey = 'art_layout_scheduled_feed';
+        $templateData = null;
+        if ($club && !empty($club->art_settings['templates'][$templateKey])) {
+            $templateData = $club->art_settings['templates'][$templateKey];
+            if (!empty($templateData['bg_url'])) {
+                $customBg = $this->urlToPath($templateData['bg_url']);
+                if (file_exists($customBg)) {
+                    $bgFile = $customBg;
+                }
+            }
+        }
+
         $img = $this->initImage($bgFile);
 
         if (!$img)
-            return response("Erro fundo: $bgFile", 500);
+            return response("Erro fundo: " . basename($bgFile), 500);
 
         // --- DYNAMIC RENDERING START ---
-        $templateKey = 'art_layout_scheduled_feed';
-        if ($club && !empty($club->art_settings['templates'][$templateKey])) {
-            $elements = $club->art_settings['templates'][$templateKey]['elements'];
+        // --- DYNAMIC RENDERING START ---
+        if ($templateData) {
+            $elements = $templateData['elements'];
 
             $replacements = [
                 '{CAMPEONATO}' => mb_strtoupper($match->championship->name),
@@ -384,11 +418,49 @@ class ArtGeneratorController extends Controller
 
     private function generateConfrontationArt($match, $club = null)
     {
-        // Fundo
-        $bgFile = $this->getBackgroundFile($match->championship->sport->name ?? 'Futebol', 'confronto', $club);
+        $sport = $match->championship->sport->name ?? 'Futebol';
+        $bgFile = $this->getBackgroundFile($sport, 'confronto', $club);
+
+        // Check for Custom Template Background
+        $templateKey = 'art_layout_faceoff';
+        $templateData = null;
+        if ($club && !empty($club->art_settings['templates'][$templateKey])) {
+            $templateData = $club->art_settings['templates'][$templateKey];
+            if (!empty($templateData['bg_url'])) {
+                $customBg = $this->urlToPath($templateData['bg_url']);
+                if (file_exists($customBg)) {
+                    $bgFile = $customBg;
+                }
+            }
+        }
+
         $img = $this->initImage($bgFile);
         if (!$img)
-            return response("Erro fundo: $bgFile", 500);
+            return response("Erro fundo: " . basename($bgFile), 500);
+
+        // --- DYNAMIC RENDERING START ---
+        if ($templateData) {
+            $elements = $templateData['elements'];
+
+            // Base Replacements
+            $replacements = [
+                '{CAMPEONATO}' => mb_strtoupper($match->championship->name),
+                '{RODADA}' => mb_strtoupper($match->round_name ?? "RODADA " . ($match->round_number ?? 1)),
+                'X' => 'X',
+                'DD/MM HH:MM' => \Carbon\Carbon::parse($match->start_time)->translatedFormat('d/m H:i'),
+                'Local da Partida' => mb_strtoupper($match->location ?? 'LOCAL A DEFINIR'),
+                '{PLACAR_CASA}' => $match->home_score ?? 0,
+                '{PLACAR_FORA}' => $match->away_score ?? 0,
+            ];
+
+            // Images
+            $replacements['team_a'] = $this->getTeamLogoPath($match->homeTeam);
+            $replacements['team_b'] = $this->getTeamLogoPath($match->awayTeam);
+
+            $this->renderDynamicElements($img, $elements, $replacements);
+            return $this->outputImage($img, 'confronto_' . $match->id);
+        }
+        // --- DYNAMIC RENDERING END ---
 
         $width = imagesx($img);
 
@@ -500,23 +572,35 @@ class ArtGeneratorController extends Controller
      */
     private function createCard($player, $championship, $sport, $category, $roundName = null, $match = null, $playerTeam = null, $club = null)
     {
-        // 1. Fundo
-        $bgFile = $this->getBackgroundFile($sport, $category, $club);
-        $img = $this->initImage($bgFile);
-        if (!$img)
-            return response("Erro fundo: $bgFile", 500);
-
-        $width = imagesx($img);
-
-        // --- DYNAMIC RENDERING START ---
+        // Determine Template Key first
         $templateKey = null;
         if (in_array($category, ['craque', 'mvp', 'melhor_jogador', 'melhor_quadra'])) {
             $templateKey = 'art_layout_mvp_vertical';
         }
-        // Add other mappings if/when editor supports them (e.g. Award types)
 
+        $bgFile = $this->getBackgroundFile($sport, $category, $club);
+        $templateData = null;
+
+        // Check Custom Background
         if ($templateKey && $club && !empty($club->art_settings['templates'][$templateKey])) {
-            $elements = $club->art_settings['templates'][$templateKey]['elements'];
+            $templateData = $club->art_settings['templates'][$templateKey];
+            if (!empty($templateData['bg_url'])) {
+                $customBg = $this->urlToPath($templateData['bg_url']);
+                if (file_exists($customBg)) {
+                    $bgFile = $customBg;
+                }
+            }
+        }
+
+        $img = $this->initImage($bgFile);
+        if (!$img)
+            return response("Erro fundo: " . basename($bgFile), 500);
+
+        $width = imagesx($img);
+
+        // --- DYNAMIC RENDERING START ---
+        if ($templateData) {
+            $elements = $templateData['elements'];
 
             // Prepare Data
             $name = !empty($player->nickname) ? $player->nickname : $player->name;
@@ -532,12 +616,15 @@ class ArtGeneratorController extends Controller
             ];
 
             if ($match) {
-                $replacements['{PLACAR_CASA}'] = $match->home_score ?? 0;
-                $replacements['{PLACAR_FORA}'] = $match->away_score ?? 0;
-                // Add specific placeholders used in editor defaults?
-                // Editor Default: "3x1" text? Or separate score boxes?
-                // Editor Default: "3" and "1" not explicit.
-                // Actually default editor has "3 x 1".
+                $sH = $match->home_score ?? 0;
+                $sA = $match->away_score ?? 0;
+                $replacements['{PLACAR_CASA}'] = $sH;
+                $replacements['{PLACAR_FORA}'] = $sA;
+                // Aliases
+                $replacements['{PA}'] = $sH;
+                $replacements['{PF}'] = $sA;
+                $replacements['{PC}'] = $sH;
+                $replacements['{PV}'] = $sA;
             }
 
             // Images
@@ -1087,6 +1174,31 @@ class ArtGeneratorController extends Controller
 
             if ($el['type'] === 'text') {
                 $text = $el['content'] ?? '';
+
+                // --- SMART OVERRIDE (Semantic IDs) ---
+                // Garante que elementos vitais usem os placeholders corretos, 
+                // mesmo que o usuário tenha alterado o texto para "teste" no editor.
+                if (isset($el['id'])) {
+                    $id = $el['id'];
+                    if ($id === 'player_name')
+                        $text = '{JOGADOR}';
+                    elseif ($id === 'score_home')
+                        $text = '{PLACAR_CASA}';
+                    elseif ($id === 'score_away')
+                        $text = '{PLACAR_FORA}';
+                    elseif ($id === 'championship')
+                        $text = '{CAMPEONATO}';
+                    elseif ($id === 'round')
+                        $text = '{RODADA}';
+                    elseif ($id === 'local')
+                        $text = 'Local da Partida';
+                    elseif ($id === 'date')
+                        $text = 'DD/MM HH:MM';
+                    elseif ($id === 'vs')
+                        $text = 'X';
+                }
+                // -------------------------------------
+
                 // Substituições em chaves {}
                 foreach ($replaceMap as $key => $val) {
                     if (is_string($val) || is_numeric($val)) {
