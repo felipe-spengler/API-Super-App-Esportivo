@@ -70,9 +70,12 @@ import { SumulaTenisMesa } from './pages/Matches/SumulaTenisMesa';
 import { SumulaJiuJitsu } from './pages/Matches/SumulaJiuJitsu';
 import { MatchPrintView } from './pages/Matches/MatchPrintView';
 
+import { Toaster } from 'react-hot-toast';
+
 function App() {
   return (
     <BrowserRouter>
+      <Toaster position="top-right" />
       <AuthProvider>
         <Routes>
           {/* ÁREA PÚBLICA (Visitante / Atleta) */}

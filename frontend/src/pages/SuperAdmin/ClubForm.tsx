@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Save, ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
 import api from '../../services/api';
 import { Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 interface Sport {
     id: number;
@@ -111,7 +112,7 @@ export function ClubForm() {
         try {
             if (isEditing) {
                 await api.put(`/admin/clubs-manage/${id}`, payload);
-                alert('Clube atualizado!');
+                toast.success('Clube atualizado com sucesso!');
             } else {
                 // Add admin fields for new creation
                 payload.admin_name = formData.admin_name;
@@ -119,14 +120,29 @@ export function ClubForm() {
                 payload.admin_password = formData.admin_password;
 
                 await api.post('/admin/clubs-manage', payload);
-                alert('Clube criado com sucesso!');
+                toast.success('Clube criado com sucesso!');
                 navigate('/admin/clubs-manage');
             }
         } catch (err: any) {
             console.error(err);
-            const msg = err.response?.data?.errors
-                ? Object.values(err.response.data.errors).flat().join('\n')
-                : (err.response?.data?.message || 'Erro ao salvar clube.');
+            let msg = 'Erro ao salvar clube.';
+
+            if (err.response?.data?.errors) {
+                const errors = Object.values(err.response.data.errors).flat();
+                msg = errors.join('\n');
+            } else if (err.response?.data?.message) {
+                msg = err.response.data.message;
+            }
+
+            // Translate common validation keys
+            if (msg.includes('validation.unique')) {
+                msg = msg.replace(/validation\.unique/g, 'Este valor já está em uso (verifique slug ou email).');
+            }
+            if (msg.includes('validation.min.string')) {
+                msg = msg.replace(/validation\.min\.string/g, 'O valor informado é muito curto.');
+            }
+
+            toast.error(msg);
             setError(msg);
         } finally {
             setLoading(false);

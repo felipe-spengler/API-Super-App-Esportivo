@@ -126,9 +126,14 @@ class ImageUploadController extends Controller
                     // Executa comando (python precisa estar no PATH do servidor)
                     $command = "python \"{$scriptPath}\" \"{$inputAbsPath}\" \"{$outputAbsPath}\"";
 
+                    \Log::info("Lab AI - Command: " . $command);
+
                     $output = [];
                     $returnVar = 0;
                     exec($command, $output, $returnVar);
+
+                    \Log::info("Lab AI - Output: " . json_encode($output));
+                    \Log::info("Lab AI - Return: " . $returnVar);
 
                     if ($returnVar === 0 && file_exists($outputAbsPath)) {
                         // Se sucesso, atualiza o path principal para a versão sem fundo
@@ -138,10 +143,12 @@ class ImageUploadController extends Controller
                         $responseData['photo_nobg_path'] = $path;
                         $responseData['ai_processed'] = true;
                     } else {
+                        \Log::error("Lab AI - Failed: " . json_encode($output));
                         $responseData['ai_error'] = 'Falha ao processar IA. Código: ' . $returnVar;
                         $responseData['ai_output'] = $output;
                     }
                 } catch (\Exception $e) {
+                    \Log::error("Lab AI - Exception: " . $e->getMessage());
                     $responseData['ai_error'] = $e->getMessage();
                 }
             }
@@ -406,11 +413,16 @@ class ImageUploadController extends Controller
                 // Executa comando
                 $command = "python \"{$scriptPath}\" \"{$inputAbsPath}\" \"{$outputAbsPath}\"";
 
+                \Log::info("Lab AI Test - Command: " . $command);
+
                 $output = [];
                 $returnVar = 0;
                 $startTime = microtime(true);
 
                 exec($command, $output, $returnVar);
+
+                \Log::info("Lab AI Test - Output: " . json_encode($output));
+                \Log::info("Lab AI Test - Return: " . $returnVar);
 
                 $endTime = microtime(true);
                 $processingTime = round($endTime - $startTime, 2);
@@ -426,11 +438,13 @@ class ImageUploadController extends Controller
                     $responseData['original_size'] = filesize($inputAbsPath);
                     $responseData['processed_size'] = filesize($outputAbsPath);
                 } else {
+                    \Log::error("Lab AI Test - Failed: " . json_encode($output));
                     $responseData['ai_error'] = 'Falha ao processar IA. Código: ' . $returnVar;
                     $responseData['ai_output'] = $output;
                     $responseData['command'] = $command;
                 }
             } catch (\Exception $e) {
+                \Log::error("Lab AI Test - Exception: " . $e->getMessage());
                 $responseData['ai_error'] = $e->getMessage();
             }
 
