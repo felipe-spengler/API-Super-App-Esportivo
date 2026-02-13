@@ -160,23 +160,23 @@ export function ArtEditor() {
     return (
         <div className="flex h-[calc(100vh-64px)] bg-gray-100 overflow-hidden">
             <style>{`
-                @font-face { font-family: 'Roboto'; src: url('${api.defaults.baseURL}/assets-fonts/Roboto.ttf'); }
-                @font-face { font-family: 'Roboto-Bold'; src: url('${api.defaults.baseURL}/assets-fonts/Roboto-Bold.ttf'); }
-                @font-face { font-family: 'Anton'; src: url('${api.defaults.baseURL}/assets-fonts/Anton.ttf'); }
-                @font-face { font-family: 'Archivo Black'; src: url('${api.defaults.baseURL}/assets-fonts/Archivo Black.ttf'); }
-                @font-face { font-family: 'Bebas Neue'; src: url('${api.defaults.baseURL}/assets-fonts/Bebas Neue.ttf'); }
-                @font-face { font-family: 'Cinzel'; src: url('${api.defaults.baseURL}/assets-fonts/Cinzel.ttf'); }
-                @font-face { font-family: 'Lato'; src: url('${api.defaults.baseURL}/assets-fonts/Lato.ttf'); }
-                @font-face { font-family: 'Lexend'; src: url('${api.defaults.baseURL}/assets-fonts/Lexend.ttf'); }
-                @font-face { font-family: 'Lora'; src: url('${api.defaults.baseURL}/assets-fonts/Lora.ttf'); }
-                @font-face { font-family: 'Merriweather'; src: url('${api.defaults.baseURL}/assets-fonts/Merriweather.ttf'); }
-                @font-face { font-family: 'Montserrat'; src: url('${api.defaults.baseURL}/assets-fonts/Montserrat.ttf'); }
-                @font-face { font-family: 'Open Sans'; src: url('${api.defaults.baseURL}/assets-fonts/Open Sans.ttf'); }
-                @font-face { font-family: 'Oswald'; src: url('${api.defaults.baseURL}/assets-fonts/Oswald.ttf'); }
-                @font-face { font-family: 'Playfair Display'; src: url('${api.defaults.baseURL}/assets-fonts/Playfair Display.ttf'); }
-                @font-face { font-family: 'Poppins'; src: url('${api.defaults.baseURL}/assets-fonts/Poppins.ttf'); }
-                @font-face { font-family: 'Source Sans 3'; src: url('${api.defaults.baseURL}/assets-fonts/Source Sans 3.ttf'); }
-                @font-face { font-family: 'Teko'; src: url('${api.defaults.baseURL}/assets-fonts/Teko.ttf'); }
+                @font-face { font-family: 'Roboto'; src: url('${api.defaults.baseURL}/assets-fonts/Roboto.ttf'); font-display: block; }
+                @font-face { font-family: 'Roboto-Bold'; src: url('${api.defaults.baseURL}/assets-fonts/Roboto-Bold.ttf'); font-display: block; }
+                @font-face { font-family: 'Anton'; src: url('${api.defaults.baseURL}/assets-fonts/Anton.ttf'); font-display: block; }
+                @font-face { font-family: 'Archivo Black'; src: url('${api.defaults.baseURL}/assets-fonts/Archivo Black.ttf'); font-display: block; }
+                @font-face { font-family: 'Bebas Neue'; src: url('${api.defaults.baseURL}/assets-fonts/Bebas Neue.ttf'); font-display: block; }
+                @font-face { font-family: 'Cinzel'; src: url('${api.defaults.baseURL}/assets-fonts/Cinzel.ttf'); font-display: block; }
+                @font-face { font-family: 'Lato'; src: url('${api.defaults.baseURL}/assets-fonts/Lato.ttf'); font-display: block; }
+                @font-face { font-family: 'Lexend'; src: url('${api.defaults.baseURL}/assets-fonts/Lexend.ttf'); font-display: block; }
+                @font-face { font-family: 'Lora'; src: url('${api.defaults.baseURL}/assets-fonts/Lora.ttf'); font-display: block; }
+                @font-face { font-family: 'Merriweather'; src: url('${api.defaults.baseURL}/assets-fonts/Merriweather.ttf'); font-display: block; }
+                @font-face { font-family: 'Montserrat'; src: url('${api.defaults.baseURL}/assets-fonts/Montserrat.ttf'); font-display: block; }
+                @font-face { font-family: 'Open Sans'; src: url('${api.defaults.baseURL}/assets-fonts/Open Sans.ttf'); font-display: block; }
+                @font-face { font-family: 'Oswald'; src: url('${api.defaults.baseURL}/assets-fonts/Oswald.ttf'); font-display: block; }
+                @font-face { font-family: 'Playfair Display'; src: url('${api.defaults.baseURL}/assets-fonts/Playfair Display.ttf'); font-display: block; }
+                @font-face { font-family: 'Poppins'; src: url('${api.defaults.baseURL}/assets-fonts/Poppins.ttf'); font-display: block; }
+                @font-face { font-family: 'Source Sans 3'; src: url('${api.defaults.baseURL}/assets-fonts/Source Sans 3.ttf'); font-display: block; }
+                @font-face { font-family: 'Teko'; src: url('${api.defaults.baseURL}/assets-fonts/Teko.ttf'); font-display: block; }
             `}</style>
             {/* Sidebar Controls */}
             <div className="w-80 bg-white border-r border-gray-200 flex flex-col z-20 shadow-xl overflow-hidden">
@@ -304,7 +304,7 @@ export function ArtEditor() {
                                                     />
                                                 </div>
                                                 <div className="col-span-1">
-                                                    <label className="text-[9px] text-gray-400 block mb-0.5">Cor</label>
+                                                    <label className="text-[9px] text-gray-700 font-bold block mb-0.5">Cor</label>
                                                     <div className="flex items-center gap-1">
                                                         <input
                                                             type="color"
@@ -315,7 +315,7 @@ export function ArtEditor() {
                                                     </div>
                                                 </div>
                                                 <div className="col-span-2">
-                                                    <label className="text-[9px] text-gray-400 block mb-0.5">Fonte</label>
+                                                    <label className="text-[9px] text-gray-700 font-bold block mb-0.5">Fonte</label>
                                                     <select
                                                         value={activeElement.fontFamily || 'Roboto'}
                                                         onChange={e => handleElementChange(activeElement.id, { fontFamily: e.target.value })}
@@ -341,7 +341,7 @@ export function ArtEditor() {
                                                     </select>
                                                 </div>
                                                 <div className="col-span-2">
-                                                    <label className="text-[9px] text-gray-400 block mb-0.5">Alinhamento</label>
+                                                    <label className="text-[9px] text-gray-700 font-bold block mb-0.5">Alinhamento</label>
                                                     <div className="flex border rounded overflow-hidden">
                                                         {['left', 'center', 'right'].map(align => (
                                                             <button
@@ -355,7 +355,7 @@ export function ArtEditor() {
                                                     </div>
                                                 </div>
                                                 <div className="col-span-2">
-                                                    <label className="text-[9px] text-gray-400 block mb-0.5">Conteúdo</label>
+                                                    <label className="text-[9px] text-gray-700 font-bold block mb-0.5">Conteúdo</label>
                                                     <input
                                                         type="text"
                                                         value={activeElement.content}
@@ -369,7 +369,7 @@ export function ArtEditor() {
                                         {activeElement.type === 'image' && (
                                             <>
                                                 <div className="col-span-1">
-                                                    <label className="text-[9px] text-gray-400 block mb-0.5">Largura</label>
+                                                    <label className="text-[9px] text-gray-700 font-bold block mb-0.5">Largura</label>
                                                     <input
                                                         type="number"
                                                         value={activeElement.width}
@@ -378,7 +378,7 @@ export function ArtEditor() {
                                                     />
                                                 </div>
                                                 <div className="col-span-1">
-                                                    <label className="text-[9px] text-gray-400 block mb-0.5">Altura</label>
+                                                    <label className="text-[9px] text-gray-700 font-bold block mb-0.5">Altura</label>
                                                     <input
                                                         type="number"
                                                         value={activeElement.height}
