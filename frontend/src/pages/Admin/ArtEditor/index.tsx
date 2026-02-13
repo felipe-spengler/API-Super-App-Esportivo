@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Save, Upload, Type, Image as ImageIcon, Layout, Move, Plus, Trash2, Smartphone, Monitor } from 'lucide-react';
+import { Save, Upload, Type, Image as ImageIcon, Layout, Move, Plus, Trash2, Smartphone, Monitor, X } from 'lucide-react';
 import api from '../../../services/api';
 import toast from 'react-hot-toast';
 
@@ -40,40 +40,51 @@ const DEFAULT_ELEMENTS: Element[] = [
 export function ArtEditor() {
     const [elements, setElements] = useState<Element[]>(DEFAULT_ELEMENTS);
     const [activeElementId, setActiveElementId] = useState<string | null>(null);
-    const [templateName, setTemplateName] = useState('Craque do Jogo (Geral)');
+    const [templateName, setTemplateName] = useState('Craque do Jogo');
     const [bgImage, setBgImage] = useState<string | null>(null); // URL of background
     const [loading, setLoading] = useState(false);
+
+    const [previewMode, setPreviewMode] = useState(false);
 
     // Load template or default settings
     useEffect(() => {
         loadTemplate();
     }, [templateName]);
 
+    const getDefaultBg = (name: string) => {
+        // Use default assets from backend
+        if (name === 'Craque do Jogo') return `${api.defaults.baseURL}/assets-templates/fundo_craque_do_jogo.jpg`;
+        if (name === 'Jogo Programado') return `${api.defaults.baseURL}/assets-templates/volei_confronto.jpg`; // Using a known existing one or generic
+        if (name === 'Confronto') return `${api.defaults.baseURL}/assets-templates/fundo_confronto.jpg`;
+        return null;
+    };
+
     const loadTemplate = async () => {
         setLoading(true);
         try {
             const res = await api.get('/admin/art-templates', { params: { name: templateName } });
+
             if (res.data && res.data.elements) {
                 setElements(res.data.elements);
-                setBgImage(res.data.bg_url);
+                setBgImage(res.data.bg_url || getDefaultBg(templateName));
             } else {
                 // Load Defaults based on Type
-                if (templateName.includes('Craque')) {
+                setBgImage(getDefaultBg(templateName));
+
+                if (templateName === 'Craque do Jogo') {
                     setElements(DEFAULT_ELEMENTS);
-                } else if (templateName.includes('Jogo Programado')) {
+                } else if (templateName === 'Jogo Programado') {
                     setElements([
-                        { id: 'bg', type: 'image', x: 540, y: 960, width: 1080, height: 1920, label: 'Background', zIndex: 0, content: 'bg_scheduled' },
-                        { id: 'championship', type: 'text', x: 540, y: 250, fontSize: 45, color: '#FFFFFF', align: 'center', label: 'Campeonato', zIndex: 2, content: '{CAMPEONATO}' },
+                        { id: 'championship', type: 'text', x: 540, y: 250, fontSize: 45, color: '#FFFFFF', align: 'center', label: 'Campeonato', zIndex: 2, content: '{CAMPEONATO}', fontFamily: 'Roboto' },
                         { id: 'team_a', type: 'image', x: 250, y: 800, width: 400, height: 400, label: 'Brasão Mandante', zIndex: 2, content: 'team_a' },
                         { id: 'team_b', type: 'image', x: 830, y: 800, width: 400, height: 400, label: 'Brasão Visitante', zIndex: 2, content: 'team_b' },
-                        { id: 'vs', type: 'text', x: 540, y: 1000, fontSize: 80, color: '#FFB700', align: 'center', label: 'X (Versus)', zIndex: 2, content: 'X' },
-                        { id: 'date', type: 'text', x: 540, y: 1500, fontSize: 50, color: '#FFB700', align: 'center', label: 'Data', zIndex: 2, content: 'DD/MM HH:MM' },
-                        { id: 'local', type: 'text', x: 540, y: 1600, fontSize: 35, color: '#FFFFFF', align: 'center', label: 'Local', zIndex: 2, content: 'Local da Partida' },
+                        { id: 'vs', type: 'text', x: 540, y: 1000, fontSize: 80, color: '#FFB700', align: 'center', label: 'X (Versus)', zIndex: 2, content: 'X', fontFamily: 'Roboto-Bold' },
+                        { id: 'date', type: 'text', x: 540, y: 1500, fontSize: 50, color: '#FFB700', align: 'center', label: 'Data', zIndex: 2, content: 'DD/MM HH:MM', fontFamily: 'Roboto' },
+                        { id: 'local', type: 'text', x: 540, y: 1600, fontSize: 35, color: '#FFFFFF', align: 'center', label: 'Local', zIndex: 2, content: 'Local da Partida', fontFamily: 'Roboto' },
                     ]);
                 } else {
                     setElements([]);
                 }
-                setBgImage(null);
             }
         } catch (error) {
             console.error("Erro ao carregar template", error);
@@ -148,10 +159,9 @@ export function ArtEditor() {
                         onChange={e => setTemplateName(e.target.value)}
                         className="w-full p-2 border border-gray-200 rounded-lg text-sm font-bold"
                     >
-                        <option>Craque do Jogo (Vertical)</option>
-                        <option>Jogo Programado (Feed)</option>
-                        <option>Jogo Programado (Story)</option>
-                        <option>Confronto (Placar)</option>
+                        <option>Craque do Jogo</option>
+                        <option>Jogo Programado</option>
+                        <option>Confronto</option>
                     </select>
 
                     <button className="flex items-center justify-center gap-2 w-full py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-bold transition-colors">
@@ -315,6 +325,12 @@ export function ArtEditor() {
                     >
                         {loading ? 'Salvando...' : <><Save size={18} /> Salvar Template</>}
                     </button>
+                    <button
+                        onClick={() => setPreviewMode(true)}
+                        className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 mt-3"
+                    >
+                        <Monitor size={18} /> Visualizar HD
+                    </button>
                 </div>
             </div>
 
@@ -410,6 +426,73 @@ export function ArtEditor() {
                     As alterações são salvas para todos os esportes ao clicar em Salvar.
                 </p>
             </div>
+
+            {/* Preview Modal */}
+            {previewMode && (
+                <div
+                    className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center backdrop-blur-sm overflow-auto p-4"
+                    onClick={() => setPreviewMode(false)}
+                >
+                    <button
+                        className="fixed top-4 right-4 text-white hover:text-gray-300 z-[60] bg-white/10 rounded-full p-2"
+                        onClick={() => setPreviewMode(false)}
+                    >
+                        <X size={24} />
+                    </button>
+
+                    <div
+                        className="bg-white shadow-2xl relative overflow-hidden shrink-0 origin-center"
+                        style={{
+                            width: CANVAS_WIDTH,
+                            height: CANVAS_HEIGHT,
+                            transform: `scale(${Math.min(window.innerHeight / CANVAS_HEIGHT * 0.9, window.innerWidth / CANVAS_WIDTH * 0.9)})`,
+                        }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/* Background Layer */}
+                        <div className="absolute inset-0 bg-gray-300 flex items-center justify-center text-gray-400">
+                            {bgImage ? (
+                                <img src={bgImage} className="w-full h-full object-cover" />
+                            ) : (
+                                <div className="text-center font-bold opacity-30 text-4xl">
+                                    BACKGROUND PADRÃO
+                                </div>
+                            )}
+                        </div>
+
+                        {elements.sort((a, b) => a.zIndex - b.zIndex).map(el => (
+                            <div
+                                key={el.id}
+                                style={{
+                                    position: 'absolute',
+                                    left: el.x,
+                                    top: el.y,
+                                    width: el.width,
+                                    height: el.height,
+                                    fontSize: el.fontSize,
+                                    color: el.color,
+                                    fontFamily: el.fontFamily || 'Arial',
+                                    textAlign: el.align || 'left',
+                                    transform: 'translate(-50%, -50%)',
+                                    whiteSpace: 'nowrap',
+                                    zIndex: el.zIndex,
+                                }}
+                            >
+                                {el.type === 'image' ? (
+                                    <div className="w-full h-full bg-gray-200/50 flex items-center justify-center overflow-hidden"
+                                        style={{ borderRadius: el.borderRadius || 0 }}
+                                    >
+                                        {el.content === 'player_photo' ? <img src="https://ui-avatars.com/api/?name=Jogador&background=random&size=512" className="w-full h-full object-cover" /> : null}
+                                        {el.content?.includes('team') ? <div className="text-sm font-bold opacity-50">Logo Time</div> : null}
+                                    </div>
+                                ) : (
+                                    <span>{el.content}</span>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
