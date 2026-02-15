@@ -1122,32 +1122,49 @@ class ArtGeneratorController extends Controller
     private function getBackgroundFile($sport, $category, $club = null)
     {
         $sport = strtolower($sport);
+
+        // Normalização de Slugs e Aliases
+        $sportSlug = Str::slug($sport);
+
+        $aliases = [
+            'fut7' => 'futebol-7',
+            'society' => 'futebol-7',
+            'futebol-society' => 'futebol-7',
+            'futebol7' => 'futebol-7',
+            'f7' => 'futebol-7'
+        ];
+
+        if (isset($aliases[$sportSlug])) {
+            $sportSlug = $aliases[$sportSlug];
+        }
+
         // Debug Log
-        error_log("ArtGen: Resolving BG for Sport: [$sport] Category: [$category]");
+        error_log("ArtGen: Resolving BG for Sport: [$sport] (Slug: $sportSlug) Category: [$category]");
 
         // 1. Check Club Art Settings (Custom Backgrounds)
         if ($club && !empty($club->art_settings)) {
             $settings = $club->art_settings;
 
-            // Tenta pegar pelo nome direto (ex: 'futebol')
-            if (isset($settings[$sport]) && isset($settings[$sport][$category])) {
-                error_log("ArtGen: Found Club Custom BG for [$sport]");
-                return $settings[$sport][$category];
-            }
+            // Tenta pegar pelo nome direto
+            // OBS: Verificamos o slug normalizado também como prioridade se o nome direto falhar
 
-            // Tenta pegar pelo Slug (ex: 'futebol-7' para 'Futebol 7')
-            $sportSlug = Str::slug($sport);
+            // 1. Tenta slug normalizado (futebol-7)
             if (isset($settings[$sportSlug]) && isset($settings[$sportSlug][$category])) {
                 return $settings[$sportSlug][$category];
             }
 
+            // 2. Tenta nome original (fallback legacy)
+            if (isset($settings[$sport]) && isset($settings[$sport][$category])) {
+                return $settings[$sport][$category];
+            }
+
             // --- FALLBACK FOR JOGO PROGRAMADO ---
-            // Se não achou fundo específico para jogo_programado, tenta usar o de confronto
             if ($category === 'jogo_programado') {
-                if (isset($settings[$sport]['confronto']))
-                    return $settings[$sport]['confronto'];
                 if (isset($settings[$sportSlug]['confronto']))
                     return $settings[$sportSlug]['confronto'];
+
+                if (isset($settings[$sport]['confronto']))
+                    return $settings[$sport]['confronto'];
             }
         }
 

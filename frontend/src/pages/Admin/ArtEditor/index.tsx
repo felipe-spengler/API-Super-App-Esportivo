@@ -58,11 +58,28 @@ export function ArtEditor() {
 
     const [selectedSport, setSelectedSport] = useState('futebol');
     const [persistedBgUrl, setPersistedBgUrl] = useState<string | null>(null);
+    const [allSports, setAllSports] = useState<any[]>([]);
 
     // Load template or default settings
     useEffect(() => {
         loadTemplate();
     }, [templateName, selectedSport]);
+
+    // Load available sports
+    useEffect(() => {
+        try {
+            api.get('/sports').then(res => {
+                if (res.data) {
+                    setAllSports(res.data);
+                }
+            }).catch(() => {
+                // fallback if /sports fails, try settings
+                api.get('/admin/settings').then(res => {
+                    if (res.data && res.data.all_sports) setAllSports(res.data.all_sports);
+                });
+            })
+        } catch (e) { console.error(e); }
+    }, []);
 
     const getDefaultBg = (name: string, sport: string) => {
         // Use default assets from backend
@@ -350,12 +367,22 @@ export function ArtEditor() {
                                     onChange={e => setSelectedSport(e.target.value)}
                                     className="w-full p-2 border border-gray-200 rounded-lg text-sm font-bold bg-white"
                                 >
-                                    <option value="futebol">Futebol</option>
-                                    <option value="fut7">Fut7</option>
-                                    <option value="futsal">Futsal</option>
-                                    <option value="volei">Vôlei</option>
-                                    <option value="basquete">Basquete</option>
-                                    <option value="handebol">Handebol</option>
+                                    {allSports.length > 0 ? (
+                                        allSports.map(s => (
+                                            <option key={s.slug} value={s.slug}>{s.name}</option>
+                                        ))
+                                    ) : (
+                                        <>
+                                            <option value="futebol">Futebol</option>
+                                            <option value="futebol-7">Futebol 7</option>
+                                            <option value="futsal">Futsal</option>
+                                            <option value="volei">Vôlei</option>
+                                            <option value="basquete">Basquete</option>
+                                            <option value="handebol">Handebol</option>
+                                            <option value="tenis">Tênis</option>
+                                            <option value="beach-tennis">Beach Tennis</option>
+                                        </>
+                                    )}
                                 </select>
 
                                 {/* Preview Image Check */}
