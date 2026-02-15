@@ -121,8 +121,21 @@ export function ArtEditor() {
 
             if (res.data && res.data.elements) {
                 setElements(res.data.elements);
-                // Priority: Saved BG -> Preview/Dynamic BG -> Default BG
-                const bgToUse = res.data.bg_url || res.data.preview_bg_url || getDefaultBg(templateName, selectedSport);
+
+                // Smart Background Resolution
+                let bgToUse = res.data.bg_url;
+                const isSystemAsset = (url: string) => url && url.includes('/assets-templates/');
+
+                // If saved BG is a generic system asset, but backend provided a better preview for current sport, use it.
+                if (bgToUse && isSystemAsset(bgToUse) && res.data.preview_bg_url) {
+                    console.log('Frontend: Overriding Saved System BG with Preview BG');
+                    bgToUse = res.data.preview_bg_url;
+                }
+
+                if (!bgToUse) {
+                    bgToUse = res.data.preview_bg_url || getDefaultBg(templateName, selectedSport);
+                }
+
                 console.log('Frontend: Resolved BG to use:', bgToUse);
 
                 setPersistedBgUrl(res.data.bg_url || null);

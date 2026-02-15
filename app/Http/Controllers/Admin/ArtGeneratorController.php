@@ -115,7 +115,10 @@ class ArtGeneratorController extends Controller
             // If the template has no fixed bg_url OR user requested specific sport preview
             // We try to find the sport specific background to show in editor.
             $sport = $request->query('sport');
-            if ($sport && empty($responseTemplate['bg_url'])) { // Only override if template doesn't have a fixed custom BG
+
+            // Allow calculating preview_bg_url even if bg_url exists, so frontend can decide priority
+            // e.g. if saved bg_url is a generic default, but we have a better sport-specific preview
+            if ($sport) {
                 // Resolve category
                 $cat = 'confronto';
                 $n = strtolower($name);
