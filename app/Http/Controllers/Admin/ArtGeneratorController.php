@@ -76,8 +76,12 @@ class ArtGeneratorController extends Controller
         $path = str_replace('\\', '/', $path);
 
         // Check for assets templates (relative filename)
+        // Note: We check both locations to be safe, given inconsistent naming in some environments
+        if (file_exists(public_path('assets/templates/' . $path))) {
+            return url('api/assets-templates/' . $path);
+        }
         if (file_exists(public_path('assets-templates/' . $path))) {
-            return asset('assets-templates/' . $path);
+            return url('api/assets-templates/' . $path);
         }
 
         // Clean path for storage
@@ -96,7 +100,8 @@ class ArtGeneratorController extends Controller
             }
         }
 
-        return asset('storage/' . ltrim($clean, '/'));
+        // Use the API route for storage files, matching Settings page logic
+        return url('api/storage/' . ltrim($clean, '/'));
     }
 
     public function getTemplate(Request $request)
