@@ -64,16 +64,22 @@ export function ArtEditor() {
         loadTemplate();
     }, [templateName, selectedSport]);
 
-    const getDefaultBg = (name: string) => {
+    const getDefaultBg = (name: string, sport: string) => {
         // Use default assets from backend
-        if (name === 'Craque do Jogo') return `${api.defaults.baseURL}/assets-templates/fundo_craque_do_jogo.jpg`;
-        if (name === 'Jogo Programado') return `${api.defaults.baseURL}/assets-templates/volei_confronto.jpg`; // Using a known existing one or generic
-        if (name === 'Confronto') return `${api.defaults.baseURL}/assets-templates/fundo_confronto.jpg`;
+        const baseUrl = api.defaults.baseURL;
+        const s = (sport || 'futebol').toLowerCase();
+
+        if (name === 'Craque do Jogo') return `${baseUrl}/assets-templates/fundo_craque_do_jogo.jpg`;
+        if (name === 'Jogo Programado') {
+            if (s.includes('volei')) return `${baseUrl}/assets-templates/volei_confronto.jpg`;
+            return `${baseUrl}/assets-templates/fundo_confronto.jpg`;
+        }
+        if (name === 'Confronto') return `${baseUrl}/assets-templates/fundo_confronto.jpg`;
         return null; // fallback
     };
 
     const loadDefaults = (name: string) => {
-        setBgImage(getDefaultBg(name));
+        setBgImage(getDefaultBg(name, selectedSport));
         setPersistedBgUrl(null); // Reset persisted to null to allow dynamic behavior
 
         if (name === 'Craque do Jogo') {
@@ -116,7 +122,7 @@ export function ArtEditor() {
             if (res.data && res.data.elements) {
                 setElements(res.data.elements);
                 // Priority: Saved BG -> Preview/Dynamic BG -> Default BG
-                const bgToUse = res.data.bg_url || res.data.preview_bg_url || getDefaultBg(templateName);
+                const bgToUse = res.data.bg_url || res.data.preview_bg_url || getDefaultBg(templateName, selectedSport);
                 console.log('Frontend: Resolved BG to use:', bgToUse);
 
                 setPersistedBgUrl(res.data.bg_url || null);
