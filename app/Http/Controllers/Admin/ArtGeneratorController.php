@@ -66,12 +66,37 @@ class ArtGeneratorController extends Controller
 
     private function pathToUrl($path)
     {
-        if (str_contains($path, 'http'))
+        if (empty($path)) {
+            return null;
+        }
+        if (str_contains($path, 'http')) {
             return $path;
+        }
+
+        $path = str_replace('\\', '/', $path);
+
+        // Check for assets templates (relative filename)
         if (file_exists(public_path('assets-templates/' . $path))) {
             return asset('assets-templates/' . $path);
         }
-        return asset('storage/' . $path);
+
+        // Clean path for storage
+        $clean = $path;
+        $prefixes = [
+            str_replace('\\', '/', storage_path('app/public/')),
+            str_replace('\\', '/', public_path('storage/')),
+            '/storage/',
+            'storage/'
+        ];
+
+        foreach ($prefixes as $prefix) {
+            if (str_starts_with($clean, $prefix)) {
+                $clean = substr($clean, strlen($prefix));
+                break;
+            }
+        }
+
+        return asset('storage/' . ltrim($clean, '/'));
     }
 
     public function getTemplate(Request $request)
@@ -1212,17 +1237,30 @@ class ArtGeneratorController extends Controller
 
     private function initImage($filename)
     {
+        // Normalize slashes
+        $filename = str_replace('\\', '/', $filename);
+
         // Se filename vier com caminho completo (storage ou url), tentar carregar
         if (str_contains($filename, '/') || str_contains($filename, '\\')) {
+            // 1. Try exact path (absolute)
             if (file_exists($filename)) {
                 return $this->createFromFormat($filename);
             }
+
+            // 2. Clean storage prefix if present to try relative
+            $clean = $filename;
+            if (str_starts_with($clean, '/storage/'))
+                $clean = substr($clean, 9);
+            if (str_starts_with($clean, 'storage/'))
+                $clean = substr($clean, 8);
+
             // Tentar no public/storage se for relativo
-            $storagePath = storage_path('app/public/' . $filename);
+            $storagePath = storage_path('app/public/' . $clean);
             if (file_exists($storagePath)) {
                 return $this->createFromFormat($storagePath);
             }
-            $publicPath = public_path('storage/' . $filename);
+
+            $publicPath = public_path('storage/' . $clean);
             if (file_exists($publicPath)) {
                 return $this->createFromFormat($publicPath);
             }
