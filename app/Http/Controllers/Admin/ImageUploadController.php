@@ -165,27 +165,22 @@ class ImageUploadController extends Controller
                     $endAi = microtime(true);
                     $aiDuration = round($endAi - $startAi, 3);
 
+                    // Telemetria básica
                     $responseData['ai_time'] = $aiDuration . 's';
-                    $responseData['ai_logs'] = $output; // Retorna o log do python para o frontend
 
                     if ($returnVar === 0 && file_exists($outputAbsPath)) {
-                        // Tentar ajustar permissões do arquivo gerado (www-data/nginx podem precisar ler)
                         @chmod($outputAbsPath, 0664);
 
                         $path = 'players/' . $filenameNobg;
-                        $responseData['photo_nobg_url'] = asset('storage/' . $path);
 
-                        // URL alternativa via rota da API (caso Nginx/Storage link falhe)
-                        // A rota é /storage/{path} definida no api.php, então URL deve ser /api/storage/path
-                        // Mas url() gera com base na raiz. Se api.php rota é /storage, e prefix é /api...
-                        $responseData['photo_nobg_proxy_url'] = url('api/storage/' . $path);
-
+                        // USAR ROTA API (PROXY) COMO PRINCIPAL
+                        // Isso garante visualização mesmo com erro de configuração no Nginx/Storage link
+                        $responseData['photo_nobg_url'] = url('api/storage/' . $path);
                         $responseData['photo_nobg_path'] = $path;
                         $responseData['ai_processed'] = true;
                     } else {
                         \Log::error("Lab AI - Failed. Code: {$returnVar}. Output: " . json_encode($output));
-                        $responseData['ai_error'] = 'Falha no processamento de IA (Código ' . $returnVar . ').';
-                        $responseData['ai_output'] = $output;
+                        $responseData['ai_error'] = 'Falha no processamento de IA.';
                     }
                 } catch (\Exception $e) {
                     \Log::error("Lab AI - Exception: " . $e->getMessage());
