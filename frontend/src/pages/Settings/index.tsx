@@ -110,6 +110,7 @@ export function Settings() {
     const [selectedArtChampionship, setSelectedArtChampionship] = useState<string>(''); // '' = Padrão (Clube)
     const [activeTab, setActiveTab] = useState<string>('general');
     const [expandedSports, setExpandedSports] = useState<string[]>(['futebol']); // Default open football
+    const [isArtModalOpen, setIsArtModalOpen] = useState(false);
     const [emailSettings, setEmailSettings] = useState({
         smtp_host: '',
         smtp_port: '',
@@ -740,7 +741,10 @@ export function Settings() {
                                         <label className="text-xs font-bold text-gray-500 block mb-1 uppercase tracking-wider">Contexto de Edição</label>
                                         <select
                                             value={selectedArtChampionship}
-                                            onChange={(e) => setSelectedArtChampionship(e.target.value)}
+                                            onChange={(e) => {
+                                                setSelectedArtChampionship(e.target.value);
+                                                setIsArtModalOpen(true);
+                                            }}
                                             className="w-full p-2 border border-gray-200 rounded-lg text-sm font-bold bg-white text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-500"
                                         >
                                             <option value="">Padrão do Clube (Todos os Campeonatos)</option>
@@ -751,160 +755,172 @@ export function Settings() {
                                             </optgroup>
                                         </select>
                                     </div>
-                                    <div className="flex items-center gap-2 text-xs text-gray-400 max-w-xs leading-tight">
-                                        <Trophy className="w-4 h-4 text-gray-300 shrink-0" />
-                                        {selectedArtChampionship ?
-                                            'Você está editando as artes APENAS para este campeonato. Se não definir, usará o padrão.' :
-                                            'Você está editando o padrão para TODOS os campeonatos que não tiverem arte específica.'}
+                                    <div className="flex flex-col gap-2">
+                                        <div className="flex items-center gap-2 text-xs text-gray-400 max-w-xs leading-tight">
+                                            <Trophy className="w-4 h-4 text-gray-300 shrink-0" />
+                                            {selectedArtChampionship ?
+                                                'Editando artes APENAS para este campeonato.' :
+                                                'Editando padrão para TODOS os campeonatos.'}
+                                        </div>
+                                        <button
+                                            onClick={() => setIsArtModalOpen(true)}
+                                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg flex items-center gap-2 transition-colors shadow-sm"
+                                        >
+                                            <Palette size={14} />
+                                            Abrir Editor Visual
+                                        </button>
                                     </div>
                                 </div>
                             </header>
 
-                            {Object.entries(artConfig)
-                                .filter(([sportKey]) => {
-                                    if (selectedArtChampionship) {
-                                        // Find selected championship object to get its sport
-                                        const selectedChamp = championships.find(c => c.id.toString() === selectedArtChampionship);
-                                        // If found, show ONLY the sport associated with this championship
-                                        // The backend usually returns 'sport' relation with 'slug' or 'name'
-                                        // We assume artConfig keys match sport slugs (futebol, volei, etc)
-                                        if (selectedChamp && selectedChamp.sport) {
-                                            // Handle exact match or slug match
-                                            const champSportSlug = selectedChamp.sport.slug || selectedChamp.sport.name.toLowerCase();
-                                            return champSportSlug === sportKey;
-                                        }
-                                        return false; // Should not happen if data is consistent
-                                    }
-                                    // Default behavior (Club Settings): Show all active modalities
-                                    return settings.active_modalities.includes(sportKey);
-                                })
-                                .map(([sportKey, config]: [string, any]) => {
-                                    const isOpen = expandedSports.includes(sportKey);
-                                    return (
-                                        <section key={sportKey} className="border border-gray-200 rounded-2xl overflow-hidden shadow-sm bg-white">
-                                            <div
-                                                onClick={() => toggleSportSection(sportKey)}
-                                                className="bg-gray-50 p-4 flex justify-between items-center cursor-pointer hover:bg-gray-100 transition-colors"
-                                            >
-                                                <h3 className="text-lg font-bold text-gray-800 capitalize flex items-center gap-2">
-                                                    {sportKey === 'futebol' && <div className="w-2 h-2 rounded-full bg-green-500"></div>}
-                                                    {sportKey === 'volei' && <div className="w-2 h-2 rounded-full bg-orange-500"></div>}
-                                                    {config.name}
-                                                </h3>
-                                                {isOpen ? <ChevronDown className="w-5 h-5 text-gray-400" /> : <ChevronRight className="w-5 h-5 text-gray-400" />}
+                            {/* Art Modal */}
+                            {isArtModalOpen && (
+                                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                                    <div className="bg-white w-full max-w-6xl h-[90vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+                                        <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                                            <div>
+                                                <h3 className="text-lg font-bold text-gray-900">Editor de Artes & Fundos</h3>
+                                                <p className="text-xs text-gray-500">
+                                                    {selectedArtChampionship
+                                                        ? `Editando: ${championships.find(c => c.id.toString() === selectedArtChampionship)?.name || 'Campeonato'}`
+                                                        : 'Editando: Padrão do Clube'}
+                                                </p>
                                             </div>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={handleSave}
+                                                    disabled={saving}
+                                                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold text-sm flex items-center gap-2"
+                                                >
+                                                    <Save size={16} />
+                                                    {saving ? 'Salvando...' : 'Salvar Alterações'}
+                                                </button>
+                                                <button
+                                                    onClick={() => setIsArtModalOpen(false)}
+                                                    className="p-2 hover:bg-gray-200 rounded-lg text-gray-500 transition-colors"
+                                                >
+                                                    <X size={24} />
+                                                </button>
+                                            </div>
+                                        </div>
 
-                                            {isOpen && (
-                                                <div className="p-4 md:p-6 bg-white border-t border-gray-100">
-                                                    <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
-                                                        {config.positions.map((pos: any) => {
-                                                            const currentBg = settings.art_settings?.[sportKey]?.[pos.key];
-
-                                                            // Resolve URL
-                                                            // If custom: /api/storage/...
-                                                            // If default: /api/assets-templates/...
-                                                            let displayUrl = null;
-
-                                                            // Use configured API URL or fallback to relative root (works for same-domain deployments)
-                                                            const apiUrl = import.meta.env.VITE_API_URL || '';
-                                                            const rootUrl = apiUrl.replace(/\/$/, '').replace(/\/api$/, '');
-
-                                                            if (currentBg) {
-                                                                if (currentBg.startsWith('http')) {
-                                                                    displayUrl = currentBg;
-                                                                } else {
-                                                                    displayUrl = `${rootUrl}/api/storage/${currentBg.replace(/^\//, '')}`;
+                                        <div className="flex-1 overflow-y-auto p-6 bg-gray-50 custom-scrollbar">
+                                            {loading ? (
+                                                <div className="flex flex-col items-center justify-center h-full space-y-4">
+                                                    <Loader2 className="w-12 h-12 animate-spin text-indigo-500" />
+                                                    <p className="text-gray-500 font-medium">Carregando configurações do contexto...</p>
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-6">
+                                                    {Object.entries(artConfig)
+                                                        .filter(([sportKey]) => {
+                                                            if (selectedArtChampionship) {
+                                                                const selectedChamp = championships.find(c => c.id.toString() === selectedArtChampionship);
+                                                                if (selectedChamp && selectedChamp.sport) {
+                                                                    const champSportSlug = selectedChamp.sport.slug || selectedChamp.sport.name.toLowerCase();
+                                                                    return champSportSlug === sportKey;
                                                                 }
-                                                            } else if (pos.defaultFile) {
-                                                                displayUrl = `${rootUrl}/api/assets-templates/${pos.defaultFile}`;
+                                                                return false;
                                                             }
-
+                                                            return settings.active_modalities.includes(sportKey);
+                                                        })
+                                                        .map(([sportKey, config]: [string, any]) => {
+                                                            const isOpen = expandedSports.includes(sportKey);
                                                             return (
-                                                                <div key={pos.key} className="bg-gray-50 rounded-xl p-3 md:p-4 border border-gray-100 flex flex-col gap-3 transition-hover hover:shadow-md">
-                                                                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-1">
-                                                                        <span className="font-bold text-xs md:text-sm text-gray-700 leading-tight">{pos.label}</span>
-                                                                        {currentBg ? (
-                                                                            <span className="text-[10px] text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full font-medium border border-green-100 whitespace-nowrap">Personalizado</span>
-                                                                        ) : (
-                                                                            <span className="text-[10px] text-gray-500 bg-white px-1.5 py-0.5 rounded-full border border-gray-200 whitespace-nowrap">Padrão</span>
-                                                                        )}
+                                                                <section key={sportKey} className="border border-gray-200 rounded-2xl overflow-hidden shadow-sm bg-white">
+                                                                    <div
+                                                                        onClick={() => toggleSportSection(sportKey)}
+                                                                        className="bg-gray-50 p-4 flex justify-between items-center cursor-pointer hover:bg-gray-100 transition-colors"
+                                                                    >
+                                                                        <h3 className="text-lg font-bold text-gray-800 capitalize flex items-center gap-2">
+                                                                            {sportKey === 'futebol' && <div className="w-2 h-2 rounded-full bg-green-500"></div>}
+                                                                            {sportKey === 'volei' && <div className="w-2 h-2 rounded-full bg-orange-500"></div>}
+                                                                            {config.name}
+                                                                        </h3>
+                                                                        {isOpen ? <ChevronDown className="w-5 h-5 text-gray-400" /> : <ChevronRight className="w-5 h-5 text-gray-400" />}
                                                                     </div>
 
-                                                                    <div className="relative w-full aspect-[4/5] bg-gray-200 rounded-lg overflow-hidden group border border-gray-200">
-                                                                        {displayUrl ? (
-                                                                            <img
-                                                                                src={displayUrl}
-                                                                                className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                                                                                alt="Preview"
-                                                                                onError={(e) => {
-                                                                                    // Fallback visual if image fails to load
-                                                                                    e.currentTarget.style.display = 'none';
-                                                                                    e.currentTarget.parentElement?.classList.add('flex', 'items-center', 'justify-center');
-                                                                                    if (e.currentTarget.nextElementSibling) {
-                                                                                        e.currentTarget.nextElementSibling.classList.remove('hidden');
+                                                                    {isOpen && (
+                                                                        <div className="p-4 md:p-6 bg-white border-t border-gray-100">
+                                                                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                                                                {/* RENDER IMAGES - Same Logic as Before but inside Modal */}
+                                                                                {config.positions.map((pos: any) => {
+                                                                                    // Logic to determine current image URL
+                                                                                    // 1. Check specific assignment in settings.art_settings[sport][pos]
+                                                                                    // 2. Fallback? No, here we show what is set. If nothing set, show default placeholder.
+
+                                                                                    let currentImage = null;
+                                                                                    // Check if we have settings for this sport and position
+                                                                                    if (settings.art_settings &&
+                                                                                        settings.art_settings[sportKey] &&
+                                                                                        settings.art_settings[sportKey][pos.key]) {
+                                                                                        currentImage = settings.art_settings[sportKey][pos.key];
+                                                                                        // Ensure URL is absolute if needed
+                                                                                        if (currentImage && !currentImage.startsWith('http')) {
+                                                                                            currentImage = `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/storage/${currentImage}`;
+                                                                                        }
                                                                                     }
-                                                                                }}
-                                                                            />
-                                                                        ) : null}
 
-                                                                        {/* Fallback element (hidden by default unless image fails or is missing) */}
-                                                                        <div className={`absolute inset-0 flex flex-col items-center justify-center text-gray-400 p-4 text-center bg-gray-100 ${displayUrl ? 'hidden' : ''}`}>
-                                                                            <Palette className="w-8 h-8 mb-2 opacity-20" />
-                                                                            <span className="text-xs">Visualização indisponível</span>
-                                                                        </div>
+                                                                                    const isCustom = !!currentImage;
 
-                                                                        {/* Hover Actions */}
-                                                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3 backdrop-blur-sm p-4">
-                                                                            {displayUrl && (
-                                                                                <a
-                                                                                    href={displayUrl}
-                                                                                    target="_blank"
-                                                                                    rel="noopener noreferrer"
-                                                                                    className="text-white hover:text-indigo-200 flex items-center gap-1 text-xs font-medium mb-1"
-                                                                                >
-                                                                                    <Eye className="w-3 h-3" /> Ver
-                                                                                </a>
-                                                                            )}
+                                                                                    return (
+                                                                                        <div key={pos.key} className="relative group">
+                                                                                            <div className="aspect-[4/5] rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 overflow-hidden relative">
+                                                                                                {currentImage ? (
+                                                                                                    <img src={currentImage} alt={pos.label} className="w-full h-full object-cover" />
+                                                                                                ) : (
+                                                                                                    <div className="w-full h-full flex flex-col items-center justify-center text-gray-300 p-4 text-center">
+                                                                                                        <Upload className="w-8 h-8 mb-2 opacity-50" />
+                                                                                                        <span className="text-xs font-bold text-gray-400">Padrão do Sistema</span>
+                                                                                                    </div>
+                                                                                                )}
 
-                                                                            <div className="flex flex-col w-full gap-2">
-                                                                                <div className="flex gap-2 justify-center">
-                                                                                    <input
-                                                                                        type="file"
-                                                                                        id={`upload-${sportKey}-${pos.key}`}
-                                                                                        className="hidden"
-                                                                                        accept="image/*"
-                                                                                        onChange={(e) => handleArtUpload(e, sportKey, pos.key)}
-                                                                                    />
-                                                                                    <label
-                                                                                        htmlFor={`upload-${sportKey}-${pos.key}`}
-                                                                                        className="bg-white text-indigo-600 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer hover:bg-indigo-50 flex items-center justify-center gap-2 shadow-sm flex-1"
-                                                                                    >
-                                                                                        <Upload className="w-3 h-3" />
-                                                                                        {currentBg ? 'Trocar' : 'Enviar'}
-                                                                                    </label>
-                                                                                </div>
-
-                                                                                {currentBg && (
-                                                                                    <button
-                                                                                        onClick={() => removeArt(sportKey, pos.key)}
-                                                                                        className="bg-red-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer hover:bg-red-600 flex items-center justify-center gap-2 shadow-sm w-full"
-                                                                                    >
-                                                                                        <Trash2 className="w-3 h-3" />
-                                                                                        Remover
-                                                                                    </button>
-                                                                                )}
+                                                                                                {/* Hover Overlay */}
+                                                                                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-2 gap-2">
+                                                                                                    <label className="cursor-pointer px-3 py-2 bg-white text-indigo-600 rounded-lg text-xs font-bold hover:bg-gray-100 transition-colors w-full text-center">
+                                                                                                        Trocar
+                                                                                                        <input
+                                                                                                            type="file"
+                                                                                                            className="hidden"
+                                                                                                            accept="image/*"
+                                                                                                            onChange={(e) => handleArtUpload(e, sportKey, pos.key)}
+                                                                                                        />
+                                                                                                    </label>
+                                                                                                    {isCustom && (
+                                                                                                        <button
+                                                                                                            onClick={(e) => { e.stopPropagation(); removeArt(sportKey, pos.key); }}
+                                                                                                            className="px-3 py-2 bg-red-500/80 text-white rounded-lg text-xs font-bold hover:bg-red-600 transition-colors w-full"
+                                                                                                        >
+                                                                                                            Restaurar
+                                                                                                        </button>
+                                                                                                    )}
+                                                                                                    <button className="p-2 bg-white/20 text-white rounded-full hover:bg-white/40">
+                                                                                                        <Eye size={16} />
+                                                                                                    </button>
+                                                                                                </div>
+                                                                                            </div>
+                                                                                            <div className="mt-2 text-center">
+                                                                                                <p className="text-xs font-bold text-gray-700 truncate" title={pos.label}>{pos.label}</p>
+                                                                                                <p className="text-[10px] text-gray-400">
+                                                                                                    {isCustom ? <span className="text-indigo-500 font-bold">Personalizado</span> : 'Padrão'}
+                                                                                                </p>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    );
+                                                                                })}
                                                                             </div>
                                                                         </div>
-                                                                    </div>
-                                                                </div>
+                                                                    )}
+                                                                </section>
                                                             );
                                                         })}
-                                                    </div>
                                                 </div>
                                             )}
-                                        </section>
-                                    );
-                                })}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                         </div>
                     )}
 
@@ -1001,7 +1017,7 @@ export function Settings() {
                         </button>
                     </div>
                 </div>
-            </div >
-        </div >
+            </div>
+        </div>
     );
 }
