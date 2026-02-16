@@ -383,9 +383,11 @@ export function Profile() {
 
 function TestUploadEmbed({ user }: { user: any }) {
     const [file, setFile] = useState<File | null>(null);
+    const [preview, setPreview] = useState<string | null>(null);
     const [logs, setLogs] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [removeBg, setRemoveBg] = useState(false);
+    const [resultImage, setResultImage] = useState<string | null>(null);
 
     const addLog = (msg: string, data?: any) => {
         setLogs(prev => [...prev, { time: new Date().toLocaleTimeString(), msg, data }]);
@@ -417,8 +419,25 @@ function TestUploadEmbed({ user }: { user: any }) {
                 timeout: 300000 // 5 min
             });
             const duration = (Date.now() - startTime) / 1000;
-            addLog(`Sucesso! Tempo total: ${duration}s`);
-            addLog('Resposta:', response.data);
+            addLog(`Sucesso! Tempo total (Rede + Server): ${duration}s`);
+
+            if (response.data.ai_time) {
+                addLog(`Tempo de Processamento IA (Backend): ${response.data.ai_time}`);
+            }
+
+            if (response.data.photo_nobg_url) {
+                setResultImage(response.data.photo_nobg_url);
+                addLog('URL da Imagem Sem Fundo:', response.data.photo_nobg_url);
+            } else if (response.data.photo_url) {
+                setResultImage(response.data.photo_url);
+                addLog('URL da Imagem (Sem IA):', response.data.photo_url);
+            }
+
+            if (response.data.ai_logs && Array.isArray(response.data.ai_logs)) {
+                addLog('Logs do Servidor (Python Output):', response.data.ai_logs);
+            }
+
+            addLog('Resposta Completa:', response.data);
 
             // Force reload to see changes if success
             // window.location.reload();
@@ -448,8 +467,33 @@ function TestUploadEmbed({ user }: { user: any }) {
                     type="file"
                     accept="image/*"
                     className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-                    onChange={e => setFile(e.target.files?.[0] || null)}
+                    onChange={e => {
+                        const f = e.target.files?.[0];
+                        setFile(f || null);
+                        if (f) setPreview(URL.createObjectURL(f));
+                        setResultImage(null);
+                    }}
                 />
+            </div>
+
+            <div className="flex gap-4">
+                {preview && (
+                    <div className="flex-1">
+                        <p className="text-xs font-bold mb-1 text-gray-500">Original:</p>
+                        <div className="h-32 bg-gray-100 rounded flex items-center justify-center overflow-hidden border">
+                            <img src={preview} className="h-full object-contain" />
+                        </div>
+                    </div>
+                )}
+                {resultImage && (
+                    <div className="flex-1">
+                        <p className="text-xs font-bold mb-1 text-green-600">Resultado (Backend):</p>
+                        <div className="h-32 bg-gray-100 rounded flex items-center justify-center overflow-hidden border border-green-200 relative bg-[url('https://media.istockphoto.com/id/1145176885/vector/transparent-background-checkered-seamless-pattern.jpg?s=612x612&w=0&k=20&c=6-6qgT0rBf5f3F4p6i7a_0k3_2k_5_4_1_7_9')]">
+                            <img src={resultImage} className="h-full object-contain relative z-10" />
+                        </div>
+                        <a href={resultImage} target="_blank" className="text-[10px] text-blue-600 underline block text-center mt-1">Abrir Link</a>
+                    </div>
+                )}
             </div>
 
             <label className="flex items-center gap-2 cursor-pointer p-2 border rounded hover:bg-gray-50">

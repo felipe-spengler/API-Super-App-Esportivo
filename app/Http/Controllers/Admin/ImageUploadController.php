@@ -138,6 +138,7 @@ class ImageUploadController extends Controller
 
             // PROCESSAMENTO DE IA: REMOVER FUNDO
             if ($request->boolean('remove_bg')) {
+                $startAi = microtime(true);
                 try {
                     $inputAbsPath = storage_path('app/public/' . $path);
                     $filenameNobg = str_replace('.', '_nobg.', $filename);
@@ -160,6 +161,12 @@ class ImageUploadController extends Controller
                     $output = [];
                     $returnVar = 0;
                     exec($command, $output, $returnVar);
+
+                    $endAi = microtime(true);
+                    $aiDuration = round($endAi - $startAi, 3);
+
+                    $responseData['ai_time'] = $aiDuration . 's';
+                    $responseData['ai_logs'] = $output; // Retorna o log do python para o frontend
 
                     if ($returnVar === 0 && file_exists($outputAbsPath)) {
                         $path = 'players/' . $filenameNobg;
