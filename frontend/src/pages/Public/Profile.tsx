@@ -90,21 +90,37 @@ export function Profile() {
             // Update local user context
             // API now filters through uploadPlayerPhoto -> returns { ..., photos: [...] }
             if (response.data.photos) {
-                // Reconstruct full URLs for context if API returns paths
-                let newPhotoUrl = response.data.photo_nobg_url || response.data.photo_url || '';
+                // Construct URL logic similar to SystemSettings to avoid proxy/backend URL issues
+                let newPhotoUrl = '';
+                const path = response.data.photo_nobg_path || response.data.photo_path;
 
-                console.log('Selected New URL:', newPhotoUrl);
+                if (path) {
+                    const baseUrl = (import.meta.env.VITE_API_URL || '').replace('/api', '');
+                    // Ensure no double slash if path starts with /
+                    const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+                    newPhotoUrl = `${baseUrl}/storage/${cleanPath}`;
+                } else {
+                    // Fallback to backend URL
+                    newPhotoUrl = response.data.photo_nobg_url || response.data.photo_url || '';
+                }
+
+                console.log('Selected New URL (Frontend Constructed):', newPhotoUrl);
 
                 if (response.data.ai_error) {
                     console.warn('AI Error:', response.data.ai_error);
                     alert(`Atenção: A foto foi salva, mas houve um erro ao remover o fundo: ${response.data.ai_error}`);
-                    // Fallback to original photo if AI failed
-                    newPhotoUrl = response.data.photo_url;
+                    // Fallback if AI failed
+                    if (response.data.photo_path) {
+                        const baseUrl = (import.meta.env.VITE_API_URL || '').replace('/api', '');
+                        const cleanPath = response.data.photo_path.startsWith('/') ? response.data.photo_path.substring(1) : response.data.photo_path;
+                        newPhotoUrl = `${baseUrl}/storage/${cleanPath}`;
+                    } else {
+                        newPhotoUrl = response.data.photo_url;
+                    }
                 }
 
                 // Create a copy of current photos
                 const currentPhotos = [...((user as any).photo_urls || [])];
-                console.log('Current Photos (Before):', currentPhotos);
 
                 // Ensure size
                 while (currentPhotos.length <= index) currentPhotos.push('');
