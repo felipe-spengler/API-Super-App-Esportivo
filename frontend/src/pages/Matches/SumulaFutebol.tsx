@@ -673,7 +673,7 @@ export function SumulaFutebol() {
                             🟥 Vermelho
                         </button>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-3 gap-2">
                         <button
                             onClick={() => openEventModal('home', 'blue_card')}
                             disabled={!isRunning}
@@ -687,6 +687,13 @@ export function SumulaFutebol() {
                             className="py-2 bg-indigo-500 rounded-lg font-bold border-b-4 border-indigo-700 active:scale-95 text-xs disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
                         >
                             👟 Assist.
+                        </button>
+                        <button
+                            onClick={() => openEventModal('home', 'foul')}
+                            disabled={!isRunning}
+                            className="py-2 bg-gray-600 text-white rounded-lg font-bold border-b-4 border-gray-800 active:scale-95 text-xs disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
+                            🚫 Falta
                         </button>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
@@ -735,7 +742,7 @@ export function SumulaFutebol() {
                             🟥 Vermelho
                         </button>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-3 gap-2">
                         <button
                             onClick={() => openEventModal('away', 'blue_card')}
                             disabled={!isRunning}
@@ -749,6 +756,13 @@ export function SumulaFutebol() {
                             className="py-2 bg-indigo-500 rounded-lg font-bold border-b-4 border-indigo-700 active:scale-95 text-xs disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
                         >
                             👟 Assist.
+                        </button>
+                        <button
+                            onClick={() => openEventModal('away', 'foul')}
+                            disabled={!isRunning}
+                            className="py-2 bg-gray-600 text-white rounded-lg font-bold border-b-4 border-gray-800 active:scale-95 text-xs disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
+                            🚫 Falta
                         </button>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
@@ -798,7 +812,7 @@ export function SumulaFutebol() {
                                         {ev.type === 'red_card' && '🟥 Vermelho'}
                                         {ev.type === 'blue_card' && '🟦 Azul'}
                                         {ev.type === 'assist' && '👟 Assistência'}
-                                        {ev.type === 'foul' && '⚠️ Falta'}
+                                        {ev.type === 'foul' && '🚫 Falta'}
                                         {ev.type === 'mvp' && '⭐ Craque do Jogo'}
                                         {ev.type === 'timeout' && '⏱ Pedido de Tempo'}
 
@@ -834,32 +848,34 @@ export function SumulaFutebol() {
             </div>
 
             {/* Shootout Outcome Modal */}
-            {showShootoutOptions && selectedPlayer && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in zoom-in duration-200">
-                    <div className="bg-gray-800 w-full max-w-sm rounded-2xl border border-gray-700 shadow-2xl p-6 text-center">
-                        <h3 className="text-xl font-bold text-white mb-2">Resultado da Cobrança</h3>
-                        <p className="text-gray-400 mb-6">Jogador: <b className="text-indigo-400">{selectedPlayer.name}</b></p>
+            {
+                showShootoutOptions && selectedPlayer && (
+                    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in zoom-in duration-200">
+                        <div className="bg-gray-800 w-full max-w-sm rounded-2xl border border-gray-700 shadow-2xl p-6 text-center">
+                            <h3 className="text-xl font-bold text-white mb-2">Resultado da Cobrança</h3>
+                            <p className="text-gray-400 mb-6">Jogador: <b className="text-indigo-400">{selectedPlayer.name}</b></p>
 
-                        <div className="grid grid-cols-2 gap-3">
-                            <button onClick={() => handleShootoutResult('score')} className="col-span-2 py-4 bg-green-600 hover:bg-green-700 rounded-xl font-black text-white text-lg transition-colors border-b-4 border-green-800 active:scale-95">
-                                ⚽ GOL
-                            </button>
-                            <button onClick={() => handleShootoutResult('saved')} className="py-3 bg-indigo-600 hover:bg-indigo-700 rounded-xl font-bold text-white transition-colors border-b-4 border-indigo-800 active:scale-95">
-                                🧤 Defendeu
-                            </button>
-                            <button onClick={() => handleShootoutResult('post')} className="py-3 bg-yellow-600 hover:bg-yellow-700 rounded-xl font-bold text-white transition-colors border-b-4 border-yellow-800 active:scale-95">
-                                🥅 Na Trave
-                            </button>
-                            <button onClick={() => handleShootoutResult('out')} className="col-span-2 py-3 bg-red-600 hover:bg-red-700 rounded-xl font-bold text-white transition-colors border-b-4 border-red-800 active:scale-95">
-                                ❌ Pra Fora
+                            <div className="grid grid-cols-2 gap-3">
+                                <button onClick={() => handleShootoutResult('score')} className="col-span-2 py-4 bg-green-600 hover:bg-green-700 rounded-xl font-black text-white text-lg transition-colors border-b-4 border-green-800 active:scale-95">
+                                    ⚽ GOL
+                                </button>
+                                <button onClick={() => handleShootoutResult('saved')} className="py-3 bg-indigo-600 hover:bg-indigo-700 rounded-xl font-bold text-white transition-colors border-b-4 border-indigo-800 active:scale-95">
+                                    🧤 Defendeu
+                                </button>
+                                <button onClick={() => handleShootoutResult('post')} className="py-3 bg-yellow-600 hover:bg-yellow-700 rounded-xl font-bold text-white transition-colors border-b-4 border-yellow-800 active:scale-95">
+                                    🥅 Na Trave
+                                </button>
+                                <button onClick={() => handleShootoutResult('out')} className="col-span-2 py-3 bg-red-600 hover:bg-red-700 rounded-xl font-bold text-white transition-colors border-b-4 border-red-800 active:scale-95">
+                                    ❌ Pra Fora
+                                </button>
+                            </div>
+                            <button onClick={() => setShowShootoutOptions(false)} className="mt-6 text-gray-500 hover:text-gray-300 text-sm font-bold underline">
+                                Cancelar
                             </button>
                         </div>
-                        <button onClick={() => setShowShootoutOptions(false)} className="mt-6 text-gray-500 hover:text-gray-300 text-sm font-bold underline">
-                            Cancelar
-                        </button>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Player Selection Bottom Sheet/Modal */}
             {
@@ -937,6 +953,6 @@ export function SumulaFutebol() {
                     </div>
                 )
             }
-        </div >
+        </div>
     );
 }
