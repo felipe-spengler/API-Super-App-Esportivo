@@ -244,10 +244,9 @@ export function PlayerEditModal({ playerId, teamId, championshipId, onClose, onS
 
                         <div>
                             <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wider">
-                                Data de Nascimento *
+                                Data de Nascimento
                             </label>
                             <input
-                                required
                                 type="date"
                                 className="w-full px-4 py-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                                 value={birthDate}
