@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use App\Models\User;
 use App\Http\Resources\UserResource;
 
@@ -45,30 +46,43 @@ class AuthController extends Controller
             $documentPath = $request->file('document')->store('documents', 'public');
         }
 
-        $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-            'phone' => $validated['phone'] ?? null,
-            'cpf' => $validated['cpf'] ?? null,
-            'birth_date' => $validated['birth_date'] ?? null,
-            'rg' => $validated['rg'] ?? null,
-            'mother_name' => $validated['mother_name'] ?? null,
-            'gender' => $validated['gender'] ?? null,
-            'document_number' => $validated['document_number'] ?? null,
-            'photo_path' => $mainPhotoPath,
-            'photos' => $photoPaths,
-            'document_path' => $documentPath,
-        ]);
+        try {
+            DB::beginTransaction();
 
-        $token = $user->createToken('auth_token')->plainTextToken;
+            $user = User::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'password' => Hash::make($validated['password']),
+                'phone' => $validated['phone'] ?? null,
+                'cpf' => $validated['cpf'] ?? null,
+                'birth_date' => $validated['birth_date'] ?? null,
+                'rg' => $validated['rg'] ?? null,
+                'mother_name' => $validated['mother_name'] ?? null,
+                'gender' => $validated['gender'] ?? null,
+                'document_number' => $validated['document_number'] ?? null,
+                'photo_path' => $mainPhotoPath,
+                'photos' => $photoPaths,
+                'document_path' => $documentPath,
+            ]);
 
-        return response()->json([
-            'message' => 'Usuário cadastrado com sucesso!',
-            'access_token' => $token,
-            'token_type' => 'Bearer',
-            'user' => new UserResource($user)
-        ], 201);
+            $token = $user->createToken('auth_token')->plainTextToken;
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Usuário cadastrado com sucesso!',
+                'access_token' => $token,
+                'token_type' => 'Bearer',
+                'user' => new UserResource($user)
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error("Registration Error: " . $e->getMessage());
+            return response()->json([
+                'message' => 'Erro ao realizar cadastro: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     // 2. Login

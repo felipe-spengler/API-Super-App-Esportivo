@@ -89,12 +89,13 @@ export function Profile() {
             // API now filters through uploadPlayerPhoto -> returns { ..., photos: [...] }
             if (response.data.photos) {
                 // Reconstruct full URLs for context if API returns paths
-                // But wait, user context expects photo_urls (full urls).
-                // The backend returns paths in 'photos'. 
-                // We need to convert them or rely on a subsequent fetch?
-                // Or just manually update the index we changed if we have the new URL.
-
                 let newPhotoUrl = response.data.photo_nobg_url || response.data.photo_url || '';
+
+                if (response.data.ai_error) {
+                    alert(`Atenção: A foto foi salva, mas houve um erro ao remover o fundo: ${response.data.ai_error}`);
+                    // Fallback to original photo if AI failed
+                    newPhotoUrl = response.data.photo_url;
+                }
 
                 // Create a copy of current photos
                 const currentPhotos = [...((user as any).photo_urls || [])];

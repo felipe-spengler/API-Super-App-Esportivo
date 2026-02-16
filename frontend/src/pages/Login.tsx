@@ -41,7 +41,11 @@ export function Login() {
             }
         } catch (err: any) {
             console.error(err);
-            setError('Falha no login. Verifique suas credenciais.');
+            if (err.response && err.response.data && err.response.data.message) {
+                setError(err.response.data.message);
+            } else {
+                setError('Falha no login. Verifique suas credenciais.');
+            }
         } finally {
             setLoading(false);
         }
@@ -83,11 +87,11 @@ export function Login() {
                         <div className="relative">
                             <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
                             <input
-                                type="email"
+                                type="text"
                                 value={email}
                                 onChange={e => setEmail(e.target.value)}
                                 className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-opacity-50 outline-none transition-all focus:border-transparent font-medium focus:ring-indigo-500"
-                                placeholder="seu@email.com"
+                                placeholder="seu@email ou telefone"
                                 required
                             />
                         </div>
@@ -123,12 +127,15 @@ export function Login() {
                         className="w-full text-white font-bold py-4 px-4 rounded-xl transition-all transform active:scale-[0.98] flex items-center justify-center gap-2 shadow-lg disabled:opacity-70 disabled:cursor-not-allowed bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/20"
                     >
                         {loading ? (
-                            <Loader2 className="w-5 h-5 animate-spin" />
+                            <span className="flex items-center gap-2">
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                                <span>Entrando...</span>
+                            </span>
                         ) : (
-                            <>
-                                Entrar
+                            <span className="flex items-center gap-2">
+                                <span>Entrar</span>
                                 <ArrowRight className="w-5 h-5" />
-                            </>
+                            </span>
                         )}
                     </button>
                 </form>

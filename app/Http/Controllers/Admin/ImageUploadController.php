@@ -145,7 +145,16 @@ class ImageUploadController extends Controller
                     $outputAbsPath = storage_path('app/public/players/' . $filenameNobg);
                     $scriptPath = base_path('scripts/remove_bg.py');
 
-                    $command = "python \"{$scriptPath}\" \"{$inputAbsPath}\" \"{$outputAbsPath}\"";
+                    // Configurar diretório de cache para modelos de IA (evita erro de permissão home)
+                    $cacheDir = storage_path('app/public/.u2net');
+                    if (!file_exists($cacheDir)) {
+                        @mkdir($cacheDir, 0775, true);
+                    }
+
+                    // Comando com variáveis de ambiente para definir home/cache
+                    // Redireciona stderr para stdout (2>&1) para capturar erros do Python
+                    $command = "export U2NET_HOME={$cacheDir} && export NUMBA_CACHE_DIR={$cacheDir} && python3 \"{$scriptPath}\" \"{$inputAbsPath}\" \"{$outputAbsPath}\" 2>&1";
+
                     \Log::info("Lab AI - Command: " . $command);
 
                     $output = [];
@@ -157,9 +166,14 @@ class ImageUploadController extends Controller
                         $responseData['photo_nobg_url'] = '/storage/' . $path;
                         $responseData['photo_nobg_path'] = $path;
                         $responseData['ai_processed'] = true;
+                    } else {
+                        \Log::error("Lab AI - Failed. Code: {$returnVar}. Output: " . json_encode($output));
+                        $responseData['ai_error'] = 'Falha no processamento de IA (Código ' . $returnVar . ').';
+                        $responseData['ai_output'] = $output;
                     }
                 } catch (\Exception $e) {
                     \Log::error("Lab AI - Exception: " . $e->getMessage());
+                    $responseData['ai_error'] = 'Erro interno na IA: ' . $e->getMessage();
                 }
             }
 

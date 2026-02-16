@@ -156,7 +156,9 @@ export function Register() {
                     </button>
                     <div>
                         <h1 className="text-lg font-bold text-gray-900">Criar Conta</h1>
-                        <p className="text-xs text-gray-500">Passo {step === 'scan' ? '1' : step === 'photo' ? '2' : '3'} de 3</p>
+                        <p className="text-xs text-gray-500">
+                            Passo {step === 'scan' ? '1' : (step === 'photo' ? '2' : '3')} de 3
+                        </p>
                     </div>
                 </div>
 
