@@ -131,7 +131,7 @@ class ImageUploadController extends Controller
 
             $responseData = [
                 'message' => 'Foto atualizada com sucesso!',
-                'photo_url' => '/storage/' . $path,
+                'photo_url' => asset('storage/' . $path),
                 'photo_path' => $path,
                 'index' => $index
             ];
@@ -163,7 +163,7 @@ class ImageUploadController extends Controller
 
                     if ($returnVar === 0 && file_exists($outputAbsPath)) {
                         $path = 'players/' . $filenameNobg;
-                        $responseData['photo_nobg_url'] = '/storage/' . $path;
+                        $responseData['photo_nobg_url'] = asset('storage/' . $path);
                         $responseData['photo_nobg_path'] = $path;
                         $responseData['ai_processed'] = true;
                     } else {
