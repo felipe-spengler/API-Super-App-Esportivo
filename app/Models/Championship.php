@@ -25,6 +25,7 @@ class Championship extends Model
         'cover_image_url', // URL completa da capa
         'branding_settings',
         'art_generator_settings',
+        'art_settings',
         'awards',
         'is_status_auto'
     ];
@@ -36,6 +37,7 @@ class Championship extends Model
         'registration_end_date' => 'datetime',
         'branding_settings' => 'array',
         'art_generator_settings' => 'array',
+        'art_settings' => 'array',
         'awards' => 'array',
         'is_status_auto' => 'boolean',
     ];

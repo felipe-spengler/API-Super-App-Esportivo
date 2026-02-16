@@ -761,7 +761,23 @@ export function Settings() {
                             </header>
 
                             {Object.entries(artConfig)
-                                .filter(([sportKey]) => settings.active_modalities.includes(sportKey))
+                                .filter(([sportKey]) => {
+                                    if (selectedArtChampionship) {
+                                        // Find selected championship object to get its sport
+                                        const selectedChamp = championships.find(c => c.id.toString() === selectedArtChampionship);
+                                        // If found, show ONLY the sport associated with this championship
+                                        // The backend usually returns 'sport' relation with 'slug' or 'name'
+                                        // We assume artConfig keys match sport slugs (futebol, volei, etc)
+                                        if (selectedChamp && selectedChamp.sport) {
+                                            // Handle exact match or slug match
+                                            const champSportSlug = selectedChamp.sport.slug || selectedChamp.sport.name.toLowerCase();
+                                            return champSportSlug === sportKey;
+                                        }
+                                        return false; // Should not happen if data is consistent
+                                    }
+                                    // Default behavior (Club Settings): Show all active modalities
+                                    return settings.active_modalities.includes(sportKey);
+                                })
                                 .map(([sportKey, config]: [string, any]) => {
                                     const isOpen = expandedSports.includes(sportKey);
                                     return (

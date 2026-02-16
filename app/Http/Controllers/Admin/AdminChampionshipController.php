@@ -80,6 +80,7 @@ class AdminChampionshipController extends Controller
             'max_teams' => 'nullable|integer|min:2',
             'status' => 'nullable|in:draft,registrations_open,in_progress,upcoming,ongoing,finished,scheduled,Agendado',
             'is_active' => 'boolean',
+            'art_settings' => 'nullable|array',
         ]);
 
         if (isset($validated['status'])) {
