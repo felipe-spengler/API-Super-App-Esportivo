@@ -28,6 +28,7 @@ class ArtGeneratorController extends Controller
         $elements = $request->input('elements');
         $canvas = $request->input('canvas');
         $bgUrl = $request->input('bg_url');
+        $championshipId = $request->input('championship_id');
 
         $key = $this->getTemplateKey($name);
 
@@ -38,7 +39,28 @@ class ArtGeneratorController extends Controller
             'name' => $name
         ];
 
-        // Check if user is Club Admin
+        // Check if saving for specific championship
+        if ($championshipId) {
+            $championship = \App\Models\Championship::find($championshipId);
+            if ($championship) {
+                // Check permission (club admin of that championship)
+                $user = auth()->user();
+                if ($user && $user->club_id == $championship->club_id) {
+                    $settings = $championship->art_settings ?? [];
+                    if (!isset($settings['templates'])) {
+                        $settings['templates'] = [];
+                    }
+                    $settings['templates'][$key] = $data;
+                    $championship->art_settings = $settings;
+                    $championship->save();
+
+                    return response()->json(['message' => 'Template salvo para o campeonato com sucesso']);
+                }
+            }
+            return response()->json(['message' => 'Erro ao salvar template para o campeonato. Verifique permissões.'], 403);
+        }
+
+        // Check if user is Club Admin (Fallback to Club Level)
         $user = auth()->user();
         if ($user && $user->club_id) {
             $club = \App\Models\Club::find($user->club_id);
@@ -107,26 +129,43 @@ class ArtGeneratorController extends Controller
     public function getTemplate(Request $request)
     {
         $name = $request->query('name');
+        $championshipId = $request->query('championship_id');
         $key = $this->getTemplateKey($name);
 
-        // 1. Try Club Settings (Saved Template)
+        // 1. Try Championship Settings (Specific Override)
+        $championship = null;
+        if ($championshipId) {
+            $championship = \App\Models\Championship::find($championshipId);
+        }
+
+        // 2. Try Club Settings (Saved Template)
         $user = auth()->user();
         $club = null;
         if ($user && $user->club_id) {
             $club = \App\Models\Club::find($user->club_id);
+        } elseif ($championship) {
+            // Context inference
+            $club = $championship->club;
         }
 
-        // 2. Try System Settings (Global Saved Template)
+        // 3. Try System Settings (Global Saved Template)
         $setting = SystemSetting::where('key', $key)->first();
 
-        // 3. Defaults
+        // 4. Defaults
         $default = $this->getDefaultTemplate($key);
 
         $responseTemplate = null;
 
-        if ($club && !empty($club->art_settings['templates'][$key])) {
+        // Priority 1: Championship
+        if ($championship && !empty($championship->art_settings['templates'][$key])) {
+            $responseTemplate = $championship->art_settings['templates'][$key];
+        }
+        // Priority 2: Club
+        elseif ($club && !empty($club->art_settings['templates'][$key])) {
             $responseTemplate = $club->art_settings['templates'][$key];
-        } elseif ($setting) {
+        }
+        // Priority 3: System
+        elseif ($setting) {
             $responseTemplate = json_decode($setting->value, true);
         }
 
@@ -158,7 +197,7 @@ class ArtGeneratorController extends Controller
                     $cat = 'craque';
 
                 // Use the helper logic
-                $bgFile = $this->getBackgroundFile($sport, $cat, $club);
+                $bgFile = $this->getBackgroundFile($sport, $cat, $club, $championship);
                 // Convert file path to URL
                 if ($bgFile) {
                     $responseTemplate['preview_bg_url'] = $this->pathToUrl($bgFile);
@@ -179,7 +218,7 @@ class ArtGeneratorController extends Controller
                 elseif (str_contains($n, 'craque') || str_contains($n, 'mvp'))
                     $cat = 'craque';
 
-                $bgFile = $this->getBackgroundFile($sport, $cat, $club);
+                $bgFile = $this->getBackgroundFile($sport, $cat, $club, $championship);
                 if ($bgFile) {
                     $default['preview_bg_url'] = $this->pathToUrl($bgFile);
                 }
@@ -187,7 +226,27 @@ class ArtGeneratorController extends Controller
             return response()->json($default);
         }
 
-        // 4. Fallback: Find Custom Background in Club Settings (Legacy logic)
+        // 5. Fallback: Find Custom Background in Club/Championship Settings (Legacy logic)
+
+        // Check Championship BG first
+        if ($championship && !empty($championship->art_settings)) {
+            $cat = 'confronto';
+            $n = strtolower($name);
+            if (str_contains($n, 'programado'))
+                $cat = 'jogo_programado';
+            elseif (str_contains($n, 'craque') || str_contains($n, 'mvp'))
+                $cat = 'craque';
+
+            // Try normalized slug (e.g. "futebol-7") if sport is present
+            // But usually art settings are keyed by sport slug.
+            // If sport is not passed, this logic is tricky. But typically we pass sport.
+            $sport = $request->query('sport');
+            if ($sport) {
+                $bg = $this->getBackgroundFile($sport, $cat, $club, $championship);
+                if ($bg)
+                    return response()->json(['bg_url' => $this->pathToUrl($bg), 'elements' => null]);
+            }
+        }
 
         if ($club && !empty($club->art_settings)) {
             $cat = 'confronto';
@@ -258,7 +317,7 @@ class ArtGeneratorController extends Controller
         $club = $match->championship->club;
         $this->loadClubResources($club);
 
-        return $this->generateConfrontationArt($match, $club);
+        return $this->generateConfrontationArt($match, $club, $match->championship);
     }
 
     /**
@@ -270,7 +329,7 @@ class ArtGeneratorController extends Controller
         $club = $match->championship->club;
         $this->loadClubResources($club);
 
-        return $this->generateScheduledArt($match, $club);
+        return $this->generateScheduledArt($match, $club, $match->championship);
     }
 
     public function downloadScheduledArt($matchId)
@@ -307,7 +366,7 @@ class ArtGeneratorController extends Controller
         $this->loadClubResources($championship->club);
 
         $sport = strtolower($championship->sport->name ?? 'futebol');
-        $bgFile = $this->getBackgroundFile($sport, 'classificacao', $championship->club);
+        $bgFile = $this->getBackgroundFile($sport, 'classificacao', $championship->club, $championship);
         $img = $this->initImage($bgFile);
 
         if (!$img) {
@@ -416,16 +475,32 @@ class ArtGeneratorController extends Controller
         return $path;
     }
 
-    private function generateScheduledArt($match, $club = null)
+    private function generateScheduledArt($match, $club = null, $championship = null)
     {
         $sport = $match->championship->sport->name ?? 'Futebol';
-        $bgFile = $this->getBackgroundFile($sport, 'jogo_programado', $club);
+        if (!$championship)
+            $championship = $match->championship;
+
+        $bgFile = $this->getBackgroundFile($sport, 'jogo_programado', $club, $championship);
 
         // Check for Custom Template Background
         $templateKey = 'art_layout_scheduled_feed';
         $templateData = null;
-        if ($club && !empty($club->art_settings['templates'][$templateKey])) {
+
+        // 1. Try Championship
+        if ($championship && !empty($championship->art_settings['templates'][$templateKey])) {
+            $templateData = $championship->art_settings['templates'][$templateKey];
+        }
+        // 2. Try Club
+        elseif ($club && !empty($club->art_settings['templates'][$templateKey])) {
             $templateData = $club->art_settings['templates'][$templateKey];
+        }
+        // 3. Defaults
+        else {
+            $templateData = $this->getDefaultTemplate($templateKey);
+        }
+
+        if ($templateData) {
             if (!empty($templateData['bg_url'])) {
                 $customBg = $this->urlToPath($templateData['bg_url']);
                 if (file_exists($customBg)) {
@@ -442,8 +517,6 @@ class ArtGeneratorController extends Controller
                     }
                 }
             }
-        } else {
-            $templateData = $this->getDefaultTemplate($templateKey);
         }
 
 
@@ -578,16 +651,32 @@ class ArtGeneratorController extends Controller
         return $this->outputImage($img, 'jogo_programado_' . $match->id);
     }
 
-    private function generateConfrontationArt($match, $club = null)
+    private function generateConfrontationArt($match, $club = null, $championship = null)
     {
         $sport = $match->championship->sport->name ?? 'Futebol';
-        $bgFile = $this->getBackgroundFile($sport, 'confronto', $club);
+        if (!$championship)
+            $championship = $match->championship;
+
+        $bgFile = $this->getBackgroundFile($sport, 'confronto', $club, $championship);
 
         // Check for Custom Template Background
         $templateKey = 'art_layout_faceoff';
         $templateData = null;
-        if ($club && !empty($club->art_settings['templates'][$templateKey])) {
+
+        // 1. Try Championship
+        if ($championship && !empty($championship->art_settings['templates'][$templateKey])) {
+            $templateData = $championship->art_settings['templates'][$templateKey];
+        }
+        // 2. Try Club
+        elseif ($club && !empty($club->art_settings['templates'][$templateKey])) {
             $templateData = $club->art_settings['templates'][$templateKey];
+        }
+        // 3. Defaults
+        else {
+            $templateData = $this->getDefaultTemplate($templateKey);
+        }
+
+        if ($templateData) {
             if (!empty($templateData['bg_url'])) {
                 $customBg = $this->urlToPath($templateData['bg_url']);
                 if (file_exists($customBg)) {
@@ -604,8 +693,6 @@ class ArtGeneratorController extends Controller
                     }
                 }
             }
-        } else {
-            $templateData = $this->getDefaultTemplate($templateKey);
         }
 
         $img = $this->initImage($bgFile);
@@ -903,17 +990,23 @@ class ArtGeneratorController extends Controller
             $templateKey = 'art_layout_mvp_vertical';
         }
 
-        $bgFile = $this->getBackgroundFile($sport, $category, $club);
+        $bgFile = $this->getBackgroundFile($sport, $category, $club, $championship);
         $templateData = null;
 
         // Check Custom Background
-        if ($templateKey && $club && !empty($club->art_settings['templates'][$templateKey])) {
+        // 1. Try Championship
+        if ($templateKey && $championship && !empty($championship->art_settings['templates'][$templateKey])) {
+            $templateData = $championship->art_settings['templates'][$templateKey];
+        }
+        // 2. Try Club
+        elseif ($templateKey && $club && !empty($club->art_settings['templates'][$templateKey])) {
             $templateData = $club->art_settings['templates'][$templateKey];
-            if (!empty($templateData['bg_url'])) {
-                $customBg = $this->urlToPath($templateData['bg_url']);
-                if (file_exists($customBg)) {
-                    $bgFile = $customBg;
-                }
+        }
+
+        if ($templateData && !empty($templateData['bg_url'])) {
+            $customBg = $this->urlToPath($templateData['bg_url']);
+            if (file_exists($customBg)) {
+                $bgFile = $customBg;
             }
         }
 
@@ -1119,13 +1212,45 @@ class ArtGeneratorController extends Controller
 
     // --- Helpers ---
 
-    private function getBackgroundFile($sport, $category, $club = null)
+    private function getBackgroundFile($sport, $category, $club = null, $championship = null)
     {
         $sport = strtolower($sport);
 
-        // Normalização de Slugs e Aliases
-        $sportSlug = Str::slug($sport);
+        // 1. PREFERENCE: Specific Championship Settings
+        if ($championship && !empty($championship->art_settings)) {
+            $settings = $championship->art_settings;
 
+            // Normalize Sport Slug
+            $sportSlug = Str::slug($sport, '-');
+            $aliases = [
+                'fut7' => 'futebol-7',
+                'society' => 'futebol-7',
+                'futebol-society' => 'futebol-7',
+                'futebol7' => 'futebol-7',
+                'f7' => 'futebol-7'
+            ];
+            if (isset($aliases[$sportSlug]))
+                $sportSlug = $aliases[$sportSlug];
+
+            // 1. Try normalized slug
+            if (isset($settings[$sportSlug]) && isset($settings[$sportSlug][$category])) {
+                return $settings[$sportSlug][$category];
+            }
+            // 2. Try original name
+            if (isset($settings[$sport]) && isset($settings[$sport][$category])) {
+                return $settings[$sport][$category];
+            }
+            // Fallbacks for Jogo Programado
+            if ($category === 'jogo_programado') {
+                if (isset($settings[$sportSlug]['confronto']))
+                    return $settings[$sportSlug]['confronto'];
+                if (isset($settings[$sport]['confronto']))
+                    return $settings[$sport]['confronto'];
+            }
+        }
+
+        // Normalização de Slugs e Aliases
+        $sportSlug = Str::slug($sport, '-'); // Re-declare for subsequent checks
         $aliases = [
             'fut7' => 'futebol-7',
             'society' => 'futebol-7',
@@ -1141,7 +1266,7 @@ class ArtGeneratorController extends Controller
         // Debug Log
         error_log("ArtGen: Resolving BG for Sport: [$sport] (Slug: $sportSlug) Category: [$category]");
 
-        // 1. Check Club Art Settings (Custom Backgrounds)
+        // 2. Check Club Art Settings (Custom Backgrounds)
         if ($club && !empty($club->art_settings)) {
             $settings = $club->art_settings;
 

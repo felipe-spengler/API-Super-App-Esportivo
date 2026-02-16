@@ -4,11 +4,13 @@ import api from '../../services/api';
 
 interface PlayerEditModalProps {
     playerId: number;
+    teamId?: number;
+    championshipId?: number;
     onClose: () => void;
     onSuccess: () => void;
 }
 
-export function PlayerEditModal({ playerId, onClose, onSuccess }: PlayerEditModalProps) {
+export function PlayerEditModal({ playerId, teamId, championshipId, onClose, onSuccess }: PlayerEditModalProps) {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [player, setPlayer] = useState<any>(null);
@@ -34,7 +36,11 @@ export function PlayerEditModal({ playerId, onClose, onSuccess }: PlayerEditModa
     async function loadPlayer() {
         setLoading(true);
         try {
-            const response = await api.get(`/admin/players/${playerId}`);
+            const params: any = {};
+            if (teamId) params.team_id = teamId;
+            if (championshipId) params.championship_id = championshipId;
+
+            const response = await api.get(`/admin/players/${playerId}`, { params });
             const data = response.data;
             setPlayer(data);
 
@@ -72,11 +78,11 @@ export function PlayerEditModal({ playerId, onClose, onSuccess }: PlayerEditModa
                 cpf,
                 phone,
                 birth_date: birthDate,
-                gender,
-                gender,
                 address,
                 position,
                 number,
+                team_id: teamId,
+                championship_id: championshipId
             });
 
             // Upload photo if selected
@@ -202,7 +208,6 @@ export function PlayerEditModal({ playerId, onClose, onSuccess }: PlayerEditModa
                                 Posição
                             </label>
                             <input
-                                required
                                 type="text"
                                 className="w-full px-4 py-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                                 placeholder="Ex: Goleiro"

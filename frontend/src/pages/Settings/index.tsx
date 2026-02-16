@@ -106,7 +106,9 @@ export function Settings() {
     };
 
     const [allSports, setAllSports] = useState<any[]>([]);
-    const [activeTab, setActiveTab] = useState('general');
+    const [championships, setChampionships] = useState<any[]>([]);
+    const [selectedArtChampionship, setSelectedArtChampionship] = useState<string>(''); // '' = Padrão (Clube)
+    const [activeTab, setActiveTab] = useState<string>('general');
     const [expandedSports, setExpandedSports] = useState<string[]>(['futebol']); // Default open football
     const [emailSettings, setEmailSettings] = useState({
         smtp_host: '',
@@ -124,7 +126,14 @@ export function Settings() {
     async function loadSettings() {
         try {
             setLoading(true);
-            if (activeTab === 'general' || activeTab === 'modalities') {
+
+            // Load Championships if needed (cached or single call)
+            if (activeTab === 'art' && championships.length === 0) {
+                const resChamp = await api.get('/admin/championships');
+                if (resChamp.data) setChampionships(resChamp.data);
+            }
+
+            if (activeTab === 'general' || activeTab === 'modalities' || activeTab === 'art') {
                 const response = await api.get('/admin/settings');
                 if (response.data) {
                     setSettings({
@@ -154,6 +163,11 @@ export function Settings() {
                     });
                 }
             }
+
+            if (activeTab === 'art' && selectedArtChampionship) {
+                await loadChampionshipSettings(selectedArtChampionship);
+            }
+
         } catch (error) {
             console.error(error);
         } finally {
@@ -161,16 +175,66 @@ export function Settings() {
         }
     }
 
+    // New function to load specific championship settings
+    async function loadChampionshipSettings(champId: string) {
+        if (!champId) return;
+        try {
+            // We need to fetch championship details to get art_settings
+            const res = await api.get(`/admin/championships/${champId}`);
+            if (res.data && res.data.art_settings) {
+                // We merge or replace the art_settings in local state just for display/edition
+                // But wait, the main 'settings' state mirrors the CLUB settings.
+                // If we edit a championship, we should probably have a separate state or be careful.
+                // Strategy: If championship selected, 'settings.art_settings' will reflect THAT championship's settings.
+                setSettings(prev => ({
+                    ...prev,
+                    art_settings: res.data.art_settings || {}
+                }));
+            } else {
+                setSettings(prev => ({ ...prev, art_settings: {} }));
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    // Effect to reload settings when championship selection changes
+    useEffect(() => {
+        if (activeTab === 'art') {
+            if (selectedArtChampionship) {
+                loadChampionshipSettings(selectedArtChampionship);
+            } else {
+                // Reload club settings
+                api.get('/admin/settings').then(res => {
+                    setSettings(prev => ({ ...prev, art_settings: res.data.art_settings || {} }));
+                });
+            }
+        }
+    }, [selectedArtChampionship]);
+
     async function handleSave() {
         setSaving(true);
         try {
-            if (activeTab === 'general' || activeTab === 'modalities' || activeTab === 'art') {
+            if (activeTab === 'general' || activeTab === 'modalities') {
                 await api.put('/admin/settings', settings);
+            } else if (activeTab === 'art') {
+                if (selectedArtChampionship) {
+                    // Update Championship Settings
+                    // We need a specific endpoint or update the championship
+                    // Let's assume we update the championship directly with its art_settings
+                    await api.put(`/admin/championships/${selectedArtChampionship}`, {
+                        art_settings: settings.art_settings
+                    });
+                } else {
+                    // Update Club Settings
+                    await api.put('/admin/settings', settings);
+                }
             } else if (activeTab === 'email' && isSuperAdmin) {
                 await api.put('/admin/system-settings', { settings: emailSettings });
             }
             alert('Configurações salvas com sucesso!');
         } catch (error) {
+            console.error(error);
             alert('Erro ao salvar configurações.');
         } finally {
             setSaving(false);
@@ -665,11 +729,35 @@ export function Settings() {
                                     <Palette className="w-6 h-6 text-indigo-500" />
                                     Fundos Personalizados
                                 </h2>
-                                <p className="text-sm text-gray-500">
+                                <p className="text-sm text-gray-500 mb-4">
                                     Faça upload de imagens de fundo para cada tipo de premiação.
                                     O sistema usará estas imagens ao gerar os cards dos atletas.
                                     Formatos recomendados: JPG ou PNG (1080x1350 ou similar).
                                 </p>
+
+                                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex items-center gap-4">
+                                    <div className="flex-1">
+                                        <label className="text-xs font-bold text-gray-500 block mb-1 uppercase tracking-wider">Contexto de Edição</label>
+                                        <select
+                                            value={selectedArtChampionship}
+                                            onChange={(e) => setSelectedArtChampionship(e.target.value)}
+                                            className="w-full p-2 border border-gray-200 rounded-lg text-sm font-bold bg-white text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-500"
+                                        >
+                                            <option value="">Padrão do Clube (Todos os Campeonatos)</option>
+                                            <optgroup label="Específico por Campeonato">
+                                                {championships.map(c => (
+                                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                                ))}
+                                            </optgroup>
+                                        </select>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-xs text-gray-400 max-w-xs leading-tight">
+                                        <Trophy className="w-4 h-4 text-gray-300 shrink-0" />
+                                        {selectedArtChampionship ?
+                                            'Você está editando as artes APENAS para este campeonato. Se não definir, usará o padrão.' :
+                                            'Você está editando o padrão para TODOS os campeonatos que não tiverem arte específica.'}
+                                    </div>
+                                </div>
                             </header>
 
                             {Object.entries(artConfig)

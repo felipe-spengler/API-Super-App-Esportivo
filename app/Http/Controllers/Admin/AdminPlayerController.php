@@ -37,9 +37,37 @@ class AdminPlayerController extends Controller
     }
 
     // Get player details
-    public function show($id)
+    public function show($id, Request $request)
     {
         $player = User::findOrFail($id);
+
+        if ($request->has('team_id')) {
+            $teamId = $request->query('team_id');
+            $championshipId = $request->query('championship_id');
+
+            $query = \App\Models\TeamPlayer::where('user_id', $id)
+                ->where('team_id', $teamId);
+
+            if ($championshipId) {
+                // Tenta buscar específico do campeonato
+                // Se não achar, pode ser que seja um registro "global" do time (sem champ id ainda)?
+                // A lógica atual é: se tem campeonato, o registro na pivô deve ter campeonato.
+                $query->where('championship_id', $championshipId);
+            } else {
+                // Se não passou campeonato, pega qualquer um ou o nulo?
+                // Idealmente pega o mais recente ou o nulo (base).
+                // Vamos focar no caso que o front manda (que é quando está num contexto)
+            }
+
+            $pivot = $query->first();
+
+            if ($pivot) {
+                $player->position = $pivot->position;
+                $player->number = $pivot->number;
+                // Add extra info if needed
+                $player->team_player_id = $pivot->id;
+            }
+        }
 
         return response()->json($player);
     }
@@ -70,6 +98,7 @@ class AdminPlayerController extends Controller
     {
         $player = User::findOrFail($id);
 
+        // Validation for User fields
         $validated = $request->validate([
             'name' => 'string|max:255',
             'nickname' => 'nullable|string|max:255',
@@ -82,6 +111,33 @@ class AdminPlayerController extends Controller
         ]);
 
         $player->update($validated);
+
+        // Handle Team Context Update (Pivot)
+        if ($request->has('team_id')) {
+            $teamId = $request->input('team_id');
+            $championshipId = $request->input('championship_id');
+            $position = $request->input('position');
+            $number = $request->input('number');
+
+            $query = \App\Models\TeamPlayer::where('user_id', $id)
+                ->where('team_id', $teamId);
+
+            if ($championshipId) {
+                $query->where('championship_id', $championshipId);
+            }
+
+            $pivot = $query->first();
+
+            if ($pivot) {
+                $pivot->update([
+                    'position' => $position,
+                    'number' => $number
+                ]);
+            } else {
+                // Se não achou na pivô mas mandaram o team_id, talvez devêssemos criar?
+                // Por segurança, apenas editamos se existir.
+            }
+        }
 
         return response()->json($player);
     }

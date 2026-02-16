@@ -534,6 +534,8 @@ export function TeamDetails() {
                 editingPlayerId && (
                     <PlayerEditModal
                         playerId={editingPlayerId}
+                        teamId={team?.id}
+                        championshipId={selectedChampionshipId || undefined}
                         onClose={() => setEditingPlayerId(null)}
                         onSuccess={() => {
                             loadTeam();

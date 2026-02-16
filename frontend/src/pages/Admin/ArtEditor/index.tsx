@@ -60,25 +60,29 @@ export function ArtEditor() {
     const [persistedBgUrl, setPersistedBgUrl] = useState<string | null>(null);
     const [allSports, setAllSports] = useState<any[]>([]);
 
+    // Championship Context
+    const [championships, setChampionships] = useState<any[]>([]);
+    const [selectedChampionship, setSelectedChampionship] = useState<string>(''); // '' = Padrão (Por Esporte)
+
     // Load template or default settings
     useEffect(() => {
         loadTemplate();
-    }, [templateName, selectedSport]);
+    }, [templateName, selectedSport, selectedChampionship]);
 
-    // Load available sports
+    // Load available sports and championships
     useEffect(() => {
         try {
             api.get('/sports').then(res => {
-                if (res.data) {
-                    setAllSports(res.data);
-                }
-            }).catch(() => {
-                // fallback if /sports fails, try settings
-                api.get('/admin/settings').then(res => {
-                    if (res.data && res.data.all_sports) setAllSports(res.data.all_sports);
-                });
-            })
-        } catch (e) { console.error(e); }
+                if (res.data) setAllSports(res.data);
+            });
+
+            // Load Championships for selection
+            api.get('/admin/championships').then(res => {
+                if (res.data) setChampionships(res.data);
+            });
+        } catch (e) {
+            console.error(e);
+        }
     }, []);
 
     const getDefaultBg = (name: string, sport: string) => {
@@ -131,9 +135,12 @@ export function ArtEditor() {
 
     const loadTemplate = async () => {
         setLoading(true);
-        console.log(`Frontend: Loading Template [${templateName}] for Sport [${selectedSport}]`);
+        console.log(`Frontend: Loading Template [${templateName}] for Sport [${selectedSport}] Champ [${selectedChampionship}]`);
         try {
-            const res = await api.get('/admin/art-templates', { params: { name: templateName, sport: selectedSport } });
+            const params: any = { name: templateName, sport: selectedSport };
+            if (selectedChampionship) params.championship_id = selectedChampionship;
+
+            const res = await api.get('/admin/art-templates', { params });
             console.log('Frontend: API Response', res.data);
 
             if (res.data && res.data.elements) {
@@ -188,7 +195,8 @@ export function ArtEditor() {
                 name: templateName,
                 bg_url: persistedBgUrl, // Only save if explicit custom BG
                 elements: elements,
-                canvas: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT }
+                canvas: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT },
+                championship_id: selectedChampionship || null
             });
             toast.success('Template salvo com sucesso!');
         } catch (error) {
@@ -196,6 +204,27 @@ export function ArtEditor() {
             toast.error('Erro ao salvar template.');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleBgUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files || e.target.files.length === 0) return;
+        const file = e.target.files[0];
+        const formData = new FormData();
+        formData.append('image', file);
+        formData.append('folder', 'art-backgrounds');
+
+        const toastId = toast.loading('Enviando fundo...');
+        try {
+            const res = await api.post('/admin/upload-image', formData);
+            if (res.data && res.data.url) {
+                setBgImage(res.data.url);
+                setPersistedBgUrl(res.data.url);
+                toast.success('Fundo atualizado!', { id: toastId });
+            }
+        } catch (err) {
+            console.error(err);
+            toast.error('Erro ao enviar imagem', { id: toastId });
         }
     };
 
@@ -350,6 +379,18 @@ export function ArtEditor() {
 
                         {showSettings && (
                             <div className="p-4 pt-0 space-y-3">
+                                <label className="text-xs font-bold text-gray-500 block mb-1">CAMPEONATO (Contexto)</label>
+                                <select
+                                    value={selectedChampionship}
+                                    onChange={e => setSelectedChampionship(e.target.value)}
+                                    className="w-full p-2 border border-gray-200 rounded-lg text-sm font-bold bg-white mb-3 text-indigo-700"
+                                >
+                                    <option value="">Padrão (Por Esporte)</option>
+                                    {championships.map(c => (
+                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                    ))}
+                                </select>
+
                                 <label className="text-xs font-bold text-gray-500 block mb-1">TEMPLATE</label>
                                 <select
                                     value={templateName}
@@ -385,8 +426,29 @@ export function ArtEditor() {
                                     )}
                                 </select>
 
+                                {/* Upload Background */}
+                                <div className="mt-3 pt-3 border-t border-gray-100">
+                                    <label className="text-xs font-bold text-gray-500 block mb-1">FUNDO CUSTOMIZADO</label>
+                                    <div className="flex gap-2">
+                                        <label className="flex-1 cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg py-2 flex items-center justify-center gap-2 text-xs font-bold border border-gray-200 transition-colors">
+                                            <Upload size={14} /> Upload Imagem
+                                            <input type="file" className="hidden" accept="image/*" onChange={handleBgUpload} />
+                                        </label>
+                                        {persistedBgUrl && (
+                                            <button
+                                                onClick={() => { setPersistedBgUrl(null); loadTemplate(); }}
+                                                className="p-2 text-red-500 hover:bg-red-50 rounded border border-red-100"
+                                                title="Remover Fundo Customizado"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        )}
+                                    </div>
+                                    <p className="text-[10px] text-gray-400 mt-1">Recomendado: 1080x1920 (9:16)</p>
+                                </div>
+
                                 {/* Preview Image Check */}
-                                <div className="mt-2 p-2 border border-gray-100 rounded bg-gray-50 text-[10px] text-gray-500 break-words">
+                                <div className="mt-2 p-2 border border-gray-100 rounded bg-gray-50 text-[10px] text-gray-500 break-words hidden">
                                     <strong>Debug BG:</strong> {bgImage ? bgImage.split('/').pop() : 'Nenhum'}
                                 </div>
                             </div>
