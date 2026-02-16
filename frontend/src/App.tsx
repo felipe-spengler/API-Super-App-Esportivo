@@ -70,6 +70,7 @@ import { SumulaVoleiPraia } from './pages/Matches/SumulaVoleiPraia';
 import { SumulaTenisMesa } from './pages/Matches/SumulaTenisMesa';
 import { SumulaJiuJitsu } from './pages/Matches/SumulaJiuJitsu';
 import { MatchPrintView } from './pages/Matches/MatchPrintView';
+import { TestUpload } from './pages/Public/TestUpload';
 
 import { Toaster } from 'react-hot-toast';
 
@@ -103,6 +104,7 @@ function App() {
             <Route path="/races/:id" element={<RaceDetails />} />
             <Route path="/races/:id/results" element={<div className="p-10 text-center">Resultados (Em Breve)</div>} />
             <Route path="/matches/:id/print" element={<MatchPrintView />} />
+            <Route path="/test-upload" element={<TestUpload />} />
 
             {/* Athlete Private Area */}
             <Route path="/profile/teams" element={<MyTeams />} />
