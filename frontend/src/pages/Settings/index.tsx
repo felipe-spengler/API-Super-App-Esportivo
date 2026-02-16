@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, Bell, Shield, Lock, CreditCard, Loader2, Trophy, MessageSquare, Type, Palette, Upload, Trash2, Eye, ChevronDown, ChevronRight } from 'lucide-react';
+import { Save, Bell, Shield, Lock, CreditCard, Loader2, Trophy, MessageSquare, Type, Palette, Upload, Trash2, Eye, ChevronDown, ChevronRight, X } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
