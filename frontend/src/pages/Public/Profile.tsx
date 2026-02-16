@@ -85,13 +85,18 @@ export function Profile() {
                 timeout: 120000 // 2 minutes timeout for IA processing
             });
 
+            console.log('Upload response:', response.data);
+
             // Update local user context
             // API now filters through uploadPlayerPhoto -> returns { ..., photos: [...] }
             if (response.data.photos) {
                 // Reconstruct full URLs for context if API returns paths
                 let newPhotoUrl = response.data.photo_nobg_url || response.data.photo_url || '';
 
+                console.log('Selected New URL:', newPhotoUrl);
+
                 if (response.data.ai_error) {
+                    console.warn('AI Error:', response.data.ai_error);
                     alert(`Atenção: A foto foi salva, mas houve um erro ao remover o fundo: ${response.data.ai_error}`);
                     // Fallback to original photo if AI failed
                     newPhotoUrl = response.data.photo_url;
@@ -99,6 +104,8 @@ export function Profile() {
 
                 // Create a copy of current photos
                 const currentPhotos = [...((user as any).photo_urls || [])];
+                console.log('Current Photos (Before):', currentPhotos);
+
                 // Ensure size
                 while (currentPhotos.length <= index) currentPhotos.push('');
 
@@ -107,12 +114,16 @@ export function Profile() {
                     currentPhotos[index] = newPhotoUrl;
                 }
 
+                console.log('Current Photos (After):', currentPhotos);
+
                 const updatedUser = {
                     ...user,
                     photo_urls: currentPhotos,
                     // Update main photo if index 0
                     ...(index === 0 ? { photo_url: newPhotoUrl, photo_path: response.data.photo_path } : {})
                 };
+
+                console.log('Updating User Context:', updatedUser);
 
                 updateUser(updatedUser);
             } else {
