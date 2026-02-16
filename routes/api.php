@@ -131,6 +131,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Gestão de Campeonatos (NEW)
         Route::get('/championships', [\App\Http\Controllers\Admin\AdminChampionshipController::class, 'index']);
+        Route::get('/championships/{id}', [\App\Http\Controllers\Admin\AdminChampionshipController::class, 'show']);
         Route::post('/championships', [\App\Http\Controllers\Admin\AdminChampionshipController::class, 'store']);
         Route::put('/championships/{id}', [\App\Http\Controllers\Admin\AdminChampionshipController::class, 'update']);
         Route::delete('/championships/{id}', [\App\Http\Controllers\Admin\AdminChampionshipController::class, 'destroy']);

@@ -37,6 +37,13 @@ class AdminChampionshipController extends Controller
         return response()->json($championships);
     }
 
+    // Get championship details
+    public function show(Request $request, $id)
+    {
+        $championship = Championship::with(['sport', 'club', 'categories'])->findOrFail($id);
+        return response()->json($championship);
+    }
+
     // Create new championship
     public function store(StoreChampionshipRequest $request)
     {
