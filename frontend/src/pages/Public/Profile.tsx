@@ -388,6 +388,7 @@ function TestUploadEmbed({ user }: { user: any }) {
     const [loading, setLoading] = useState(false);
     const [removeBg, setRemoveBg] = useState(false);
     const [resultImage, setResultImage] = useState<string | null>(null);
+    const [proxyImage, setProxyImage] = useState<string | null>(null);
 
     const addLog = (msg: string, data?: any) => {
         setLogs(prev => [...prev, { time: new Date().toLocaleTimeString(), msg, data }]);
@@ -428,6 +429,11 @@ function TestUploadEmbed({ user }: { user: any }) {
             if (response.data.photo_nobg_url) {
                 setResultImage(response.data.photo_nobg_url);
                 addLog('URL da Imagem Sem Fundo:', response.data.photo_nobg_url);
+
+                if (response.data.photo_nobg_proxy_url) {
+                    addLog('URL Proxy (API):', response.data.photo_nobg_proxy_url);
+                    setProxyImage(response.data.photo_nobg_proxy_url);
+                }
             } else if (response.data.photo_url) {
                 setResultImage(response.data.photo_url);
                 addLog('URL da Imagem (Sem IA):', response.data.photo_url);
@@ -491,7 +497,16 @@ function TestUploadEmbed({ user }: { user: any }) {
                         <div className="h-32 bg-gray-100 rounded flex items-center justify-center overflow-hidden border border-green-200 relative bg-[url('https://media.istockphoto.com/id/1145176885/vector/transparent-background-checkered-seamless-pattern.jpg?s=612x612&w=0&k=20&c=6-6qgT0rBf5f3F4p6i7a_0k3_2k_5_4_1_7_9')]">
                             <img src={resultImage} className="h-full object-contain relative z-10" />
                         </div>
-                        <a href={resultImage} target="_blank" className="text-[10px] text-blue-600 underline block text-center mt-1">Abrir Link</a>
+                        <a href={resultImage} target="_blank" className="text-[10px] text-blue-600 underline block text-center mt-1">Abrir Link (Padrão)</a>
+                    </div>
+                )}
+                {proxyImage && (
+                    <div className="flex-1">
+                        <p className="text-xs font-bold mb-1 text-purple-600">Resultado (Via API):</p>
+                        <div className="h-32 bg-gray-100 rounded flex items-center justify-center overflow-hidden border border-purple-200 relative bg-[url('https://media.istockphoto.com/id/1145176885/vector/transparent-background-checkered-seamless-pattern.jpg?s=612x612&w=0&k=20&c=6-6qgT0rBf5f3F4p6i7a_0k3_2k_5_4_1_7_9')]">
+                            <img src={proxyImage} className="h-full object-contain relative z-10" />
+                        </div>
+                        <a href={proxyImage} target="_blank" className="text-[10px] text-purple-600 underline block text-center mt-1">Abrir Link (Proxy)</a>
                     </div>
                 )}
             </div>
