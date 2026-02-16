@@ -14,6 +14,7 @@ export function Register() {
     const [photos, setPhotos] = useState<File[]>([]);
     const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const documentInputRef = useRef<HTMLInputElement>(null);
 
     // Form States
     const [formData, setFormData] = useState({
@@ -32,22 +33,48 @@ export function Register() {
         else navigate('/login');
     }
 
-    const handleScanComplete = () => {
-        // Mock scan completion for now
+    const handleDocumentSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
         setLoading(true);
-        setTimeout(() => {
+        const toastId = toast.loading('Analisando documento com IA...');
+
+        try {
+            const formDataOCR = new FormData();
+            formDataOCR.append('document', file);
+
+            const response = await api.post('/ocr/analyze', formDataOCR, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+                timeout: 30000 // 30s timeout for OCR
+            });
+
+            const data = response.data.data;
+
+            if (data) {
+                setFormData(prev => ({
+                    ...prev,
+                    name: data.name || prev.name,
+                    cpf: data.cpf || prev.cpf,
+                    birthDate: data.birth_date || prev.birthDate,
+                    documentNumber: data.document_number || prev.documentNumber
+                }));
+
+                toast.success("Documento lido com sucesso!", { id: toastId });
+                setStep('photo');
+            } else {
+                toast.error("Não foi possível ler os dados do documento.", { id: toastId });
+            }
+
+        } catch (error) {
+            console.error(error);
+            toast.error("Erro ao analisar documento. Tente novamente ou preencha manualmente.", { id: toastId });
+        } finally {
             setLoading(false);
-            setFormData(prev => ({
-                ...prev,
-                name: 'Usuário Identificado',
-                cpf: '123.456.789-00',
-                birthDate: '1995-05-20',
-                documentNumber: '12.345.678-9'
-            }));
-            setStep('photo');
-            toast.success("Documento lido com sucesso!");
-        }, 1500);
-    }
+            // Clear input so same file can be selected again if needed
+            if (documentInputRef.current) documentInputRef.current.value = '';
+        }
+    };
 
     const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
@@ -163,7 +190,6 @@ export function Register() {
                 </div>
 
                 <div className="p-8 overflow-y-auto custom-scrollbar">
-                    {/* Step 1: Scan (Mock) */}
                     {step === 'scan' && (
                         <div className="text-center space-y-6">
                             <div className="w-24 h-24 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -174,10 +200,32 @@ export function Register() {
                                 <p className="text-gray-500 mt-2 text-sm">Para sua segurança e correta categorização, precisamos validar seu documento (RG ou CNH).</p>
                             </div>
 
+                            <input
+                                type="file"
+                                className="hidden"
+                                ref={documentInputRef}
+                                accept="image/*"
+                                capture="environment"
+                                onChange={handleDocumentSelect}
+                            />
+
                             <div className="space-y-3">
-                                <button onClick={handleScanComplete} disabled={loading} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all">
-                                    {loading ? <Loader2 className="animate-spin" /> : <Camera className="w-5 h-5" />}
-                                    {loading ? 'Analisando...' : 'Escanear Documento'}
+                                <button
+                                    onClick={() => documentInputRef.current?.click()}
+                                    disabled={loading}
+                                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all"
+                                >
+                                    {loading ? (
+                                        <span className="flex items-center gap-2">
+                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                            <span>Analisando...</span>
+                                        </span>
+                                    ) : (
+                                        <span className="flex items-center gap-2">
+                                            <Camera className="w-5 h-5" />
+                                            <span>Escanear Documento</span>
+                                        </span>
+                                    )}
                                 </button>
                                 <button onClick={() => setStep('photo')} className="text-gray-400 text-sm hover:text-gray-600 font-medium">
                                     Pular validação (Manual)
