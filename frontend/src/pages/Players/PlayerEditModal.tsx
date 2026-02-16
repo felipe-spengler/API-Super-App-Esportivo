@@ -22,6 +22,8 @@ export function PlayerEditModal({ playerId, onClose, onSuccess }: PlayerEditModa
     const [birthDate, setBirthDate] = useState('');
     const [gender, setGender] = useState('');
     const [address, setAddress] = useState('');
+    const [position, setPosition] = useState('');
+    const [number, setNumber] = useState('');
     const [photoFile, setPhotoFile] = useState<File | null>(null);
     const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
@@ -44,7 +46,10 @@ export function PlayerEditModal({ playerId, onClose, onSuccess }: PlayerEditModa
             setPhone(data.phone || '');
             setBirthDate(data.birth_date || '');
             setGender(data.gender || '');
+            setGender(data.gender || '');
             setAddress(data.address || '');
+            setPosition(data.position || '');
+            setNumber(data.number || '');
             setPhotoPreview(data.photo_url || null);
         } catch (error) {
             console.error('Erro ao carregar jogador:', error);
@@ -68,7 +73,10 @@ export function PlayerEditModal({ playerId, onClose, onSuccess }: PlayerEditModa
                 phone,
                 birth_date: birthDate,
                 gender,
+                gender,
                 address,
+                position,
+                number,
             });
 
             // Upload photo if selected
@@ -186,6 +194,33 @@ export function PlayerEditModal({ playerId, onClose, onSuccess }: PlayerEditModa
                                 className="w-full px-4 py-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                                 value={nickname}
                                 onChange={e => setNickname(e.target.value)}
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wider">
+                                Posição
+                            </label>
+                            <input
+                                required
+                                type="text"
+                                className="w-full px-4 py-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                                placeholder="Ex: Goleiro"
+                                value={position}
+                                onChange={e => setPosition(e.target.value)}
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wider">
+                                Número
+                            </label>
+                            <input
+                                type="text"
+                                className="w-full px-4 py-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-center"
+                                placeholder="00"
+                                value={number}
+                                onChange={e => setNumber(e.target.value)}
                             />
                         </div>
 

@@ -462,7 +462,7 @@ class ArtGeneratorController extends Controller
                 '{CAMPEONATO}' => mb_strtoupper($match->championship->name),
                 '{RODADA}' => mb_strtoupper($match->round_name ?? "RODADA " . ($match->round_number ?? 1)),
                 'X' => 'X',
-                'DD/MM HH:MM' => \Carbon\Carbon::parse($match->start_time)->translatedFormat('d/m H:i'),
+                'DD/MM HH:MM' => \Carbon\Carbon::parse($match->start_time)->setTimezone('America/Sao_Paulo')->translatedFormat('d/m H:i'),
                 'Local da Partida' => mb_strtoupper($match->location ?? 'LOCAL A DEFINIR'),
                 '{TC}' => mb_strtoupper($match->homeTeam->name),
                 '{TF}' => mb_strtoupper($match->awayTeam->name),
@@ -563,7 +563,7 @@ class ArtGeneratorController extends Controller
         $yLoc = $isStory ? ($height - 250) : ($height - 80);
         $yDate = $yLoc - ($isStory ? 100 : 80);
 
-        $dateStr = \Carbon\Carbon::parse($match->start_time)->translatedFormat('d \d\e F \à\s H:i');
+        $dateStr = \Carbon\Carbon::parse($match->start_time)->setTimezone('America/Sao_Paulo')->translatedFormat('d \d\e F \à\s H:i');
         $location = mb_strtoupper($match->location ?? 'LOCAL A DEFINIR');
 
         // Aumentar fonte no story
@@ -636,7 +636,7 @@ class ArtGeneratorController extends Controller
                 '{CAMPEONATO}' => mb_strtoupper($match->championship->name),
                 '{RODADA}' => mb_strtoupper($match->round_name ?? "RODADA " . ($match->round_number ?? 1)),
                 'X' => 'X',
-                'DD/MM HH:MM' => \Carbon\Carbon::parse($match->start_time)->translatedFormat('d/m H:i'),
+                'DD/MM HH:MM' => \Carbon\Carbon::parse($match->start_time)->setTimezone('America/Sao_Paulo')->translatedFormat('d/m H:i'),
                 'Local da Partida' => mb_strtoupper($match->location ?? 'LOCAL A DEFINIR'),
                 '{PC}' => $match->home_score ?? 0,
                 '{PF}' => $match->away_score ?? 0,
