@@ -1,115 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Save, ArrowLeft, User, Mail, FileText, Phone, Lock, Loader2 } from 'lucide-react';
+import { Save, ArrowLeft, User, Mail, Loader2 } from 'lucide-react';
 import api from '../../services/api';
-
-function PhotoUploadSection({ playerId, currentPhoto }: { playerId: string, currentPhoto?: string }) {
-    const [file, setFile] = useState<File | null>(null);
-    const [removeBg, setRemoveBg] = useState(false);
-    const [loading, setLoading] = useState(false);
-    const [preview, setPreview] = useState<string | null>(
-        currentPhoto
-            ? (currentPhoto.startsWith('http')
-                ? currentPhoto
-                : `${import.meta.env.VITE_API_URL?.replace('/api', '')}/storage/${currentPhoto}`)
-            : null
-    );
-    const [nobgPreview, setNobgPreview] = useState<string | null>(null);
-
-    async function handleUpload() {
-        if (!file) return;
-        setLoading(true);
-        const formData = new FormData();
-        formData.append('photo', file);
-        if (removeBg) {
-            formData.append('remove_bg', '1');
-        }
-
-        try {
-            const res = await api.post(`/admin/upload/player-photo/${playerId}`, formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-                timeout: 120000 // 2 minutes timeout
-            });
-
-            if (res.data.photo_url) {
-                const url = res.data.photo_url;
-                setPreview(url.startsWith('http') ? url : `${import.meta.env.VITE_API_URL?.replace('/api', '')}${url}`);
-            }
-            if (res.data.photo_nobg_url) {
-                const url = res.data.photo_nobg_url;
-                setNobgPreview(url.startsWith('http') ? url : `${import.meta.env.VITE_API_URL?.replace('/api', '')}${url}`);
-                alert('Fundo removido com sucesso!');
-            } else {
-                alert('Foto atualizada com sucesso!');
-            }
-
-            setFile(null);
-        } catch (error) {
-            console.error(error);
-            alert('Erro ao enviar foto');
-        } finally {
-            setLoading(false);
-        }
-    }
-
-    return (
-        <div className="flex flex-col md:flex-row gap-6 items-start">
-            <div className="flex gap-4">
-                {preview && (
-                    <div className="text-center">
-                        <p className="text-xs font-bold mb-1 text-gray-500">Original</p>
-                        <img src={preview} alt="Atual" className="w-32 h-32 object-cover rounded-lg border border-gray-200" />
-                    </div>
-                )}
-                {nobgPreview && (
-                    <div className="text-center">
-                        <p className="text-xs font-bold mb-1 text-green-600">Sem Fundo (IA)</p>
-                        <img src={nobgPreview} alt="Recortada" className="w-32 h-32 object-contain bg-checkered rounded-lg border border-green-200" />
-                    </div>
-                )}
-            </div>
-
-            <div className="flex-1 space-y-3">
-                <input
-                    type="file"
-                    accept="image/*"
-                    onChange={e => {
-                        setFile(e.target.files?.[0] || null);
-                        if (e.target.files?.[0]) {
-                            setPreview(URL.createObjectURL(e.target.files[0]));
-                            setNobgPreview(null);
-                        }
-                    }}
-                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-                />
-
-                <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                        type="checkbox"
-                        checked={removeBg}
-                        onChange={e => setRemoveBg(e.target.checked)}
-                        className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
-                    />
-                    <span className="text-sm font-medium text-gray-700">Remover fundo com IA</span>
-                </label>
-
-                <button
-                    type="button"
-                    onClick={handleUpload}
-                    disabled={!file || loading}
-                    className="px-4 py-2 bg-indigo-600 text-white text-sm font-bold rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2"
-                >
-                    {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                    {loading ? 'Processando...' : 'Enviar Foto'}
-                </button>
-
-                <p className="text-xs text-gray-400">
-                    Formatos: JPG, PNG. Máx 2MB. Use fotos com bom contraste para melhor recorte.
-                </p>
-            </div>
-        </div>
-    );
-}
+import { PhotoUploadSection } from './components/PhotoUploadSection';
 
 export function PlayerForm() {
     const navigate = useNavigate();
@@ -208,7 +101,7 @@ export function PlayerForm() {
                                 <User className="w-5 h-5 text-indigo-500" />
                                 Foto do Perfil
                             </h2>
-                            <PhotoUploadSection playerId={id!} currentPhoto={form.photo_path} />
+                            <PhotoUploadSection playerId={id!} currentPhotos={(form as any).photo_urls || form.photo_path} />
                         </div>
                     )}
 

@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { ArrowLeft, User, Shield, CreditCard, LogOut, Shirt, Users, Trophy, Camera, X, Wand2, Loader2, Upload } from 'lucide-react';
+import { ArrowLeft, User, Shield, CreditCard, LogOut, Shirt, Users, Trophy, Camera, X, Wand2, Loader2, Upload, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
@@ -62,13 +62,18 @@ export function Profile() {
         }
     };
 
-    const handleSavePhoto = async () => {
-        if (!selectedFile) return;
+    const handleSavePhoto = async (file?: File, index: number = 0) => {
+        // If file is passed, use it. Otherwise, use selectedFile (legacy/fallback if needed)
+        // In the new UI, we always pass file.
+        const fileToUpload = file || selectedFile;
+        // Skip check if we want to allow removing? But here it is upload.
+        if (!fileToUpload) return;
 
         setUploading(true);
         try {
             const formData = new FormData();
-            formData.append('photo', selectedFile);
+            formData.append('photo', fileToUpload);
+            formData.append('index', index.toString());
 
             // Send boolean as 1 or 0 string for FormData
             if (removeBg) {
@@ -80,23 +85,43 @@ export function Profile() {
                 timeout: 120000 // 2 minutes timeout for IA processing
             });
 
-            // Update local user context if possible
-            // Assuming API returns updated photo URL
-            let newPhotoUrl = response.data.photo_nobg_url || response.data.photo_url;
+            // Update local user context
+            // API now filters through uploadPlayerPhoto -> returns { ..., photos: [...] }
+            if (response.data.photos) {
+                // Reconstruct full URLs for context if API returns paths
+                // But wait, user context expects photo_urls (full urls).
+                // The backend returns paths in 'photos'. 
+                // We need to convert them or rely on a subsequent fetch?
+                // Or just manually update the index we changed if we have the new URL.
 
-            // Hack to force refresh if needed, but context update is better
-            if (response.data.photo_path) {
-                const updatedUser = { ...user, photo_url: response.data.photo_url, photo_path: response.data.photo_path };
-                if (response.data.photo_nobg_url) {
-                    updatedUser.photo_url = response.data.photo_nobg_url;
-                    updatedUser.photo_path = response.data.photo_nobg_path;
+                let newPhotoUrl = response.data.photo_nobg_url || response.data.photo_url || '';
+
+                // Create a copy of current photos
+                const currentPhotos = [...((user as any).photo_urls || [])];
+                // Ensure size
+                while (currentPhotos.length <= index) currentPhotos.push('');
+
+                // Update specific slot
+                if (newPhotoUrl) {
+                    currentPhotos[index] = newPhotoUrl;
                 }
-                updateUser(updatedUser);
-            }
-            alert('Foto atualizada com sucesso!');
-            setShowEdit(false);
-            // window.location.reload(); // Not needed with context update
 
+                const updatedUser = {
+                    ...user,
+                    photo_urls: currentPhotos,
+                    // Update main photo if index 0
+                    ...(index === 0 ? { photo_url: newPhotoUrl, photo_path: response.data.photo_path } : {})
+                };
+
+                updateUser(updatedUser);
+            } else {
+                // Fallback for old response type? 
+                // If success, just force reload or minor update
+                // But we should try to support the new multiple photos
+            }
+
+            // alert('Foto atualizada com sucesso!');
+            // setShowEdit(false); // Don't close, allow uploading more
         } catch (error) {
             console.error(error);
             alert('Erro ao enviar foto.');
@@ -195,7 +220,7 @@ export function Profile() {
             {/* Edit Photo Modal */}
             {showEdit && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl relative">
+                    <div className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-2xl relative">
                         <button
                             onClick={() => setShowEdit(false)}
                             className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
@@ -203,72 +228,107 @@ export function Profile() {
                             <X className="w-5 h-5" />
                         </button>
 
-                        <h3 className="text-xl font-bold text-gray-900 mb-6">Alterar Foto de Perfil</h3>
+                        <h3 className="text-xl font-bold text-gray-900 mb-6">Suas Fotos de Perfil</h3>
 
-                        <div className="flex flex-col items-center gap-6">
-                            {/* Preview Circle */}
-                            <div className="relative">
-                                <div className="w-32 h-32 rounded-full bg-gray-100 border-4 border-indigo-50 shadow-inner flex items-center justify-center overflow-hidden">
-                                    {previewUrl ? (
-                                        <img src={previewUrl} className="w-full h-full object-cover" />
-                                    ) : (user as any).photo_url ? (
-                                        <img src={(user as any).photo_url} className="w-full h-full object-cover" />
-                                    ) : (
-                                        <User className="w-12 h-12 text-gray-300" />
-                                    )}
+                        <div className="space-y-6">
+
+                            {/* Remove Background Option */}
+                            <label className={`flex items-start gap-3 p-4 rounded-xl border transition-all cursor-pointer ${removeBg ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                                <div className={`mt-0.5 w-5 h-5 rounded border flex items-center justify-center ${removeBg ? 'bg-indigo-600 border-indigo-600' : 'border-gray-300 bg-white'}`}>
+                                    {removeBg && <Wand2 className="w-3 h-3 text-white" />}
                                 </div>
-                                <label
-                                    htmlFor="photo-upload"
-                                    className="absolute bottom-0 right-0 bg-indigo-600 text-white p-2.5 rounded-full shadow-lg cursor-pointer hover:bg-indigo-700 active:scale-90 transition-transform"
-                                >
-                                    <Camera className="w-4 h-4" />
-                                </label>
                                 <input
-                                    id="photo-upload"
-                                    type="file"
-                                    accept="image/*"
+                                    type="checkbox"
                                     className="hidden"
-                                    onChange={handleFileSelect}
+                                    checked={removeBg}
+                                    onChange={() => setRemoveBg(!removeBg)}
                                 />
+                                <div className="flex-1">
+                                    <span className={`font-bold text-sm block ${removeBg ? 'text-indigo-900' : 'text-gray-800'}`}>
+                                        Remover Fundo com IA
+                                    </span>
+                                    <span className="text-xs text-gray-500 mt-1 block">
+                                        Recorta automaticamente apenas o seu rosto/corpo.
+                                    </span>
+                                </div>
+                            </label>
+
+                            {/* 3 Slots */}
+                            <div className="flex gap-4 justify-center flex-wrap">
+                                {[0, 1, 2].map(index => {
+                                    // Determine photo URL for this slot
+                                    // Using user.photo_urls if available, or fallback logic
+                                    let currentUrl = null;
+                                    if ((user as any).photo_urls && (user as any).photo_urls[index]) {
+                                        currentUrl = (user as any).photo_urls[index];
+                                    } else if (index === 0 && (user as any).photo_url) {
+                                        // Fallback legacy: Slot 0 gets the main photo if no array
+                                        currentUrl = (user as any).photo_url;
+                                    }
+
+                                    // If we just uploaded/previewed, generic previewUrl might confuse, so let's track previews per index if needed. 
+                                    // Actually, simpler to just trigger upload immediately on select like Admin, OR keep "Selected File" state per index.
+                                    // The Admin way (upload immediately) is better UX for multiple slots.
+                                    // So let's change handleFileSelect to upload immediately.
+
+                                    return (
+                                        <div key={index} className="relative w-28 h-28 bg-gray-100 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden hover:border-indigo-400 transition-colors group">
+                                            {currentUrl ? (
+                                                <>
+                                                    <img src={currentUrl} className="w-full h-full object-cover" />
+                                                    {uploading && (
+                                                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                                            <Loader2 className="w-6 h-6 text-white animate-spin" />
+                                                        </div>
+                                                    )}
+                                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                                        <label className="cursor-pointer p-2 bg-white rounded-full hover:bg-gray-100 shadow-lg active:scale-95 transition-transform">
+                                                            <Camera className="w-4 h-4 text-gray-700" />
+                                                            <input
+                                                                type="file"
+                                                                className="hidden"
+                                                                accept="image/*"
+                                                                disabled={uploading}
+                                                                onChange={(e) => {
+                                                                    const file = e.target.files?.[0];
+                                                                    if (file) handleSavePhoto(file, index);
+                                                                }}
+                                                            />
+                                                        </label>
+                                                    </div>
+                                                    {index === 0 && <span className="absolute bottom-0 left-0 right-0 bg-indigo-600 text-white text-[10px] text-center py-0.5">Principal</span>}
+                                                </>
+                                            ) : (
+                                                <label className="cursor-pointer w-full h-full flex flex-col items-center justify-center text-gray-400 hover:text-indigo-600">
+                                                    {uploading ? (
+                                                        <Loader2 className="w-6 h-6 animate-spin" />
+                                                    ) : (
+                                                        <>
+                                                            <Plus className="w-6 h-6 mb-1" />
+                                                            <span className="text-[10px] uppercase font-bold">Adicionar</span>
+                                                        </>
+                                                    )}
+                                                    <input
+                                                        type="file"
+                                                        className="hidden"
+                                                        accept="image/*"
+                                                        disabled={uploading}
+                                                        onChange={(e) => {
+                                                            const file = e.target.files?.[0];
+                                                            if (file) handleSavePhoto(file, index);
+                                                        }}
+                                                    />
+                                                </label>
+                                            )}
+                                        </div>
+                                    )
+                                })}
                             </div>
 
-                            {/* Options */}
-                            <div className="w-full space-y-4">
-                                <label className={`flex items-start gap-3 p-4 rounded-xl border transition-all cursor-pointer ${removeBg ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:bg-gray-50'}`}>
-                                    <div className={`mt-0.5 w-5 h-5 rounded border flex items-center justify-center ${removeBg ? 'bg-indigo-600 border-indigo-600' : 'border-gray-300 bg-white'}`}>
-                                        {removeBg && <Wand2 className="w-3 h-3 text-white" />}
-                                    </div>
-                                    <input
-                                        type="checkbox"
-                                        className="hidden"
-                                        checked={removeBg}
-                                        onChange={() => setRemoveBg(!removeBg)}
-                                    />
-                                    <div className="flex-1">
-                                        <span className={`font-bold text-sm block ${removeBg ? 'text-indigo-900' : 'text-gray-800'}`}>
-                                            Remover Fundo com IA
-                                        </span>
-                                        <span className="text-xs text-gray-500 mt-1 block">
-                                            Recorta automaticamente apenas o seu rosto/corpo, deixando o fundo transparente. Ideal para as artes do jogo!
-                                        </span>
-                                    </div>
-                                </label>
+                            <p className="text-xs text-center text-gray-500">
+                                A foto "Principal" será usada na sua carteirinha e perfil público.
+                            </p>
 
-                                <button
-                                    onClick={handleSavePhoto}
-                                    disabled={uploading || !selectedFile}
-                                    className="w-full bg-indigo-600 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                                >
-                                    {uploading ? (
-                                        <>
-                                            <Loader2 className="w-5 h-5 animate-spin" />
-                                            Processando...
-                                        </>
-                                    ) : (
-                                        'Salvar Nova Foto'
-                                    )}
-                                </button>
-                            </div>
                         </div>
 
                     </div>

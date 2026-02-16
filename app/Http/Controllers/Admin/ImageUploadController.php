@@ -78,84 +78,105 @@ class ImageUploadController extends Controller
         try {
             $request->validate([
                 'photo' => 'required|image|mimes:jpeg,png,jpg|max:4096',
+                'index' => 'nullable|integer|min:0|max:2', // Validar índice (0, 1, 2)
             ]);
 
-            // Aumenta o tempo de execução para evitar timeout durante o processamento da IA (rembg pode demorar no 1º uso)
+            // Aumenta o tempo de execução para evitar timeout durante o processamento da IA
             set_time_limit(300);
 
             $player = User::findOrFail($playerId);
 
             // Verifica permissão de clube
             $user = $request->user();
-            if ($user->club_id !== null && $player->club_id !== $user->club_id) {
+            if ($user->club_id !== null && $player->club_id !== $user->club_id && $user->id !== $player->id) {
                 return response()->json([
                     'message' => 'Você não tem permissão para editar este jogador.'
                 ], 403);
             }
 
-            // Remove foto antiga se existir
-            if ($player->photo && Storage::disk('public')->exists($player->photo)) {
-                Storage::disk('public')->delete($player->photo);
+            // Recupera fotos atuais
+            $currentPhotos = $player->photos ?? [];
+            if (!is_array($currentPhotos)) {
+                $currentPhotos = [];
+                // Migração de legado: se existir photo_path mas não array, adiciona como primeira
+                if ($player->photo_path) {
+                    $currentPhotos[] = $player->photo_path;
+                }
+            }
+
+            $index = $request->input('index');
+
+            // Lógica de índice
+            if ($index === null) {
+                // Se não informado, tenta adicionar. Se cheio, substitui a principal (0)
+                if (count($currentPhotos) < 3) {
+                    $index = count($currentPhotos);
+                } else {
+                    $index = 0;
+                }
+            }
+
+            // Remove foto antiga SE estiver substituindo
+            if (isset($currentPhotos[$index])) {
+                $oldPath = $currentPhotos[$index];
+                if (Storage::disk('public')->exists($oldPath)) {
+                    Storage::disk('public')->delete($oldPath);
+                }
             }
 
             // Salva nova foto
             $file = $request->file('photo');
-            $filename = Str::slug($player->name) . '-' . time() . '.' . $file->getClientOriginalExtension();
-            $path = $file->storeAs('players', $filename, 'public'); // Retorna players/nome.jpg
+            $filename = Str::slug($player->name) . '-' . time() . '-' . $index . '.' . $file->getClientOriginalExtension();
+            $path = $file->storeAs('players', $filename, 'public');
 
             $responseData = [
                 'message' => 'Foto atualizada com sucesso!',
                 'photo_url' => '/storage/' . $path,
-                'photo_path' => $path
+                'photo_path' => $path,
+                'index' => $index
             ];
 
             // PROCESSAMENTO DE IA: REMOVER FUNDO
             if ($request->boolean('remove_bg')) {
                 try {
-                    // Caminhos absolutos para o script Python
                     $inputAbsPath = storage_path('app/public/' . $path);
                     $filenameNobg = str_replace('.', '_nobg.', $filename);
-                    // Força PNG para suportar transparência
                     $filenameNobg = preg_replace('/\.(jpg|jpeg)$/i', '.png', $filenameNobg);
-
-                    $outputAbsPath = storage_path('app/public/players/' . $filenameNobg); // Caminho absoluto para o output
-
-                    // Script em: backend/scripts/remove_bg.py
+                    $outputAbsPath = storage_path('app/public/players/' . $filenameNobg);
                     $scriptPath = base_path('scripts/remove_bg.py');
 
-                    // Executa comando (python precisa estar no PATH do servidor)
                     $command = "python \"{$scriptPath}\" \"{$inputAbsPath}\" \"{$outputAbsPath}\"";
-
                     \Log::info("Lab AI - Command: " . $command);
 
                     $output = [];
                     $returnVar = 0;
                     exec($command, $output, $returnVar);
 
-                    \Log::info("Lab AI - Output: " . json_encode($output));
-                    \Log::info("Lab AI - Return: " . $returnVar);
-
                     if ($returnVar === 0 && file_exists($outputAbsPath)) {
-                        // Se sucesso, atualiza o path principal para a versão sem fundo
                         $path = 'players/' . $filenameNobg;
-
                         $responseData['photo_nobg_url'] = '/storage/' . $path;
                         $responseData['photo_nobg_path'] = $path;
                         $responseData['ai_processed'] = true;
-                    } else {
-                        \Log::error("Lab AI - Failed: " . json_encode($output));
-                        $responseData['ai_error'] = 'Falha ao processar IA. Código: ' . $returnVar;
-                        $responseData['ai_output'] = $output;
                     }
                 } catch (\Exception $e) {
                     \Log::error("Lab AI - Exception: " . $e->getMessage());
-                    $responseData['ai_error'] = $e->getMessage();
                 }
             }
 
-            // Atualiza no banco
-            $player->photo_path = $path;
+            // Atualiza array de fotos
+            $currentPhotos[$index] = $path;
+
+            // Reindexa array para garantir consistência (opcional, mas bom para JSON)
+            $currentPhotos = array_values($currentPhotos);
+
+            $player->photos = $currentPhotos;
+
+            // Mantém compatibilidade com photo_path (sempre a primeira foto)
+            $player->photo_path = $currentPhotos[0] ?? null;
+
             $player->save();
+
+            $responseData['photos'] = $currentPhotos;
 
             return response()->json($responseData);
         } catch (\Exception $e) {

@@ -23,6 +23,8 @@ class UserResource extends JsonResource
             'birth_date' => $this->birth_date,
             'is_admin' => (bool) $this->is_admin,
             'club_id' => $this->club_id,
+            'photo_url' => $this->photo_url,
+            'photo_urls' => $this->photo_urls,
             'created_at' => $this->created_at->format('Y-m-d H:i:s'),
         ];
     }

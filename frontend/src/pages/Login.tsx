@@ -1,7 +1,8 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { Lock, Mail, ArrowRight, Loader2, User, Trophy, ArrowLeft } from 'lucide-react';
 
 export function Login() {
@@ -13,7 +14,17 @@ export function Login() {
     const [error, setError] = useState('');
 
     const { signIn } = useAuth();
+
     const navigate = useNavigate();
+    const location = useLocation();
+
+    useEffect(() => {
+        if (location.state?.successMessage) {
+            toast.success(location.state.successMessage);
+            // Clear state so it doesn't show again on refresh (optional, but good practice)
+            window.history.replaceState({}, document.title);
+        }
+    }, [location]);
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();

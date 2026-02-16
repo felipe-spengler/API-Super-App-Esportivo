@@ -40,6 +40,7 @@ class User extends Authenticatable
         'document_path', // Caminho do documento: "documents/doc_123.jpg"
         'expires_at',
         'created_by',
+        'photos',
     ];
 
     /**
@@ -66,8 +67,19 @@ class User extends Authenticatable
             'is_admin' => 'boolean',
             'birth_date' => 'date',
             'expires_at' => 'datetime',
+            'photos' => 'array',
         ];
     }
+
+    /**
+     * The accessors to append to the model's array form.
+     *
+     * @var array
+     */
+    protected $appends = [
+        'photo_url',
+        'photo_urls',
+    ];
 
     public function isSuperAdmin(): bool
     {
@@ -110,5 +122,27 @@ class User extends Authenticatable
 
         // Return full URL
         return asset('storage/' . $this->photo_path);
+    }
+
+    /**
+     * Accessor: Gera array de photo_urls a partir de photos JSON
+     */
+    public function getPhotoUrlsAttribute()
+    {
+        $photos = $this->photos ?? [];
+        if (empty($photos)) {
+            // Fallback to legacy photo_path if exists and not in array
+            if ($this->photo_path) {
+                return [$this->photo_url];
+            }
+            return [];
+        }
+
+        return array_map(function ($path) {
+            if (str_starts_with($path, 'http')) {
+                return $path;
+            }
+            return asset('storage/' . $path);
+        }, $photos);
     }
 }

@@ -116,8 +116,8 @@ services:
       - "80"
     environment:
       PMA_HOST: db
-      PMA_USER: ${DB_USERNAME}
-      PMA_PASSWORD: ${DB_PASSWORD}
+      #PMA_USER: ${DB_USERNAME}
+      #PMA_PASSWORD: ${DB_PASSWORD}
       PMA_ABSOLUTE_URI: https://esportivo.techinteligente.site/db/
     depends_on:
       - db

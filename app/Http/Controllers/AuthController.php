@@ -18,20 +18,27 @@ class AuthController extends Controller
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:6|confirmed',
             'phone' => 'nullable|string',
-            'cpf' => 'nullable|string',
+            'cpf' => 'nullable|string|unique:users',
             'birth_date' => 'nullable|date',
             'rg' => 'nullable|string',
             'mother_name' => 'nullable|string',
             'gender' => 'nullable|in:M,F,O',
             'document_number' => 'nullable|string',
-            'photo' => 'nullable|image|max:2048', // Validação da foto de perfil
+            'photos' => 'nullable|array|max:3', // Allow up to 3 photos
+            'photos.*' => 'image|max:2048', // Validate each photo
             'document' => 'nullable|image|max:4096', // Validação da foto do documento
         ]);
 
-        $photoPath = null;
-        if ($request->hasFile('photo')) {
-            $photoPath = $request->file('photo')->store('players', 'public');
+        $photoPaths = [];
+        if ($request->hasFile('photos')) {
+            foreach ($request->file('photos') as $photo) {
+                $path = $photo->store('players', 'public');
+                $photoPaths[] = $path;
+            }
         }
+
+        // Set the main photo path to the first one uploaded, or null
+        $mainPhotoPath = !empty($photoPaths) ? $photoPaths[0] : null;
 
         $documentPath = null;
         if ($request->hasFile('document')) {
@@ -49,7 +56,8 @@ class AuthController extends Controller
             'mother_name' => $validated['mother_name'] ?? null,
             'gender' => $validated['gender'] ?? null,
             'document_number' => $validated['document_number'] ?? null,
-            'photo_path' => $photoPath,
+            'photo_path' => $mainPhotoPath,
+            'photos' => $photoPaths,
             'document_path' => $documentPath,
         ]);
 

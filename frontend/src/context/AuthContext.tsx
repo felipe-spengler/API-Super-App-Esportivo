@@ -9,6 +9,8 @@ interface User {
     role: string; // 'super_admin', 'admin', 'user'
     is_admin?: boolean;
     club_id?: number | null;
+    photo_url?: string;
+    photo_urls?: string[];
 }
 
 interface AuthContextData {
