@@ -180,10 +180,9 @@ export function PlayerEditModal({ playerId, teamId, championshipId, onClose, onS
                     <div className="grid grid-cols-2 gap-4">
                         <div className="col-span-2">
                             <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wider">
-                                Nome Completo *
+                                Nome Completo
                             </label>
                             <input
-                                required
                                 type="text"
                                 className="w-full px-4 py-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                                 value={name}
@@ -231,10 +230,9 @@ export function PlayerEditModal({ playerId, teamId, championshipId, onClose, onS
 
                         <div>
                             <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wider">
-                                CPF *
+                                CPF
                             </label>
                             <input
-                                required
                                 type="text"
                                 className="w-full px-4 py-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                                 value={cpf}
@@ -256,10 +254,9 @@ export function PlayerEditModal({ playerId, teamId, championshipId, onClose, onS
 
                         <div className="col-span-2">
                             <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wider">
-                                Email *
+                                Email
                             </label>
                             <input
-                                required
                                 type="email"
                                 className="w-full px-4 py-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                                 value={email}
@@ -281,10 +278,9 @@ export function PlayerEditModal({ playerId, teamId, championshipId, onClose, onS
 
                         <div>
                             <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wider">
-                                Sexo *
+                                Sexo
                             </label>
                             <select
-                                required
                                 className="w-full px-4 py-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                                 value={gender}
                                 onChange={e => setGender(e.target.value)}
