@@ -1,20 +1,14 @@
-
-import { useState, useRef } from 'react';
-import { ArrowLeft, User, Shield, CreditCard, LogOut, Shirt, Users, Trophy, Camera, X, Wand2, Loader2, Upload, Plus } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowLeft, User, Shield, CreditCard, LogOut, Shirt, Users, Trophy, Camera, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import api from '../../services/api';
+import { PhotoUploadSection } from '../Players/components/PhotoUploadSection';
+
 
 export function Profile() {
     const navigate = useNavigate();
     const { user, signOut, updateUser } = useAuth();
-
-    // Modal State
     const [showEdit, setShowEdit] = useState(false);
-    const [uploading, setUploading] = useState(false);
-    const uploadingRef = useRef(false);
-    const [removeBg, setRemoveBg] = useState(false);
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
     if (!user) {
         return (
@@ -52,77 +46,6 @@ export function Profile() {
         { label: 'Meus Pedidos', icon: Shirt, route: '/profile/orders', color: 'text-purple-600', bg: 'bg-purple-100' },
         { label: 'Carteirinha', icon: CreditCard, route: '/wallet', color: 'text-indigo-600', bg: 'bg-indigo-100' },
     ];
-
-    const handleSavePhoto = async (file?: File, index: number = 0) => {
-        if (uploadingRef.current) return;
-
-        const fileToUpload = file || selectedFile;
-        if (!fileToUpload) return;
-
-        setUploading(true);
-        uploadingRef.current = true;
-
-        try {
-            const formData = new FormData();
-            formData.append('photo', fileToUpload);
-            formData.append('index', index.toString());
-
-            if (removeBg) {
-                formData.append('remove_bg', '1');
-            }
-
-            const response = await api.post('/me/photo', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-                timeout: 300000 // 5 minutes timeout for IA processing
-            });
-
-            // Update local user context
-            if (response.data.photos) {
-                // Backend now returns the CORRECT URL (proxy or direct) in photo_nobg_url
-                let newPhotoUrl = response.data.photo_nobg_url || response.data.photo_url || '';
-
-                if (response.data.ai_error) {
-                    console.warn('AI Error:', response.data.ai_error);
-                    alert(`Atenção: A foto foi salva, mas houve um erro ao remover o fundo.`);
-                    // Fallback if AI failed
-                    newPhotoUrl = response.data.photo_url;
-                }
-
-                // Create a copy of current photos
-                const currentPhotos = [...((user as any).photo_urls || [])];
-
-                // Ensure size
-                while (currentPhotos.length <= index) currentPhotos.push('');
-
-                // Update specific slot
-                if (newPhotoUrl) {
-                    currentPhotos[index] = newPhotoUrl;
-                }
-
-                const updatedUser = {
-                    ...user,
-                    photo_urls: currentPhotos,
-                    // Update main photo if index 0
-                    ...(index === 0 ? { photo_url: newPhotoUrl, photo_path: response.data.photo_path } : {})
-                };
-
-                updateUser(updatedUser);
-            }
-
-            // alert('Foto atualizada com sucesso!');
-            // setShowEdit(false); 
-        } catch (error: any) {
-            console.error(error);
-            if (error.code === 'ECONNABORTED') {
-                alert('A remoção de fundo está demorando muito. A operação pode ter sido concluída no servidor.');
-            } else {
-                alert('Erro ao enviar foto.');
-            }
-        } finally {
-            setUploading(false);
-            uploadingRef.current = false;
-        }
-    };
 
     return (
         <div className="min-h-screen bg-gray-50 pb-20">
@@ -225,97 +148,10 @@ export function Profile() {
                         <h3 className="text-xl font-bold text-gray-900 mb-6">Suas Fotos de Perfil</h3>
 
                         <div className="space-y-6">
-
-                            {/* Remove Background Option */}
-                            <label className={`flex items-start gap-3 p-4 rounded-xl border transition-all cursor-pointer ${removeBg ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:bg-gray-50'}`}>
-                                <div className={`mt-0.5 w-5 h-5 rounded border flex items-center justify-center ${removeBg ? 'bg-indigo-600 border-indigo-600' : 'border-gray-300 bg-white'}`}>
-                                    {removeBg && <Wand2 className="w-3 h-3 text-white" />}
-                                </div>
-                                <input
-                                    type="checkbox"
-                                    className="hidden"
-                                    checked={removeBg}
-                                    onChange={() => setRemoveBg(!removeBg)}
-                                />
-                                <div className="flex-1">
-                                    <span className={`font-bold text-sm block ${removeBg ? 'text-indigo-900' : 'text-gray-800'}`}>
-                                        Remover Fundo com IA
-                                    </span>
-                                    <span className="text-xs text-gray-500 mt-1 block">
-                                        Recorta automaticamente apenas o seu rosto/corpo.
-                                    </span>
-                                </div>
-                            </label>
-
-                            {/* 3 Slots */}
-                            <div className="flex gap-4 justify-center flex-wrap">
-                                {[0, 1, 2].map(index => {
-                                    // Determine photo URL for this slot
-                                    let currentUrl = null;
-                                    if ((user as any).photo_urls && (user as any).photo_urls[index]) {
-                                        currentUrl = (user as any).photo_urls[index];
-                                    } else if (index === 0 && (user as any).photo_url) {
-                                        currentUrl = (user as any).photo_url;
-                                    }
-
-                                    return (
-                                        <div key={index} className="relative w-28 h-28 bg-gray-100 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden hover:border-indigo-400 transition-colors group">
-                                            {currentUrl ? (
-                                                <>
-                                                    <img src={currentUrl} className="w-full h-full object-cover" />
-                                                    {uploading && (
-                                                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                                                            <Loader2 className="w-6 h-6 text-white animate-spin" />
-                                                        </div>
-                                                    )}
-                                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                                        <label className="cursor-pointer p-2 bg-white rounded-full hover:bg-gray-100 shadow-lg active:scale-95 transition-transform">
-                                                            <Camera className="w-4 h-4 text-gray-700" />
-                                                            <input
-                                                                type="file"
-                                                                className="hidden"
-                                                                accept="image/*"
-                                                                disabled={uploading}
-                                                                onChange={(e) => {
-                                                                    const file = e.target.files?.[0];
-                                                                    if (file) handleSavePhoto(file, index);
-                                                                }}
-                                                            />
-                                                        </label>
-                                                    </div>
-                                                    {index === 0 && <span className="absolute bottom-0 left-0 right-0 bg-indigo-600 text-white text-[10px] text-center py-0.5">Principal</span>}
-                                                </>
-                                            ) : (
-                                                <label className="cursor-pointer w-full h-full flex flex-col items-center justify-center text-gray-400 hover:text-indigo-600">
-                                                    {uploading ? (
-                                                        <Loader2 className="w-6 h-6 animate-spin" />
-                                                    ) : (
-                                                        <>
-                                                            <Plus className="w-6 h-6 mb-1" />
-                                                            <span className="text-[10px] uppercase font-bold">Adicionar</span>
-                                                        </>
-                                                    )}
-                                                    <input
-                                                        type="file"
-                                                        className="hidden"
-                                                        accept="image/*"
-                                                        disabled={uploading}
-                                                        onChange={(e) => {
-                                                            const file = e.target.files?.[0];
-                                                            if (file) handleSavePhoto(file, index);
-                                                        }}
-                                                    />
-                                                </label>
-                                            )}
-                                        </div>
-                                    )
-                                })}
-                            </div>
-
-                            <p className="text-xs text-center text-gray-500">
-                                A foto "Principal" será usada na sua carteirinha e perfil público.
-                            </p>
-
+                            <PhotoUploadSection
+                                playerId={user.id.toString()}
+                                currentPhotos={(user as any).photo_urls || (user as any).photo_url}
+                            />
                         </div>
                     </div>
                 </div>

@@ -23,6 +23,22 @@ export function PublicLayout() {
                                 <span className="font-bold text-xl text-gray-900 tracking-tight">Esportes7</span>
                             </Link>
                         </div>
+
+                        {/* Desktop Menu Links */}
+                        <div className="flex items-center gap-6">
+                            <Link to="/" className={`text-sm font-medium transition-colors ${isActive('/') ? 'text-indigo-600' : 'text-gray-600 hover:text-indigo-600'}`}>
+                                Início
+                            </Link>
+                            <Link to="/profile" className={`text-sm font-medium transition-colors ${isActive('/profile') ? 'text-indigo-600' : 'text-gray-600 hover:text-indigo-600'}`}>
+                                Perfil
+                            </Link>
+                            {user?.is_admin && (
+                                <Link to="/admin" className={`text-sm font-medium transition-colors ${isActive('/admin') ? 'text-indigo-600' : 'text-gray-600 hover:text-indigo-600'}`}>
+                                    Admin
+                                </Link>
+                            )}
+                        </div>
+
                         <div className="flex items-center gap-4">
                             <Link to="/login" className="px-5 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-full transition-all shadow-md">
                                 Área do Cliente / Admin
