@@ -134,9 +134,7 @@ export function PhotoUploadSection({ playerId, currentPhotos }: PhotoUploadSecti
                     );
                 })}
             </div>
-            <p className="text-xs text-gray-500">
-                Você pode adicionar até 3 fotos. A foto "Principal" será usada na carteirinha.
-            </p>
+
         </div>
     );
 }

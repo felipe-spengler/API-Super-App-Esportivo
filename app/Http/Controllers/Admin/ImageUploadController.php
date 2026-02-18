@@ -93,7 +93,7 @@ class ImageUploadController extends Controller
                 // Se o player não tem clube, verifica se pertence a algum time do clube do admin
                 $belongsToClubTeam = false;
                 if ($player->club_id === null) {
-                    $belongsToClubTeam = $player->teams()->where('club_id', $user->club_id)->exists();
+                    $belongsToClubTeam = $player->teamsAsPlayer()->where('club_id', $user->club_id)->exists();
                 }
 
                 if (!$belongsToClubTeam) {
