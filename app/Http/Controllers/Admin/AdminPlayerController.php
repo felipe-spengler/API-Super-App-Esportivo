@@ -100,9 +100,9 @@ class AdminPlayerController extends Controller
 
         // Validation for User fields
         $validated = $request->validate([
-            'name' => 'string|max:255',
+            'name' => 'nullable|string|max:255',
             'nickname' => 'nullable|string|max:255',
-            'email' => 'email|unique:users,email,' . $id,
+            'email' => 'nullable|email|unique:users,email,' . $id,
             'cpf' => 'nullable|string|unique:users,cpf,' . $id,
             'phone' => 'nullable|string',
             'birth_date' => 'nullable|date',

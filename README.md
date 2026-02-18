@@ -1,59 +1,111 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# 🏆 App Esportivo - Plataforma de Gestão Esportiva
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Uma solução completa e moderna para gerenciamento de ligas, campeonatos, times e atletas, com recursos avançados de automação e inteligência artificial.
 
-## About Laravel
+![Banner do Projeto](https://placehold.co/1200x400/indigo/white?text=App+Esportivo)
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## ✨ Principais Funcionalidades
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### 🏟️ Gestão de Campeonatos
+- **Criação Flexível**: Suporte a fases de grupos, mata-mata e pontos corridos.
+- **Chaveamento Automático**: Sorteio e geração de brackets inteligentes.
+- **Súmula Digital em Tempo Real**: Registro de gols, cartões, faltas e estatísticas ao vivo.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### 👥 Gestão de Times e Atletas
+- **Cadastro Completo**: Histórico de jogos, estatísticas individuais e documentos.
+- **Carteirinha Digital**: Acesso via QR Code para validação de atletas em partidas.
+- **Transferências**: Sistema de contratação e movimentação de jogadores entre times.
 
-## Learning Laravel
+### 🎨 Design & Automação com IA (Destaque)
+- **Gerador de Artes Automático**: Criação instantânea de artes para redes sociais (Confrontos, MVP, Agenda de Jogos).
+- **Remoção de Fundo com IA**: Upload de fotos de jogadores com recorte automático de fundo (integração Python/U2Net).
+- **Personalização**: Templates ajustáveis por campeonato ou clube.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+### 🛒 Módulos Adicionais
+- **Loja Virtual**: Venda de produtos e kits dos clubes.
+- **Financeiro**: Controle de inscrições e pagamentos.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+---
 
-## Laravel Sponsors
+## 🚀 Tecnologias Utilizadas
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+### Backend
+- **Laravel** (PHP): API RESTful robusta e segura.
+- **MySQL**: Banco de dados relacional.
+- **Python**: Scripts de IA para processamento de imagem (`rembg`, `u2net`).
 
-### Premium Partners
+### Frontend
+- **React** (Vite): Interface rápida e responsiva.
+- **TailwindCSS**: Estilização moderna e customizável.
+- **Lucide Icons**: Iconografia limpa e consistente.
+- **TypeScript**: Segurança e tipagem estática.
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+---
 
-## Contributing
+## 🛠️ Instalação e Configuração
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### Pré-requisitos
+- PHP 8.1+
+- Composer
+- Node.js & npm/yarn/bun
+- Python 3.8+ (para recursos de IA)
+- MySQL
 
-## Code of Conduct
+### 1. Backend (Laravel)
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```bash
+# Clone o repositório
+git clone https://github.com/seu-usuario/app-esportivo.git
+cd app-esportivo/backend
 
-## Security Vulnerabilities
+# Instale as dependências do PHP
+composer install
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+# Configure o ambiente
+cp .env.example .env
+# Edite o .env com suas credenciais de banco de dados
 
-## License
+# Gere a chave da aplicação
+php artisan key:generate
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+# Execute as migrações
+php artisan migrate --seed
+
+# Inicie o servidor
+php artisan serve
+```
+
+### 2. Frontend (React)
+
+```bash
+# Navegue até a pasta do frontend (dentro de backend/frontend ou raiz separada)
+cd frontend
+
+# Instale as dependências
+npm install
+
+# Inicie o servidor de desenvolvimento
+npm run dev
+```
+
+### 3. Configuração da IA (Opcional - Para Remoção de Fundo)
+
+Certifique-se de ter o Python instalado e as bibliotecas necessárias:
+
+```bash
+pip install rembg
+# O script de IA fica em: backend/scripts/remove_bg.py
+```
+
+---
+
+## 📱 Acesso ao Sistema
+
+- **Admin**: `http://localhost:5173/admin` (Frontend)
+- **API**: `http://localhost:8000/api` (Backend)
+
+---
+
+## 📄 Licença
+
+Este projeto é proprietário e desenvolvido para uso exclusivo. Todos os direitos reservados.

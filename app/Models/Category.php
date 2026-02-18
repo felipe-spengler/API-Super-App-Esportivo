@@ -48,45 +48,56 @@ class Category extends Model
 
         // 1. Validar Gênero
         if ($this->gender && $this->gender !== 'mixed') {
-            $userGender = strtolower($user->gender ?? '');
-            $categoryGender = strtolower($this->gender);
+            // Check if user has gender info. If not, skip validation (assume OK or handle as strictly required?)
+            // If user explicitly asked for non-mandatory fields, we should be lenient here if gender is missing.
+            if (!empty($user->gender)) {
+                $userGender = strtolower($user->gender);
+                $categoryGender = strtolower($this->gender);
 
-            // Map common variances
-            if ($categoryGender === 'm')
-                $categoryGender = 'male';
-            if ($categoryGender === 'f')
-                $categoryGender = 'female';
-            if ($userGender === 'm')
-                $userGender = 'male';
-            if ($userGender === 'f')
-                $userGender = 'female';
+                // Map common variances
+                if ($categoryGender === 'm')
+                    $categoryGender = 'male';
+                if ($categoryGender === 'f')
+                    $categoryGender = 'female';
+                if ($userGender === 'm')
+                    $userGender = 'male';
+                if ($userGender === 'f')
+                    $userGender = 'female';
 
-            if ($userGender !== $categoryGender) {
-                return [
-                    'eligible' => false,
-                    'reason' => "Gênero incompatível. A categoria é {$this->gender} e o atleta é " . ($user->gender ?? 'não informado') . "."
-                ];
+                // Only fail if gender is explicitly set and different
+                if ($categoryGender !== 'mixed' && $userGender !== $categoryGender) {
+                    return [
+                        'eligible' => false,
+                        'reason' => "Gênero incompatível. A categoria requer " . ($categoryGender === 'male' ? 'Masculino' : 'Feminino') . "."
+                    ];
+                }
             }
         }
 
         // 2. Validar Idade
-        if (($this->min_age || $this->max_age) && $user->birth_date) {
-            $birthDate = \Carbon\Carbon::parse($user->birth_date);
-            $currentYear = now()->year;
-            $age = $currentYear - $birthDate->year;
+        if (($this->min_age || $this->max_age)) {
+            // Check if user has birth_date. If not, skip validation?
+            if (!empty($user->birth_date)) {
+                try {
+                    $birthDate = \Carbon\Carbon::parse($user->birth_date);
+                    $age = $birthDate->age; // Use Carbon's age calculator for accuracy
 
-            if ($this->min_age && $age < $this->min_age) {
-                return [
-                    'eligible' => false,
-                    'reason' => "Atleta muito jovem para esta categoria (Idade: {$age}, Mínima: {$this->min_age})."
-                ];
-            }
+                    if ($this->min_age && $age < $this->min_age) {
+                        return [
+                            'eligible' => false,
+                            'reason' => "Atleta muito jovem (Idade: {$age}, Mínima: {$this->min_age})."
+                        ];
+                    }
 
-            if ($this->max_age && $age > $this->max_age) {
-                return [
-                    'eligible' => false,
-                    'reason' => "Atleta excede a idade máxima para esta categoria (Idade: {$age}, Máxima: {$this->max_age})."
-                ];
+                    if ($this->max_age && $age > $this->max_age) {
+                        return [
+                            'eligible' => false,
+                            'reason' => "Atleta excede idade máxima (Idade: {$age}, Máxima: {$this->max_age})."
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    // Ignore date parse errors
+                }
             }
         }
 

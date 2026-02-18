@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Loader2, Upload, User } from 'lucide-react';
 import api from '../../services/api';
+import { PhotoUploadSection } from './components/PhotoUploadSection';
 
 interface PlayerEditModalProps {
     playerId: number;
@@ -26,9 +27,7 @@ export function PlayerEditModal({ playerId, teamId, championshipId, onClose, onS
     const [address, setAddress] = useState('');
     const [position, setPosition] = useState('');
     const [number, setNumber] = useState('');
-    const [photoFile, setPhotoFile] = useState<File | null>(null);
-    const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-    const [removeBg, setRemoveBg] = useState(false);
+
 
     useEffect(() => {
         loadPlayer();
@@ -51,13 +50,12 @@ export function PlayerEditModal({ playerId, teamId, championshipId, onClose, onS
             setEmail(data.email || '');
             setCpf(data.cpf || '');
             setPhone(data.phone || '');
-            setBirthDate(data.birth_date || '');
+            setBirthDate(data.birth_date ? data.birth_date.split('T')[0] : '');
             setGender(data.gender || '');
             setGender(data.gender || '');
             setAddress(data.address || '');
             setPosition(data.position || '');
             setNumber(data.number || '');
-            setPhotoPreview(data.photo_url || null);
         } catch (error) {
             console.error('Erro ao carregar jogador:', error);
             alert('Erro ao carregar dados do jogador');
@@ -86,26 +84,7 @@ export function PlayerEditModal({ playerId, teamId, championshipId, onClose, onS
                 championship_id: championshipId
             });
 
-            // Upload photo if selected
-            if (photoFile) {
-                const formData = new FormData();
-                formData.append('file', photoFile);
-                formData.append('type', 'player');
-                formData.append('id', playerId.toString());
-                formData.append('index', '0');
 
-
-
-                if (removeBg) {
-                    formData.append('remove_bg', '1');
-                }
-
-                await api.post('/admin/upload-image', formData, {
-                    headers: {
-                        'Content-Type': 'multipart/form-data'
-                    }
-                });
-            }
 
             alert('Jogador atualizado com sucesso!');
             onSuccess();
@@ -118,17 +97,7 @@ export function PlayerEditModal({ playerId, teamId, championshipId, onClose, onS
         }
     }
 
-    function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
-        const file = e.target.files?.[0];
-        if (file) {
-            setPhotoFile(file);
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setPhotoPreview(reader.result as string);
-            };
-            reader.readAsDataURL(file);
-        }
-    }
+
 
     if (loading) {
         return (
@@ -156,45 +125,8 @@ export function PlayerEditModal({ playerId, teamId, championshipId, onClose, onS
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
                     {/* Photo Section */}
-                    <div className="flex flex-col items-center gap-4 pb-6 border-b border-gray-100">
-                        <div className="relative">
-                            <div className="w-32 h-32 rounded-full overflow-hidden bg-gray-100 border-4 border-white shadow-lg">
-                                {photoPreview ? (
-                                    <img
-                                        src={photoPreview}
-                                        alt={name}
-                                        className="w-full h-full object-cover"
-                                    />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center">
-                                        <User className="w-16 h-16 text-gray-300" />
-                                    </div>
-                                )}
-                            </div>
-                            <label className="absolute bottom-0 right-0 p-2 bg-indigo-600 text-white rounded-full cursor-pointer hover:bg-indigo-700 transition-colors shadow-lg">
-                                <Upload className="w-4 h-4" />
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={handlePhotoChange}
-                                    className="hidden"
-                                />
-                            </label>
-                        </div>
-                        <p className="text-xs text-gray-500">Clique no ícone para alterar a foto</p>
-
-                        <div className="flex items-center gap-2 mt-2">
-                            <input
-                                type="checkbox"
-                                id="removeBg"
-                                checked={removeBg}
-                                onChange={e => setRemoveBg(e.target.checked)}
-                                className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
-                            />
-                            <label htmlFor="removeBg" className="text-sm font-medium text-gray-700 cursor-pointer">
-                                Remover fundo com IA (automático ao enviar)
-                            </label>
-                        </div>
+                    <div className="flex flex-col gap-4 pb-6 border-b border-gray-100">
+                        <PhotoUploadSection playerId={playerId.toString()} currentPhotos={player?.photos || player?.photo_url} />
                     </div>
 
                     {/* Form Fields */}

@@ -115,6 +115,7 @@ class TeamController extends Controller
                 'birth_date' => $request->birth_date,
                 'password' => \Illuminate\Support\Facades\Hash::make($tempPassword),
                 'role' => 'user',
+                'club_id' => $team->club_id,
                 'document_path' => $documentPath,
                 'photo_path' => $photoPath
             ]);
@@ -163,13 +164,19 @@ class TeamController extends Controller
             $allCategories = $teamCategories->merge($champCategories);
 
             foreach ($allCategories as $category) {
-                $check = $category->isUserEligible($userData);
-                if (!$check['eligible']) {
-                    return response()->json([
-                        'message' => 'O atleta não atende aos requisitos desta categoria.',
-                        'reason' => $check['reason'],
-                        'category' => $category->name
-                    ], 403);
+                // Skip eligibility check if user is admin or club manager
+                $isAdmin = $request->user()->is_admin;
+                $isClubManager = $request->user()->club_id === $team->club_id;
+
+                if (!$isAdmin && !$isClubManager) {
+                    $check = $category->isUserEligible($userData);
+                    if (!$check['eligible']) {
+                        return response()->json([
+                            'message' => 'O atleta não atende aos requisitos desta categoria.',
+                            'reason' => $check['reason'],
+                            'category' => $category->name
+                        ], 403);
+                    }
                 }
             }
         }
