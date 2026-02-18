@@ -184,7 +184,7 @@ class ImageUploadController extends Controller
 
                         // USAR ROTA API (PROXY) COMO PRINCIPAL
                         // Isso garante visualização mesmo com erro de configuração no Nginx/Storage link
-                        $responseData['photo_nobg_url'] = url('api/storage/' . $path);
+                        $responseData['photo_nobg_url'] = asset('storage/' . $path);
                         $responseData['photo_nobg_path'] = $path;
                         $responseData['ai_processed'] = true;
                     } else {
