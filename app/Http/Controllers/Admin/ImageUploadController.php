@@ -522,6 +522,7 @@ class ImageUploadController extends Controller
             if ($type === 'player') {
                 // Cria um novo request com o campo 'photo' esperado
                 $photoRequest = new Request();
+                $photoRequest->merge($request->all());
                 $photoRequest->files->set('photo', $request->file('file'));
                 $photoRequest->setUserResolver($request->getUserResolver());
 

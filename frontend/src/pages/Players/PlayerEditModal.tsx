@@ -28,6 +28,7 @@ export function PlayerEditModal({ playerId, teamId, championshipId, onClose, onS
     const [number, setNumber] = useState('');
     const [photoFile, setPhotoFile] = useState<File | null>(null);
     const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+    const [removeBg, setRemoveBg] = useState(false);
 
     useEffect(() => {
         loadPlayer();
@@ -91,6 +92,13 @@ export function PlayerEditModal({ playerId, teamId, championshipId, onClose, onS
                 formData.append('file', photoFile);
                 formData.append('type', 'player');
                 formData.append('id', playerId.toString());
+                formData.append('index', '0');
+
+
+
+                if (removeBg) {
+                    formData.append('remove_bg', '1');
+                }
 
                 await api.post('/admin/upload-image', formData, {
                     headers: {
@@ -174,6 +182,19 @@ export function PlayerEditModal({ playerId, teamId, championshipId, onClose, onS
                             </label>
                         </div>
                         <p className="text-xs text-gray-500">Clique no ícone para alterar a foto</p>
+
+                        <div className="flex items-center gap-2 mt-2">
+                            <input
+                                type="checkbox"
+                                id="removeBg"
+                                checked={removeBg}
+                                onChange={e => setRemoveBg(e.target.checked)}
+                                className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                            />
+                            <label htmlFor="removeBg" className="text-sm font-medium text-gray-700 cursor-pointer">
+                                Remover fundo com IA (automático ao enviar)
+                            </label>
+                        </div>
                     </div>
 
                     {/* Form Fields */}

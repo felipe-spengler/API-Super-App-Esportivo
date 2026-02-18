@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Save, ArrowLeft, User, Mail, Loader2 } from 'lucide-react';
+import { Save, ArrowLeft, User, Mail, Loader2, Plus } from 'lucide-react';
 import api from '../../services/api';
 import { PhotoUploadSection } from './components/PhotoUploadSection';
 
@@ -24,6 +24,9 @@ export function PlayerForm() {
         password_confirmation: '',
         photo_path: ''
     });
+    const [photoFile, setPhotoFile] = useState<File | null>(null);
+    const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+    const [removeBg, setRemoveBg] = useState(false);
     const [loading, setLoading] = useState(false);
 
 
@@ -60,10 +63,32 @@ export function PlayerForm() {
                 delete (data as any).password;
                 delete (data as any).password_confirmation;
             }
+            let playerId;
             if (isEditing) {
                 await api.put(`/admin/players/${id}`, data);
+                playerId = id;
             } else {
-                await api.post('/admin/players', data);
+                const response = await api.post('/admin/players', data);
+                playerId = response.data.id;
+            }
+
+            // Upload photo for new player if selected
+            if (!isEditing && photoFile && playerId) {
+                const formData = new FormData();
+                formData.append('file', photoFile);
+                formData.append('type', 'player');
+                formData.append('id', playerId.toString());
+                formData.append('index', '0');
+
+                if (removeBg) {
+                    formData.append('remove_bg', '1');
+                }
+
+                await api.post('/admin/upload-image', formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data'
+                    }
+                });
             }
             navigate('/admin/players');
         } catch (error: any) {
@@ -94,16 +119,67 @@ export function PlayerForm() {
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-8 space-y-8">
-                    {/* Seção 0: Foto do Perfil (Somente Edição) */}
-                    {isEditing && (
-                        <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 mb-6">
-                            <h2 className="text-lg font-bold text-gray-800 border-b border-gray-200 pb-2 flex items-center gap-2 mb-4">
-                                <User className="w-5 h-5 text-indigo-500" />
-                                Foto do Perfil
-                            </h2>
+                    {/* Seção 0: Foto do Perfil */}
+                    <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 mb-6">
+                        <h2 className="text-lg font-bold text-gray-800 border-b border-gray-200 pb-2 flex items-center gap-2 mb-4">
+                            <User className="w-5 h-5 text-indigo-500" />
+                            Foto do Perfil
+                        </h2>
+                        {isEditing ? (
                             <PhotoUploadSection playerId={id!} currentPhotos={(form as any).photo_urls || form.photo_path} />
-                        </div>
-                    )}
+                        ) : (
+                            <div className="flex flex-col items-center gap-4">
+                                <div className="relative">
+                                    <div className="w-32 h-32 rounded-full overflow-hidden bg-gray-100 border-4 border-white shadow-lg">
+                                        {photoPreview ? (
+                                            <img
+                                                src={photoPreview}
+                                                alt="Preview"
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center">
+                                                <User className="w-16 h-16 text-gray-300" />
+                                            </div>
+                                        )}
+                                    </div>
+                                    <label className="absolute bottom-0 right-0 p-2 bg-indigo-600 text-white rounded-full cursor-pointer hover:bg-indigo-700 transition-colors shadow-lg">
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) {
+                                                    setPhotoFile(file);
+                                                    const reader = new FileReader();
+                                                    reader.onloadend = () => {
+                                                        setPhotoPreview(reader.result as string);
+                                                    };
+                                                    reader.readAsDataURL(file);
+                                                }
+                                            }}
+                                            className="hidden"
+                                        />
+                                        <Plus className="w-4 h-4" />
+                                    </label>
+                                </div>
+                                <p className="text-xs text-gray-500">Clique no ícone para adicionar uma foto</p>
+
+                                <div className="flex items-center gap-2 mt-2">
+                                    <input
+                                        type="checkbox"
+                                        id="removeBgNew"
+                                        checked={removeBg}
+                                        onChange={e => setRemoveBg(e.target.checked)}
+                                        className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                                    />
+                                    <label htmlFor="removeBgNew" className="text-sm font-medium text-gray-700 cursor-pointer">
+                                        Remover fundo com IA (automático ao salvar)
+                                    </label>
+                                </div>
+                            </div>
+                        )}
+                    </div>
 
                     {/* Seção 1: Informações Básicas */}
                     <div className="space-y-4">
