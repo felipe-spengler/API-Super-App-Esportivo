@@ -102,6 +102,11 @@ class TeamController extends Controller
             $email = $request->email;
             if (empty($email)) {
                 $email = 'temp_' . uniqid() . '_' . time() . '@temp.app';
+            } else {
+                $exists = \App\Models\User::where('email', $email)->exists();
+                if ($exists) {
+                    return response()->json(['message' => 'Este e-mail já está em uso por outro atleta no sistema.'], 422);
+                }
             }
 
             $userData = \App\Models\User::create([

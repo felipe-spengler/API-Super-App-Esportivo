@@ -87,6 +87,17 @@ class AdminPlayerController extends Controller
         if (empty($validated['email'])) {
             $validated['email'] = 'temp_' . uniqid() . '@temp.local';
         }
+        // Ensure that if email is present, we check uniqueness manually if not done by Request (StorePlayerRequest removed unique rule)
+        else {
+            $exists = User::where('email', $validated['email'])->exists();
+            if ($exists) {
+                // Return error or handle. For now, let's assume if it passed validation it's ok, 
+                // BUT StorePlayerRequest removed 'unique' rule! We should add it back optionally or check here.
+                // Correct approach: The Controller should trust the Request, but the Request removed the unique rule.
+                // So we must check here to avoid DB error or overwrites.
+                return response()->json(['message' => 'Este e-mail já está em uso.', 'errors' => ['email' => ['Este e-mail já está em uso.']]], 422);
+            }
+        }
 
         $player = User::create($validated);
 
@@ -108,7 +119,14 @@ class AdminPlayerController extends Controller
             'birth_date' => 'nullable|date',
             'gender' => 'nullable|string|in:M,F,O',
             'address' => 'nullable|string|max:500',
-            'password' => 'nullable|string|min:6|confirmed', // Add validation
+            'password' => 'nullable|string|min:6|confirmed',
+        ], [
+            'password.min' => 'A senha deve ter no mínimo :min caracteres.',
+            'password.confirmed' => 'A confirmação de senha não confere.',
+            'email.unique' => 'Este e-mail já está em uso por outro atleta.',
+            'cpf.unique' => 'Este CPF já está cadastrado.',
+            'name.required' => 'O nome é obrigatório.',
+            'email.email' => 'Informe um e-mail válido.',
         ]);
 
         // Handle password update

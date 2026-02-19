@@ -93,7 +93,13 @@ export function PlayerForm() {
             navigate('/admin/players');
         } catch (error: any) {
             console.error(error);
-            alert(error.response?.data?.message || 'Erro ao salvar jogador');
+            if (error.response?.data?.errors) {
+                const errors = error.response.data.errors;
+                const errorMessages = Object.values(errors).flat().join('\n');
+                alert(`Erro de validação:\n${errorMessages}`);
+            } else {
+                alert(error.response?.data?.message || 'Erro ao salvar jogador');
+            }
         } finally {
             setLoading(false);
         }

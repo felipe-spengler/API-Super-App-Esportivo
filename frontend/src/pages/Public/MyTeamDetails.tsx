@@ -44,6 +44,11 @@ export function MyTeamDetails() {
     const [newPlayerNum, setNewPlayerNum] = useState('');
     const [newPlayerEmail, setNewPlayerEmail] = useState('');
     const [newPlayerCpf, setNewPlayerCpf] = useState('');
+    const [newPlayerNickname, setNewPlayerNickname] = useState('');
+    const [newPlayerPhone, setNewPlayerPhone] = useState('');
+    const [newPlayerBirthDate, setNewPlayerBirthDate] = useState('');
+    const [newPlayerGender, setNewPlayerGender] = useState('');
+    const [newPlayerAddress, setNewPlayerAddress] = useState('');
     const [documentFile, setDocumentFile] = useState<File | null>(null);
     const [adding, setAdding] = useState(false);
 
@@ -73,6 +78,11 @@ export function MyTeamDetails() {
             formData.append('number', newPlayerNum);
             formData.append('email', newPlayerEmail);
             formData.append('cpf', newPlayerCpf);
+            formData.append('nickname', newPlayerNickname);
+            formData.append('phone', newPlayerPhone);
+            formData.append('birth_date', newPlayerBirthDate);
+            formData.append('gender', newPlayerGender);
+            formData.append('address', newPlayerAddress);
             if (documentFile) {
                 formData.append('document_file', documentFile);
             }
@@ -99,6 +109,11 @@ export function MyTeamDetails() {
         setNewPlayerNum('');
         setNewPlayerEmail('');
         setNewPlayerCpf('');
+        setNewPlayerNickname('');
+        setNewPlayerPhone('');
+        setNewPlayerBirthDate('');
+        setNewPlayerGender('');
+        setNewPlayerAddress('');
         setDocumentFile(null);
     }
 
@@ -254,6 +269,62 @@ export function MyTeamDetails() {
                                     onChange={e => setNewPlayerEmail(e.target.value)}
                                 />
                                 <p className="text-[10px] text-gray-400 mt-1">Se o email já existir na plataforma, o perfil será vinculado.</p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-600 mb-1">Apelido</label>
+                                    <input
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500"
+                                        placeholder="Ex: Canhotinha"
+                                        value={newPlayerNickname}
+                                        onChange={e => setNewPlayerNickname(e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-600 mb-1">Telefone</label>
+                                    <input
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500"
+                                        placeholder="(00) 00000-0000"
+                                        value={newPlayerPhone}
+                                        onChange={e => setNewPlayerPhone(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-600 mb-1">Data de Nascimento</label>
+                                    <input
+                                        type="date"
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500"
+                                        value={newPlayerBirthDate}
+                                        onChange={e => setNewPlayerBirthDate(e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-600 mb-1">Gênero</label>
+                                    <select
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                                        value={newPlayerGender}
+                                        onChange={e => setNewPlayerGender(e.target.value)}
+                                    >
+                                        <option value="">Selecione...</option>
+                                        <option value="M">Masculino</option>
+                                        <option value="F">Feminino</option>
+                                        <option value="O">Outro</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-600 mb-1">Endereço</label>
+                                <input
+                                    className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500"
+                                    placeholder="Rua, número, bairro..."
+                                    value={newPlayerAddress}
+                                    onChange={e => setNewPlayerAddress(e.target.value)}
+                                />
                             </div>
 
                             <button
