@@ -312,31 +312,27 @@ export function PlayerForm() {
                                 />
                             </div>
 
-                            {(!isEditing || form.password) && (
-                                <>
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">{isEditing ? 'Nova Senha (opcional)' : 'Senha'}</label>
-                                        <input
-                                            type="password"
-                                            value={form.password}
-                                            onChange={e => setForm({ ...form, password: e.target.value })}
-                                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                                            placeholder="******"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">Confirmar Senha</label>
-                                        <input
-                                            type="password"
-                                            required={!!form.password}
-                                            value={form.password_confirmation}
-                                            onChange={e => setForm({ ...form, password_confirmation: e.target.value })}
-                                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                                            placeholder="******"
-                                        />
-                                    </div>
-                                </>
-                            )}
+                            <div className="md:col-span-1">
+                                <label className="block text-sm font-bold text-gray-700 mb-2">{isEditing ? 'Nova Senha (opcional)' : 'Senha'}</label>
+                                <input
+                                    type="password"
+                                    value={form.password}
+                                    onChange={e => setForm({ ...form, password: e.target.value })}
+                                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                    placeholder="******"
+                                />
+                            </div>
+                            <div className="md:col-span-1">
+                                <label className="block text-sm font-bold text-gray-700 mb-2">Confirmar Senha</label>
+                                <input
+                                    type="password"
+                                    required={!!form.password}
+                                    value={form.password_confirmation}
+                                    onChange={e => setForm({ ...form, password_confirmation: e.target.value })}
+                                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                    placeholder="******"
+                                />
+                            </div>
                         </div>
                     </div>
 

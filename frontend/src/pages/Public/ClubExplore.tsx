@@ -25,6 +25,7 @@ export function ClubExplore() {
                     clubData = clubRes.data;
                     setClub(clubData);
                 }
+                console.log('Club Data:', clubData);
 
                 // 2. Fetch championships filtered by club
                 const params: any = {
@@ -34,14 +35,21 @@ export function ClubExplore() {
                     params.status = statusTab;
                 }
 
+                console.log('Fetching events with params:', params);
                 const res = await api.get('/public/events', { params });
+                console.log('API Response:', res.data);
 
                 let filtered = res.data;
 
                 // 3. Client-side filter for sport name (consistent with Explore.tsx)
+                console.log('Filtering by sportName:', sportName);
+                console.log('URL Search Params:', searchParams.toString());
                 if (sportName && sportName !== 'Todos') {
+                    console.log('Full filtered list before filter:', filtered);
                     filtered = filtered.filter((c: any) => {
                         const s = c.sport?.name || c.sport?.slug || c.sport_name || '';
+                        console.log('Championship item:', c);
+                        console.log(`Checking champ ${c.name} sport: '${s}' vs '${sportName}'`);
                         return s.toString().toLowerCase() === sportName.toLowerCase();
                     });
                 }

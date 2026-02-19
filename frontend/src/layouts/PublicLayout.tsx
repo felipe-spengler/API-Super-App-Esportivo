@@ -12,37 +12,66 @@ export function PublicLayout() {
     return (
         <div className="min-h-screen bg-gray-50 font-sans pb-20 md:pb-0">
             {/* Desktop Navbar (Hidden on Mobile) */}
-            <nav className="hidden md:block bg-white border-b border-gray-200 sticky top-0 z-50">
+            <nav className="hidden md:block bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-50 transition-all duration-300">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between h-16">
-                        <div className="flex items-center gap-8">
-                            <Link to="/" className="flex items-center gap-2">
-                                <div className="bg-indigo-600 p-2 rounded-lg">
+                    <div className="flex justify-between items-center h-20">
+                        {/* Logo Area */}
+                        <div className="flex-shrink-0 flex items-center gap-3 group cursor-pointer">
+                            <Link to="/" className="flex items-center gap-3">
+                                <div className="bg-gradient-to-br from-indigo-600 to-violet-600 p-2.5 rounded-xl shadow-lg shadow-indigo-200 group-hover:scale-105 transition-transform duration-300">
                                     <Trophy className="w-6 h-6 text-white" />
                                 </div>
-                                <span className="font-bold text-xl text-gray-900 tracking-tight">Esportes7</span>
+                                <span className="font-bold text-xl text-gray-900 tracking-tight group-hover:text-indigo-600 transition-colors">
+                                    Esportes7
+                                </span>
                             </Link>
                         </div>
 
-                        {/* Desktop Menu Links */}
-                        <div className="flex items-center gap-6">
-                            <Link to="/" className={`text-sm font-medium transition-colors ${isActive('/') ? 'text-indigo-600' : 'text-gray-600 hover:text-indigo-600'}`}>
-                                Início
+                        {/* Desktop Menu Links - Centered */}
+                        <div className="hidden md:flex items-center gap-8">
+                            <Link to="/" className={`relative px-2 py-1 text-sm font-semibold transition-colors duration-300 group ${isActive('/') ? 'text-indigo-600' : 'text-gray-600 hover:text-indigo-600'}`}>
+                                <span>Início</span>
+                                <span className={`absolute bottom-0 left-0 w-full h-0.5 bg-indigo-600 transform origin-left transition-transform duration-300 ${isActive('/') ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`}></span>
                             </Link>
-                            <Link to="/profile" className={`text-sm font-medium transition-colors ${isActive('/profile') ? 'text-indigo-600' : 'text-gray-600 hover:text-indigo-600'}`}>
-                                Perfil
+
+                            <Link to="/explore" className={`relative px-2 py-1 text-sm font-semibold transition-colors duration-300 group ${isActive('/explore') ? 'text-indigo-600' : 'text-gray-600 hover:text-indigo-600'}`}>
+                                <span>Explorar</span>
+                                <span className={`absolute bottom-0 left-0 w-full h-0.5 bg-indigo-600 transform origin-left transition-transform duration-300 ${isActive('/explore') ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`}></span>
                             </Link>
+
+                            <Link to="/profile" className={`relative px-2 py-1 text-sm font-semibold transition-colors duration-300 group ${isActive('/profile') ? 'text-indigo-600' : 'text-gray-600 hover:text-indigo-600'}`}>
+                                <span>Perfil</span>
+                                <span className={`absolute bottom-0 left-0 w-full h-0.5 bg-indigo-600 transform origin-left transition-transform duration-300 ${isActive('/profile') ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`}></span>
+                            </Link>
+
                             {user?.is_admin && (
-                                <Link to="/admin" className={`text-sm font-medium transition-colors ${isActive('/admin') ? 'text-indigo-600' : 'text-gray-600 hover:text-indigo-600'}`}>
-                                    Admin
+                                <Link to="/admin" className={`relative px-2 py-1 text-sm font-semibold transition-colors duration-300 group ${isActive('/admin') ? 'text-indigo-600' : 'text-gray-600 hover:text-indigo-600'}`}>
+                                    <span>Admin</span>
+                                    <span className={`absolute bottom-0 left-0 w-full h-0.5 bg-indigo-600 transform origin-left transition-transform duration-300 ${isActive('/admin') ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`}></span>
                                 </Link>
                             )}
                         </div>
 
+                        {/* Action Buuton */}
                         <div className="flex items-center gap-4">
-                            <Link to="/login" className="px-5 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-full transition-all shadow-md">
-                                Área do Cliente / Admin
-                            </Link>
+                            {!user ? (
+                                <Link to="/login" className="px-6 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 rounded-full transition-all shadow-lg shadow-indigo-200 hover:shadow-xl hover:scale-105 active:scale-95">
+                                    Entrar / Cadastrar
+                                </Link>
+                            ) : (
+                                <Link to="/profile" className="flex items-center gap-3 pl-2 pr-4 py-1.5 bg-white border border-gray-200 rounded-full hover:border-indigo-200 hover:shadow-md transition-all group">
+                                    <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center border border-white shadow-sm overflow-hidden">
+                                        {(user as any).photo_url ? (
+                                            <img src={(user as any).photo_url} alt="Avatar" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <User className="w-4 h-4 text-gray-500" />
+                                        )}
+                                    </div>
+                                    <span className="text-sm font-semibold text-gray-700 group-hover:text-indigo-600 max-w-[100px] truncate">
+                                        {user.name?.split(' ')[0]}
+                                    </span>
+                                </Link>
+                            )}
                         </div>
                     </div>
                 </div>

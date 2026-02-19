@@ -108,7 +108,15 @@ class AdminPlayerController extends Controller
             'birth_date' => 'nullable|date',
             'gender' => 'nullable|string|in:M,F,O',
             'address' => 'nullable|string|max:500',
+            'password' => 'nullable|string|min:6|confirmed', // Add validation
         ]);
+
+        // Handle password update
+        if ($request->filled('password')) {
+            $validated['password'] = bcrypt($request->password);
+        } else {
+            unset($validated['password']); // Don't update if empty
+        }
 
         $player->update($validated);
 

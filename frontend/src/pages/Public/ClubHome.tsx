@@ -43,9 +43,12 @@ export function ClubHome() {
     const primaryColor = club.primary_color || '#4f46e5';
     const secondaryColor = club.secondary_color || '#ffffff';
 
-    const activeSports = ALL_SPORTS.filter(sport =>
-        club.active_modalities?.includes(sport.id)
-    );
+    console.log('Club Active Modalities:', club.active_modalities);
+    const activeSports = ALL_SPORTS.filter(sport => {
+        const isActive = club.active_modalities?.includes(sport.id);
+        console.log(`Checking sport ${sport.id} (${sport.name}): ${isActive}`);
+        return isActive;
+    });
 
     return (
         <div className="min-h-screen bg-gray-50 pb-24">
