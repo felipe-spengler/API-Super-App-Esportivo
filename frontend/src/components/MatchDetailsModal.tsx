@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { X, Calendar, Clock, MapPin, Trophy, User, Share2, FileText, ChevronRight, Star, History, Printer, Timer, Triangle } from 'lucide-react';
 import api from '../services/api';
 import echo from '../services/echo';
+import { getMatchPhrase } from '../utils/matchPhrases';
 
 interface MatchDetailsModalProps {
     matchId: string | number | null;
@@ -354,100 +355,138 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                             </div>
                                         ) : (
                                             getSortedEvents().map((event: any, idx: number) => {
-                                                // Check for system events
                                                 const isSystemEvent = ['match_start', 'match_end', 'period_start', 'period_end', 'timeout'].includes(event.type);
 
                                                 if (isSystemEvent) {
+                                                    // Mesmo helper defensivo das súmulas
                                                     const getSystemEventTitle = () => {
                                                         if (event.type === 'match_start') return 'Início da Partida';
                                                         if (event.type === 'match_end') return 'Fim de Jogo';
                                                         if (event.type === 'timeout') return 'Pedido de Tempo';
+                                                        const p = String(event.period || '').toLowerCase();
                                                         if (event.type === 'period_start') {
-                                                            if (event.period === '2º Tempo') return 'Início do 2º Tempo';
-                                                            if (event.period === 'Prorrogação') return 'Início da Prorrogação';
-                                                            if (event.period === 'Pênaltis') return 'Início dos Pênaltis';
-                                                            return 'Início de Período';
+                                                            if (p.includes('pênalt') || p.includes('penalt')) return 'Início dos Pênaltis';
+                                                            if (p.includes('prorrog')) return 'Início da Prorrogação';
+                                                            if (p.includes('2º') || p.includes('2o')) return 'Início do 2º Tempo';
+                                                            if (p.includes('1º') || p.includes('1o')) return 'Início do 1º Tempo';
+                                                            return event.period ? `Início de ${event.period}` : 'Novo Período';
                                                         }
                                                         if (event.type === 'period_end') {
-                                                            if (event.period === '1º Tempo') return 'Fim do 1º Tempo';
-                                                            if (event.period === '2º Tempo') return 'Fim do Tempo Normal';
-                                                            if (event.period === 'Prorrogação') return 'Fim da Prorrogação';
-                                                            return 'Fim de Período';
+                                                            if (p.includes('pênalt') || p.includes('penalt')) return 'Fim dos Pênaltis';
+                                                            if (p.includes('prorrog')) return 'Fim da Prorrogação';
+                                                            if (p.includes('2º') || p.includes('2o') || p.includes('normal')) return 'Fim do Tempo Normal';
+                                                            if (p.includes('1º') || p.includes('1o') || p.includes('intervalo')) return 'Fim do 1º Tempo';
+                                                            return event.period ? `Fim de ${event.period}` : 'Fim do Período';
                                                         }
-                                                        return event.type;
+                                                        return '';
                                                     };
 
+                                                    const phrase = getMatchPhrase(event.id ?? idx, event.type);
+
+                                                    const pillColor = event.type === 'match_start'
+                                                        ? 'bg-green-50 border-green-200'
+                                                        : event.type === 'match_end'
+                                                            ? 'bg-red-50 border-red-200'
+                                                            : event.type === 'period_start'
+                                                                ? 'bg-blue-50 border-blue-200'
+                                                                : event.type === 'timeout'
+                                                                    ? 'bg-yellow-50 border-yellow-200'
+                                                                    : 'bg-orange-50 border-orange-200';
+
+                                                    const titleColor = event.type === 'match_start'
+                                                        ? 'text-green-700'
+                                                        : event.type === 'match_end'
+                                                            ? 'text-red-700'
+                                                            : event.type === 'period_start'
+                                                                ? 'text-blue-700'
+                                                                : event.type === 'timeout'
+                                                                    ? 'text-yellow-700'
+                                                                    : 'text-orange-700';
+
                                                     return (
-                                                        <div key={idx} className="flex items-center justify-center my-6 relative z-10 w-full">
-                                                            <div className="flex flex-col items-center justify-center bg-gray-50 border border-gray-200 rounded-full px-4 py-1.5 shadow-sm max-w-[90%]">
-                                                                <span className={`text-[10px] sm:text-xs font-bold uppercase ${event.type.includes('start') ? 'text-green-600' :
-                                                                    event.type.includes('end') ? 'text-red-600' : 'text-yellow-600'
-                                                                    }`}>
+                                                        <div key={idx} className="flex items-center justify-center my-5 relative z-10 w-full">
+                                                            <div className={`flex flex-col items-center justify-center border rounded-full px-5 py-2 shadow-sm max-w-[90%] gap-0.5 ${pillColor}`}>
+                                                                <span className={`text-[10px] sm:text-xs font-black uppercase tracking-wider ${titleColor}`}>
+                                                                    {event.type === 'match_start' && '🏁 '}
+                                                                    {event.type === 'match_end' && '🛑 '}
+                                                                    {event.type === 'period_start' && '▶️ '}
+                                                                    {event.type === 'period_end' && '⏸️ '}
+                                                                    {event.type === 'timeout' && '⏱ '}
                                                                     {getSystemEventTitle()}
                                                                 </span>
-                                                                {event.player_name && event.player_name !== '?' && (
-                                                                    <span className="text-[10px] text-gray-500 italic mt-0.5 text-center">
-                                                                        {event.player_name}
-                                                                    </span>
-                                                                )}
+                                                                <span className="text-[10px] sm:text-xs text-gray-500 italic text-center leading-tight">
+                                                                    {phrase}
+                                                                </span>
                                                             </div>
                                                         </div>
                                                     );
                                                 }
 
-                                                // Check if it's an own goal - if so, invert the display side
                                                 const isOwnGoal = event.metadata?.own_goal === true;
                                                 let isHome = event.team_id === match?.home_team_id;
+                                                if (isOwnGoal) isHome = !isHome;
 
-                                                // If it's an own goal, invert the side where it appears
-                                                // (team A scored own goal -> show on team B's side)
-                                                if (isOwnGoal) {
-                                                    isHome = !isHome;
-                                                }
+                                                const teamName = isHome ? match?.home_team?.name : match?.away_team?.name;
+                                                const teamInitial = teamName?.substring(0, 3)?.toUpperCase() || '?';
+                                                const teamColor = isHome ? 'bg-blue-600' : 'bg-green-600';
+
                                                 return (
-                                                    <div key={idx} className={`flex items-center mb-6 sm:mb-8 ${isHome ? 'sm:flex-row-reverse' : ''}`}>
-                                                        <div className="hidden sm:block flex-1">
-                                                            {/* Empty side for desktop positioning */}
-                                                        </div>
+                                                    // Desktop: bolha alterna lado. Mobile: tudo à esquerda com badge do time
+                                                    <div key={idx} className={`flex items-center mb-5 ${isHome ? 'sm:flex-row-reverse' : ''}`}>
+                                                        {/* Spacer desktop */}
+                                                        <div className="hidden sm:block flex-1" />
 
-                                                        {/* Minute Circle */}
+                                                        {/* Minute circle (desktop center line) */}
                                                         <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white border-2 border-indigo-100 flex items-center justify-center text-[10px] sm:text-xs font-bold text-gray-600 z-10 shrink-0 shadow-sm ml-4.5 sm:ml-0">
                                                             {event.minute}'
                                                         </div>
 
-                                                        {/* Event Card */}
-                                                        <div className={`flex-1 pl-4 sm:px-4 ${isHome ? 'sm:text-right' : 'text-left'}`}>
-                                                            <div className="inline-block bg-white p-2.5 sm:p-3 rounded-lg shadow-sm border border-gray-100 min-w-[140px] max-w-full">
+                                                        {/* Event card */}
+                                                        <div className={`flex-1 pl-3 sm:px-4 ${isHome ? 'sm:text-right sm:pl-0' : 'text-left'}`}>
+                                                            <div className="inline-block bg-white p-2.5 rounded-lg shadow-sm border border-gray-100 min-w-[140px] max-w-full">
+                                                                {/* Team badge — visible on mobile only, compact */}
+                                                                <div className={`flex items-center gap-1.5 mb-1.5 sm:hidden ${isHome ? 'justify-start' : 'justify-start'}`}>
+                                                                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-black text-white uppercase tracking-wider ${teamColor}`}>
+                                                                        {teamInitial}
+                                                                    </span>
+                                                                    <span className="text-[9px] text-gray-400 truncate max-w-[120px]">{teamName}</span>
+                                                                </div>
+
                                                                 <div className={`text-xs sm:text-sm font-bold flex items-center gap-2 ${isHome ? 'sm:justify-end' : ''}`}>
                                                                     <div className="shrink-0 flex items-center justify-center h-4 w-4">
                                                                         {event.type === 'goal' && '⚽'}
                                                                         {(event.type === 'yellow_card' || event.type === 'yellow') && (
-                                                                            <div className="w-3 h-4 bg-yellow-400 rounded-[2px] border border-yellow-600 shadow-sm" style={{ backgroundColor: '#facc15', minWidth: '12px', minHeight: '16px' }} />
+                                                                            <div className="w-3 h-4 rounded-[2px] border border-yellow-600 shadow-sm" style={{ backgroundColor: '#facc15', minWidth: '12px', minHeight: '16px' }} />
                                                                         )}
                                                                         {(event.type === 'red_card' || event.type === 'red') && (
-                                                                            <div className="w-3 h-4 bg-red-600 rounded-[2px] border border-red-800 shadow-sm" style={{ backgroundColor: '#dc2626', minWidth: '12px', minHeight: '16px' }} />
+                                                                            <div className="w-3 h-4 rounded-[2px] border border-red-800 shadow-sm" style={{ backgroundColor: '#dc2626', minWidth: '12px', minHeight: '16px' }} />
                                                                         )}
                                                                         {event.type === 'blue_card' && (
-                                                                            <div className="w-3 h-4 bg-blue-500 rounded-[2px] border border-blue-700 shadow-sm" style={{ backgroundColor: '#3b82f6', minWidth: '12px', minHeight: '16px' }} />
+                                                                            <div className="w-3 h-4 rounded-[2px] border border-blue-700 shadow-sm" style={{ backgroundColor: '#3b82f6', minWidth: '12px', minHeight: '16px' }} />
                                                                         )}
                                                                         {event.type === 'foul' && (
-                                                                            <div className="text-orange-500">
-                                                                                <Triangle size={14} fill="currentColor" />
-                                                                            </div>
+                                                                            <div className="text-orange-500"><Triangle size={14} fill="currentColor" /></div>
                                                                         )}
+                                                                        {event.type === 'assist' && '👟'}
+                                                                        {event.type === 'suspension_2min' && '⏱'}
+                                                                        {event.type === 'shootout_goal' && '⚽'}
+                                                                        {event.type === 'shootout_miss' && '❌'}
                                                                     </div>
                                                                     <div className="flex flex-col">
                                                                         <span className="text-gray-800 leading-tight">
                                                                             {event.type === 'goal' ? (event.metadata?.own_goal ? 'Gol Contra!' : 'Gol!') :
-                                                                                event.type === 'foul' ? 'Falta -' : ''} {event.player_name}
+                                                                                event.type === 'foul' ? 'Falta' :
+                                                                                    event.type === 'assist' ? 'Assistência' :
+                                                                                        event.type === 'suspension_2min' ? 'Suspensão 2min' :
+                                                                                            event.type === 'shootout_goal' ? 'Pênalti Convertido' :
+                                                                                                event.type === 'shootout_miss' ? 'Pênalti Perdido' : ''}
+                                                                            {event.player_name && ` ${event.player_name}`}
                                                                         </span>
-                                                                        <span className="text-[9px] sm:text-[10px] text-gray-400 font-normal sm:hidden">
-                                                                            {isHome ? match.home_team?.name : match.away_team?.name}
+                                                                        {/* Team name — desktop only */}
+                                                                        <span className={`hidden sm:block text-[10px] text-indigo-600 font-medium mt-0.5`}>
+                                                                            {teamName}
                                                                         </span>
                                                                     </div>
-                                                                </div>
-                                                                <div className={`hidden sm:block text-[10px] text-indigo-600 font-medium mt-1`}>
-                                                                    {isHome ? match.home_team?.name : match.away_team?.name}
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -456,12 +495,14 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                             })
                                         )}
 
-                                        {/* Match Start Indicator */}
-                                        <div className="flex items-center justify-center my-4 relative z-10">
-                                            <span className="px-3 py-1 bg-gray-100 text-gray-500 text-[10px] sm:text-xs rounded-full border border-gray-200">
-                                                Início da Partida
-                                            </span>
-                                        </div>
+                                        {/* Match Start Indicator — hidden when events already include match_start */}
+                                        {getSortedEvents().every((e: any) => e.type !== 'match_start') && (
+                                            <div className="flex items-center justify-center my-4 relative z-10">
+                                                <span className="px-3 py-1 bg-gray-100 text-gray-500 text-[10px] sm:text-xs rounded-full border border-gray-200">
+                                                    Início da Partida
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )}
