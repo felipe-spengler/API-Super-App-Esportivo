@@ -812,25 +812,54 @@ export function SumulaFutebol() {
                     {events.map((ev, idx) => {
                         const isSystemEvent = ['match_start', 'match_end', 'period_start', 'period_end'].includes(ev.type);
 
+                        // Helper: friendly title based on event type + period
+                        const getSystemEventTitle = () => {
+                            if (ev.type === 'match_start') return 'Início da Partida';
+                            if (ev.type === 'match_end') return 'Fim de Jogo';
+                            if (ev.type === 'period_start') {
+                                if (ev.period === '2º Tempo') return 'Início do 2º Tempo';
+                                if (ev.period === 'Prorrogação') return 'Início da Prorrogação';
+                                if (ev.period === 'Pênaltis') return 'Início dos Pênaltis';
+                                return `Início do ${ev.period}`;
+                            }
+                            if (ev.type === 'period_end') {
+                                if (ev.period === '1º Tempo') return 'Fim do 1º Tempo';
+                                if (ev.period === '2º Tempo') return 'Fim do Tempo Normal';
+                                if (ev.period === 'Prorrogação') return 'Fim da Prorrogação';
+                                if (ev.period === 'Pênaltis') return 'Fim dos Pênaltis';
+                                return `Fim do ${ev.period}`;
+                            }
+                            return ev.type;
+                        };
+
+                        // Label do período para exibição na tag lateral
+                        const periodLabel = ['shootout_goal', 'shootout_miss'].includes(ev.type)
+                            ? 'Pênaltis'
+                            : ev.period === 'Prorrogação' ? 'Prorrog.' : ev.period;
+
                         if (isSystemEvent) {
                             return (
-                                <div key={idx} className="flex flex-col items-center justify-center my-4 opacity-90 relative z-0">
-                                    <div className="bg-gray-800/80 backdrop-blur border border-gray-600 rounded-full px-6 py-1.5 shadow-lg flex flex-col items-center">
-                                        <span className={`text-[10px] sm:text-xs font-bold uppercase tracking-widest ${ev.type === 'match_start' ? 'text-green-400' :
-                                            ev.type === 'match_end' ? 'text-red-500' :
-                                                ev.type === 'period_start' ? 'text-blue-300' :
-                                                    'text-orange-300'
-                                            }`}>
-                                            {ev.type === 'match_start' && '🏁 INÍCIO DE PARTIDA'}
-                                            {ev.type === 'match_end' && '🛑 FIM DE JOGO'}
-                                            {ev.type === 'period_start' && '▶️ INÍCIO DE PERÍODO'}
-                                            {ev.type === 'period_end' && '⏸️ FIM DE PERÍODO'}
-                                        </span>
-                                        {ev.player_name && (
-                                            <span className="text-[10px] text-gray-400 italic mt-0.5 text-center max-w-[200px] leading-tight">
-                                                {ev.player_name}
+                                <div key={idx} className="bg-gray-800 p-2 sm:p-3 rounded-lg border border-gray-700/60 flex items-center justify-between shadow-sm">
+                                    <div className="flex items-center gap-3 flex-1">
+                                        <div className="font-mono text-sm font-bold text-gray-500 min-w-[35px]">
+                                            {ev.time}'
+                                        </div>
+                                        <div className="flex flex-col flex-1">
+                                            <span className={`font-bold uppercase text-sm ${ev.type === 'match_start' || ev.type === 'period_start' ? 'text-blue-300' :
+                                                    ev.type === 'match_end' || ev.type === 'period_end' ? 'text-orange-300' : 'text-gray-400'
+                                                }`}>
+                                                {ev.type === 'match_start' && '🏁 '}
+                                                {ev.type === 'match_end' && '🛑 '}
+                                                {ev.type === 'period_start' && '▶️ '}
+                                                {ev.type === 'period_end' && '⏸️ '}
+                                                {getSystemEventTitle()}
                                             </span>
-                                        )}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 pl-2 border-l border-gray-700 ml-2">
+                                        <span className="text-[9px] uppercase font-bold tracking-wider text-gray-600 whitespace-nowrap min-w-[50px] text-right">
+                                            {periodLabel}
+                                        </span>
                                     </div>
                                 </div>
                             );
@@ -858,14 +887,10 @@ export function SumulaFutebol() {
                                         {ev.player_name && (
                                             <span className="text-xs text-gray-400">{ev.player_name}</span>
                                         )}
-                                        {ev.type === 'shootout_miss' && (
-                                            <span className="text-[10px] text-red-400 uppercase font-bold ml-1">
-                                            </span>
-                                        )}
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <div className="text-[9px] uppercase font-bold tracking-wider text-gray-600">{ev.period}</div>
+                                    <div className="text-[9px] uppercase font-bold tracking-wider text-gray-600">{periodLabel}</div>
                                     <button
                                         onClick={() => handleDeleteEvent(ev.id, ev.type, ev.team)}
                                         className="p-1 px-2 hover:bg-red-500/20 text-gray-600 hover:text-red-500 rounded transition-colors"

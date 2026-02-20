@@ -79,69 +79,50 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
     // Sync local timer with server data
     useEffect(() => {
         const timerData = match?.match_details?.sync_timer || details?.sync_timer;
+        const matchStatus = match?.status || details?.status;
+        const isMatchFinished = matchStatus === 'finished';
+
         if (timerData) {
             const st = timerData;
-            const serverTime = match?.server_time || details?.server_time || Date.now();
             const baseTime = st.time ?? 0;
             const diff = localTime !== null ? Math.abs(localTime - baseTime) : 0;
 
-            // 🔍 DEBUG LOG - Informações completas do timer
-            console.group(`⏱️ TIMER SYNC DEBUG - ${new Date().toLocaleTimeString()}`);
-            console.log(`📡 Server Time:`, new Date(serverTime).toLocaleTimeString());
-            console.log(`⏰ Timer do Servidor:`, `${Math.floor(baseTime / 60)}:${String(baseTime % 60).padStart(2, '0')}`);
-            console.log(`💻 Timer Local Atual:`, localTime !== null ? `${Math.floor(localTime / 60)}:${String(localTime % 60).padStart(2, '0')}` : 'null');
-            console.log(`📊 Diferença:`, `${diff} segundos`);
-            console.log(`▶️ Estado Servidor:`, st.isRunning ? '🟢 RODANDO' : '🔴 PARADO');
-            console.log(`▶️ Estado Local:`, isTimerRunning ? '🟢 RODANDO' : '🔴 PARADO');
-            console.log(`🔄 Updated At:`, st.updated_at ? new Date(st.updated_at).toLocaleTimeString() : 'N/A');
+            // Se o jogo está encerrado, o timer nunca deve rodar
+            const serverIsRunning = isMatchFinished ? false : (st.isRunning ?? false);
 
             // Sync Logic: ONLY update if timer state changed or difference is significant
-            const shouldSync = localTime === null || isTimerRunning !== st.isRunning || diff > 5;
+            const shouldSync = localTime === null || isTimerRunning !== serverIsRunning || diff > 5;
 
             if (shouldSync) {
-                const reason = localTime === null ? 'Inicialização' :
-                    isTimerRunning !== st.isRunning ? 'Mudança de estado' :
-                        `Diferença grande (${diff}s)`;
-                console.log(`✅ SINCRONIZANDO:`, reason);
-                console.groupEnd();
                 setLocalTime(baseTime);
-                setIsTimerRunning(st.isRunning ?? false);
-            } else {
-                console.log(`⏭️ IGNORANDO SYNC: Diferença pequena (${diff}s ≤ 5s)`);
-                console.groupEnd();
+                setIsTimerRunning(serverIsRunning);
             }
 
-            setCurrentPeriod(st.currentPeriod ?? null);
+            setCurrentPeriod(isMatchFinished ? null : (st.currentPeriod ?? null));
+        } else if (isMatchFinished) {
+            // Jogo encerrado sem dados de timer: garante que esteja parado
+            setIsTimerRunning(false);
         }
     }, [match, details]);
 
-    // Local ticking for smooth UI
+    // Local ticking for smooth UI — only runs if match is live and timer is running
     useEffect(() => {
         let interval: any = null;
-        if (isTimerRunning && localTime !== null) {
+        const isMatchFinished = match?.status === 'finished';
+
+        if (isTimerRunning && localTime !== null && !isMatchFinished) {
             const sport = match?.championship?.sport?.slug || 'futebol';
             const isRegressive = sport === 'basquete';
-
-            console.log(`🎬 TIMER LOCAL INICIADO - Modo: ${isRegressive ? 'Regressivo ⏪' : 'Progressivo ⏩'}`);
 
             interval = setInterval(() => {
                 setLocalTime(prev => {
                     if (prev === null) return null;
-                    const newTime = isRegressive ? Math.max(0, prev - 1) : prev + 1;
-                    console.log(`⏰ TICK LOCAL: ${Math.floor(newTime / 60)}:${String(newTime % 60).padStart(2, '0')}`);
-                    return newTime;
+                    return isRegressive ? Math.max(0, prev - 1) : prev + 1;
                 });
             }, 1000);
-        } else {
-            if (!isTimerRunning && localTime !== null) {
-                console.log(`⏸️ TIMER LOCAL PAUSADO`);
-            }
         }
         return () => {
-            if (interval) {
-                console.log(`🛑 TIMER LOCAL PARADO`);
-                clearInterval(interval);
-            }
+            if (interval) clearInterval(interval);
         };
     }, [isTimerRunning, localTime, match]);
 
@@ -400,7 +381,7 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                                         <div key={idx} className="flex items-center justify-center my-6 relative z-10 w-full">
                                                             <div className="flex flex-col items-center justify-center bg-gray-50 border border-gray-200 rounded-full px-4 py-1.5 shadow-sm max-w-[90%]">
                                                                 <span className={`text-[10px] sm:text-xs font-bold uppercase ${event.type.includes('start') ? 'text-green-600' :
-                                                                        event.type.includes('end') ? 'text-red-600' : 'text-yellow-600'
+                                                                    event.type.includes('end') ? 'text-red-600' : 'text-yellow-600'
                                                                     }`}>
                                                                     {getSystemEventTitle()}
                                                                 </span>

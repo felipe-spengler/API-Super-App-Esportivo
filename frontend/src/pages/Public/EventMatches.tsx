@@ -224,21 +224,33 @@ export function EventMatches() {
 
         const groups: Record<string, any[]> = {};
 
+        // Mapeamento de round_name igual ao admin (AdminMatchManager.tsx)
+        const roundNameMap: Record<string, string> = {
+            'round_of_32': '32-avos de Final',
+            'round_of_16': 'Oitavas de Final',
+            'quarter': 'Quartas de Final',
+            'semi': 'Semifinal',
+            'final': 'Final',
+            'third_place': 'Disputa de 3º Lugar',
+        };
+
         matchesList.forEach(m => {
             let roundLabel = 'Outros Jogos';
 
-            // Tenta identificar o nome da rodada se for numérico ou string
-            if (m.round_number) {
+            if (m.round_name && roundNameMap[m.round_name]) {
+                // Usa mapeamento direto do round_name (igual ao admin)
+                roundLabel = roundNameMap[m.round_name];
+            } else if (m.round_number) {
                 roundLabel = `Rodada ${m.round_number}`;
             } else if (m.round) {
-                // Formata rodadas de mata-mata
+                // Fallback: heurística por string no campo round
                 const lower = String(m.round).toLowerCase();
-                if (lower.includes('32')) roundLabel = '16 Avos de Final';
+                if (lower.includes('32')) roundLabel = '32-avos de Final';
                 else if (lower.includes('16') || lower.includes('oitavas')) roundLabel = 'Oitavas de Final';
                 else if (lower.includes('quarter') || lower.includes('quartas')) roundLabel = 'Quartas de Final';
-                else if (lower.includes('semi')) roundLabel = 'Semifinais';
-                else if (lower.includes('third') || lower.includes('3rd')) roundLabel = 'Disputa de 3º Lugar';
-                else if (lower.includes('final')) roundLabel = 'Grande Final';
+                else if (lower.includes('semi')) roundLabel = 'Semifinal';
+                else if (lower.includes('third') || lower.includes('3rd') || lower.includes('terceiro')) roundLabel = 'Disputa de 3º Lugar';
+                else if (lower.includes('final')) roundLabel = 'Final';
                 else roundLabel = `Rodada ${m.round}`;
             }
 
