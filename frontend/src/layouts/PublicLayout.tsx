@@ -45,9 +45,9 @@ export function PublicLayout() {
                             </Link>
 
                             {user?.is_admin && (
-                                <Link to="/admin" className={`relative px-2 py-1 text-sm font-semibold transition-colors duration-300 group ${isActive('/admin') ? 'text-indigo-600' : 'text-gray-600 hover:text-indigo-600'}`}>
+                                <Link to="/admin/dashboard" className={`relative px-2 py-1 text-sm font-semibold transition-colors duration-300 group ${isActive('/admin/dashboard') || location.pathname.startsWith('/admin') ? 'text-indigo-600' : 'text-gray-600 hover:text-indigo-600'}`}>
                                     <span translate="no">Admin</span>
-                                    <span className={`absolute bottom-0 left-0 w-full h-0.5 bg-indigo-600 transform origin-left transition-transform duration-300 ${isActive('/admin') ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`}></span>
+                                    <span className={`absolute bottom-0 left-0 w-full h-0.5 bg-indigo-600 transform origin-left transition-transform duration-300 ${location.pathname.startsWith('/admin') ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`}></span>
                                 </Link>
                             )}
                         </div>
@@ -120,7 +120,7 @@ export function PublicLayout() {
 
                     {/* Admin link - only show if user is admin */}
                     {user?.is_admin && (
-                        <Link to="/admin" className={`flex flex-col items-center p-2 min-w-[60px] ${isActive('/admin') ? 'text-indigo-600' : 'text-gray-400'}`}>
+                        <Link to="/admin/dashboard" className={`flex flex-col items-center p-2 min-w-[60px] ${location.pathname.startsWith('/admin') ? 'text-indigo-600' : 'text-gray-400'}`}>
                             <Lock className="w-6 h-6" />
                             <span translate="no" className="text-[10px] font-semibold mt-1 leading-none">Admin</span>
                         </Link>

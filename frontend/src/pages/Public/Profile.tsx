@@ -126,7 +126,7 @@ export function Profile() {
                         <User className="w-5 h-5 text-gray-400" />
                         <span className="text-gray-700 font-medium">Dados Pessoais & Foto</span>
                     </button>
-                    <button onClick={() => navigate('/')} className="w-full p-4 flex items-center gap-3 hover:bg-red-50 text-left text-red-600">
+                    <button onClick={() => { signOut(); navigate('/'); }} className="w-full p-4 flex items-center gap-3 hover:bg-red-50 text-left text-red-600">
                         <LogOut className="w-5 h-5" />
                         <span className="font-medium">Sair da Conta</span>
                     </button>
