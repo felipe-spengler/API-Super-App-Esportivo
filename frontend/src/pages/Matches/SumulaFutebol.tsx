@@ -813,24 +813,28 @@ export function SumulaFutebol() {
                     {events.map((ev, idx) => {
                         const isSystemEvent = ['match_start', 'match_end', 'period_start', 'period_end'].includes(ev.type);
 
-                        // Helper: friendly title based on event type + period
+                        // Helper defensivo: usa includes() para tolerar dados legados no banco
+                        // onde ev.period pode conter labels como 'Fim do Tempo Normal' em vez de '2º Tempo'
                         const getSystemEventTitle = () => {
                             if (ev.type === 'match_start') return 'Início da Partida';
                             if (ev.type === 'match_end') return 'Fim de Jogo';
+                            if (ev.type === 'timeout') return 'Pedido de Tempo';
+                            const p = String(ev.period || '').toLowerCase();
                             if (ev.type === 'period_start') {
-                                if (ev.period === '2º Tempo') return 'Início do 2º Tempo';
-                                if (ev.period === 'Prorrogação') return 'Início da Prorrogação';
-                                if (ev.period === 'Pênaltis') return 'Início dos Pênaltis';
-                                return `Início do ${ev.period}`;
+                                if (p.includes('pênalt') || p.includes('penalt')) return 'Início dos Pênaltis';
+                                if (p.includes('prorrog')) return 'Início da Prorrogação';
+                                if (p.includes('2º') || p.includes('2o')) return 'Início do 2º Tempo';
+                                if (p.includes('1º') || p.includes('1o')) return 'Início do 1º Tempo';
+                                return ev.period ? `Início de ${ev.period}` : 'Novo Período';
                             }
                             if (ev.type === 'period_end') {
-                                if (ev.period === '1º Tempo') return 'Fim do 1º Tempo';
-                                if (ev.period === '2º Tempo') return 'Fim do Tempo Normal';
-                                if (ev.period === 'Prorrogação') return 'Fim da Prorrogação';
-                                if (ev.period === 'Pênaltis') return 'Fim dos Pênaltis';
-                                return `Fim do ${ev.period}`;
+                                if (p.includes('pênalt') || p.includes('penalt')) return 'Fim dos Pênaltis';
+                                if (p.includes('prorrog')) return 'Fim da Prorrogação';
+                                if (p.includes('2º') || p.includes('2o') || p.includes('normal')) return 'Fim do Tempo Normal';
+                                if (p.includes('1º') || p.includes('1o') || p.includes('intervalo')) return 'Fim do 1º Tempo';
+                                return ev.period ? `Fim de ${ev.period}` : 'Fim do Período';
                             }
-                            return ev.type;
+                            return '';
                         };
 
                         // Label do período para exibição na tag lateral
@@ -839,7 +843,7 @@ export function SumulaFutebol() {
                             : ev.period === 'Prorrogação' ? 'Prorrog.' : ev.period;
 
                         if (isSystemEvent) {
-                            const phrase = getMatchPhrase(ev.id, idx);
+                            const phrase = getMatchPhrase(ev.id, ev.type);
                             return (
                                 <div key={idx} className="flex flex-col items-center justify-center my-4 relative z-0">
                                     <div className={`backdrop-blur border rounded-full px-6 py-2 shadow-xl flex flex-col items-center gap-0.5
