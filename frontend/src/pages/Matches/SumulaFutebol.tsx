@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Play, Pause, Save, Clock, Users, X, Timer, Trash2 } from 'lucide-react';
 import api from '../../services/api';
+import { getMatchPhrase } from '../../utils/matchPhrases';
 
 export function SumulaFutebol() {
     const { id } = useParams();
@@ -838,27 +839,27 @@ export function SumulaFutebol() {
                             : ev.period === 'Prorrogação' ? 'Prorrog.' : ev.period;
 
                         if (isSystemEvent) {
+                            const phrase = getMatchPhrase(ev.id, idx);
                             return (
-                                <div key={idx} className="bg-gray-800 p-2 sm:p-3 rounded-lg border border-gray-700/60 flex items-center justify-between shadow-sm">
-                                    <div className="flex items-center gap-3 flex-1">
-                                        <div className="font-mono text-sm font-bold text-gray-500 min-w-[35px]">
-                                            {ev.time}'
-                                        </div>
-                                        <div className="flex flex-col flex-1">
-                                            <span className={`font-bold uppercase text-sm ${ev.type === 'match_start' || ev.type === 'period_start' ? 'text-blue-300' :
-                                                    ev.type === 'match_end' || ev.type === 'period_end' ? 'text-orange-300' : 'text-gray-400'
-                                                }`}>
-                                                {ev.type === 'match_start' && '🏁 '}
-                                                {ev.type === 'match_end' && '🛑 '}
-                                                {ev.type === 'period_start' && '▶️ '}
-                                                {ev.type === 'period_end' && '⏸️ '}
-                                                {getSystemEventTitle()}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-2 pl-2 border-l border-gray-700 ml-2">
-                                        <span className="text-[9px] uppercase font-bold tracking-wider text-gray-600 whitespace-nowrap min-w-[50px] text-right">
-                                            {periodLabel}
+                                <div key={idx} className="flex flex-col items-center justify-center my-4 relative z-0">
+                                    <div className={`backdrop-blur border rounded-full px-6 py-2 shadow-xl flex flex-col items-center gap-0.5
+                                        ${ev.type === 'match_start' ? 'bg-green-900/50 border-green-600/60' :
+                                            ev.type === 'match_end' ? 'bg-red-900/50 border-red-600/60' :
+                                                ev.type === 'period_start' ? 'bg-blue-900/50 border-blue-600/60' :
+                                                    'bg-orange-900/40 border-orange-600/50'}`}>
+                                        <span className={`text-[11px] sm:text-xs font-black uppercase tracking-widest
+                                            ${ev.type === 'match_start' ? 'text-green-300' :
+                                                ev.type === 'match_end' ? 'text-red-400' :
+                                                    ev.type === 'period_start' ? 'text-blue-300' :
+                                                        'text-orange-300'}`}>
+                                            {ev.type === 'match_start' && '🏁 '}
+                                            {ev.type === 'match_end' && '🛑 '}
+                                            {ev.type === 'period_start' && '▶️ '}
+                                            {ev.type === 'period_end' && '⏸️ '}
+                                            {getSystemEventTitle()}
+                                        </span>
+                                        <span className="text-[10px] text-gray-400 italic text-center leading-tight">
+                                            {phrase}
                                         </span>
                                     </div>
                                 </div>

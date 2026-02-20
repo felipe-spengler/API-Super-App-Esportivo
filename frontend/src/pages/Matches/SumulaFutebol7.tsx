@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Play, Pause, Save, Clock, Users, X, Flag, Timer, Trash2 } from 'lucide-react';
 import api from '../../services/api';
+import { getMatchPhrase } from '../../utils/matchPhrases';
 
 export function SumulaFutebol7() {
     const { id } = useParams();
@@ -876,16 +877,48 @@ export function SumulaFutebol7() {
                                 if (ev.period === '2º Tempo') return 'Início do 2º Tempo';
                                 if (ev.period === 'Prorrogação') return 'Início da Prorrogação';
                                 if (ev.period === 'Pênaltis') return 'Início dos Pênaltis';
-                                return 'Início de Período';
+                                return `Início do ${ev.period}`;
                             }
                             if (ev.type === 'period_end') {
                                 if (ev.period === '1º Tempo') return 'Fim do 1º Tempo';
                                 if (ev.period === '2º Tempo') return 'Fim do Tempo Normal';
                                 if (ev.period === 'Prorrogação') return 'Fim da Prorrogação';
-                                return 'Fim de Período';
+                                if (ev.period === 'Pênaltis') return 'Fim dos Pênaltis';
+                                return `Fim do ${ev.period}`;
                             }
                             return ev.type;
                         };
+
+                        if (isSystemEvent) {
+                            const phrase = getMatchPhrase(ev.id, idx);
+                            return (
+                                <div key={idx} className="flex flex-col items-center justify-center my-4 relative z-0">
+                                    <div className={`backdrop-blur border rounded-full px-6 py-2 shadow-xl flex flex-col items-center gap-0.5
+                                        ${ev.type === 'match_start' ? 'bg-green-900/50 border-green-600/60' :
+                                            ev.type === 'match_end' ? 'bg-red-900/50 border-red-600/60' :
+                                                ev.type === 'period_start' ? 'bg-blue-900/50 border-blue-600/60' :
+                                                    ev.type === 'timeout' ? 'bg-yellow-900/40 border-yellow-600/50' :
+                                                        'bg-orange-900/40 border-orange-600/50'}`}>
+                                        <span className={`text-[11px] sm:text-xs font-black uppercase tracking-widest
+                                            ${ev.type === 'match_start' ? 'text-green-300' :
+                                                ev.type === 'match_end' ? 'text-red-400' :
+                                                    ev.type === 'period_start' ? 'text-blue-300' :
+                                                        ev.type === 'timeout' ? 'text-yellow-300' :
+                                                            'text-orange-300'}`}>
+                                            {ev.type === 'match_start' && '🏁 '}
+                                            {ev.type === 'match_end' && '🛑 '}
+                                            {ev.type === 'period_start' && '▶️ '}
+                                            {ev.type === 'period_end' && '⏸️ '}
+                                            {ev.type === 'timeout' && '⏱ '}
+                                            {getSystemEventTitle()}
+                                        </span>
+                                        <span className="text-[10px] text-gray-400 italic text-center leading-tight">
+                                            {phrase}
+                                        </span>
+                                    </div>
+                                </div>
+                            );
+                        }
 
                         return (
                             <div key={idx} className="bg-gray-800 p-2 sm:p-3 rounded-lg border border-gray-700 flex items-center justify-between shadow-sm">
@@ -893,51 +926,26 @@ export function SumulaFutebol7() {
                                     <div className={`font-mono text-sm font-bold ${ev.team === 'home' ? 'text-blue-400' : ev.team === 'away' ? 'text-green-400' : 'text-gray-400'} min-w-[35px]`}>
                                         {ev.time}'
                                     </div>
-
-                                    {isSystemEvent ? (
-                                        <div className="flex flex-col flex-1">
-                                            <span className={`font-bold uppercase text-sm ${ev.type.includes('start') ? 'text-green-400' :
-                                                ev.type.includes('end') ? 'text-red-400' : 'text-yellow-400'
-                                                }`}>
-                                                {ev.type === 'match_start' && '🏁 '}
-                                                {ev.type === 'match_end' && '🛑 '}
-                                                {ev.type === 'period_start' && '▶️ '}
-                                                {ev.type === 'period_end' && '⏸️ '}
-                                                {getSystemEventTitle()}
-                                            </span>
-                                            {ev.player_name && ev.player_name !== '?' && (
-                                                <span className="text-xs text-gray-400 font-normal italic mt-0.5">
-                                                    {ev.player_name}
-                                                </span>
-                                            )}
-                                        </div>
-                                    ) : (
-                                        <div className="flex flex-col">
-                                            <span className="font-bold text-sm flex items-center gap-2">
-                                                {ev.type === 'goal' && '⚽ GOL'}
-                                                {ev.type === 'shootout_goal' && '⚽ GOL (Pênalti)'}
-                                                {ev.type === 'shootout_miss' && '❌ Pênalti Perdido'}
-                                                {ev.type === 'yellow_card' && '🟨 Amarelo'}
-                                                {ev.type === 'red_card' && '🟥 Vermelho'}
-                                                {ev.type === 'blue_card' && '🟦 Azul'}
-                                                {ev.type === 'assist' && '👟 Assistência'}
-                                                {ev.type === 'foul' && '⚠️ Falta'}
-                                                {ev.type === 'mvp' && '⭐ Craque'}
-                                            </span>
-                                            {ev.player_name && ev.player_name !== '?' && (
-                                                <span className="text-xs text-gray-400">{ev.player_name}</span>
-                                            )}
-                                            {ev.type === 'shootout_miss' && (
-                                                <span className="text-[10px] text-red-400 uppercase font-bold ml-1">
-                                                    {/* Note if available */}
-                                                </span>
-                                            )}
-                                        </div>
-                                    )}
+                                    <div className="flex flex-col">
+                                        <span className="font-bold text-sm flex items-center gap-2">
+                                            {ev.type === 'goal' && '⚽ GOL'}
+                                            {ev.type === 'shootout_goal' && '⚽ GOL (Pênalti)'}
+                                            {ev.type === 'shootout_miss' && '❌ Pênalti Perdido'}
+                                            {ev.type === 'yellow_card' && '🟨 Amarelo'}
+                                            {ev.type === 'red_card' && '🟥 Vermelho'}
+                                            {ev.type === 'blue_card' && '🟦 Azul'}
+                                            {ev.type === 'assist' && '👟 Assistência'}
+                                            {ev.type === 'foul' && '⚠️ Falta'}
+                                            {ev.type === 'mvp' && '⭐ Craque'}
+                                        </span>
+                                        {ev.player_name && ev.player_name !== '?' && (
+                                            <span className="text-xs text-gray-400">{ev.player_name}</span>
+                                        )}
+                                    </div>
                                 </div>
                                 <div className="flex items-center gap-3 pl-2 border-l border-gray-700 ml-2">
                                     <span className="text-[9px] uppercase font-bold tracking-wider text-gray-500 whitespace-nowrap min-w-[60px] text-right">
-                                        {ev.period === 'Prorrogação' ? 'Prorrog.' : ev.period}
+                                        {['shootout_goal', 'shootout_miss'].includes(ev.type) ? 'Pênaltis' : ev.period === 'Prorrogação' ? 'Prorrog.' : ev.period}
                                     </span>
                                     <button onClick={() => handleDeleteEvent(ev.id, ev.type, ev.team)} className="p-1 text-gray-500 hover:text-red-500 transition-colors">
                                         <Trash2 size={14} />
