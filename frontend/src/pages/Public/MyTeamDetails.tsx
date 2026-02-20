@@ -202,7 +202,7 @@ export function MyTeamDetails() {
             {/* Add Player Modal */}
             {showAddModal && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4 animate-in fade-in duration-200">
-                    <div className="bg-white w-full max-w-md rounded-2xl p-6 space-y-4">
+                    <div className="bg-white w-full max-w-md rounded-2xl p-6 pb-20 space-y-4 max-h-[85vh] overflow-y-auto">
                         <div className="flex justify-between items-center mb-2">
                             <h3 className="text-lg font-bold">Adicionar Jogador</h3>
                             <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-gray-600">Fechar</button>

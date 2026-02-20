@@ -76,8 +76,23 @@ export function SumulaFutebol7() {
                 }));
                 setEvents(history);
 
-                const homeFouls = history.filter((e: any) => e.team === 'home' && e.type === 'foul').length;
-                const awayFouls = history.filter((e: any) => e.team === 'away' && e.type === 'foul').length;
+                // Calculate Fouls based on Period Rules
+                // 1st Half -> Count 1st Half
+                // 2nd Half -> Count 2nd Half (Reset)
+                // Extra Time -> Count 2nd Half + Extra Time
+                const activePeriod = data.match.match_details?.sync_timer?.currentPeriod || currentPeriod;
+
+                let relevantPeriods = [activePeriod];
+                if (activePeriod === '1º Tempo' || activePeriod === 'Intervalo') {
+                    relevantPeriods = ['1º Tempo'];
+                } else if (activePeriod === '2º Tempo' || activePeriod === 'Fim de Tempo Normal') {
+                    relevantPeriods = ['2º Tempo'];
+                } else if (activePeriod === 'Prorrogação') {
+                    relevantPeriods = ['2º Tempo', 'Prorrogação'];
+                }
+
+                const homeFouls = history.filter((e: any) => e.team === 'home' && e.type === 'foul' && relevantPeriods.includes(e.period)).length;
+                const awayFouls = history.filter((e: any) => e.team === 'away' && e.type === 'foul' && relevantPeriods.includes(e.period)).length;
                 setFouls({ home: homeFouls, away: awayFouls });
 
                 const homePenalties = history.filter((e: any) => e.team === 'home' && (e.type === 'shootout_goal' || e.type === 'penalty_goal')).length;
@@ -521,10 +536,31 @@ export function SumulaFutebol7() {
             }
 
             if (type === 'foul') {
-                setFouls(prev => ({
-                    ...prev,
-                    [team]: Math.max(0, prev[team] - 1)
-                }));
+                // Only decrement if the deleted foul belongs to the current active period(s)
+                const eventToDelete = events.find(e => e.id === eventId);
+                let shouldDecrement = false;
+
+                if (eventToDelete) {
+                    let relevantPeriods = [currentPeriod];
+                    if (currentPeriod === '1º Tempo' || currentPeriod === 'Intervalo') {
+                        relevantPeriods = ['1º Tempo'];
+                    } else if (currentPeriod === '2º Tempo' || currentPeriod === 'Fim de Tempo Normal') {
+                        relevantPeriods = ['2º Tempo'];
+                    } else if (currentPeriod === 'Prorrogação') {
+                        relevantPeriods = ['2º Tempo', 'Prorrogação'];
+                    }
+
+                    if (relevantPeriods.includes(eventToDelete.period)) {
+                        shouldDecrement = true;
+                    }
+                }
+
+                if (shouldDecrement) {
+                    setFouls(prev => ({
+                        ...prev,
+                        [team]: Math.max(0, prev[team] - 1)
+                    }));
+                }
             }
 
             if (type === 'shootout_goal') {

@@ -21,7 +21,7 @@ export function PublicLayout() {
                                 <div className="bg-gradient-to-br from-indigo-600 to-violet-600 p-2.5 rounded-xl shadow-lg shadow-indigo-200 group-hover:scale-105 transition-transform duration-300">
                                     <Trophy className="w-6 h-6 text-white" />
                                 </div>
-                                <span className="font-bold text-xl text-gray-900 tracking-tight group-hover:text-indigo-600 transition-colors">
+                                <span translate="no" className="font-bold text-xl text-gray-900 tracking-tight group-hover:text-indigo-600 transition-colors">
                                     Esportes7
                                 </span>
                             </Link>
@@ -30,23 +30,23 @@ export function PublicLayout() {
                         {/* Desktop Menu Links - Centered */}
                         <div className="hidden md:flex items-center gap-8">
                             <Link to="/" className={`relative px-2 py-1 text-sm font-semibold transition-colors duration-300 group ${isActive('/') ? 'text-indigo-600' : 'text-gray-600 hover:text-indigo-600'}`}>
-                                <span>Início</span>
+                                <span translate="no">Início</span>
                                 <span className={`absolute bottom-0 left-0 w-full h-0.5 bg-indigo-600 transform origin-left transition-transform duration-300 ${isActive('/') ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`}></span>
                             </Link>
 
                             <Link to="/explore" className={`relative px-2 py-1 text-sm font-semibold transition-colors duration-300 group ${isActive('/explore') ? 'text-indigo-600' : 'text-gray-600 hover:text-indigo-600'}`}>
-                                <span>Explorar</span>
+                                <span translate="no">Explorar</span>
                                 <span className={`absolute bottom-0 left-0 w-full h-0.5 bg-indigo-600 transform origin-left transition-transform duration-300 ${isActive('/explore') ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`}></span>
                             </Link>
 
                             <Link to="/profile" className={`relative px-2 py-1 text-sm font-semibold transition-colors duration-300 group ${isActive('/profile') ? 'text-indigo-600' : 'text-gray-600 hover:text-indigo-600'}`}>
-                                <span>Perfil</span>
+                                <span translate="no">Perfil</span>
                                 <span className={`absolute bottom-0 left-0 w-full h-0.5 bg-indigo-600 transform origin-left transition-transform duration-300 ${isActive('/profile') ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`}></span>
                             </Link>
 
                             {user?.is_admin && (
                                 <Link to="/admin" className={`relative px-2 py-1 text-sm font-semibold transition-colors duration-300 group ${isActive('/admin') ? 'text-indigo-600' : 'text-gray-600 hover:text-indigo-600'}`}>
-                                    <span>Admin</span>
+                                    <span translate="no">Admin</span>
                                     <span className={`absolute bottom-0 left-0 w-full h-0.5 bg-indigo-600 transform origin-left transition-transform duration-300 ${isActive('/admin') ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`}></span>
                                 </Link>
                             )}
@@ -87,19 +87,19 @@ export function PublicLayout() {
                 <div className="flex justify-around items-center">
                     <Link to="/" className={`flex flex-col items-center p-2 ${isActive('/') || isActive('/club-home') ? 'text-indigo-600' : 'text-gray-400'}`}>
                         <Home className="w-6 h-6" />
-                        <span className="text-[10px] font-medium mt-1">Início</span>
+                        <span translate="no" className="text-[10px] font-medium mt-1">Início</span>
                     </Link>
 
                     <Link to="/profile" className={`flex flex-col items-center p-2 ${isActive('/profile') ? 'text-indigo-600' : 'text-gray-400'}`}>
                         <User className="w-6 h-6" />
-                        <span className="text-[10px] font-medium mt-1">Perfil</span>
+                        <span translate="no" className="text-[10px] font-medium mt-1">Perfil</span>
                     </Link>
 
                     {/* Admin link - only show if user is admin */}
                     {user?.is_admin && (
                         <Link to="/admin" className={`flex flex-col items-center p-2 ${isActive('/admin') ? 'text-indigo-600' : 'text-gray-400'}`}>
                             <Lock className="w-6 h-6" />
-                            <span className="text-[10px] font-medium mt-1">Admin</span>
+                            <span translate="no" className="text-[10px] font-medium mt-1">Admin</span>
                         </Link>
                     )}
                 </div>

@@ -43,6 +43,7 @@ import { EventParticipants } from './pages/Public/EventParticipants';
 import { EventArts } from './pages/Public/EventArts';
 
 import { PublicLayout } from './layouts/PublicLayout';
+import { SumulaLayout } from './layouts/SumulaLayout';
 import { PublicHome } from './pages/Public/Home';
 import { ClubHome } from './pages/Public/ClubHome';
 import { Wallet } from './pages/Public/Wallet';
@@ -158,18 +159,20 @@ function App() {
             </Route>
 
             {/* Rotas Fullscreen do Admin (fora do layout) */}
-            <Route path="matches/:id/sumula" element={<SumulaFutebol />} />
-            <Route path="matches/:id/sumula-volei" element={<SumulaVolei />} />
-            <Route path="matches/:id/sumula-futsal" element={<SumulaFutsal />} />
-            <Route path="matches/:id/sumula-basquete" element={<SumulaBasquete />} />
-            <Route path="matches/:id/sumula-handebol" element={<SumulaHandebol />} />
-            <Route path="matches/:id/sumula-beach-tennis" element={<SumulaBeachTennis />} />
-            <Route path="matches/:id/sumula-tenis" element={<SumulaTenis />} />
-            <Route path="matches/:id/sumula-futebol7" element={<SumulaFutebol7 />} />
-            <Route path="matches/:id/sumula-futevolei" element={<SumulaFutevolei />} />
-            <Route path="matches/:id/sumula-volei-praia" element={<SumulaVoleiPraia />} />
-            <Route path="matches/:id/sumula-tenis-mesa" element={<SumulaTenisMesa />} />
-            <Route path="matches/:id/sumula-jiu-jitsu" element={<SumulaJiuJitsu />} />
+            <Route element={<SumulaLayout />}>
+              <Route path="matches/:id/sumula" element={<SumulaFutebol />} />
+              <Route path="matches/:id/sumula-volei" element={<SumulaVolei />} />
+              <Route path="matches/:id/sumula-futsal" element={<SumulaFutsal />} />
+              <Route path="matches/:id/sumula-basquete" element={<SumulaBasquete />} />
+              <Route path="matches/:id/sumula-handebol" element={<SumulaHandebol />} />
+              <Route path="matches/:id/sumula-beach-tennis" element={<SumulaBeachTennis />} />
+              <Route path="matches/:id/sumula-tenis" element={<SumulaTenis />} />
+              <Route path="matches/:id/sumula-futebol7" element={<SumulaFutebol7 />} />
+              <Route path="matches/:id/sumula-futevolei" element={<SumulaFutevolei />} />
+              <Route path="matches/:id/sumula-volei-praia" element={<SumulaVoleiPraia />} />
+              <Route path="matches/:id/sumula-tenis-mesa" element={<SumulaTenisMesa />} />
+              <Route path="matches/:id/sumula-jiu-jitsu" element={<SumulaJiuJitsu />} />
+            </Route>
             <Route path="matches/:id/sumula-print" element={<MatchPrintView />} />
           </Route>
 

@@ -9,6 +9,9 @@ export function Matches() {
     const [filteredMatches, setFilteredMatches] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [filterPeriod, setFilterPeriod] = useState('all'); // 'today', 'yesterday', 'week', 'all'
+    const [filterChampionship, setFilterChampionship] = useState('all');
+    const [filterStatus, setFilterStatus] = useState('all');
+    const [championships, setChampionships] = useState<any[]>([]);
 
     // Arbitration Modal State
     const [isArbitrationOpen, setIsArbitrationOpen] = useState(false);
@@ -154,22 +157,51 @@ export function Matches() {
 
     useEffect(() => {
         loadMatches();
+        fetchChampionships();
     }, []);
+
+    const fetchChampionships = async () => {
+        try {
+            const response = await api.get('/admin/championships');
+            setChampionships(response.data);
+        } catch (error) {
+            console.error("Erro ao carregar campeonatos", error);
+        }
+    };
 
     useEffect(() => {
         const now = new Date();
-        if (filterPeriod === 'all') {
-            setFilteredMatches(matches);
-        } else {
-            setFilteredMatches(matches.filter(match => {
+        let filtered = matches;
+
+        // Period Filter
+        if (filterPeriod !== 'all') {
+            filtered = filtered.filter(match => {
                 const matchDate = parseISO(match.start_time);
                 if (filterPeriod === 'today') return isSameDay(matchDate, now);
                 if (filterPeriod === 'yesterday') return isYesterday(matchDate);
                 if (filterPeriod === 'week') return isThisWeek(matchDate);
+                // 'upcoming' logic can be added here if needed, but 'all' covers future
                 return true;
-            }));
+            });
         }
-    }, [filterPeriod, matches]);
+
+        // Championship Filter
+        if (filterChampionship !== 'all') {
+            filtered = filtered.filter(match => match.championship_id.toString() === filterChampionship);
+        }
+
+        // Status Filter
+        if (filterStatus !== 'all') {
+            filtered = filtered.filter(match => {
+                if (filterStatus === 'finished') return match.status === 'finished';
+                if (filterStatus === 'live') return match.status === 'live'; // Assuming 'live' status exists or logical equivalent
+                if (filterStatus === 'scheduled') return match.status !== 'finished' && match.status !== 'live';
+                return true;
+            });
+        }
+
+        setFilteredMatches(filtered);
+    }, [filterPeriod, filterChampionship, filterStatus, matches]);
 
     async function loadMatches() {
         try {
@@ -682,6 +714,32 @@ export function Matches() {
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Partidas</h1>
                     <p className="text-gray-500">Gerencie todos os jogos e súmulas.</p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                    {/* Filtro Campeonato */}
+                    <select
+                        value={filterChampionship}
+                        onChange={e => setFilterChampionship(e.target.value)}
+                        className="w-full md:w-48 bg-white border border-gray-200 text-gray-700 text-sm rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                        <option value="all">Todos os Campeonatos</option>
+                        {championships.map(champ => (
+                            <option key={champ.id} value={champ.id}>{champ.name}</option>
+                        ))}
+                    </select>
+
+                    {/* Filtro Status */}
+                    <select
+                        value={filterStatus}
+                        onChange={e => setFilterStatus(e.target.value)}
+                        className="w-full md:w-40 bg-white border border-gray-200 text-gray-700 text-sm rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                        <option value="all">Todos Status</option>
+                        <option value="scheduled">Agendados</option>
+                        <option value="live">Ao Vivo</option>
+                        <option value="finished">Finalizados</option>
+                    </select>
                 </div>
 
                 <div className="flex items-center bg-white p-1 rounded-lg border border-gray-200 shadow-sm overflow-x-auto max-w-full no-scrollbar">

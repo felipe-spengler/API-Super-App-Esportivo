@@ -277,7 +277,7 @@ export function EventDetails() {
                                 style={{ borderLeftColor: borderColor }}
                             >
                                 <div className="flex justify-between items-start mb-2">
-                                    <h3 className="font-bold text-gray-800 uppercase text-xs flex-1 mr-2 leading-tight">
+                                    <h3 translate="no" className="font-bold text-gray-800 uppercase text-xs flex-1 mr-2 leading-tight">
                                         {item.label}
                                     </h3>
                                     <Icon

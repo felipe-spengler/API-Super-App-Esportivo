@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { X, Calendar, Clock, MapPin, Trophy, User, Share2, FileText, ChevronRight, Star, History, Printer, Timer } from 'lucide-react';
+import { X, Calendar, Clock, MapPin, Trophy, User, Share2, FileText, ChevronRight, Star, History, Printer, Timer, Triangle } from 'lucide-react';
 import api from '../services/api';
 import echo from '../services/echo';
 
@@ -375,7 +375,7 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                             getSortedEvents().map((event: any, idx: number) => {
                                                 // Check if it's an own goal - if so, invert the display side
                                                 const isOwnGoal = event.metadata?.own_goal === true;
-                                                let isHome = event.team_id === match.home_team_id;
+                                                let isHome = event.team_id === match?.home_team_id;
 
                                                 // If it's an own goal, invert the side where it appears
                                                 // (team A scored own goal -> show on team B's side)
@@ -397,15 +397,27 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                                         <div className={`flex-1 pl-4 sm:px-4 ${isHome ? 'sm:text-right' : 'text-left'}`}>
                                                             <div className="inline-block bg-white p-2.5 sm:p-3 rounded-lg shadow-sm border border-gray-100 min-w-[140px] max-w-full">
                                                                 <div className={`text-xs sm:text-sm font-bold flex items-center gap-2 ${isHome ? 'sm:justify-end' : ''}`}>
-                                                                    <div className="shrink-0">
+                                                                    <div className="shrink-0 flex items-center justify-center h-4 w-4">
                                                                         {event.type === 'goal' && '⚽'}
-                                                                        {(event.type === 'yellow_card' || event.type === 'yellow') && <div className="w-2.5 h-3.5 sm:w-3 sm:h-4 bg-yellow-400 rounded-sm border border-yellow-500 shadow-sm" />}
-                                                                        {(event.type === 'red_card' || event.type === 'red') && <div className="w-2.5 h-3.5 sm:w-3 sm:h-4 bg-red-600 rounded-sm border border-red-700 shadow-sm" />}
-                                                                        {event.type === 'blue_card' && <div className="w-2.5 h-3.5 sm:w-3 sm:h-4 bg-blue-500 rounded-sm border border-blue-600 shadow-sm" />}
+                                                                        {(event.type === 'yellow_card' || event.type === 'yellow') && (
+                                                                            <div className="w-3 h-4 bg-yellow-400 rounded-[2px] border border-yellow-600 shadow-sm" style={{ backgroundColor: '#facc15', minWidth: '12px', minHeight: '16px' }} />
+                                                                        )}
+                                                                        {(event.type === 'red_card' || event.type === 'red') && (
+                                                                            <div className="w-3 h-4 bg-red-600 rounded-[2px] border border-red-800 shadow-sm" style={{ backgroundColor: '#dc2626', minWidth: '12px', minHeight: '16px' }} />
+                                                                        )}
+                                                                        {event.type === 'blue_card' && (
+                                                                            <div className="w-3 h-4 bg-blue-500 rounded-[2px] border border-blue-700 shadow-sm" style={{ backgroundColor: '#3b82f6', minWidth: '12px', minHeight: '16px' }} />
+                                                                        )}
+                                                                        {event.type === 'foul' && (
+                                                                            <div className="text-orange-500">
+                                                                                <Triangle size={14} fill="currentColor" />
+                                                                            </div>
+                                                                        )}
                                                                     </div>
                                                                     <div className="flex flex-col">
                                                                         <span className="text-gray-800 leading-tight">
-                                                                            {event.type === 'goal' ? (event.metadata?.own_goal ? 'Gol Contra!' : 'Gol!') : ''} {event.player_name}
+                                                                            {event.type === 'goal' ? (event.metadata?.own_goal ? 'Gol Contra!' : 'Gol!') :
+                                                                                event.type === 'foul' ? 'Falta -' : ''} {event.player_name}
                                                                         </span>
                                                                         <span className="text-[9px] sm:text-[10px] text-gray-400 font-normal sm:hidden">
                                                                             {isHome ? match.home_team?.name : match.away_team?.name}

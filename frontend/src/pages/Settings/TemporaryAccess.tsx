@@ -264,7 +264,7 @@ export function TemporaryAccess() {
                                             <td className="px-6 py-4">
                                                 <div className={`flex items-center gap-2 ${isExpired ? 'text-red-500 font-bold' : 'text-orange-600'} `}>
                                                     <Clock size={16} />
-                                                    {format(expiry, "dd 'de' MMMM 'às' HH:mm", { locale: ptBR })}
+                                                    {format(expiry, "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">

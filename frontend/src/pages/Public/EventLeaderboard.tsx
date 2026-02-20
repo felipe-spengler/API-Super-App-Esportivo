@@ -186,7 +186,7 @@ export function EventLeaderboard() {
                     <ArrowLeft className="w-5 h-5 text-gray-600" />
                 </button>
                 <div>
-                    <h1 className="text-xl font-bold text-gray-800 leading-none">Classificação</h1>
+                    <h1 translate="no" className="text-xl font-bold text-gray-800 leading-none">Classificação</h1>
                     <p className="text-xs text-gray-500 mt-1">{champName || 'Carregando...'}</p>
                 </div>
             </div>
