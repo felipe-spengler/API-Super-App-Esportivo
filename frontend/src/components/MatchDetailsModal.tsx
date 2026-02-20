@@ -373,6 +373,47 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                             </div>
                                         ) : (
                                             getSortedEvents().map((event: any, idx: number) => {
+                                                // Check for system events
+                                                const isSystemEvent = ['match_start', 'match_end', 'period_start', 'period_end', 'timeout'].includes(event.type);
+
+                                                if (isSystemEvent) {
+                                                    const getSystemEventTitle = () => {
+                                                        if (event.type === 'match_start') return 'Início da Partida';
+                                                        if (event.type === 'match_end') return 'Fim de Jogo';
+                                                        if (event.type === 'timeout') return 'Pedido de Tempo';
+                                                        if (event.type === 'period_start') {
+                                                            if (event.period === '2º Tempo') return 'Início do 2º Tempo';
+                                                            if (event.period === 'Prorrogação') return 'Início da Prorrogação';
+                                                            if (event.period === 'Pênaltis') return 'Início dos Pênaltis';
+                                                            return 'Início de Período';
+                                                        }
+                                                        if (event.type === 'period_end') {
+                                                            if (event.period === '1º Tempo') return 'Fim do 1º Tempo';
+                                                            if (event.period === '2º Tempo') return 'Fim do Tempo Normal';
+                                                            if (event.period === 'Prorrogação') return 'Fim da Prorrogação';
+                                                            return 'Fim de Período';
+                                                        }
+                                                        return event.type;
+                                                    };
+
+                                                    return (
+                                                        <div key={idx} className="flex items-center justify-center my-6 relative z-10 w-full">
+                                                            <div className="flex flex-col items-center justify-center bg-gray-50 border border-gray-200 rounded-full px-4 py-1.5 shadow-sm max-w-[90%]">
+                                                                <span className={`text-[10px] sm:text-xs font-bold uppercase ${event.type.includes('start') ? 'text-green-600' :
+                                                                        event.type.includes('end') ? 'text-red-600' : 'text-yellow-600'
+                                                                    }`}>
+                                                                    {getSystemEventTitle()}
+                                                                </span>
+                                                                {event.player_name && event.player_name !== '?' && (
+                                                                    <span className="text-[10px] text-gray-500 italic mt-0.5 text-center">
+                                                                        {event.player_name}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+
                                                 // Check if it's an own goal - if so, invert the display side
                                                 const isOwnGoal = event.metadata?.own_goal === true;
                                                 let isHome = event.team_id === match?.home_team_id;

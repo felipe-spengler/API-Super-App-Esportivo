@@ -67,7 +67,20 @@ export function SumulaBasquete() {
 
                     if (data.rosters) setRosters(data.rosters);
                 } else {
-                    // 🔄 On periodic sync, ONLY update rosters and events, NOT matchData
+                    // 🔄 On periodic sync, we usually ignore timer/matchData to avoid overwriting local timer state.
+                    // BUT, if the QUARTER changed on the server (by another device), we MUST accept it.
+                    const serverTimer = data.match.match_details?.sync_timer;
+                    if (serverTimer && serverTimer.currentPeriod && serverTimer.currentPeriod !== currentQuarter) {
+                        console.log(`🔄 Syncing quarter from server: ${currentQuarter} -> ${serverTimer.currentPeriod}`);
+                        setCurrentQuarter(serverTimer.currentPeriod as Quarter);
+                        if (serverTimer.time !== undefined) setTime(serverTimer.time);
+                        if (serverTimer.isRunning !== undefined) setIsRunning(serverTimer.isRunning);
+                        // Also update matchData status if passed
+                        if (data.match.status) {
+                            setMatchData((prev: any) => ({ ...prev, status: data.match.status }));
+                        }
+                    }
+
                     if (data.rosters) setRosters(data.rosters);
                 }
 
@@ -665,38 +678,61 @@ export function SumulaBasquete() {
                 </div>
 
                 <div className="space-y-2 pb-20">
-                    {events.map((ev, idx) => (
-                        <div key={idx} className="bg-gray-800/80 backdrop-blur p-2 sm:p-3 rounded-lg border border-gray-700 flex items-center justify-between shadow-sm">
-                            <div className="flex items-center gap-3">
-                                <div className={`font-mono text-sm font-bold ${ev.team === 'home' ? 'text-blue-400' : 'text-green-400'} min-w-[40px]`}>
-                                    {ev.time}
-                                </div>
-                                <div className="flex flex-col">
-                                    <span className="font-bold text-sm flex items-center gap-2">
-                                        {ev.type === 'free_throw' && `🎯 +1 Lance Livre`}
-                                        {ev.type === 'field_goal_2' && `🏀 +2 Pontos`}
-                                        {ev.type === 'field_goal_3' && `🔥 +3 Pontos`}
-                                        {ev.type === 'foul' && `⚠️ Falta`}
-                                        {ev.type === 'timeout' && `⏱ Pedido de Tempo`}
+                    {events.map((ev, idx) => {
+                        const isSystemEvent = ['match_start', 'match_end', 'period_start', 'period_end'].includes(ev.type);
 
-                                        {ev.type === 'match_start' && <span className="text-green-400 font-bold uppercase">🏁 {ev.player_name || 'Início de Partida'}</span>}
-                                        {ev.type === 'match_end' && <span className="text-red-400 font-bold uppercase">🛑 {ev.player_name || 'Fim de Jogo'}</span>}
-                                        {ev.type === 'period_start' && <span className="text-blue-300 font-bold uppercase">▶️ {ev.player_name || 'Início de Período'}</span>}
-                                        {ev.type === 'period_end' && <span className="text-orange-300 font-bold uppercase">⏸️ {ev.player_name || 'Fim de Período'}</span>}
-                                    </span>
-                                    {ev.player_name && !['match_start', 'match_end', 'period_start', 'period_end'].includes(ev.type) && (
-                                        <span className="text-xs text-gray-400">{ev.player_name}</span>
-                                    )}
+                        if (isSystemEvent) {
+                            return (
+                                <div key={idx} className="flex flex-col items-center justify-center my-4 opacity-90 relative z-0">
+                                    <div className="bg-gray-800/80 backdrop-blur border border-orange-600/30 rounded-full px-6 py-1.5 shadow-lg flex flex-col items-center">
+                                        <span className={`text-[10px] sm:text-xs font-bold uppercase tracking-widest ${ev.type === 'match_start' ? 'text-green-400' :
+                                            ev.type === 'match_end' ? 'text-red-500' :
+                                                ev.type === 'period_start' ? 'text-blue-300' :
+                                                    'text-orange-300'
+                                            }`}>
+                                            {ev.type === 'match_start' && '🏁 INÍCIO DE PARTIDA'}
+                                            {ev.type === 'match_end' && '🛑 FIM DE JOGO'}
+                                            {ev.type === 'period_start' && '▶️ INÍCIO DE QUARTO'}
+                                            {ev.type === 'period_end' && '⏸️ FIM DE QUARTO'}
+                                        </span>
+                                        {ev.player_name && (
+                                            <span className="text-[10px] text-gray-400 italic mt-0.5 text-center max-w-[200px] leading-tight">
+                                                {ev.player_name}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        }
+
+                        return (
+                            <div key={idx} className="bg-gray-800/80 backdrop-blur p-2 sm:p-3 rounded-lg border border-gray-700 flex items-center justify-between shadow-sm">
+                                <div className="flex items-center gap-3">
+                                    <div className={`font-mono text-sm font-bold ${ev.team === 'home' ? 'text-blue-400' : 'text-green-400'} min-w-[40px]`}>
+                                        {ev.time}
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="font-bold text-sm flex items-center gap-2">
+                                            {ev.type === 'free_throw' && `🎯 +1 Lance Livre`}
+                                            {ev.type === 'field_goal_2' && `🏀 +2 Pontos`}
+                                            {ev.type === 'field_goal_3' && `🔥 +3 Pontos`}
+                                            {ev.type === 'foul' && `⚠️ Falta`}
+                                            {ev.type === 'timeout' && `⏱ Pedido de Tempo`}
+                                        </span>
+                                        {ev.player_name && (
+                                            <span className="text-xs text-gray-400">{ev.player_name}</span>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <span className="text-[9px] uppercase font-bold tracking-wider text-gray-600">{ev.period}</span>
+                                    <button onClick={() => handleDeleteEvent(ev.id, ev.type, ev.team, ev.value)} className="p-1 px-2 hover:bg-red-500/20 text-gray-500 hover:text-red-500 rounded transition-colors">
+                                        <Trash2 size={16} />
+                                    </button>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-3">
-                                <span className="text-[9px] uppercase font-bold tracking-wider text-gray-600">{ev.period}</span>
-                                <button onClick={() => handleDeleteEvent(ev.id, ev.type, ev.team, ev.value)} className="p-1 px-2 hover:bg-red-500/20 text-gray-500 hover:text-red-500 rounded transition-colors">
-                                    <Trash2 size={16} />
-                                </button>
-                            </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                     {events.length === 0 && <div className="text-center text-gray-600 py-8 text-sm">Nenhum evento registrado ainda.</div>}
                 </div>
             </div>

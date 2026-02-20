@@ -63,7 +63,20 @@ export function SumulaFutsal() {
 
                     if (data.rosters) setRosters(data.rosters);
                 } else {
-                    // 🔄 On periodic sync, ONLY update rosters and events, NOT matchData
+                    // 🔄 On periodic sync, we usually ignore timer/matchData to avoid overwriting local timer state.
+                    // BUT, if the PERIOD changed on the server (by another device), we MUST accept it.
+                    const serverTimer = data.match.match_details?.sync_timer;
+                    if (serverTimer && serverTimer.currentPeriod && serverTimer.currentPeriod !== currentPeriod) {
+                        console.log(`🔄 Syncing period from server: ${currentPeriod} -> ${serverTimer.currentPeriod}`);
+                        setCurrentPeriod(serverTimer.currentPeriod);
+                        if (serverTimer.time !== undefined) setTime(serverTimer.time);
+                        if (serverTimer.isRunning !== undefined) setIsRunning(serverTimer.isRunning);
+                        // Also update matchData status if passed
+                        if (data.match.status) {
+                            setMatchData((prev: any) => ({ ...prev, status: data.match.status }));
+                        }
+                    }
+
                     if (data.rosters) setRosters(data.rosters);
                 }
 
@@ -855,48 +868,90 @@ export function SumulaFutsal() {
                 </div>
 
                 <div className="space-y-2">
-                    {events.map((ev, idx) => (
-                        <div key={idx} className="bg-gray-800 p-2 sm:p-3 rounded-lg border border-gray-700 flex items-center justify-between shadow-sm">
-                            <div className="flex items-center gap-3">
-                                <div className={`font-mono text-sm font-bold ${ev.team === 'home' ? 'text-blue-400' : 'text-green-400'} min-w-[30px]`}>
-                                    {ev.time}'
-                                </div>
-                                <div className="flex flex-col">
-                                    <span className="font-bold text-sm flex items-center gap-2">
-                                        {ev.type === 'goal' && '⚽ GOL'}
-                                        {ev.type === 'shootout_goal' && '⚽ GOL (Pênalti)'}
-                                        {ev.type === 'shootout_miss' && '❌ Pênalti Perdido'}
-                                        {ev.type === 'yellow_card' && '🟨 Amarelo'}
-                                        {ev.type === 'red_card' && '🟥 Vermelho'}
-                                        {ev.type === 'blue_card' && '🟦 Azul'}
-                                        {ev.type === 'assist' && '👟 Assistência'}
-                                        {ev.type === 'foul' && '⚠️ Falta'}
-                                        {ev.type === 'mvp' && '⭐ Craque'}
-                                        {ev.type === 'timeout' && '⏱ Pedido de Tempo'}
+                    {events.map((ev, idx) => {
+                        const isSystemEvent = ['match_start', 'match_end', 'period_start', 'period_end', 'timeout'].includes(ev.type);
 
-                                        {ev.type === 'match_start' && <span className="text-green-400 font-bold uppercase">🏁 {ev.player_name || 'Início de Partida'}</span>}
-                                        {ev.type === 'match_end' && <span className="text-red-400 font-bold uppercase">🛑 {ev.player_name || 'Fim de Jogo'}</span>}
-                                        {ev.type === 'period_start' && <span className="text-blue-300 font-bold uppercase">▶️ {ev.player_name || 'Início de Período'}</span>}
-                                        {ev.type === 'period_end' && <span className="text-orange-300 font-bold uppercase">⏸️ {ev.player_name || 'Fim de Período'}</span>}
-                                    </span>
-                                    {ev.player_name && !['match_start', 'match_end', 'period_start', 'period_end'].includes(ev.type) && (
-                                        <span className="text-xs text-gray-400">{ev.player_name}</span>
-                                    )}
-                                    {ev.type === 'shootout_miss' && (
-                                        <span className="text-[10px] text-red-400 uppercase font-bold ml-1">
-                                            {/* Metadata detail if available */}
-                                        </span>
+                        // Helper to get friendly title for system events
+                        const getSystemEventTitle = () => {
+                            if (ev.type === 'match_start') return 'Início da Partida';
+                            if (ev.type === 'match_end') return 'Fim de Jogo';
+                            if (ev.type === 'timeout') return 'Pedido de Tempo';
+
+                            // Contextual titles based on period
+                            if (ev.type === 'period_start') {
+                                if (ev.period === '2º Tempo') return 'Início do 2º Tempo';
+                                if (ev.period === 'Prorrogação') return 'Início da Prorrogação';
+                                if (ev.period === 'Pênaltis') return 'Início dos Pênaltis';
+                                return 'Início de Período';
+                            }
+                            if (ev.type === 'period_end') {
+                                if (ev.period === '1º Tempo') return 'Fim do 1º Tempo';
+                                if (ev.period === '2º Tempo') return 'Fim do Tempo Normal';
+                                if (ev.period === 'Prorrogação') return 'Fim da Prorrogação';
+                                return 'Fim de Período';
+                            }
+                            return ev.type;
+                        };
+
+                        return (
+                            <div key={idx} className="bg-gray-800 p-2 sm:p-3 rounded-lg border border-gray-700 flex items-center justify-between shadow-sm">
+                                <div className="flex items-center gap-3 flex-1">
+                                    <div className={`font-mono text-sm font-bold ${ev.team === 'home' ? 'text-blue-400' : ev.team === 'away' ? 'text-green-400' : 'text-gray-400'} min-w-[35px]`}>
+                                        {ev.time}'
+                                    </div>
+
+                                    {isSystemEvent ? (
+                                        <div className="flex flex-col flex-1">
+                                            <span className={`font-bold uppercase text-sm ${ev.type.includes('start') ? 'text-green-400' :
+                                                ev.type.includes('end') ? 'text-red-400' : 'text-yellow-400'
+                                                }`}>
+                                                {ev.type === 'match_start' && '🏁 '}
+                                                {ev.type === 'match_end' && '🛑 '}
+                                                {ev.type === 'period_start' && '▶️ '}
+                                                {ev.type === 'period_end' && '⏸️ '}
+                                                {getSystemEventTitle()}
+                                            </span>
+                                            {ev.player_name && ev.player_name !== '?' && (
+                                                <span className="text-xs text-gray-400 font-normal italic mt-0.5">
+                                                    {ev.player_name}
+                                                </span>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col">
+                                            <span className="font-bold text-sm flex items-center gap-2">
+                                                {ev.type === 'goal' && '⚽ GOL'}
+                                                {ev.type === 'shootout_goal' && '⚽ GOL (Pênalti)'}
+                                                {ev.type === 'shootout_miss' && '❌ Pênalti Perdido'}
+                                                {ev.type === 'yellow_card' && '🟨 Amarelo'}
+                                                {ev.type === 'red_card' && '🟥 Vermelho'}
+                                                {ev.type === 'blue_card' && '🟦 Azul'}
+                                                {ev.type === 'assist' && '👟 Assistência'}
+                                                {ev.type === 'foul' && '⚠️ Falta'}
+                                                {ev.type === 'mvp' && '⭐ Craque'}
+                                            </span>
+                                            {ev.player_name && ev.player_name !== '?' && (
+                                                <span className="text-xs text-gray-400">{ev.player_name}</span>
+                                            )}
+                                            {ev.type === 'shootout_miss' && (
+                                                <span className="text-[10px] text-red-400 uppercase font-bold ml-1">
+                                                    {/* Note if available */}
+                                                </span>
+                                            )}
+                                        </div>
                                     )}
                                 </div>
+                                <div className="flex items-center gap-3 pl-2 border-l border-gray-700 ml-2">
+                                    <span className="text-[9px] uppercase font-bold tracking-wider text-gray-500 whitespace-nowrap min-w-[60px] text-right">
+                                        {ev.period === 'Prorrogação' ? 'Prorrog.' : ev.period}
+                                    </span>
+                                    <button onClick={() => handleDeleteEvent(ev.id, ev.type, ev.team)} className="p-1 text-gray-500 hover:text-red-500 transition-colors">
+                                        <Trash2 size={14} />
+                                    </button>
+                                </div>
                             </div>
-                            <div className="flex items-center gap-3">
-                                <span className="text-[9px] uppercase font-bold tracking-wider text-gray-600">{ev.period}</span>
-                                <button onClick={() => handleDeleteEvent(ev.id, ev.type, ev.team)} className="p-1 text-gray-500 hover:text-red-500 transition-colors">
-                                    <Trash2 size={14} />
-                                </button>
-                            </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                     {events.length === 0 && <div className="text-center text-gray-600 py-8 text-sm">Nenhum evento registrado ainda.</div>}
                 </div>
             </div>
