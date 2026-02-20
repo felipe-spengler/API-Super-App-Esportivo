@@ -1,34 +1,35 @@
 /**
  * Frases temáticas para os eventos de sistema das súmulas.
  * São exibidas na linha inferior dos "pills" de período/partida.
+ * POLIESPORTIVAS: sem menção a campo, estádio, bola específica etc.
  * A seleção é determinística (baseada no ID do evento) para não mudar a cada re-render.
  */
 export const MATCH_PHRASES: string[] = [
     'Haja coração! 💪',
     'Que vença o melhor! 🏆',
     'A batalha recomeça! ⚔️',
-    'Deixem tudo em campo! 🔥',
+    'Deixem tudo em jogo! 🔥',
     'É agora ou nunca! ⚡',
-    'O jogo não acabou! 😤',
-    'Pulsa o coração da torcida! ❤️‍🔥',
+    'A disputa não acabou! 😤',
+    'Tudo pode mudar em segundos! ❤️‍🔥',
     'Cada segundo conta! ⏱️',
-    'Destino traçado, bola rolando! ⚽',
+    'Garra, técnica e determinação! 🎯',
     'Chegou a hora da verdade! 🎯',
     'Quem quer mais? 💥',
     'A emoção toma conta! 🎭',
-    'Guerreiros em campo! 🛡️',
+    'Guerreiros em ação! 🛡️',
     'Ninguém para até o fim! 🚀',
-    'Suor, garra e determinação! 💦',
+    'Suor, garra e superação! 💦',
     'A história vai ser escrita agora! 📜',
-    'Deu a louca no estádio! 🏟️',
+    'A torcida está em êxtase! 🙌',
     'É pra cima! Vai com tudo! 💯',
     'Momento épico! 🌟',
     'Isso é paixão pelo esporte! ❤️',
     'Emoção garantida! 🎉',
-    'Torcida à flor da pele! 🙌',
+    'A decisão está nas mãos deles! 🤝',
     'Que espetáculo! 👀',
     'Nenhum resultado é definitivo! 🔄',
-    'Coragem, foco e gol! 🎯',
+    'Foco, força e fé! 🎯',
 ];
 
 /**

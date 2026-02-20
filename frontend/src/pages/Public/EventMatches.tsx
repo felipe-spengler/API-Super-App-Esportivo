@@ -15,6 +15,7 @@ export function EventMatches() {
     const [loading, setLoading] = useState(true);
     const [champName, setChampName] = useState('');
     const [activeTab, setActiveTab] = useState<'all' | 'live' | 'upcoming' | 'finished'>('all');
+    const [selectedRound, setSelectedRound] = useState<string>('Todas');
 
     // Modal State
     const [selectedMatchId, setSelectedMatchId] = useState<string | number | null>(null);
@@ -111,10 +112,63 @@ export function EventMatches() {
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
+    // Mapeamento de round_name → label de exibição (igual ao admin)
+    const ROUND_NAME_MAP: Record<string, string> = {
+        'round_of_32': '32-avos de Final',
+        'round_of_16': 'Oitavas de Final',
+        'quarter': 'Quartas de Final',
+        'semi': 'Semifinal',
+        'final': 'Final',
+        'third_place': 'Disputa de 3º Lugar',
+    };
+
+    // Prioridade de ordenação das fases eliminatórias (quanto menor, mais cedo aparece)
+    const KNOCKOUT_ORDER: Record<string, number> = {
+        '32-avos de Final': 101,
+        'Oitavas de Final': 102,
+        'Quartas de Final': 103,
+        'Semifinal': 104,
+        'Disputa de 3º Lugar': 105,
+        'Final': 106,
+    };
+
+    // Resolve o label de rodada de uma partida
+    const getRoundLabel = (m: any): string => {
+        if (m.round_name && ROUND_NAME_MAP[m.round_name]) return ROUND_NAME_MAP[m.round_name];
+        if (m.round_number) return `Rodada ${m.round_number}`;
+        if (m.round) {
+            const lower = String(m.round).toLowerCase();
+            if (lower.includes('32')) return '32-avos de Final';
+            if (lower.includes('16') || lower.includes('oitavas')) return 'Oitavas de Final';
+            if (lower.includes('quarter') || lower.includes('quartas')) return 'Quartas de Final';
+            if (lower.includes('semi')) return 'Semifinal';
+            if (lower.includes('third') || lower.includes('3rd') || lower.includes('terceiro')) return 'Disputa de 3º Lugar';
+            if (lower.includes('final')) return 'Final';
+            return `Rodada ${m.round}`;
+        }
+        return 'Outros Jogos';
+    };
+
+    // Extrai todas as fases/rodadas únicas para o filtro
+    const allRoundLabels = (() => {
+        const seen = new Set<string>();
+        matches.forEach(m => seen.add(getRoundLabel(m)));
+        const labels = Array.from(seen);
+        return labels.sort((a, b) => {
+            const orderA = KNOCKOUT_ORDER[a] ?? (parseInt(a.replace(/\D/g, '')) || 0);
+            const orderB = KNOCKOUT_ORDER[b] ?? (parseInt(b.replace(/\D/g, '')) || 0);
+            return orderA - orderB;
+        });
+    })();
+
     // Group matches
     const liveMatches = matches.filter(m => m.status === 'live');
     const upcomingMatches = matches.filter(m => m.status === 'upcoming' || m.status === 'scheduled');
     const finishedMatches = matches.filter(m => m.status === 'finished');
+
+    // Apply round filter
+    const filterByRound = (list: any[]) =>
+        selectedRound === 'Todas' ? list : list.filter(m => getRoundLabel(m) === selectedRound);
 
     const MatchCard = ({ match }: { match: any }) => (
         <div
@@ -223,51 +277,29 @@ export function EventMatches() {
         }
 
         const groups: Record<string, any[]> = {};
-
-        // Mapeamento de round_name igual ao admin (AdminMatchManager.tsx)
-        const roundNameMap: Record<string, string> = {
-            'round_of_32': '32-avos de Final',
-            'round_of_16': 'Oitavas de Final',
-            'quarter': 'Quartas de Final',
-            'semi': 'Semifinal',
-            'final': 'Final',
-            'third_place': 'Disputa de 3º Lugar',
-        };
-
         matchesList.forEach(m => {
-            let roundLabel = 'Outros Jogos';
-
-            if (m.round_name && roundNameMap[m.round_name]) {
-                // Usa mapeamento direto do round_name (igual ao admin)
-                roundLabel = roundNameMap[m.round_name];
-            } else if (m.round_number) {
-                roundLabel = `Rodada ${m.round_number}`;
-            } else if (m.round) {
-                // Fallback: heurística por string no campo round
-                const lower = String(m.round).toLowerCase();
-                if (lower.includes('32')) roundLabel = '32-avos de Final';
-                else if (lower.includes('16') || lower.includes('oitavas')) roundLabel = 'Oitavas de Final';
-                else if (lower.includes('quarter') || lower.includes('quartas')) roundLabel = 'Quartas de Final';
-                else if (lower.includes('semi')) roundLabel = 'Semifinal';
-                else if (lower.includes('third') || lower.includes('3rd') || lower.includes('terceiro')) roundLabel = 'Disputa de 3º Lugar';
-                else if (lower.includes('final')) roundLabel = 'Final';
-                else roundLabel = `Rodada ${m.round}`;
-            }
-
-            if (!groups[roundLabel]) groups[roundLabel] = [];
-            groups[roundLabel].push(m);
+            const label = getRoundLabel(m);
+            if (!groups[label]) groups[label] = [];
+            groups[label].push(m);
         });
 
-        // Tenta ordenar as chaves. Rodadas numéricas primeiro, depois strings
+        // Ordenação correta: rodadas numeradas primeiro (1, 2, 3...), depois fases eliminatórias na ordem certa
         const sortedKeys = Object.keys(groups).sort((a, b) => {
+            const orderA = KNOCKOUT_ORDER[a];
+            const orderB = KNOCKOUT_ORDER[b];
             const numA = parseInt(a.replace(/\D/g, ''));
             const numB = parseInt(b.replace(/\D/g, ''));
 
+            // Ambos são fases eliminatórias → usa KNOCKOUT_ORDER
+            if (orderA !== undefined && orderB !== undefined) return orderA - orderB;
+            // Apenas A é fase eliminatória → A vem depois
+            if (orderA !== undefined) return 1;
+            // Apenas B é fase eliminatória → B vem depois
+            if (orderB !== undefined) return -1;
+            // Ambos numéricos → ordem numérica
             if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
-            // Se um é numérico e outro não, numérico vem antes
             if (!isNaN(numA)) return -1;
             if (!isNaN(numB)) return 1;
-
             return a.localeCompare(b);
         });
 
@@ -361,6 +393,35 @@ export function EventMatches() {
                 </div>
             </div>
 
+            {/* Round Filter Bar — shows only when there are multiple rounds */}
+            {allRoundLabels.length > 1 && (
+                <div className="bg-white border-b border-gray-100 sticky top-[116px] z-10 shadow-sm">
+                    <div className="max-w-3xl mx-auto flex overflow-x-auto no-scrollbar gap-2 px-4 py-2">
+                        <button
+                            onClick={() => setSelectedRound('Todas')}
+                            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${selectedRound === 'Todas'
+                                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                                    : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600'
+                                }`}
+                        >
+                            Todas as Fases
+                        </button>
+                        {allRoundLabels.map(label => (
+                            <button
+                                key={label}
+                                onClick={() => setSelectedRound(label)}
+                                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${selectedRound === label
+                                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                                        : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600'
+                                    }`}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             <div className="max-w-3xl mx-auto p-4 space-y-6">
                 {loading && matches.length === 0 ? (
                     <div className="flex justify-center p-8">
@@ -374,24 +435,24 @@ export function EventMatches() {
                     <>
                         {activeTab === 'all' && (
                             <>
-                                {liveMatches.length > 0 && (
+                                {filterByRound(liveMatches).length > 0 && (
                                     <div className="animate-in fade-in slide-in-from-top-4 duration-500">
                                         <h3 className="text-sm font-bold text-red-600 uppercase tracking-wider mb-3 flex items-center gap-2">
                                             <span className="block w-2 h-2 rounded-full bg-red-600 animate-pulse"></span>
                                             Acontecendo Agora
                                         </h3>
-                                        {liveMatches.map(match => <MatchCard key={match.id} match={match} />)}
+                                        {filterByRound(liveMatches).map(match => <MatchCard key={match.id} match={match} />)}
                                     </div>
                                 )}
 
-                                {renderMatchesByRound(matches.filter(m => m.status !== 'live'), "Nenhum outro jogo encontrado.")}
+                                {renderMatchesByRound(filterByRound(matches.filter(m => m.status !== 'live')), "Nenhum outro jogo encontrado.")}
                             </>
                         )}
 
                         {activeTab === 'live' && (
-                            liveMatches.length > 0 ? (
+                            filterByRound(liveMatches).length > 0 ? (
                                 <div className="animate-in fade-in zoom-in-95 duration-300">
-                                    {liveMatches.map(match => <MatchCard key={match.id} match={match} />)}
+                                    {filterByRound(liveMatches).map(match => <MatchCard key={match.id} match={match} />)}
                                 </div>
                             ) : (
                                 <div className="text-center py-10 bg-white rounded-xl shadow-sm border border-gray-100">
@@ -400,9 +461,9 @@ export function EventMatches() {
                             )
                         )}
 
-                        {activeTab === 'upcoming' && renderMatchesByRound(upcomingMatches, "Nenhum jogo agendado.")}
+                        {activeTab === 'upcoming' && renderMatchesByRound(filterByRound(upcomingMatches), "Nenhum jogo agendado.")}
 
-                        {activeTab === 'finished' && renderMatchesByRound(finishedMatches, "Nenhum jogo finalizado ainda.")}
+                        {activeTab === 'finished' && renderMatchesByRound(filterByRound(finishedMatches), "Nenhum jogo finalizado ainda.")}
                     </>
                 )}
             </div>

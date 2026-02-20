@@ -912,7 +912,7 @@ export function SumulaFutebol7() {
                                             {ev.type === 'timeout' && '⏱ '}
                                             {getSystemEventTitle()}
                                         </span>
-                                        <span className="text-[10px] text-gray-400 italic text-center leading-tight">
+                                        <span className="text-xs sm:text-sm text-gray-300 italic text-center leading-tight font-medium">
                                             {phrase}
                                         </span>
                                     </div>
