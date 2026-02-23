@@ -75,10 +75,12 @@ import { MatchPrintView } from './pages/Matches/MatchPrintView';
 import { TestUpload } from './pages/Public/TestUpload';
 
 import { Toaster } from 'react-hot-toast';
+import { ScrollToTop } from './components/ScrollToTop';
 
 function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <Toaster position="top-right" />
       <AuthProvider>
         <Routes>

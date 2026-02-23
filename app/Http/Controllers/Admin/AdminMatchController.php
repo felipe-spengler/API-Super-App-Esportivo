@@ -378,6 +378,7 @@ class AdminMatchController extends Controller
             'player_id' => 'nullable|integer',
             'event_type' => 'required|in:goal,yellow_card,red_card,blue_card,assist,foul,mvp,substitution,point,ace,block,timeout,period_start,period_end,match_start,match_end,shootout_goal,shootout_miss,takedown,guard_pass,mount,back_control,knee_on_belly,sweep,advantage,penalty',
             'minute' => 'nullable|string', // Change to string to support "00:00"
+            'period' => 'nullable|string',
             'value' => 'nullable|integer',
             'metadata' => 'nullable|array',
         ]);
@@ -388,6 +389,7 @@ class AdminMatchController extends Controller
             'player_id' => $validated['player_id'] ?? null,
             'event_type' => $validated['event_type'],
             'game_time' => $validated['minute'] ?? null,
+            'period' => $validated['period'] ?? null,
             'value' => $validated['value'] ?? 1,
             'metadata' => $validated['metadata'] ?? null,
         ]);

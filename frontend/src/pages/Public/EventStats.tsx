@@ -218,26 +218,45 @@ export function EventStats() {
                             ) : (
                                 <div className="space-y-3">
                                     {selectedStat.details.map((detail: any, idx: number) => (
-                                        <div key={idx} className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 border border-gray-200 mb-2 shadow-sm transition-colors hover:bg-gray-100 hover:border-gray-300">
-                                            <div className="bg-white p-2 rounded-lg font-bold text-indigo-700 shadow-sm border border-gray-200 min-w-[4rem] text-center flex flex-col justify-center h-14">
-                                                <span className="text-lg leading-none mb-1">{detail.game_time || detail.minute || "00:00"}</span>
-                                                <span className="text-[10px] font-medium text-gray-500 uppercase leading-none">{detail.period === '1º Tempo' ? '1ºT' : detail.period === '2º Tempo' ? '2ºT' : (detail.period || '-')}</span>
+                                        <div key={idx} className="flex items-center gap-3 p-3 rounded-2xl bg-gray-50 border border-slate-100 mb-2 hover:bg-white hover:shadow-lg hover:shadow-indigo-100/30 transition-all">
+                                            {/* Time & Period Box */}
+                                            <div className="bg-indigo-600 p-1.5 rounded-xl font-black text-white shadow-lg shadow-indigo-100 min-w-[3.5rem] text-center flex flex-col justify-center h-12 shrink-0">
+                                                <span className="text-[8px] text-white/80 uppercase tracking-tighter leading-none mb-1">
+                                                    {(() => {
+                                                        const p = String(detail.period || detail.period_name || '').toLowerCase();
+                                                        if (p.includes('1')) return '1º T';
+                                                        if (p.includes('2')) return '2º T';
+                                                        if (p.includes('3')) return '3º T';
+                                                        if (p.includes('4')) return '4º T';
+                                                        if (p.includes('ext')) return 'Prorr.';
+                                                        if (p.includes('pen')) return 'Pen.';
+                                                        return detail.period || detail.period_name || '-';
+                                                    })()}
+                                                </span>
+                                                <span className="text-sm leading-none">{detail.game_time || detail.minute || "00:00"}</span>
                                             </div>
+
+                                            {/* Match Info */}
                                             <div className="flex-1 min-w-0">
-                                                <div className="flex items-center flex-wrap gap-2 mb-1">
-                                                    <span className="text-xs font-bold uppercase text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
+                                                <div className="flex items-center gap-1.5 mb-1">
+                                                    <span className="text-[9px] font-black uppercase tracking-widest text-indigo-400">
                                                         {getPhaseLabel(detail.round)}
                                                     </span>
                                                     {detail.phase && (detail.phase !== detail.round) && (
-                                                        <span className="text-xs text-gray-600 font-medium border-l pl-2 border-gray-300">
-                                                            {detail.phase}
-                                                        </span>
+                                                        <>
+                                                            <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                                                            <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
+                                                                {detail.phase}
+                                                            </span>
+                                                        </>
                                                     )}
                                                 </div>
-                                                <p className="font-bold text-gray-900 text-base leading-tight mb-1 truncate">{detail.match_label || 'Partida'}</p>
-                                                <p className="text-xs text-gray-500 flex items-center gap-1.5">
-                                                    <Calendar className="w-3.5 h-3.5" />
-                                                    {detail.match_date ? new Date(detail.match_date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Data não informada'}
+                                                <p className="font-extrabold text-slate-900 text-[13px] leading-tight mb-1 whitespace-pre-wrap">
+                                                    {detail.match_label || 'Partida'}
+                                                </p>
+                                                <p className="text-[10px] text-slate-400 font-bold flex items-center gap-1.5">
+                                                    <Calendar className="w-3 h-3 text-indigo-300" />
+                                                    {detail.match_date ? new Date(detail.match_date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Data a def.'}
                                                 </p>
                                             </div>
                                         </div>

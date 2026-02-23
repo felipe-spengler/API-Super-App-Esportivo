@@ -439,7 +439,7 @@ class EventController extends Controller
                     'match_id' => $event->gameMatch->id,
                     'match_label' => "$home vs $away",
                     'game_time' => $event->game_time,
-                    'period' => $event->period,
+                    'period' => $event->period ?? ($metadata['period'] ?? ($metadata['label'] ?? null)),
                     'match_date' => $event->gameMatch->start_time,
                     'round' => $event->gameMatch->round_name ?? $event->gameMatch->round_number ?? null,
                     'phase' => $event->gameMatch->phase ?? null,

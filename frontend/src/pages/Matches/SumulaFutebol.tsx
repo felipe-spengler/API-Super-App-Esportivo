@@ -313,7 +313,10 @@ export function SumulaFutebol() {
                 team_id: (matchData.home_team_id || matchData.away_team_id) ?? null,
                 minute: currentTime,
                 period: currentPeriod,
-                metadata: { label }
+                metadata: {
+                    label: label,
+                    system_period: currentPeriod
+                }
             });
 
             setEvents(prev => [{
@@ -374,7 +377,10 @@ export function SumulaFutebol() {
                 event_type: type,
                 team_id: teamId,
                 minute: currentTime,
-                period: currentPeriod
+                period: currentPeriod,
+                metadata: {
+                    system_period: currentPeriod
+                }
             });
         } catch (e) {
             console.error(e);
@@ -405,7 +411,10 @@ export function SumulaFutebol() {
                 minute: currentTime,
                 period: currentPeriod,
                 player_id: player.id === 'unknown' ? null : player.id,
-                metadata: player.isOwnGoal ? { own_goal: true } : null
+                metadata: {
+                    own_goal: player.isOwnGoal || false,
+                    system_period: currentPeriod
+                }
             });
 
             const newEvent = {

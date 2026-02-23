@@ -11,7 +11,7 @@ const ALL_SPORTS = [
     { id: 'tenis', name: 'Tênis', icon: 'fluent-emoji:tennis' },
     { id: 'lutas', name: 'Lutas', icon: 'fluent-emoji:boxing-glove' },
     { id: 'natacao', name: 'Natação', icon: 'fluent-emoji:swimmer' },
-    { id: 'padel', name: 'fluent-emoji:ping-pong', name_alt: 'Padel', icon: 'fluent-emoji:ping-pong' },
+    { id: 'padel', name: 'Padel', icon: 'fluent-emoji:ping-pong' },
     { id: 'futebol-7', name: 'Futebol 7', icon: 'fluent-emoji:soccer-ball' },
 ];
 
