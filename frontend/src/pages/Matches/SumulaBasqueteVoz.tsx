@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Mic, MicOff, Check, X, Timer, Play, Pause } from 'lucide-react';
 import api from '../../services/api';
+import { SpeechRecognition } from '@capacitor-community/speech-recognition';
+import { Capacitor } from '@capacitor/core';
 
 // Extend window interface for SpeechRecognition
 declare global {
@@ -40,40 +42,69 @@ export function SumulaBasqueteVoz() {
     useEffect(() => {
         fetchMatchDetails();
 
-        // Setup Speech Recognition
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (SpeechRecognition) {
-            const recognition = new SpeechRecognition();
-            recognition.lang = 'pt-BR';
-            recognition.continuous = false; // Stop after one sentence
-            recognition.interimResults = true; // Show results while speaking
+        let nativeListener: any = null;
 
-            recognition.onstart = () => {
-                setIsListening(true);
-                setFeedback('Ouvindo...');
-            };
+        if (!Capacitor.isNativePlatform()) {
+            // Setup Web Speech Recognition
+            const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (SpeechRec) {
+                const recognition = new SpeechRec();
+                recognition.lang = 'pt-BR';
+                recognition.continuous = false;
+                recognition.interimResults = true;
 
-            recognition.onend = () => {
-                setIsListening(false);
-                // Don't clear feedback immediately so user can see what happened
-            };
+                recognition.onstart = () => {
+                    setIsListening(true);
+                    setFeedback('Ouvindo (Web)...');
+                };
 
-            recognition.onresult = (event: any) => {
-                const current = event.resultIndex;
-                const result = event.results[current];
-                const text = result[0].transcript;
-                setTranscript(text);
+                recognition.onend = () => {
+                    setIsListening(false);
+                };
 
-                if (result.isFinal) {
-                    processVoiceCommand(text);
-                }
-            };
+                recognition.onresult = (event: any) => {
+                    const current = event.resultIndex;
+                    const result = event.results[current];
+                    const text = result[0].transcript;
+                    setTranscript(text);
 
-            recognitionRef.current = recognition;
+                    if (result.isFinal) {
+                        processVoiceCommand(text);
+                    }
+                };
+
+                recognitionRef.current = recognition;
+            } else {
+                setFeedback("Seu navegador não suporta reconhecimento de voz.");
+            }
         } else {
-            alert("Seu navegador não suporta reconhecimento de voz.");
+            // Native Platform Initialization
+            checkPermissions();
+
+            // Native Listener
+            nativeListener = SpeechRecognition.addListener('partialResults', (data: any) => {
+                if (data.matches && data.matches.length > 0) {
+                    const text = data.matches[0];
+                    setTranscript(text);
+                }
+            });
         }
+
+        return () => {
+            if (nativeListener) nativeListener.remove();
+        };
     }, [id]);
+
+    const checkPermissions = async () => {
+        try {
+            const permission = await SpeechRecognition.checkPermissions();
+            if (permission.speechRecognition !== 'granted') {
+                await SpeechRecognition.requestPermissions();
+            }
+        } catch (e) {
+            console.error("Erro ao verificar permissões de voz", e);
+        }
+    };
 
     const fetchMatchDetails = async () => {
         try {
@@ -258,13 +289,44 @@ export function SumulaBasqueteVoz() {
         setTranscript("");
     };
 
-    const toggleListening = () => {
-        if (isListening) {
-            recognitionRef.current?.stop();
+    const toggleListening = async () => {
+        if (Capacitor.isNativePlatform()) {
+            if (isListening) {
+                const result = await SpeechRecognition.stop();
+                setIsListening(false);
+                if (result.matches && result.matches.length > 0) {
+                    processVoiceCommand(result.matches[0]);
+                }
+            } else {
+                setPendingAction(null);
+                setTranscript("");
+                try {
+                    const available = await SpeechRecognition.available();
+                    if (available.available) {
+                        setIsListening(true);
+                        setFeedback('Ouvindo (Nativo)...');
+                        await SpeechRecognition.start({
+                            language: 'pt-BR',
+                            partialResults: true,
+                            popup: false,
+                        });
+                    } else {
+                        alert("Reconhecimento de voz não disponível neste aparelho.");
+                    }
+                } catch (e) {
+                    console.error(e);
+                    setIsListening(false);
+                }
+            }
         } else {
-            setPendingAction(null);
-            setTranscript("");
-            recognitionRef.current?.start();
+            // Web Logic
+            if (isListening) {
+                recognitionRef.current?.stop();
+            } else {
+                setPendingAction(null);
+                setTranscript("");
+                recognitionRef.current?.start();
+            }
         }
     };
 
