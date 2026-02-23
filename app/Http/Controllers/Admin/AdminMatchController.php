@@ -376,7 +376,7 @@ class AdminMatchController extends Controller
         $validated = $request->validate([
             'team_id' => 'nullable|exists:teams,id', // Allow system events without team
             'player_id' => 'nullable|integer',
-            'event_type' => 'required|in:goal,yellow_card,red_card,blue_card,assist,foul,mvp,substitution,point,ace,block,timeout,period_start,period_end,match_start,match_end,shootout_goal,shootout_miss,takedown,guard_pass,mount,back_control,knee_on_belly,sweep,advantage,penalty',
+            'event_type' => 'required|in:goal,yellow_card,red_card,blue_card,assist,foul,mvp,substitution,point,ace,block,timeout,period_start,period_end,match_start,match_end,shootout_goal,shootout_miss,takedown,guard_pass,mount,back_control,knee_on_belly,sweep,advantage,penalty,game_won',
             'minute' => 'nullable|string', // Change to string to support "00:00"
             'period' => 'nullable|string',
             'value' => 'nullable|integer',
@@ -412,7 +412,8 @@ class AdminMatchController extends Controller
             'mount',
             'back_control',
             'knee_on_belly',
-            'sweep'
+            'sweep',
+            'game_won'
         ];
         if (in_array($event->event_type, $scoreEvents)) {
             $value = $event->value ?: 1;

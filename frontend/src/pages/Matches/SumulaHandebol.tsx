@@ -280,7 +280,10 @@ export function SumulaHandebol() {
                 team_id: matchData.home_team_id || matchData.away_team_id,
                 minute: currentTime,
                 period: currentPeriod,
-                metadata: { label }
+                metadata: {
+                    label,
+                    system_period: currentPeriod
+                }
             });
 
             setEvents(prev => [{
@@ -340,7 +343,10 @@ export function SumulaHandebol() {
                 event_type: 'timeout',
                 team_id: teamId,
                 minute: currentTime,
-                period: currentPeriod
+                period: currentPeriod,
+                metadata: {
+                    system_period: currentPeriod
+                }
             });
         } catch (e) {
             console.error(e);
@@ -358,7 +364,10 @@ export function SumulaHandebol() {
                 team_id: teamId,
                 minute: currentTime,
                 period: currentPeriod,
-                player_id: player.id
+                player_id: player.id,
+                metadata: {
+                    system_period: currentPeriod
+                }
             });
 
             const newEvent = {

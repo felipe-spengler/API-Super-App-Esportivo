@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Calendar, Trophy, Save, Plus, Trash2, CheckCircle, AlertCircle, List, Edit2, X, MapPin, Clock as ClockIcon, Loader2, Play, Printer, Users, Star, Shuffle, ImageIcon, Share2, Download } from 'lucide-react';
+import { ArrowLeft, Calendar, Trophy, Save, Plus, Trash2, CheckCircle, AlertCircle, List, Edit2, X, MapPin, Clock as ClockIcon, Loader2, Play, Printer, Users, Star, Shuffle, ImageIcon, Share2, Download, Mic } from 'lucide-react';
 import api from '../../services/api';
 
 interface Match {
@@ -361,9 +361,10 @@ export function AdminMatchManager() {
 
         if (sportSlug === 'volei') sumulaPath = `/admin/matches/${matchId}/sumula-volei`;
         else if (sportSlug === 'futsal') sumulaPath = `/admin/matches/${matchId}/sumula-futsal`;
-        else if (sportSlug === 'basquete') sumulaPath = `/admin/matches/${matchId}/sumula-basquete`;
+        else if (sportSlug === 'basquete') sumulaPath = `/admin/matches/${matchId}/sumula-basquete-voz`;
         else if (sportSlug === 'handebol') sumulaPath = `/admin/matches/${matchId}/sumula-handebol`;
         else if (sportSlug === 'beach-tennis') sumulaPath = `/admin/matches/${matchId}/sumula-beach-tennis`;
+        else if (sportSlug === 'tenis') sumulaPath = `/admin/matches/${matchId}/sumula-tenis`;
         else if (sportSlug === 'futebol-7') sumulaPath = `/admin/matches/${matchId}/sumula-futebol7`;
         else if (sportSlug === 'futevolei') sumulaPath = `/admin/matches/${matchId}/sumula-futevolei`;
         else if (sportSlug === 'volei-de-praia') sumulaPath = `/admin/matches/${matchId}/sumula-volei-praia`;
@@ -858,6 +859,8 @@ export function AdminMatchManager() {
                                                                     {match.status === 'finished' ? <CheckCircle className="w-4 h-4" /> : <List className="w-4 h-4" />}
                                                                     <span className="text-[10px] font-bold uppercase md:hidden">{match.status === 'finished' ? 'Resumo' : 'Súmula'}</span>
                                                                 </button>
+
+
 
                                                                 <button
                                                                     onClick={() => openEditModal(match)}

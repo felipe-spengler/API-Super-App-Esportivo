@@ -144,7 +144,8 @@ export function SumulaVolei() {
                 minute: 0,
                 period: `${volleyState.current_set}º Set`,
                 metadata: {
-                    label: 'Tempo Técnico solicitado!'
+                    label: 'Tempo Técnico solicitado!',
+                    system_period: `${volleyState.current_set}º Set`
                 }
             });
             alert("Tempo registrado!");
@@ -162,7 +163,10 @@ export function SumulaVolei() {
                 team_id: matchData.home_team_id || matchData.away_team_id,
                 minute: 0,
                 period: volleyState ? `${volleyState.current_set}º Set` : 'Pré-jogo',
-                metadata: { label }
+                metadata: {
+                    label,
+                    system_period: volleyState ? `${volleyState.current_set}º Set` : 'Pré-jogo'
+                }
             });
 
             // If we successfully started the match, update status locally
@@ -192,8 +196,9 @@ export function SumulaVolei() {
                 team_id: teamId,
                 player_id: playerId,
                 minute: 0,
+                period: `${volleyState.current_set}º Set`,
                 metadata: {
-                    period: `${volleyState.current_set}º Set`
+                    system_period: `${volleyState.current_set}º Set`
                 }
             });
             alert(`Cartão ${cardType === 'yellow' ? 'Amarelo' : 'Vermelho'} registrado!`);

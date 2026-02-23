@@ -324,10 +324,13 @@ export function SumulaFutsal() {
         try {
             const response = await api.post(`/admin/matches/${id}/events`, {
                 event_type: type,
-                team_id: matchData.home_team_id || matchData.away_team_id, // Default to home team for system events
+                team_id: matchData.home_team_id || matchData.away_team_id,
                 minute: currentTime,
                 period: currentPeriod,
-                metadata: { label }
+                metadata: {
+                    label: label,
+                    system_period: currentPeriod
+                }
             });
 
             setEvents(prev => [{
@@ -387,7 +390,10 @@ export function SumulaFutsal() {
                 event_type: type,
                 team_id: teamId,
                 minute: currentTime,
-                period: currentPeriod
+                period: currentPeriod,
+                metadata: {
+                    system_period: currentPeriod
+                }
             });
         } catch (e) {
             console.error(e);
@@ -414,7 +420,10 @@ export function SumulaFutsal() {
                 minute: currentTime,
                 period: currentPeriod,
                 player_id: player.id === 'unknown' ? null : player.id,
-                metadata: player.isOwnGoal ? { own_goal: true } : null
+                metadata: {
+                    own_goal: player.isOwnGoal || false,
+                    system_period: currentPeriod
+                }
             });
 
             const newEvent = {

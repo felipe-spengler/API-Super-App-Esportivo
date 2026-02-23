@@ -18,6 +18,7 @@ export function SumulaTenis() {
     const [gameScore, setGameScore] = useState({ home: 0, away: 0 }); // Pontos no game atual (0, 1, 2, 3...)
     const [gamesWon, setGamesWon] = useState({ home: 0, away: 0 }); // Games vencidos no set atual
     const [matchFinished, setMatchFinished] = useState(false);
+    const [isQuickMode, setIsQuickMode] = useState(false); // Alterna entre marcar pontos ou games direto
 
     const fetchMatchDetails = async (silent = false) => {
         try {
@@ -122,7 +123,46 @@ export function SumulaTenis() {
     }, [id, gameScore, gamesWon, currentSet]);
 
     // Scoring system: 0, 15, 30, 40, Game
-    const pointLabels = ['0', '15', '30', '40', 'Vant.'];
+    const isTiebreak = gamesWon.home === 6 && gamesWon.away === 6;
+    const pointLabels = isTiebreak ? [] : ['0', '15', '30', '40', 'Vant.'];
+
+    const addGame = async (team: 'home' | 'away') => {
+        if (matchFinished) return;
+
+        // If match is still scheduled, try to set to live on first action
+        if (matchData && (matchData.status === 'scheduled' || matchData.status === 'Agendado')) {
+            registerSystemEvent('match_start', 'Início da partida! Placar aberto!');
+        }
+
+        const newGames = { ...gamesWon };
+        const opponent = team === 'home' ? 'away' : 'home';
+        newGames[team]++;
+
+        setGamesWon(newGames);
+        setGameScore({ home: 0, away: 0 }); // Limpa pontos se ganhar o game direto
+
+        // Save game event
+        try {
+            await api.post(`/admin/matches/${id}/events`, {
+                event_type: 'game_won',
+                team_id: team === 'home' ? matchData.home_team_id : matchData.away_team_id,
+                period: `Set ${currentSet}`,
+                metadata: {
+                    result: `${newGames.home}-${newGames.away}`,
+                    system_period: `Set ${currentSet}`
+                }
+            });
+        } catch (e) {
+            console.error(e);
+        }
+
+        // Check if set won
+        if (newGames[team] >= 6 && newGames[team] >= newGames[opponent] + 2) {
+            await finishSet(newGames);
+        } else if (newGames[team] === 7) {
+            await finishSet(newGames);
+        }
+    };
 
     const addPoint = async (team: 'home' | 'away') => {
         if (matchFinished) return;
@@ -146,13 +186,21 @@ export function SumulaTenis() {
 
         let gameWon = false;
 
-        if (newScore[team] >= 4) {
-            if (newScore[team] >= newScore[opponent] + 2) {
+        if (isTiebreak) {
+            // Tiebreak logic: First to 7, lead by 2
+            if (newScore[team] >= 7 && newScore[team] >= newScore[opponent] + 2) {
                 gameWon = true;
-            } else if (newScore[team] === 4 && newScore[opponent] === 4) {
-                // Both reached 4 (V-V), back to deuce (3-3)
-                newScore.home = 3;
-                newScore.away = 3;
+            }
+        } else {
+            // Standard game logic (0, 15, 30, 40, Vant)
+            if (newScore[team] >= 4) {
+                if (newScore[team] >= newScore[opponent] + 2) {
+                    gameWon = true;
+                } else if (newScore[team] === 4 && newScore[opponent] === 4) {
+                    // Both reached 4 (V-V), back to deuce (3-3)
+                    newScore.home = 3;
+                    newScore.away = 3;
+                }
             }
         }
 
@@ -163,12 +211,15 @@ export function SumulaTenis() {
             setGamesWon(newGames);
             setGameScore({ home: 0, away: 0 });
 
-            // Check if set won (first to 6 games, margin of 2, or tiebreak at 6-6)
+            // Check if set won
+            // Standard: 6 games with lead of 2, OR reaching 7 in any case (7-5 or 7-6 tiebreak)
             if (newGames[team] >= 6 && newGames[team] >= newGames[opponent] + 2) {
                 await finishSet(newGames);
+            } else if (newGames[team] === 7) {
+                // Won 7-5 or 7-6
+                await finishSet(newGames);
             } else if (newGames.home === 6 && newGames.away === 6) {
-                // Simplified Tiebreak message
-                alert('Tiebreak! 6-6 nos games.');
+                registerSystemEvent('period_start', 'Início do Tie-break!');
             }
         } else {
             setGameScore(newScore);
@@ -180,7 +231,10 @@ export function SumulaTenis() {
                 event_type: 'point',
                 team_id: team === 'home' ? matchData.home_team_id : matchData.away_team_id,
                 period: `Set ${currentSet}`,
-                metadata: { game_score: `${newScore.home}-${newScore.away}` }
+                metadata: {
+                    game_score: `${newScore.home}-${newScore.away}`,
+                    system_period: `Set ${currentSet}`
+                }
             });
         } catch (e) {
             console.error(e);
@@ -257,7 +311,10 @@ export function SumulaTenis() {
                 team_id: matchData.home_team_id || matchData.away_team_id,
                 minute: 0,
                 period: `Set ${currentSet}`,
-                metadata: { label }
+                metadata: {
+                    label,
+                    system_period: `Set ${currentSet}`
+                }
             });
 
             // If we successfully started the match, update status locally
@@ -333,14 +390,20 @@ export function SumulaTenis() {
                     {/* Current Game Score */}
                     {!matchFinished && (
                         <div className="bg-black/30 backdrop-blur rounded-2xl p-4 border border-lime-500/30 shadow-inner">
-                            <div className="text-center text-[10px] font-black text-white/40 mb-3 uppercase tracking-tighter">Pontuação do Game</div>
+                            <div className="text-center text-[10px] font-black text-white/40 mb-3 uppercase tracking-tighter">
+                                {isTiebreak ? '🔥 PONTOS DO TIE-BREAK 🔥' : 'Pontuação do Game'}
+                            </div>
                             <div className="flex items-center justify-center gap-10">
                                 <div className="flex flex-col items-center">
-                                    <div className="text-5xl font-black text-white drop-shadow-lg font-mono">{pointLabels[gameScore.home] || gameScore.home}</div>
+                                    <div className="text-5xl font-black text-white drop-shadow-lg font-mono">
+                                        {isTiebreak ? gameScore.home : (pointLabels[gameScore.home] || gameScore.home)}
+                                    </div>
                                 </div>
                                 <div className="text-2xl text-lime-500/50 font-black">:</div>
                                 <div className="flex flex-col items-center">
-                                    <div className="text-5xl font-black text-white drop-shadow-lg font-mono">{pointLabels[gameScore.away] || gameScore.away}</div>
+                                    <div className="text-5xl font-black text-white drop-shadow-lg font-mono">
+                                        {isTiebreak ? gameScore.away : (pointLabels[gameScore.away] || gameScore.away)}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -348,27 +411,70 @@ export function SumulaTenis() {
                 </div>
             </div>
 
+            {/* Action Selection Toggle */}
+            <div className="px-4 mt-6 max-w-3xl mx-auto flex justify-center">
+                <div className="bg-white/10 p-1 rounded-xl border border-white/20 flex gap-1">
+                    <button
+                        onClick={() => setIsQuickMode(false)}
+                        className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${!isQuickMode ? 'bg-lime-500 text-black' : 'text-white/60 hover:text-white'}`}
+                    >
+                        Ponto a Ponto
+                    </button>
+                    <button
+                        onClick={() => setIsQuickMode(true)}
+                        className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${isQuickMode ? 'bg-lime-500 text-black' : 'text-white/60 hover:text-white'}`}
+                    >
+                        Marcar Games Direto
+                    </button>
+                </div>
+            </div>
+
             {/* Action Buttons */}
             {!matchFinished && (
                 <div className="p-4 grid grid-cols-2 gap-4 max-w-3xl mx-auto">
-                    <button
-                        onClick={() => addPoint('home')}
-                        className="py-12 bg-gradient-to-br from-green-600 to-green-800 rounded-3xl font-black text-2xl border-b-8 border-green-950 active:scale-95 transition-all shadow-2xl hover:from-green-500 hover:to-green-700 flex flex-col items-center justify-center gap-2"
-                    >
-                        <span className="bg-white/20 px-3 py-1 rounded-full text-xs uppercase tracking-widest text-white">+ Ponto</span>
-                        <div className="text-center px-4 leading-tight">
-                            {matchData.home_team?.name || 'Jogador 1'}
-                        </div>
-                    </button>
-                    <button
-                        onClick={() => addPoint('away')}
-                        className="py-12 bg-gradient-to-br from-emerald-600 to-emerald-800 rounded-3xl font-black text-2xl border-b-8 border-emerald-950 active:scale-95 transition-all shadow-2xl hover:from-emerald-500 hover:to-emerald-700 flex flex-col items-center justify-center gap-2"
-                    >
-                        <span className="bg-white/20 px-3 py-1 rounded-full text-xs uppercase tracking-widest text-white">+ Ponto</span>
-                        <div className="text-center px-4 leading-tight">
-                            {matchData.away_team?.name || 'Jogador 2'}
-                        </div>
-                    </button>
+                    {isQuickMode ? (
+                        <>
+                            <button
+                                onClick={() => addGame('home')}
+                                className="py-16 bg-gradient-to-br from-blue-600 to-blue-800 rounded-3xl font-black text-2xl border-b-8 border-blue-950 active:scale-95 transition-all shadow-2xl hover:from-blue-500 hover:to-blue-700 flex flex-col items-center justify-center gap-2"
+                            >
+                                <span className="bg-white/20 px-3 py-1 rounded-full text-xs uppercase tracking-widest text-white">+ Game</span>
+                                <div className="text-center px-4 leading-tight">
+                                    {matchData.home_team?.name || 'Jogador 1'}
+                                </div>
+                            </button>
+                            <button
+                                onClick={() => addGame('away')}
+                                className="py-16 bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-3xl font-black text-2xl border-b-8 border-indigo-950 active:scale-95 transition-all shadow-2xl hover:from-indigo-500 hover:to-indigo-700 flex flex-col items-center justify-center gap-2"
+                            >
+                                <span className="bg-white/20 px-3 py-1 rounded-full text-xs uppercase tracking-widest text-white">+ Game</span>
+                                <div className="text-center px-4 leading-tight">
+                                    {matchData.away_team?.name || 'Jogador 2'}
+                                </div>
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <button
+                                onClick={() => addPoint('home')}
+                                className="py-12 bg-gradient-to-br from-green-600 to-green-800 rounded-3xl font-black text-2xl border-b-8 border-green-950 active:scale-95 transition-all shadow-2xl hover:from-green-500 hover:to-green-700 flex flex-col items-center justify-center gap-2"
+                            >
+                                <span className="bg-white/20 px-3 py-1 rounded-full text-xs uppercase tracking-widest text-white">+ Ponto</span>
+                                <div className="text-center px-4 leading-tight">
+                                    {matchData.home_team?.name || 'Jogador 1'}
+                                </div>
+                            </button>
+                            <button
+                                onClick={() => addPoint('away')}
+                                className="py-12 bg-gradient-to-br from-emerald-600 to-emerald-800 rounded-3xl font-black text-2xl border-b-8 border-emerald-950 active:scale-95 transition-all shadow-2xl hover:from-emerald-500 hover:to-emerald-700 flex flex-col items-center justify-center gap-2"
+                            >
+                                <span className="bg-white/20 px-3 py-1 rounded-full text-xs uppercase tracking-widest text-white">+ Ponto</span>
+                                <div className="text-center px-4 leading-tight">
+                                    {matchData.away_team?.name || 'Jogador 2'}
+                                </div>
+                            </button>
+                        </>
+                    )}
                 </div>
             )}
 

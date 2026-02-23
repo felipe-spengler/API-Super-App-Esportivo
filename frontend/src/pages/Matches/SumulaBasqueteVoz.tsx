@@ -192,7 +192,10 @@ export function SumulaBasqueteVoz() {
                 minute: '00:00', // TODO: Get real time
                 period: currentQuarter,
                 player_id: pendingAction.player.id,
-                value: pendingAction.value
+                value: pendingAction.value,
+                metadata: {
+                    system_period: currentQuarter
+                }
             });
 
             setPendingAction(null);

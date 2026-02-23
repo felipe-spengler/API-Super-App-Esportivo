@@ -157,12 +157,26 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
     // Helper to format events
     const getSortedEvents = () => {
         if (!details?.events) return [];
-        // Sort events by time (descending)
-        return [...details.events].sort((a, b) => {
-            // Handle '45+2' format if exists, or just numbers
+
+        // 1. Sort events by time (descending)
+        const sorted = [...details.events].sort((a, b) => {
             const timeA = parseInt(String(a.minute).replace(/\D/g, '')) || 0;
             const timeB = parseInt(String(b.minute).replace(/\D/g, '')) || 0;
             return timeB - timeA;
+        });
+
+        // 2. Filter duplicate system events (keep only the most recent one of each type/period combo)
+        const seenSystemEvents = new Set<string>();
+        return sorted.filter(event => {
+            const isUniqSystemEvent = ['match_start', 'match_end', 'period_start', 'period_end'].includes(event.type);
+            if (!isUniqSystemEvent) return true;
+
+            const periodKey = event.period || event.metadata?.system_period || event.metadata?.label || 'no-period';
+            const key = `${event.type}-${periodKey}`;
+
+            if (seenSystemEvents.has(key)) return false;
+            seenSystemEvents.add(key);
+            return true;
         });
     };
 

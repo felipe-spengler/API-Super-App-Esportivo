@@ -160,7 +160,10 @@ export function SumulaBeachTennis() {
                 event_type: 'point',
                 team_id: team === 'home' ? matchData.home_team_id : matchData.away_team_id,
                 period: `Set ${currentSet}`,
-                metadata: { game_score: `${newScore.home}-${newScore.away}` }
+                metadata: {
+                    game_score: `${newScore.home}-${newScore.away}`,
+                    system_period: `Set ${currentSet}`
+                }
             });
         } catch (e) {
             console.error(e);
@@ -237,7 +240,10 @@ export function SumulaBeachTennis() {
                 team_id: matchData.home_team_id || matchData.away_team_id,
                 minute: 0,
                 period: `Set ${currentSet}`,
-                metadata: { label }
+                metadata: {
+                    label,
+                    system_period: `Set ${currentSet}`
+                }
             });
 
             // If we successfully started the match, update status locally

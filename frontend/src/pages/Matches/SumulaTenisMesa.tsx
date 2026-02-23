@@ -168,6 +168,24 @@ export function SumulaTenisMesa() {
         }
     };
 
+    const quickFinishSet = async (team: 'home' | 'away') => {
+        if (matchFinished) return;
+
+        if (!window.confirm(`Confirmar vitória do Set para ${team === 'home' ? matchData.home_team?.name : matchData.away_team?.name}?`)) return;
+
+        // If match is still scheduled, try to set to live on first action
+        if (matchData && (matchData.status === 'scheduled' || matchData.status === 'Agendado')) {
+            registerSystemEvent('match_start', 'Início da Partida!');
+        }
+
+        const finalScore = {
+            home: team === 'home' ? POINTS_TO_WIN : 0,
+            away: team === 'away' ? POINTS_TO_WIN : 0
+        };
+
+        await finishSet(finalScore);
+    };
+
     const finishSet = async (finalScore: any) => {
         const setData = {
             set_number: currentSet,
@@ -325,8 +343,10 @@ export function SumulaTenisMesa() {
             {/* Action Buttons */}
             {!matchFinished && (
                 <div className="p-4 grid grid-cols-2 gap-4 max-w-3xl mx-auto">
-                    <div className="space-y-2">
+                    <div className="space-y-4">
                         <div className="text-center text-sm font-bold text-red-300 mb-2">{matchData.home_team?.name || 'Jogador 1'}</div>
+
+                        {/* Pontos */}
                         <button
                             onClick={() => addPoint('home')}
                             className={`w-full py-16 rounded-3xl font-black text-6xl border-b-8 active:scale-95 transition-all shadow-2xl flex items-center justify-center ${server === 'home'
@@ -336,16 +356,27 @@ export function SumulaTenisMesa() {
                         >
                             <Plus size={64} strokeWidth={3} />
                         </button>
-                        <button
-                            onClick={() => removePoint('home')}
-                            className="w-full py-3 bg-gray-800 hover:bg-gray-700 rounded-xl font-bold text-sm border-b-4 border-gray-950 active:scale-95 transition-all flex items-center justify-center gap-2"
-                        >
-                            <Minus size={16} /> Remover
-                        </button>
+
+                        <div className="grid grid-cols-2 gap-2">
+                            <button
+                                onClick={() => removePoint('home')}
+                                className="py-3 bg-gray-800 hover:bg-gray-700 rounded-xl font-bold text-[10px] border-b-4 border-gray-950 active:scale-95 transition-all flex items-center justify-center gap-1"
+                            >
+                                <Minus size={14} /> Corrigir
+                            </button>
+                            <button
+                                onClick={() => quickFinishSet('home')}
+                                className="py-3 bg-red-600/40 hover:bg-red-600/60 text-white rounded-xl font-bold text-[10px] border-b-4 border-red-900 active:scale-95 transition-all flex items-center justify-center gap-1 uppercase tracking-tighter"
+                            >
+                                <Trophy size={14} /> Ganhar Set
+                            </button>
+                        </div>
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-4">
                         <div className="text-center text-sm font-bold text-red-300 mb-2">{matchData.away_team?.name || 'Jogador 2'}</div>
+
+                        {/* Pontos */}
                         <button
                             onClick={() => addPoint('away')}
                             className={`w-full py-16 rounded-3xl font-black text-6xl border-b-8 active:scale-95 transition-all shadow-2xl flex items-center justify-center ${server === 'away'
@@ -355,12 +386,21 @@ export function SumulaTenisMesa() {
                         >
                             <Plus size={64} strokeWidth={3} />
                         </button>
-                        <button
-                            onClick={() => removePoint('away')}
-                            className="w-full py-3 bg-gray-800 hover:bg-gray-700 rounded-xl font-bold text-sm border-b-4 border-gray-950 active:scale-95 transition-all flex items-center justify-center gap-2"
-                        >
-                            <Minus size={16} /> Remover
-                        </button>
+
+                        <div className="grid grid-cols-2 gap-2">
+                            <button
+                                onClick={() => removePoint('away')}
+                                className="py-3 bg-gray-800 hover:bg-gray-700 rounded-xl font-bold text-[10px] border-b-4 border-gray-950 active:scale-95 transition-all flex items-center justify-center gap-1"
+                            >
+                                <Minus size={14} /> Corrigir
+                            </button>
+                            <button
+                                onClick={() => quickFinishSet('away')}
+                                className="py-3 bg-red-600/40 hover:bg-red-600/60 text-white rounded-xl font-bold text-[10px] border-b-4 border-red-900 active:scale-95 transition-all flex items-center justify-center gap-1 uppercase tracking-tighter"
+                            >
+                                <Trophy size={14} /> Ganhar Set
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
