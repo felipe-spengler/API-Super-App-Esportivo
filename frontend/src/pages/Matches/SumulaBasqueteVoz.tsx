@@ -292,10 +292,16 @@ export function SumulaBasqueteVoz() {
     const toggleListening = async () => {
         if (Capacitor.isNativePlatform()) {
             if (isListening) {
-                const result = await SpeechRecognition.stop();
+                const result: any = await SpeechRecognition.stop();
                 setIsListening(false);
-                if (result.matches && result.matches.length > 0) {
-                    processVoiceCommand(result.matches[0]);
+
+                // Use result matches or fallback to current transcript
+                const finalTranscript = (result && result.matches && result.matches.length > 0)
+                    ? result.matches[0]
+                    : transcript;
+
+                if (finalTranscript) {
+                    processVoiceCommand(finalTranscript);
                 }
             } else {
                 setPendingAction(null);
