@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Minus, RotateCcw, Trophy, Activity } from 'lucide-react';
+import { ArrowLeft, Plus, Minus, RotateCcw, Trophy, Activity, X } from 'lucide-react';
 import api from '../../services/api';
 
 export function SumulaTenis() {
@@ -19,6 +19,7 @@ export function SumulaTenis() {
     const [gamesWon, setGamesWon] = useState({ home: 0, away: 0 }); // Games vencidos no set atual
     const [matchFinished, setMatchFinished] = useState(false);
     const [isQuickMode, setIsQuickMode] = useState(false); // Alterna entre marcar pontos ou games direto
+    const [events, setEvents] = useState<any[]>([]);
 
     const fetchMatchDetails = async (silent = false) => {
         try {
@@ -37,6 +38,11 @@ export function SumulaTenis() {
                 // Recover sets history if exists
                 if (data.details?.sets && data.details.sets.length > 0) {
                     setSets(data.details.sets);
+                }
+
+                if (data.details?.events) {
+                    const sortedEvents = [...data.details.events].sort((a, b) => b.id - a.id);
+                    setEvents(sortedEvents);
                 }
 
                 // Recover current state from server sync
@@ -143,7 +149,7 @@ export function SumulaTenis() {
 
         // Save game event
         try {
-            await api.post(`/admin/matches/${id}/events`, {
+            const resp = await api.post(`/admin/matches/${id}/events`, {
                 event_type: 'game_won',
                 team_id: team === 'home' ? matchData.home_team_id : matchData.away_team_id,
                 period: `Set ${currentSet}`,
@@ -152,6 +158,7 @@ export function SumulaTenis() {
                     system_period: `Set ${currentSet}`
                 }
             });
+            setEvents(prev => [resp.data.event, ...prev]);
         } catch (e) {
             console.error(e);
         }
@@ -227,7 +234,7 @@ export function SumulaTenis() {
 
         // Save point event
         try {
-            await api.post(`/admin/matches/${id}/events`, {
+            const resp = await api.post(`/admin/matches/${id}/events`, {
                 event_type: 'point',
                 team_id: team === 'home' ? matchData.home_team_id : matchData.away_team_id,
                 period: `Set ${currentSet}`,
@@ -236,6 +243,7 @@ export function SumulaTenis() {
                     system_period: `Set ${currentSet}`
                 }
             });
+            setEvents(prev => [resp.data.event, ...prev]);
         } catch (e) {
             console.error(e);
         }
@@ -303,6 +311,41 @@ export function SumulaTenis() {
         }
     };
 
+    const handleDeleteEvent = async (eventId: number) => {
+        const eventToDelete = events.find(e => e.id === eventId);
+        if (!eventToDelete) return;
+
+        if (!window.confirm('Excluir este lançamento e reverter o placar?')) return;
+
+        try {
+            await api.delete(`/admin/matches/${id}/events/${eventId}`);
+
+            // Se o evento deletado for um que finalizou o set, precisamos deletar o set também
+            // (Assumindo que deletar o evento que fecha o jogo/set deve reverter o estado)
+            const isSetFinisher = events.indexOf(eventToDelete) === 0 && sets.length > 0;
+            // No tênis, um point ou game_won pode fechar um set.
+
+            // Recalcular estado local é arriscado só decrementando, então vamos recarregar tudo do zero
+            // Mas primeiro, se deletou um fim de set, deleta o registro do set no backend
+            if (eventToDelete.metadata?.is_set_finisher || (eventToDelete.type === 'game_won' && sets.some(s => s.set_number === currentSet))) {
+                // Tenta achar o set e deletar
+                const lastSet = sets[sets.length - 1];
+                if (lastSet) {
+                    await api.delete(`/admin/matches/${id}/sets/${lastSet.id}`);
+                }
+            }
+
+            // Recarrega tudo do backend para garantir consistência
+            fetchMatchDetails();
+            // Limpa estados locais que não vem do sync se necessário
+            if (sets.length > 0) setSets(sets.filter((_, i) => i !== sets.length - 1));
+
+        } catch (e) {
+            console.error(e);
+            alert('Erro ao excluir evento');
+        }
+    };
+
     const registerSystemEvent = async (type: string, label: string) => {
         if (!matchData) return;
         try {
@@ -361,17 +404,21 @@ export function SumulaTenis() {
                 <div className="px-4 space-y-3">
                     {/* Sets Won */}
                     <div className="flex items-center justify-center gap-4">
-                        <div className="text-center flex-1">
+                        <div className="text-center flex-1 min-w-0">
                             <div className="text-6xl font-black font-mono leading-none mb-1 text-white drop-shadow-[0_4px_8px_rgba(0,0,0,0.3)]">{matchData.scoreHome}</div>
-                            <h2 className="font-bold text-sm text-green-100 truncate max-w-[140px] mx-auto">{matchData.home_team?.name || 'Jogador 1'}</h2>
+                            <h2 className="font-bold text-sm text-green-100 truncate w-full px-2" title={matchData.home_team?.name}>
+                                {matchData.home_team?.name || 'Jogador 1'}
+                            </h2>
                         </div>
-                        <div className="flex flex-col items-center">
+                        <div className="flex flex-col items-center shrink-0">
                             <span className="text-[10px] font-bold text-white/50 uppercase">Sets</span>
                             <div className="h-px w-8 bg-white/20 my-1"></div>
                         </div>
-                        <div className="text-center flex-1">
+                        <div className="text-center flex-1 min-w-0">
                             <div className="text-6xl font-black font-mono leading-none mb-1 text-white drop-shadow-[0_4px_8px_rgba(0,0,0,0.3)]">{matchData.scoreAway}</div>
-                            <h2 className="font-bold text-sm text-green-100 truncate max-w-[140px] mx-auto">{matchData.away_team?.name || 'Jogador 2'}</h2>
+                            <h2 className="font-bold text-sm text-green-100 truncate w-full px-2" title={matchData.away_team?.name}>
+                                {matchData.away_team?.name || 'Jogador 2'}
+                            </h2>
                         </div>
                     </div>
 
@@ -436,19 +483,19 @@ export function SumulaTenis() {
                         <>
                             <button
                                 onClick={() => addGame('home')}
-                                className="py-16 bg-gradient-to-br from-blue-600 to-blue-800 rounded-3xl font-black text-2xl border-b-8 border-blue-950 active:scale-95 transition-all shadow-2xl hover:from-blue-500 hover:to-blue-700 flex flex-col items-center justify-center gap-2"
+                                className="py-16 bg-gradient-to-br from-blue-600 to-blue-800 rounded-3xl font-black text-2xl border-b-8 border-blue-950 active:scale-95 transition-all shadow-2xl hover:from-blue-500 hover:to-blue-700 flex flex-col items-center justify-center gap-2 overflow-hidden px-2"
                             >
-                                <span className="bg-white/20 px-3 py-1 rounded-full text-xs uppercase tracking-widest text-white">+ Game</span>
-                                <div className="text-center px-4 leading-tight">
+                                <span className="bg-white/20 px-3 py-1 rounded-full text-xs uppercase tracking-widest text-white shrink-0">+ Game</span>
+                                <div className="text-center w-full leading-tight truncate text-sm uppercase px-1">
                                     {matchData.home_team?.name || 'Jogador 1'}
                                 </div>
                             </button>
                             <button
                                 onClick={() => addGame('away')}
-                                className="py-16 bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-3xl font-black text-2xl border-b-8 border-indigo-950 active:scale-95 transition-all shadow-2xl hover:from-indigo-500 hover:to-indigo-700 flex flex-col items-center justify-center gap-2"
+                                className="py-16 bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-3xl font-black text-2xl border-b-8 border-indigo-950 active:scale-95 transition-all shadow-2xl hover:from-indigo-500 hover:to-indigo-700 flex flex-col items-center justify-center gap-2 overflow-hidden px-2"
                             >
-                                <span className="bg-white/20 px-3 py-1 rounded-full text-xs uppercase tracking-widest text-white">+ Game</span>
-                                <div className="text-center px-4 leading-tight">
+                                <span className="bg-white/20 px-3 py-1 rounded-full text-xs uppercase tracking-widest text-white shrink-0">+ Game</span>
+                                <div className="text-center w-full leading-tight truncate text-sm uppercase px-1">
                                     {matchData.away_team?.name || 'Jogador 2'}
                                 </div>
                             </button>
@@ -457,19 +504,19 @@ export function SumulaTenis() {
                         <>
                             <button
                                 onClick={() => addPoint('home')}
-                                className="py-12 bg-gradient-to-br from-green-600 to-green-800 rounded-3xl font-black text-2xl border-b-8 border-green-950 active:scale-95 transition-all shadow-2xl hover:from-green-500 hover:to-green-700 flex flex-col items-center justify-center gap-2"
+                                className="py-12 bg-gradient-to-br from-green-600 to-green-800 rounded-3xl font-black text-2xl border-b-8 border-green-950 active:scale-95 transition-all shadow-2xl hover:from-green-500 hover:to-green-700 flex flex-col items-center justify-center gap-2 overflow-hidden px-2"
                             >
-                                <span className="bg-white/20 px-3 py-1 rounded-full text-xs uppercase tracking-widest text-white">+ Ponto</span>
-                                <div className="text-center px-4 leading-tight">
+                                <span className="bg-white/20 px-3 py-1 rounded-full text-xs uppercase tracking-widest text-white shrink-0">+ Ponto</span>
+                                <div className="text-center w-full leading-tight truncate text-sm uppercase px-1">
                                     {matchData.home_team?.name || 'Jogador 1'}
                                 </div>
                             </button>
                             <button
                                 onClick={() => addPoint('away')}
-                                className="py-12 bg-gradient-to-br from-emerald-600 to-emerald-800 rounded-3xl font-black text-2xl border-b-8 border-emerald-950 active:scale-95 transition-all shadow-2xl hover:from-emerald-500 hover:to-emerald-700 flex flex-col items-center justify-center gap-2"
+                                className="py-12 bg-gradient-to-br from-emerald-600 to-emerald-800 rounded-3xl font-black text-2xl border-b-8 border-emerald-950 active:scale-95 transition-all shadow-2xl hover:from-emerald-500 hover:to-emerald-700 flex flex-col items-center justify-center gap-2 overflow-hidden px-2"
                             >
-                                <span className="bg-white/20 px-3 py-1 rounded-full text-xs uppercase tracking-widest text-white">+ Ponto</span>
-                                <div className="text-center px-4 leading-tight">
+                                <span className="bg-white/20 px-3 py-1 rounded-full text-xs uppercase tracking-widest text-white shrink-0">+ Ponto</span>
+                                <div className="text-center w-full leading-tight truncate text-sm uppercase px-1">
                                     {matchData.away_team?.name || 'Jogador 2'}
                                 </div>
                             </button>
@@ -477,6 +524,39 @@ export function SumulaTenis() {
                     )}
                 </div>
             )}
+
+            {/* Event Log / Undo Section */}
+            <div className="px-4 mt-8 max-w-3xl mx-auto">
+                <h3 className="text-xs font-black text-white/50 uppercase mb-4 flex items-center gap-2 tracking-[0.2em]">
+                    <Activity size={14} /> Histórico de Lançamentos
+                </h3>
+                <div className="bg-black/20 rounded-2xl border border-white/5 overflow-hidden">
+                    {events.slice(0, 5).map((ev, i) => (
+                        <div key={ev.id} className="flex items-center justify-between p-3 border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                            <div className="flex items-center gap-3">
+                                <span className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold ${ev.team_id === matchData.home_team_id ? 'bg-blue-600' : 'bg-green-600'}`}>
+                                    {ev.team_id === matchData.home_team_id ? matchData.home_team?.name?.substring(0, 2).toUpperCase() : matchData.away_team?.name?.substring(0, 2).toUpperCase()}
+                                </span>
+                                <div className="flex flex-col">
+                                    <span className="text-xs font-bold uppercase">{ev.type === 'point' ? 'Ponto' : ev.type === 'game_won' ? 'Game' : ev.type}</span>
+                                    <span className="text-[10px] text-white/40">{ev.period}</span>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => handleDeleteEvent(ev.id)}
+                                className="p-2 text-white/20 hover:text-red-400 transition-colors"
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
+                    ))}
+                    {events.length === 0 && (
+                        <div className="p-8 text-center text-white/20 text-xs font-bold uppercase tracking-widest">
+                            Sem lançamentos recentes
+                        </div>
+                    )}
+                </div>
+            </div>
 
             {/* Sets History */}
             <div className="px-4 mt-4 max-w-3xl mx-auto">
