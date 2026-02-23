@@ -10,6 +10,8 @@ export interface BracketMatch {
     team2_logo?: string;
     team1_score?: number | null;
     team2_score?: number | null;
+    team1_penalty?: number | null;
+    team2_penalty?: number | null;
     round: string | number;
     match_date?: string;
     location?: string;
@@ -123,9 +125,16 @@ export function TournamentBracket({ matches, emptyMessage = "Chaveamento ainda n
                                                         {match.team1_name || 'A definir'}
                                                     </span>
                                                 </div>
-                                                <span className="font-black text-gray-900 text-lg">
-                                                    {match.team1_score ?? '-'}
-                                                </span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-black text-gray-900 text-lg">
+                                                        {match.team1_score ?? '-'}
+                                                    </span>
+                                                    {match.team1_penalty !== null && match.team1_penalty !== undefined && (match.team1_penalty > 0 || match.team2_penalty > 0) && (
+                                                        <span className="text-[10px] font-bold text-gray-400">
+                                                            ({match.team1_penalty})
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
 
                                             {/* Team 2 */}
@@ -143,9 +152,16 @@ export function TournamentBracket({ matches, emptyMessage = "Chaveamento ainda n
                                                         {match.team2_name || 'A definir'}
                                                     </span>
                                                 </div>
-                                                <span className="font-black text-gray-900 text-lg">
-                                                    {match.team2_score ?? '-'}
-                                                </span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-black text-gray-900 text-lg">
+                                                        {match.team2_score ?? '-'}
+                                                    </span>
+                                                    {match.team2_penalty !== null && match.team2_penalty !== undefined && (match.team2_penalty > 0 || match.team1_penalty > 0) && (
+                                                        <span className="text-[10px] font-bold text-gray-400">
+                                                            ({match.team2_penalty})
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
 

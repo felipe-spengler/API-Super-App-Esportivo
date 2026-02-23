@@ -302,8 +302,13 @@ class EventController extends Controller
     {
         $query = GameMatch::where('championship_id', $championshipId)
             ->with(['homeTeam', 'awayTeam'])
-            ->whereNotNull('round_name') // Apenas jogos de mata-mata têm 'round_name' definida
-            ->orderByRaw("FIELD(round_name, 'round_of_16', 'quarter', 'semi', 'final')");
+            ->whereNotNull('round_name')
+            ->orderByRaw("CASE 
+                WHEN round_name LIKE '%16%' OR round_name LIKE '%oitavas%' THEN 1
+                WHEN round_name LIKE '%quarter%' OR round_name LIKE '%quartas%' THEN 2
+                WHEN round_name LIKE '%semi%' THEN 3
+                WHEN round_name LIKE '%final%' THEN 4
+                ELSE 99 END");
 
         if ($request->has('category_id') && $request->category_id != 'null') {
             $query->where('category_id', $request->category_id);
@@ -321,12 +326,14 @@ class EventController extends Controller
                 'team2_logo' => $match->awayTeam->logo_url ?? null,
                 'team1_score' => $match->home_score,
                 'team2_score' => $match->away_score,
-                'round' => $match->round_name, // 'round_of_16', 'quarter', 'semi', 'final'
+                'team1_penalty' => $match->home_penalty_score,
+                'team2_penalty' => $match->away_penalty_score,
+                'round' => $match->round_name,
                 'match_date' => $match->start_time,
                 'location' => $match->location,
                 'status' => $match->status,
                 'winner_team_id' => $match->home_score !== null && $match->away_score !== null
-                    ? ($match->home_score > $match->away_score ? $match->home_team_id : $match->away_team_id)
+                    ? ($match->home_score > $match->away_score || ($match->home_score == $match->away_score && $match->home_penalty_score > $match->away_penalty_score) ? $match->home_team_id : $match->away_team_id)
                     : null
             ];
         });

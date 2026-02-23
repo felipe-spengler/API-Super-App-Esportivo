@@ -1,6 +1,7 @@
 import { MapPin, Trophy, ChevronDown, ChevronUp, Shield } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import { Icon } from '@iconify/react';
 import api from '../../services/api';
 
 type City = {
@@ -82,7 +83,7 @@ export function PublicHome() {
 
                     <div className="mb-10 text-center relative z-10">
                         <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-indigo-600 to-violet-600 rounded-2xl shadow-lg shadow-indigo-200 mb-6 transform hover:rotate-6 transition-transform">
-                            <Trophy className="w-8 h-8 text-white" />
+                            <Icon icon="fluent-emoji:trophy" className="w-8 h-8" />
                         </div>
                         <h1 className="text-3xl font-black text-slate-900 mb-3 tracking-tight">
                             Onde você quer <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600">jogar?</span>

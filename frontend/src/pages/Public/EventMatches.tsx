@@ -221,13 +221,22 @@ export function EventMatches() {
                                 </div>
                             ) : (
                                 <>
-                                    <span className={`text-2xl font-black ${match.home_score > match.away_score ? 'text-gray-900' : 'text-gray-600'}`}>
-                                        {match.home_score ?? '-'}
-                                    </span>
-                                    <span className="text-xs text-gray-400 font-bold">X</span>
-                                    <span className={`text-2xl font-black ${match.away_score > match.home_score ? 'text-gray-900' : 'text-gray-600'}`}>
-                                        {match.away_score ?? '-'}
-                                    </span>
+                                    <div className="flex flex-col items-center">
+                                        <div className="flex items-center gap-3">
+                                            <span className={`text-2xl font-black ${match.home_score > match.away_score ? 'text-gray-900' : 'text-gray-600'}`}>
+                                                {match.home_score ?? '-'}
+                                            </span>
+                                            <span className="text-xs text-gray-400 font-bold">X</span>
+                                            <span className={`text-2xl font-black ${match.away_score > match.home_score ? 'text-gray-900' : 'text-gray-600'}`}>
+                                                {match.away_score ?? '-'}
+                                            </span>
+                                        </div>
+                                        {match.home_penalty_score !== null && match.away_penalty_score !== null && (match.home_penalty_score > 0 || match.away_penalty_score > 0) && (
+                                            <span className="text-[10px] font-bold text-indigo-500 mt-1">
+                                                ({match.home_penalty_score} x {match.away_penalty_score} Pen)
+                                            </span>
+                                        )}
+                                    </div>
                                 </>
                             )}
                         </div>
@@ -400,8 +409,8 @@ export function EventMatches() {
                         <button
                             onClick={() => setSelectedRound('Todas')}
                             className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${selectedRound === 'Todas'
-                                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                                    : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600'
+                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                                : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600'
                                 }`}
                         >
                             Todas as Fases
@@ -411,8 +420,8 @@ export function EventMatches() {
                                 key={label}
                                 onClick={() => setSelectedRound(label)}
                                 className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${selectedRound === label
-                                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                                        : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600'
+                                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                                    : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600'
                                     }`}
                             >
                                 {label}

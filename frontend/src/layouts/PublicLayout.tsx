@@ -1,5 +1,6 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { Trophy, Home, User, Lock } from 'lucide-react';
+import { Trophy, Home, User, Lock, ChevronDown } from 'lucide-react';
+import { Icon } from '@iconify/react';
 import { useAuth } from '../context/AuthContext';
 
 export function PublicLayout() {
@@ -27,8 +28,8 @@ export function PublicLayout() {
                         {/* Logo Area */}
                         <div className="flex-shrink-0 flex items-center gap-3 group cursor-pointer">
                             <Link to="/" className="flex items-center gap-4">
-                                <div className="bg-gradient-to-br from-indigo-600 to-violet-600 p-3 rounded-2xl shadow-xl shadow-indigo-200 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500">
-                                    <Trophy className="w-7 h-7 text-white" />
+                                <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-all duration-500">
+                                    <Icon icon="fluent-emoji:trophy" className="w-8 h-8" />
                                 </div>
                                 <div className="flex flex-col">
                                     <span translate="no" className="font-black text-2xl text-slate-900 tracking-tighter leading-none group-hover:text-indigo-600 transition-colors">
@@ -42,23 +43,23 @@ export function PublicLayout() {
                         {/* Desktop Menu Links - Centered */}
                         <div className="hidden md:flex items-center gap-4">
                             <Link to="/" className={`flex items-center gap-2.5 px-5 py-2.5 text-sm font-black transition-all duration-300 rounded-2xl group ${isActive('/') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-500 hover:bg-slate-50 hover:text-indigo-600'}`}>
-                                <Home className={`w-4.5 h-4.5 transition-colors ${isActive('/') ? 'text-white' : 'text-slate-400 group-hover:text-indigo-400'}`} />
+                                <Icon icon="fluent-emoji:house" className={`w-5 h-5 transition-transform group-hover:scale-110`} />
                                 <span translate="no" className="uppercase tracking-wide">Início</span>
                             </Link>
 
                             <Link to="/explore" className={`flex items-center gap-2.5 px-5 py-2.5 text-sm font-black transition-all duration-300 rounded-2xl group ${isActive('/explore') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-500 hover:bg-slate-50 hover:text-indigo-600'}`}>
-                                <Trophy className={`w-4.5 h-4.5 transition-colors ${isActive('/explore') ? 'text-white' : 'text-slate-400 group-hover:text-indigo-400'}`} />
+                                <Icon icon="fluent-emoji:compass" className={`w-5 h-5 transition-transform group-hover:scale-110`} />
                                 <span translate="no" className="uppercase tracking-wide">Explorar</span>
                             </Link>
 
                             <Link to="/profile" className={`flex items-center gap-2.5 px-5 py-2.5 text-sm font-black transition-all duration-300 rounded-2xl group ${isActive('/profile') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-500 hover:bg-slate-50 hover:text-indigo-600'}`}>
-                                <User className={`w-4.5 h-4.5 transition-colors ${isActive('/profile') ? 'text-white' : 'text-slate-400 group-hover:text-indigo-400'}`} />
+                                <Icon icon="fluent-emoji:person" className={`w-5 h-5 transition-transform group-hover:scale-110`} />
                                 <span translate="no" className="uppercase tracking-wide">Perfil</span>
                             </Link>
 
                             {user?.is_admin && (
                                 <Link to="/admin/dashboard" className={`flex items-center gap-2.5 px-5 py-2.5 text-sm font-black transition-all duration-300 rounded-2xl group ${location.pathname.startsWith('/admin') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-500 hover:bg-slate-50 hover:text-indigo-600'}`}>
-                                    <Lock className={`w-4.5 h-4.5 transition-colors ${location.pathname.startsWith('/admin') ? 'text-white' : 'text-slate-400 group-hover:text-indigo-400'}`} />
+                                    <Icon icon="fluent-emoji:locked-with-key" className={`w-5 h-5 transition-transform group-hover:scale-110`} />
                                     <span translate="no" className="uppercase tracking-wide">Admin</span>
                                 </Link>
                             )}
@@ -125,28 +126,28 @@ export function PublicLayout() {
                 }}
             >
                 <div className="flex justify-around items-center h-16">
-                    <Link to="/" className={`relative flex flex-col items-center justify-center h-full min-w-[70px] transition-all duration-300 ${isActive('/') || isActive('/club-home') ? 'text-indigo-600 scale-110' : 'text-slate-400'}`}>
-                        <Home className={`w-6 h-6 transition-all ${isActive('/') ? 'fill-indigo-50' : ''}`} />
-                        <span translate="no" className={`text-[9px] font-black uppercase tracking-widest mt-1.5 transition-all ${isActive('/') ? 'opacity-100' : 'opacity-60'}`}>Início</span>
-                        {isActive('/') && <div className="absolute top-0 w-8 h-1 bg-indigo-600 rounded-b-full shadow-[0_2px_10px_rgba(79,70,229,0.4)]" />}
+                    <Link to="/" className={`relative flex flex-col items-center justify-center h-full min-w-[70px] transition-all duration-300 ${isActive('/') || isActive('/club-home') ? 'scale-110 active-nav' : 'grayscale opacity-70 hover:opacity-100'}`}>
+                        <Icon icon="fluent-emoji:house" className="w-6 h-6" />
+                        <span translate="no" className={`text-[9px] font-black uppercase tracking-widest mt-1.5 transition-all ${isActive('/') ? 'text-indigo-600' : 'text-slate-500'}`}>Início</span>
+                        {(isActive('/') || isActive('/club-home')) && <div className="absolute top-0 w-8 h-1 bg-indigo-600 rounded-b-full shadow-[0_2px_10px_rgba(79,70,229,0.4)]" />}
                     </Link>
 
-                    <Link to="/explore" className={`relative flex flex-col items-center justify-center h-full min-w-[70px] transition-all duration-300 ${isActive('/explore') ? 'text-indigo-600 scale-110' : 'text-slate-400'}`}>
-                        <Trophy className={`w-6 h-6 transition-all ${isActive('/explore') ? 'fill-indigo-50' : ''}`} />
-                        <span translate="no" className={`text-[9px] font-black uppercase tracking-widest mt-1.5 transition-all ${isActive('/explore') ? 'opacity-100' : 'opacity-60'}`}>Explorar</span>
+                    <Link to="/explore" className={`relative flex flex-col items-center justify-center h-full min-w-[70px] transition-all duration-300 ${isActive('/explore') ? 'scale-110 active-nav' : 'grayscale opacity-70 hover:opacity-100'}`}>
+                        <Icon icon="fluent-emoji:compass" className="w-6 h-6" />
+                        <span translate="no" className={`text-[9px] font-black uppercase tracking-widest mt-1.5 transition-all ${isActive('/explore') ? 'text-indigo-600' : 'text-slate-500'}`}>Explorar</span>
                         {isActive('/explore') && <div className="absolute top-0 w-8 h-1 bg-indigo-600 rounded-b-full shadow-[0_2px_10px_rgba(79,70,229,0.4)]" />}
                     </Link>
 
-                    <Link to="/profile" className={`relative flex flex-col items-center justify-center h-full min-w-[70px] transition-all duration-300 ${isActive('/profile') ? 'text-indigo-600 scale-110' : 'text-slate-400'}`}>
-                        <User className={`w-6 h-6 transition-all ${isActive('/profile') ? 'fill-indigo-50' : ''}`} />
-                        <span translate="no" className={`text-[9px] font-black uppercase tracking-widest mt-1.5 transition-all ${isActive('/profile') ? 'opacity-100' : 'opacity-60'}`}>Perfil</span>
+                    <Link to="/profile" className={`relative flex flex-col items-center justify-center h-full min-w-[70px] transition-all duration-300 ${isActive('/profile') ? 'scale-110 active-nav' : 'grayscale opacity-70 hover:opacity-100'}`}>
+                        <Icon icon="fluent-emoji:person" className="w-6 h-6" />
+                        <span translate="no" className={`text-[9px] font-black uppercase tracking-widest mt-1.5 transition-all ${isActive('/profile') ? 'text-indigo-600' : 'text-slate-500'}`}>Perfil</span>
                         {isActive('/profile') && <div className="absolute top-0 w-8 h-1 bg-indigo-600 rounded-b-full shadow-[0_2px_10px_rgba(79,70,229,0.4)]" />}
                     </Link>
 
                     {user?.is_admin && (
-                        <Link to="/admin/dashboard" className={`relative flex flex-col items-center justify-center h-full min-w-[70px] transition-all duration-300 ${location.pathname.startsWith('/admin') ? 'text-indigo-600 scale-110' : 'text-slate-400'}`}>
-                            <Lock className={`w-6 h-6 transition-all ${location.pathname.startsWith('/admin') ? 'fill-indigo-50' : ''}`} />
-                            <span translate="no" className={`text-[9px] font-black uppercase tracking-widest mt-1.5 transition-all ${location.pathname.startsWith('/admin') ? 'opacity-100' : 'opacity-60'}`}>Admin</span>
+                        <Link to="/admin/dashboard" className={`relative flex flex-col items-center justify-center h-full min-w-[70px] transition-all duration-300 ${location.pathname.startsWith('/admin') ? 'scale-110 active-nav' : 'grayscale opacity-70 hover:opacity-100'}`}>
+                            <Icon icon="fluent-emoji:locked-with-key" className="w-6 h-6" />
+                            <span translate="no" className={`text-[9px] font-black uppercase tracking-widest mt-1.5 transition-all ${location.pathname.startsWith('/admin') ? 'text-indigo-600' : 'text-slate-500'}`}>Admin</span>
                             {location.pathname.startsWith('/admin') && <div className="absolute top-0 w-8 h-1 bg-indigo-600 rounded-b-full shadow-[0_2px_10px_rgba(79,70,229,0.4)]" />}
                         </Link>
                     )}

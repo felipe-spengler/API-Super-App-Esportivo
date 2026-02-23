@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { ArrowLeft, User, Shield, CreditCard, LogOut, Shirt, Users, Trophy, Camera, X } from 'lucide-react';
+import { ArrowLeft, User, Shield, LogOut, Camera, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { Icon } from '@iconify/react';
 import { useAuth } from '../../context/AuthContext';
 import { PhotoUploadSection } from '../Players/components/PhotoUploadSection';
 
@@ -49,10 +50,10 @@ export function Profile() {
     }
 
     const MENU_ITEMS = [
-        { label: 'Meus Times', icon: Users, route: '/profile/teams', color: 'text-blue-600', bg: 'bg-blue-100' },
-        { label: 'Minhas Inscrições', icon: Trophy, route: '/profile/inscriptions', color: 'text-yellow-600', bg: 'bg-yellow-100' },
-        { label: 'Meus Pedidos', icon: Shirt, route: '/profile/orders', color: 'text-purple-600', bg: 'bg-purple-100' },
-        { label: 'Carteirinha', icon: CreditCard, route: '/wallet', color: 'text-indigo-600', bg: 'bg-indigo-100' },
+        { label: 'Meus Times', icon: 'fluent-emoji:people-holding-hands', route: '/profile/teams' },
+        { label: 'Inscrições', icon: 'fluent-emoji:trophy', route: '/profile/inscriptions' },
+        { label: 'Meus Pedidos', icon: 'fluent-emoji:package', route: '/profile/orders' },
+        { label: 'Carteirinha', icon: 'fluent-emoji:identification-card', route: '/wallet' },
     ];
 
     return (
@@ -125,17 +126,16 @@ export function Profile() {
                 {/* Menu Grid */}
                 <div className="grid grid-cols-2 gap-5">
                     {MENU_ITEMS.map((item, idx) => {
-                        const Icon = item.icon;
                         return (
                             <button
                                 key={idx}
                                 onClick={() => navigate(item.route)}
                                 className="bg-white p-8 rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 flex flex-col items-center justify-center gap-4 hover:shadow-indigo-50 hover:border-indigo-200 transition-all active:scale-95 group"
                             >
-                                <div className={`p-4 rounded-2xl ${item.bg} ${item.color} group-hover:scale-110 transition-transform`}>
-                                    <Icon className="w-7 h-7" />
+                                <div className={`w-20 h-20 flex items-center justify-center bg-slate-50 rounded-[1.5rem] group-hover:scale-110 transition-transform`}>
+                                    <Icon icon={item.icon} className="w-12 h-12" />
                                 </div>
-                                <span className="font-black text-slate-700 text-xs uppercase tracking-widest text-center group-hover:text-indigo-600">{item.label}</span>
+                                <span className="font-black text-slate-700 text-[10px] uppercase tracking-widest text-center group-hover:text-indigo-600 whitespace-nowrap">{item.label}</span>
                             </button>
                         )
                     })}

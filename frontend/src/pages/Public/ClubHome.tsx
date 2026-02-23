@@ -1,17 +1,18 @@
 import { useNavigate, useParams } from 'react-router-dom';
-import { Trophy, Calendar, ShoppingBag, X, MapPin } from 'lucide-react';
+import { Trophy, Calendar, ShoppingBag, X, MapPin, ChevronRight, Share2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { Icon } from '@iconify/react';
 import api from '../../services/api';
 
 const ALL_SPORTS = [
-    { id: 'futebol', name: 'Futebol', icon: 'futbol', color: 'bg-green-600' },
-    { id: 'volei', name: 'Vôlei', icon: 'volleyball', color: 'bg-yellow-500' },
-    { id: 'corrida', name: 'Corrida', icon: 'person-running', color: 'bg-blue-500' },
-    { id: 'tenis', name: 'Tênis', icon: 'table-tennis', color: 'bg-orange-500' },
-    { id: 'lutas', name: 'Lutas', icon: 'hand-fist', color: 'bg-red-600' },
-    { id: 'natacao', name: 'Natação', icon: 'waves', color: 'bg-cyan-500' },
-    { id: 'padel', name: 'Padel', icon: 'table-tennis', color: 'bg-blue-400' },
-    { id: 'futebol-7', name: 'Futebol 7', icon: 'futbol', color: 'bg-green-500' },
+    { id: 'futebol', name: 'Futebol', icon: 'fluent-emoji:soccer-ball' },
+    { id: 'volei', name: 'Vôlei', icon: 'fluent-emoji:volleyball' },
+    { id: 'corrida', name: 'Corrida', icon: 'fluent-emoji:running-shoe' },
+    { id: 'tenis', name: 'Tênis', icon: 'fluent-emoji:tennis' },
+    { id: 'lutas', name: 'Lutas', icon: 'fluent-emoji:boxing-glove' },
+    { id: 'natacao', name: 'Natação', icon: 'fluent-emoji:swimmer' },
+    { id: 'padel', name: 'fluent-emoji:ping-pong', name_alt: 'Padel', icon: 'fluent-emoji:ping-pong' },
+    { id: 'futebol-7', name: 'Futebol 7', icon: 'fluent-emoji:soccer-ball' },
 ];
 
 export function ClubHome() {
@@ -151,53 +152,69 @@ export function ClubHome() {
 
                 {/* Atalhos Rápidos */}
                 <div>
-                    <h2 className="text-lg font-bold text-gray-800 mb-4 px-1">Acesso Rápido</h2>
-                    <div className="bg-white rounded-2xl p-6 flex justify-around shadow-sm border border-gray-100">
-                        <button className="flex flex-col items-center gap-2 group" onClick={() => navigate('/inscricoes')}>
-                            <div className="bg-gray-50 p-4 rounded-2xl group-hover:bg-indigo-50 transition-colors">
-                                <Trophy className="w-6 h-6 text-indigo-600" />
+                    <h2 className="text-lg font-black text-slate-800 mb-5 px-1 uppercase tracking-tight">Atalhos</h2>
+                    <div className="grid grid-cols-3 gap-4">
+                        <button
+                            className="bg-white rounded-[2rem] p-5 flex flex-col items-center gap-3 shadow-xl shadow-slate-100 border border-slate-50 hover:shadow-2xl hover:border-indigo-100 transition-all active:scale-95 group"
+                            onClick={() => navigate(`/club-home/${clubSlug}/championships`)}
+                        >
+                            <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <Icon icon="fluent-emoji:trophy" className="w-10 h-10" />
                             </div>
-                            <span className="text-xs text-gray-600 font-medium group-hover:text-indigo-600 transition-colors">Inscrições</span>
+                            <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest leading-none">Inscrições</span>
                         </button>
 
-                        <button className="flex flex-col items-center gap-2 group" onClick={() => navigate('/shop')}>
-                            <div className="bg-gray-50 p-4 rounded-2xl group-hover:bg-indigo-50 transition-colors">
-                                <ShoppingBag className="w-6 h-6 text-indigo-600" />
+                        <button
+                            className="bg-white rounded-[2rem] p-5 flex flex-col items-center gap-3 shadow-xl shadow-slate-100 border border-slate-50 hover:shadow-2xl hover:border-indigo-100 transition-all active:scale-95 group"
+                            onClick={() => navigate('/shop')}
+                        >
+                            <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <Icon icon="fluent-emoji:shopping-bags" className="w-10 h-10" />
                             </div>
-                            <span className="text-xs text-gray-600 font-medium group-hover:text-indigo-600 transition-colors">Loja</span>
+                            <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest leading-none text-center">Loja</span>
                         </button>
 
-                        <button className="flex flex-col items-center gap-2 group" onClick={() => navigate('/agenda')}>
-                            <div className="bg-gray-50 p-4 rounded-2xl group-hover:bg-indigo-50 transition-colors">
-                                <Calendar className="w-6 h-6 text-indigo-600" />
+                        <button
+                            className="bg-white rounded-[2rem] p-5 flex flex-col items-center gap-3 shadow-xl shadow-slate-100 border border-slate-50 hover:shadow-2xl hover:border-indigo-100 transition-all active:scale-95 group"
+                            onClick={() => navigate('/agenda')}
+                        >
+                            <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <Icon icon="fluent-emoji:calendar" className="w-10 h-10" />
                             </div>
-                            <span className="text-xs text-gray-600 font-medium group-hover:text-indigo-600 transition-colors">Agenda</span>
+                            <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest leading-none">Agenda</span>
                         </button>
                     </div>
                 </div>
 
                 {/* Grid de Esportes */}
                 <div>
-                    <h2 className="text-lg font-bold text-gray-800 mb-4 px-1">Modalidades</h2>
-                    <div className="grid grid-cols-3 gap-4">
+                    <h2 className="text-lg font-black text-slate-800 mb-5 px-1 uppercase tracking-tight">Modalidades</h2>
+                    <div className="grid grid-cols-2 gap-4">
                         {activeSports.length > 0 ? (
                             activeSports.map((sport) => (
                                 <button
                                     key={sport.id}
-                                    className="aspect-square bg-white rounded-2xl flex flex-col items-center justify-center gap-3 shadow-sm border border-gray-100 hover:shadow-md hover:-translate-y-1 transition-all group"
+                                    className="bg-white rounded-[2.5rem] p-6 flex items-center justify-between shadow-xl shadow-slate-100 border border-slate-50 hover:shadow-2xl hover:border-indigo-100 transition-all active:scale-[0.98] group"
                                     onClick={() => navigate(`/club-home/${clubSlug}/explore?sport=${sport.name}`)}
                                 >
-                                    <div
-                                        className="w-12 h-12 rounded-full flex items-center justify-center shadow-sm bg-indigo-600 group-hover:bg-indigo-700 transition-colors"
-                                    >
-                                        <Trophy className="w-5 h-5 text-white" />
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-14 h-14 bg-slate-50 rounded-[1.25rem] flex items-center justify-center group-hover:scale-110 transition-transform duration-500 shadow-inner">
+                                            <Icon icon={sport.icon} className="w-10 h-10" />
+                                        </div>
+                                        <div className="flex flex-col items-start">
+                                            <span className="text-slate-900 font-black text-sm uppercase tracking-tight group-hover:text-indigo-600 transition-colors">{sport.name}</span>
+                                            <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Ver eventos</span>
+                                        </div>
                                     </div>
-                                    <span className="text-gray-700 font-medium text-xs group-hover:text-indigo-700 transition-colors">{sport.name}</span>
+                                    <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                                        <ChevronRight className="w-4 h-4" />
+                                    </div>
                                 </button>
                             ))
                         ) : (
-                            <div className="col-span-3 text-center py-8 text-gray-500">
-                                Nenhuma modalidade encontrada para este clube.
+                            <div className="col-span-2 bg-white rounded-[2rem] p-10 text-center border-2 border-dashed border-slate-100">
+                                <Icon icon="fluent-emoji:pensive-face" className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                                <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">Nenhuma modalidade ativa</p>
                             </div>
                         )}
                     </div>

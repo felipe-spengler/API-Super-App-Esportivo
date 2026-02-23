@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, ChevronRight, Calendar, Trophy, MapPin, Building2 } from 'lucide-react';
+import { Icon } from '@iconify/react';
 import api from '../../services/api';
 
 export function Explore() {
@@ -86,7 +87,7 @@ export function Explore() {
                     </div>
                 ) : championships.length === 0 ? (
                     <div className="text-center py-20 bg-white rounded-[2.5rem] shadow-xl shadow-slate-100 border border-slate-50">
-                        <Trophy className="w-16 h-16 mx-auto text-slate-100 mb-6" />
+                        <Icon icon="fluent-emoji:pensive-face" className="w-16 h-16 mx-auto opacity-30 mb-6" />
                         <p className="text-slate-400 font-black uppercase tracking-widest text-[10px]">Nenhum campeonato encontrado</p>
                     </div>
                 ) : (
