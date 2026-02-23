@@ -29,3 +29,13 @@ create_admin.php
 public/test_intl.php
 php_errors.log
 config.json
+
+# Capacitor / Mobile (Frontend inside Backend)
+frontend/android/
+frontend/ios/
+frontend/dist/
+frontend/node_modules/
+capacitor-welcome.md
+*.sql
+vps/
+

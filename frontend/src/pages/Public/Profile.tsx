@@ -10,6 +10,14 @@ export function Profile() {
     const { user, signOut, updateUser } = useAuth();
     const [showEdit, setShowEdit] = useState(false);
 
+    const getImageUrl = (path: string | null | undefined) => {
+        if (!path) return null;
+        if (path.startsWith('http')) return path;
+        const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || '';
+        const cleanPath = path.startsWith('/') ? path : `/${path}`;
+        return `${baseUrl}${cleanPath}`;
+    };
+
     if (!user) {
         return (
             <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
@@ -48,87 +56,115 @@ export function Profile() {
     ];
 
     return (
-        <div className="min-h-screen bg-gray-50 pb-20">
+        <div className="min-h-screen bg-slate-50 pb-20">
             {/* Header */}
-            <div className="bg-white p-4 pt-8 shadow-sm flex items-center sticky top-0 z-10 border-b border-gray-100">
-                <button onClick={() => navigate('/')} className="p-2 mr-2 rounded-full hover:bg-gray-100 transition-colors">
-                    <ArrowLeft className="w-5 h-5 text-gray-600" />
+            <div className="bg-white/90 backdrop-blur-xl p-6 pt-10 shadow-xl shadow-slate-200/50 flex items-center sticky top-0 z-10 border-b border-slate-100">
+                <button onClick={() => navigate('/')} className="p-3 mr-4 bg-slate-50 text-slate-400 rounded-2xl hover:bg-slate-100 hover:text-slate-600 transition-all border border-slate-100 active:scale-95">
+                    <ArrowLeft className="w-5 h-5" />
                 </button>
-                <h1 className="text-xl font-bold text-gray-800">Meu Perfil</h1>
+                <h1 className="text-xl font-black text-slate-900 uppercase tracking-tight">Meu Perfil</h1>
             </div>
 
-            <div className="p-4 max-w-lg mx-auto space-y-6">
+            <div className="p-6 max-w-lg mx-auto space-y-8">
 
                 {/* Profile Card */}
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
-                    <div className="relative group">
-                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center border-2 border-white shadow-sm overflow-hidden">
-                            {(user as any).photo_url ? (
-                                <img src={(user as any).photo_url} className="w-full h-full object-cover" />
+                <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl shadow-indigo-100/50 border border-slate-100 flex flex-col items-center gap-6 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full -mr-16 -mt-16 blur-3xl opacity-50"></div>
+
+                    <div className="relative group scale-100 hover:scale-105 transition-transform duration-500">
+                        <div className="w-28 h-28 bg-slate-50 rounded-[2rem] flex items-center justify-center border-4 border-white shadow-2xl overflow-hidden group-hover:rotate-3 transition-all">
+                            {(user as any).photo_url || (user as any).photo_path ? (
+                                <img
+                                    src={getImageUrl((user as any).photo_url || (user as any).photo_path)}
+                                    className="w-full h-full object-cover"
+                                    alt="Profile"
+                                    onError={(e) => {
+                                        (e.target as any).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || '')}&background=6366f1&color=fff&bold=true`;
+                                    }}
+                                />
                             ) : (
-                                <User className="w-8 h-8 text-gray-400" />
+                                <User className="w-12 h-12 text-slate-300" />
                             )}
                         </div>
                         <button
                             onClick={() => setShowEdit(true)}
-                            className="absolute -bottom-1 -right-1 bg-indigo-600 text-white p-1.5 rounded-full shadow-md active:scale-95"
+                            className="absolute -bottom-1 -right-1 bg-gradient-to-br from-indigo-600 to-violet-600 text-white p-2.5 rounded-2xl shadow-xl shadow-indigo-200 active:scale-90 transition-all border-4 border-white"
                         >
-                            <Camera className="w-3 h-3" />
+                            <Camera className="w-4 h-4" />
                         </button>
                     </div>
-                    <div>
-                        <h2 className="text-lg font-bold text-gray-900">{user.name}</h2>
-                        <div className="flex items-center text-xs text-gray-500 mt-0.5">
-                            <Shield className="w-3 h-3 mr-1 text-emerald-500" />
-                            {user.role}
+
+                    <div className="text-center">
+                        <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">{user.name}</h2>
+                        <div className="flex justify-center mt-2.5">
+                            <span className="bg-indigo-50 text-indigo-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border border-indigo-100/50 flex items-center gap-2">
+                                <Shield className="w-3.5 h-3.5" />
+                                {user.role}
+                            </span>
                         </div>
                     </div>
                 </div>
 
-                {/* Menu Grid */}
-                <div className="grid grid-cols-2 gap-4">
-                    {/* Admin Link if Admin */}
-                    {(user.is_admin || user.role === 'admin' || user.role === 'super_admin') && (
-                        <button
-                            onClick={() => navigate('/admin/dashboard')}
-                            className="col-span-2 bg-gradient-to-r from-gray-900 to-gray-800 p-4 rounded-2xl shadow-lg border border-gray-700 flex flex-col items-center justify-center gap-3 active:scale-[0.98] py-6"
-                        >
-                            <div className="p-3 rounded-full bg-white/10 text-white">
-                                <Shield className="w-6 h-6" />
-                            </div>
-                            <span className="font-bold text-white text-sm">Painel Administrativo</span>
-                        </button>
-                    )}
+                {/* Dashboard Link for Admins */}
+                {(user.is_admin || user.role === 'admin' || user.role === 'super_admin') && (
+                    <button
+                        onClick={() => navigate('/admin/dashboard')}
+                        className="w-full relative group overflow-hidden bg-slate-900 p-8 rounded-[2rem] shadow-2xl shadow-slate-300 flex flex-col items-center gap-4 active:scale-[0.98] transition-all"
+                    >
+                        <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full -mr-20 -mt-20 blur-3xl group-hover:bg-indigo-500/20 transition-all duration-700"></div>
+                        <div className="p-4 rounded-2xl bg-white/10 text-white group-hover:scale-110 transition-transform">
+                            <Shield className="w-8 h-8" />
+                        </div>
+                        <div className="flex flex-col items-center">
+                            <span className="font-black text-white text-lg uppercase tracking-widest">Painel Admin</span>
+                            <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em] mt-1">Gerenciar Plataforma</p>
+                        </div>
+                    </button>
+                )}
 
+                {/* Menu Grid */}
+                <div className="grid grid-cols-2 gap-5">
                     {MENU_ITEMS.map((item, idx) => {
                         const Icon = item.icon;
                         return (
                             <button
                                 key={idx}
                                 onClick={() => navigate(item.route)}
-                                className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center gap-3 hover:shadow-md transition-all active:scale-[0.98] py-8"
+                                className="bg-white p-8 rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 flex flex-col items-center justify-center gap-4 hover:shadow-indigo-50 hover:border-indigo-200 transition-all active:scale-95 group"
                             >
-                                <div className={`p-3 rounded-full ${item.bg} ${item.color}`}>
-                                    <Icon className="w-6 h-6" />
+                                <div className={`p-4 rounded-2xl ${item.bg} ${item.color} group-hover:scale-110 transition-transform`}>
+                                    <Icon className="w-7 h-7" />
                                 </div>
-                                <span className="font-bold text-gray-700 text-sm">{item.label}</span>
+                                <span className="font-black text-slate-700 text-xs uppercase tracking-widest text-center group-hover:text-indigo-600">{item.label}</span>
                             </button>
                         )
                     })}
                 </div>
 
                 {/* Settings & Logout */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
                     <button
                         onClick={() => setShowEdit(true)}
-                        className="w-full p-4 flex items-center gap-3 hover:bg-gray-50 text-left border-b border-gray-50"
+                        className="w-full p-6 flex items-center justify-between hover:bg-slate-50 transition-all group border-b border-slate-50"
                     >
-                        <User className="w-5 h-5 text-gray-400" />
-                        <span className="text-gray-700 font-medium">Dados Pessoais & Foto</span>
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-slate-50 text-slate-400 rounded-xl group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
+                                <User className="w-5 h-5" />
+                            </div>
+                            <span className="text-slate-800 font-extrabold uppercase tracking-widest text-sm">Dados e Fotos</span>
+                        </div>
+                        <ArrowLeft className="w-5 h-5 text-slate-200 group-hover:text-indigo-400 rotate-180 transition-all" />
                     </button>
-                    <button onClick={() => { signOut(); navigate('/'); }} className="w-full p-4 flex items-center gap-3 hover:bg-red-50 text-left text-red-600">
-                        <LogOut className="w-5 h-5" />
-                        <span className="font-medium">Sair da Conta</span>
+                    <button
+                        onClick={() => { signOut(); navigate('/'); }}
+                        className="w-full p-6 flex items-center justify-between hover:bg-red-50 transition-all group"
+                    >
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-red-50 text-red-600 rounded-xl">
+                                <LogOut className="w-5 h-5" />
+                            </div>
+                            <span className="text-red-600 font-extrabold uppercase tracking-widest text-sm">Sair da Conta</span>
+                        </div>
                     </button>
                 </div>
 

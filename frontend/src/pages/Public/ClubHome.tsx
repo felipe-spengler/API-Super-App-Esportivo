@@ -22,6 +22,14 @@ export function ClubHome() {
     const [club, setClub] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
+    const getImageUrl = (path: string | null | undefined) => {
+        if (!path) return null;
+        if (path.startsWith('http')) return path;
+        const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || '';
+        const cleanPath = path.startsWith('/') ? path : `/${path}`;
+        return `${baseUrl}${cleanPath}`;
+    };
+
     useEffect(() => {
         async function loadClub() {
             try {
@@ -51,63 +59,92 @@ export function ClubHome() {
     });
 
     return (
-        <div className="min-h-screen bg-gray-50 pb-24">
+        <div className="min-h-screen bg-slate-50 pb-24">
             {/* Header / Top Bar */}
-            <div className="bg-white p-6 pt-8 pb-4 shadow-sm border-b border-gray-200 sticky top-0 z-10">
+            <div className="bg-white p-6 pt-10 pb-6 shadow-xl shadow-slate-200/50 border-b border-slate-100 sticky top-0 z-50 backdrop-blur-xl bg-white/90">
                 <div className="flex justify-between items-center max-w-lg mx-auto">
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-800">{club.name}</h1>
-                        <div className="flex items-center text-gray-500 text-sm mt-1">
-                            <MapPin className="w-3 h-3 mr-1" />
-                            {club.city?.name} - {club.city?.state}
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center border border-slate-100 shadow-sm overflow-hidden">
+                            {club.logo_url || club.logo_path ? (
+                                <img
+                                    src={getImageUrl(club.logo_url || club.logo_path)}
+                                    className="w-full h-full object-contain p-2"
+                                    alt="Logo"
+                                    onError={(e) => {
+                                        (e.target as any).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(club.name)}&background=6366f1&color=fff&bold=true`;
+                                    }}
+                                />
+                            ) : (
+                                <Trophy className="w-6 h-6 text-indigo-400" />
+                            )}
+                        </div>
+                        <div className="flex flex-col">
+                            <h1 className="text-xl font-black text-slate-900 tracking-tight leading-none uppercase">{club.name}</h1>
+                            <div className="flex items-center text-slate-400 font-bold text-[10px] uppercase tracking-widest mt-1.5">
+                                <MapPin className="w-3 h-3 mr-1 text-indigo-400" />
+                                {club.city?.name} • {club.city?.state}
+                            </div>
                         </div>
                     </div>
-                    <button onClick={() => navigate('/')} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors">
-                        <X className="w-5 h-5 text-gray-600" />
+                    <button onClick={() => navigate('/')} className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-slate-100 hover:text-slate-600 transition-all active:scale-95 border border-slate-100">
+                        <X className="w-5 h-5" />
                     </button>
                 </div>
             </div>
 
-            <div className="max-w-lg mx-auto p-4 space-y-6">
+            <div className="max-w-lg mx-auto p-4 space-y-8">
 
                 {/* Destaque / Banner - Custom or Fallback */}
-                {club.banner_url ? (
+                {club.banner_url || club.banner_path ? (
                     // Custom Banner
                     <div
-                        className="rounded-3xl relative h-56 shadow-lg overflow-hidden group hover:scale-[1.02] transition-transform cursor-pointer"
+                        className="rounded-[2.5rem] relative h-64 shadow-2xl shadow-indigo-100 overflow-hidden group hover:scale-[1.02] transition-all duration-500 cursor-pointer border-4 border-white"
                         onClick={() => navigate(`/club-home/${clubSlug}/championships`)}
                     >
                         <img
-                            src={club.banner_url}
+                            src={getImageUrl(club.banner_url || club.banner_path)}
                             alt={club.name}
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                            onError={(e) => {
+                                (e.target as any).src = 'https://images.unsplash.com/photo-1504450758481-7338eba7524a?q=80&w=1469&auto=format&fit=crop';
+                            }}
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                        <div className="absolute bottom-6 left-6 right-6">
+                            <span className="bg-white/20 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-[0.3em] px-3 py-1 rounded-full border border-white/20 inline-block mb-2">Destaque</span>
+                            <h2 className="text-white text-2xl font-black uppercase tracking-tight">Explore os Campeonatos</h2>
+                        </div>
                     </div>
                 ) : (
                     // Fallback: Club Branding
                     <div
-                        className="bg-indigo-900 rounded-3xl p-8 relative h-56 flex flex-col items-center justify-center shadow-lg overflow-hidden group hover:scale-[1.02] transition-transform"
+                        className="bg-slate-900 rounded-[2.5rem] p-10 relative h-64 flex flex-col items-center justify-center shadow-2xl shadow-slate-200 overflow-hidden border-4 border-white group"
                     >
-                        {/* Background Pattern */}
-                        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white/20 to-transparent"
-                            style={{ backgroundSize: '20px 20px' }}
+                        {/* Background Gradients */}
+                        <div className="absolute inset-0 bg-gradient-to-br from-indigo-900 via-slate-900 to-violet-900" />
+                        <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white/30 to-transparent"
+                            style={{ backgroundSize: '24px 24px' }}
                         />
 
                         <div className="relative z-10 flex flex-col items-center">
                             {/* Club Logo/Brasão */}
-                            {club.logo_url ? (
-                                <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-white flex items-center justify-center p-4 shadow-2xl mb-4">
-                                    <img src={club.logo_url} alt={club.name} className="w-full h-full object-contain" />
-                                </div>
-                            ) : (
-                                <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-white/20 backdrop-blur-sm border-4 border-white/30 flex items-center justify-center shadow-2xl mb-4">
-                                    <Trophy size={48} className="text-white" />
-                                </div>
-                            )}
+                            <div className="w-28 h-28 rounded-3xl bg-white flex items-center justify-center p-5 shadow-2xl mb-5 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500">
+                                {club.logo_url || club.logo_path ? (
+                                    <img
+                                        src={getImageUrl(club.logo_url || club.logo_path)}
+                                        alt={club.name}
+                                        className="w-full h-full object-contain"
+                                        onError={(e) => {
+                                            (e.target as any).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(club.name)}&background=6366f1&color=fff&bold=true`;
+                                        }}
+                                    />
+                                ) : (
+                                    <Trophy size={48} className="text-indigo-600" />
+                                )}
+                            </div>
 
-                            <h2 className="text-white text-2xl md:text-3xl font-bold text-center drop-shadow-lg">{club.name}</h2>
-                            <p className="text-white/90 text-sm mt-2 text-center font-medium">Bem-vindo ao App Esportivo</p>
+                            <h2 className="text-white text-3xl font-black text-center uppercase tracking-tight drop-shadow-md">{club.name}</h2>
+                            <div className="w-8 h-1 bg-white/30 rounded-full mt-4"></div>
                         </div>
                     </div>
                 )}
