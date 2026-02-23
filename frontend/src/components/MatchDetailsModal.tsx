@@ -247,10 +247,24 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                             )}
 
                             {!loading && (
-                                <div className="flex items-center gap-2 sm:gap-4">
-                                    <span className="text-3xl sm:text-5xl font-black text-white">{match?.home_score ?? 0}</span>
-                                    <span className="text-white/40 text-xl sm:text-2xl font-light">x</span>
-                                    <span className="text-3xl sm:text-5xl font-black text-white">{match?.away_score ?? 0}</span>
+                                <div className="flex flex-col items-center">
+                                    <div className="flex items-center gap-2 sm:gap-4">
+                                        <span className="text-3xl sm:text-5xl font-black text-white">{match?.home_score ?? 0}</span>
+                                        <span className="text-white/40 text-xl sm:text-2xl font-light">x</span>
+                                        <span className="text-3xl sm:text-5xl font-black text-white">{match?.away_score ?? 0}</span>
+                                    </div>
+
+                                    {/* Placar de Sets/Games para Tênis/Vôlei/Beach Tennis */}
+                                    {['tenis', 'volei', 'beach-tennis', 'volei-praia', 'tenis-mesa'].includes(match?.championship?.sport?.slug) && details?.sets?.length > 0 && (
+                                        <div className="flex items-center gap-1 mt-1">
+                                            {details.sets.map((set: any, i: number) => (
+                                                <div key={i} className="flex flex-col items-center px-1 border-x border-white/10 first:border-l-0 last:border-r-0">
+                                                    <span className="text-[7px] text-white/40 font-bold leading-none">{i + 1}º</span>
+                                                    <span className="text-[9px] text-yellow-400 font-black leading-none">{set.home_score}-{set.away_score}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                             <div className={`mt-2 px-2 sm:px-3 py-0.5 rounded-full text-[8px] sm:text-[10px] font-black tracking-widest uppercase border ${isLive ? 'bg-red-500/20 text-red-400 border-red-500/50 animate-pulse' :
@@ -469,6 +483,8 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                                                 <div className={`text-xs sm:text-sm font-bold flex items-center gap-2 ${isHome ? 'sm:justify-end' : ''}`}>
                                                                     <div className="shrink-0 flex items-center justify-center h-4 w-4">
                                                                         {event.type === 'goal' && '⚽'}
+                                                                        {['point', '1_point', '2_points', '3_points', 'free_throw', 'field_goal_2', 'field_goal_3', 'game_won'].includes(event.type) && '🏀'}
+                                                                        {['takedown', 'jiu_jitsu_2', 'jiu_jitsu_3', 'jiu_jitsu_4'].includes(event.type) && '🥋'}
                                                                         {(event.type === 'yellow_card' || event.type === 'yellow') && (
                                                                             <div className="w-3 h-4 rounded-[2px] border border-yellow-600 shadow-sm" style={{ backgroundColor: '#facc15', minWidth: '12px', minHeight: '16px' }} />
                                                                         )}
@@ -478,8 +494,8 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                                                         {event.type === 'blue_card' && (
                                                                             <div className="w-3 h-4 rounded-[2px] border border-blue-700 shadow-sm" style={{ backgroundColor: '#3b82f6', minWidth: '12px', minHeight: '16px' }} />
                                                                         )}
-                                                                        {event.type === 'foul' && (
-                                                                            <div className="text-orange-500"><Triangle size={14} fill="currentColor" /></div>
+                                                                        {['foul', 'technical_foul', 'unsportsmanlike_foul', 'disqualifying_foul'].includes(event.type) && (
+                                                                            <div className={event.type === 'foul' ? "text-orange-500" : "text-red-500"}><Triangle size={14} fill="currentColor" /></div>
                                                                         )}
                                                                         {event.type === 'assist' && '👟'}
                                                                         {event.type === 'suspension_2min' && '⏱'}
@@ -490,11 +506,18 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                                                         <span className="text-gray-800 leading-tight">
                                                                             {event.type === 'goal' ? (event.metadata?.own_goal ? 'Gol Contra!' : 'Gol!') :
                                                                                 event.type === 'foul' ? 'Falta' :
-                                                                                    event.type === 'assist' ? 'Assistência' :
-                                                                                        event.type === 'suspension_2min' ? 'Suspensão 2min' :
-                                                                                            event.type === 'shootout_goal' ? 'Pênalti Convertido' :
-                                                                                                event.type === 'shootout_miss' ? 'Pênalti Perdido' : ''}
-                                                                            {event.player_name && ` ${event.player_name}`}
+                                                                                    event.type === 'technical_foul' ? 'Falta Técnica' :
+                                                                                        event.type === 'unsportsmanlike_foul' ? 'Falta Antidesportiva' :
+                                                                                            event.type === 'disqualifying_foul' ? 'Falta Desqualificante' :
+                                                                                                event.type === 'field_goal_3' ? 'Cesta de 3 Pontos' :
+                                                                                                    event.type === 'field_goal_2' ? 'Cesta de 2 Pontos' :
+                                                                                                        event.type === 'free_throw' ? 'Lance Livre' :
+                                                                                                            event.type === 'game_won' ? 'Game Vencido' :
+                                                                                                                event.type === 'assist' ? 'Assistência' :
+                                                                                                                    event.type === 'suspension_2min' ? 'Suspensão 2min' :
+                                                                                                                        event.type === 'shootout_goal' ? 'Pênalti Convertido' :
+                                                                                                                            event.type === 'shootout_miss' ? 'Pênalti Perdido' : event.type}
+                                                                            {event.player_name && ` - ${event.player_name}`}
                                                                         </span>
                                                                         {/* Team name — desktop only */}
                                                                         <span className={`hidden sm:block text-[10px] text-indigo-600 font-medium mt-0.5`}>

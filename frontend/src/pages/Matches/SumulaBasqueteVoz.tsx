@@ -12,6 +12,7 @@ declare global {
 }
 
 type Quarter = '1º Quarto' | '2º Quarto' | 'Intervalo' | '3º Quarto' | '4º Quarto' | 'Prorrogação' | 'Fim de Jogo';
+const quarters: Quarter[] = ['1º Quarto', '2º Quarto', 'Intervalo', '3º Quarto', '4º Quarto', 'Prorrogação', 'Fim de Jogo'];
 
 export function SumulaBasqueteVoz() {
     const { id } = useParams();
@@ -122,8 +123,12 @@ export function SumulaBasqueteVoz() {
         } else if (lower.includes('um ponto') || lower.includes('lance livre') || lower.includes('ponto')) {
             points = 1;
             type = '1_point';
+        } else if (lower.includes('técnica') && lower.includes('falta')) {
+            type = 'technical_foul';
         } else if (lower.includes('falta')) {
             type = 'foul';
+        } else if (lower.includes('substituição') || lower.includes('troca') || lower.includes('entra')) {
+            type = 'substitution';
         }
 
         // 3. Identificar Número do Jogador
@@ -156,13 +161,39 @@ export function SumulaBasqueteVoz() {
             } else {
                 setFeedback(`Jogador camisa ${number} não encontrado no time ${team === 'home' ? 'da Casa' : 'Visitante'}.`);
             }
+        } else if (lower.includes('tempo') || lower.includes('time out')) {
+            // Timeout detection
+            if (team) {
+                setPendingAction({
+                    type: 'timeout',
+                    team,
+                    description: `Pedido de Tempo - Time ${team === 'home' ? 'Casa' : 'Visitante'}`
+                });
+                setFeedback(`Entendi: Pedido de tempo para o time ${team === 'home' ? 'Casa' : 'Visitante'}. Confirma?`);
+            } else {
+                setFeedback("Diga de qual time é o pedido de tempo. Ex: 'Tempo time casa'");
+            }
+        } else if (lower.includes('próximo quarto') || lower.includes('fim do quarto')) {
+            const currentIdx = quarters.indexOf(currentQuarter);
+            if (currentIdx < quarters.length - 1) {
+                const next = quarters[currentIdx + 1];
+                setPendingAction({
+                    type: 'period_end',
+                    nextPeriod: next,
+                    description: `Encerrar ${currentQuarter} e ir para ${next}`
+                });
+                setFeedback(`Confirmar mudança para ${next}?`);
+            }
         } else {
             // Fallback partial recognition loops could go here
             let missing = [];
-            if (!team) missing.push("o time");
-            if (!type) missing.push("a ação");
-            if (!number) missing.push("o número");
-            setFeedback(`Não entendi ${missing.join(', ')}. Tente: "Três pontos time casa camisa dez"`);
+            if (!team && !lower.includes('quarto')) missing.push("o time");
+            if (!type && !lower.includes('quarto')) missing.push("a ação");
+            if (!number && (type === 'foul' || points > 0)) missing.push("o número");
+
+            if (missing.length > 0) {
+                setFeedback(`Não entendi ${missing.join(', ')}. Tente: "Três pontos time casa camisa dez"`);
+            }
         }
     };
 
@@ -170,6 +201,20 @@ export function SumulaBasqueteVoz() {
         if (!pendingAction || !matchData) return;
 
         try {
+            if (pendingAction.type === 'period_end') {
+                setCurrentQuarter(pendingAction.nextPeriod);
+                await api.post(`/admin/matches/${id}/events`, {
+                    event_type: 'period_end',
+                    team_id: matchData.home_team_id,
+                    minute: '00:00',
+                    period: currentQuarter,
+                    metadata: { label: `Fim do ${currentQuarter}`, system_period: currentQuarter }
+                });
+                setPendingAction(null);
+                setFeedback(`Mudamos para ${pendingAction.nextPeriod}`);
+                return;
+            }
+
             let apiType = pendingAction.type;
             if (pendingAction.type === '1_point') apiType = 'free_throw';
             if (pendingAction.type === '2_points') apiType = 'field_goal_2';
@@ -191,7 +236,7 @@ export function SumulaBasqueteVoz() {
                 team_id: teamId,
                 minute: '00:00', // TODO: Get real time
                 period: currentQuarter,
-                player_id: pendingAction.player.id,
+                player_id: pendingAction.player?.id,
                 value: pendingAction.value,
                 metadata: {
                     system_period: currentQuarter
@@ -279,10 +324,19 @@ export function SumulaBasqueteVoz() {
                     </button>
                 </div>
 
-                <p className="text-gray-500 text-xs text-center max-w-xs">
-                    Toque para falar. Ex: <br />
-                    <span className="text-gray-300">"Três pontos camisa dez casa"</span> <br />
-                    <span className="text-gray-300">"Falta camisa vinte visitante"</span>
+                <div className="bg-gray-900 border border-orange-500/20 rounded-2xl p-4 w-full text-[11px]">
+                    <h3 className="text-orange-500 font-bold mb-2 flex items-center gap-1">📖 Dicas de Comandos:</h3>
+                    <div className="grid grid-cols-1 gap-1.5 text-gray-400">
+                        <p>• <span className="text-gray-200">"Três pontos camisa dez casa"</span> (Lança 3 pontos)</p>
+                        <p>• <span className="text-gray-200">"Falta técnica camisa dez casa"</span> (Falta Técnica)</p>
+                        <p>• <span className="text-gray-200">"Entra camisa cinco casa"</span> (Substituição)</p>
+                        <p>• <span className="text-gray-200">"Tempo time casa"</span> (Pedido de Tempo/Timeout)</p>
+                        <p>• <span className="text-gray-200">"Próximo quarto"</span> (Muda o período do jogo)</p>
+                    </div>
+                </div>
+
+                <p className="text-gray-600 text-[10px] text-center max-w-xs mt-2 italic">
+                    Diga sempre: Ação + Camisa + Time
                 </p>
 
                 {/* Confirmation Actions */}
