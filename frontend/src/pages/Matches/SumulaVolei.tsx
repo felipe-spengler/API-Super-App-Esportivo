@@ -416,61 +416,93 @@ export function SumulaVolei() {
                 </div>
             </div>
 
-            {/* Scoreboard */}
-            <div className="flex items-center justify-between px-2 py-4 bg-gradient-to-b from-gray-800 to-gray-900">
-                <div className={`text-center w-1/3 order-${invertedSides ? '3' : '1'}`}>
-                    <div className="text-5xl font-black mb-1">{currentSetObj.home_score}</div>
-                    <div className="text-xs font-bold text-gray-400 truncate">{matchData.home_team?.name}</div>
-                    <div className="text-[10px] text-gray-500 mt-1">Sets: {matchData.home_score}</div>
-                </div>
+            {/* Scoreboard - More compact for mobile */}
+            <div className="px-3 py-4 bg-gradient-to-b from-gray-800 to-gray-900 border-b border-gray-700/50">
+                <div className="flex items-center justify-between gap-4 max-w-5xl mx-auto">
+                    {/* Home Score */}
+                    <div className={`flex items-center gap-3 flex-1 ${invertedSides ? 'flex-row-reverse text-right' : 'text-left'}`}>
+                        <div className="text-4xl font-black text-white tabular-nums">{currentSetObj.home_score}</div>
+                        <div className="min-w-0">
+                            <div className="text-[10px] font-bold text-blue-400 uppercase tracking-wider truncate">{matchData.home_team?.name}</div>
+                            <div className="text-[10px] text-gray-500 font-medium">Sets: {matchData.home_score}</div>
+                        </div>
+                    </div>
 
-                <div className="text-center w-1/3 flex flex-col items-center order-2">
-                    <div className="text-xs text-gray-500 uppercase tracking-widest mb-1">Placar</div>
-                    <div className="w-px h-10 bg-gray-700"></div>
-                </div>
+                    {/* Divider/VS */}
+                    <div className="flex flex-col items-center">
+                        <div className="text-[8px] font-black text-gray-600 uppercase tracking-tighter">VS</div>
+                        <div className="h-4 w-[1px] bg-gray-700 my-1"></div>
+                    </div>
 
-                <div className={`text-center w-1/3 order-${invertedSides ? '1' : '3'}`}>
-                    <div className="text-5xl font-black mb-1">{currentSetObj.away_score}</div>
-                    <div className="text-xs font-bold text-gray-400 truncate">{matchData.away_team?.name}</div>
-                    <div className="text-[10px] text-gray-500 mt-1">Sets: {matchData.away_score}</div>
+                    {/* Away Score */}
+                    <div className={`flex items-center gap-3 flex-1 ${invertedSides ? 'text-left' : 'flex-row-reverse text-right'}`}>
+                        <div className="text-4xl font-black text-white tabular-nums">{currentSetObj.away_score}</div>
+                        <div className="min-w-0">
+                            <div className="text-[10px] font-bold text-green-400 uppercase tracking-wider truncate">{matchData.away_team?.name}</div>
+                            <div className="text-[10px] text-gray-500 font-medium">Sets: {matchData.away_score}</div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            {/* Actions & Court */}
-            <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
-                {/* Home Zone */}
-                <div className={`space-y-4 order-${invertedSides ? '2' : '1'}`}>
-                    <button
-                        onClick={() => handlePointClick(matchData.home_team_id)}
-                        disabled={matchData.status !== 'live'}
-                        className="w-full py-6 bg-blue-600 rounded-xl font-black text-2xl shadow-lg border-b-4 border-blue-800 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
-                    >
-                        <PlusCircle size={32} /> PONTO {matchData.home_team?.code}
-                    </button>
-                    {renderCourt(matchData.home_team_id, matchData.home_team?.name, rotations.home)}
+            {/* Quick Actions & Court Container */}
+            <div className="p-3 space-y-4 max-w-5xl mx-auto">
+                <div className="grid grid-cols-2 gap-3 items-start">
+                    {/* Home Interaction Column */}
+                    <div className={`space-y-3 ${invertedSides ? 'order-2' : 'order-1'}`}>
+                        <button
+                            onClick={() => handlePointClick(matchData.home_team_id)}
+                            disabled={matchData.status !== 'live'}
+                            className="w-full py-5 bg-blue-600 active:bg-blue-700 rounded-2xl shadow-lg border-b-4 border-blue-800 active:border-b-0 active:translate-y-[2px] transition-all flex flex-col items-center justify-center gap-1 disabled:opacity-50 disabled:grayscale"
+                        >
+                            <PlusCircle size={24} />
+                            <span className="text-xs font-black uppercase tracking-widest">+ PONTO</span>
+                        </button>
+                        {renderCourt(matchData.home_team_id, matchData.home_team?.name, rotations.home)}
+                    </div>
+
+                    {/* Away Interaction Column */}
+                    <div className={`space-y-3 ${invertedSides ? 'order-1' : 'order-2'}`}>
+                        <button
+                            onClick={() => handlePointClick(matchData.away_team_id)}
+                            disabled={matchData.status !== 'live'}
+                            className="w-full py-5 bg-green-600 active:bg-green-700 rounded-2xl shadow-lg border-b-4 border-green-800 active:border-b-0 active:translate-y-[2px] transition-all flex flex-col items-center justify-center gap-1 disabled:opacity-50 disabled:grayscale"
+                        >
+                            <PlusCircle size={24} />
+                            <span className="text-xs font-black uppercase tracking-widest">+ PONTO</span>
+                        </button>
+                        {renderCourt(matchData.away_team_id, matchData.away_team?.name, rotations.away)}
+                    </div>
                 </div>
 
-                {/* Away Zone */}
-                <div className={`space-y-4 order-${invertedSides ? '1' : '2'}`}>
-                    <button
-                        onClick={() => handlePointClick(matchData.away_team_id)}
-                        disabled={matchData.status !== 'live'}
-                        className="w-full py-6 bg-green-600 rounded-xl font-black text-2xl shadow-lg border-b-4 border-green-800 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
-                    >
-                        <PlusCircle size={32} /> PONTO {matchData.away_team?.code}
-                    </button>
-                    {renderCourt(matchData.away_team_id, matchData.away_team?.name, rotations.away)}
+                {/* Status Bar / Serving Info */}
+                <div className="bg-gray-800/50 backdrop-blur-sm p-3 rounded-xl border border-gray-700/50 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <div className={`w-3 h-3 rounded-full ${servingTeamId === matchData.home_team_id ? 'bg-blue-500 animate-pulse' : 'bg-gray-700'}`} />
+                        <span className="text-[10px] font-bold text-gray-400 uppercase">Saque {matchData.home_team?.code}</span>
+                    </div>
+                    <div className="h-4 w-[1px] bg-gray-700"></div>
+                    <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase text-right">Saque {matchData.away_team?.code}</span>
+                        <div className={`w-3 h-3 rounded-full ${servingTeamId === matchData.away_team_id ? 'bg-green-500 animate-pulse' : 'bg-gray-700'}`} />
+                    </div>
                 </div>
             </div>
 
             {/* History Feed */}
             <div className="px-4 pb-10 max-w-5xl mx-auto">
-                <h3 className="text-xs font-bold text-gray-500 uppercase mb-2 ml-1">Histórico de Sets</h3>
-                <div className="grid grid-cols-5 gap-2 text-center text-xs">
+                <div className="flex items-center justify-between mb-3 px-1">
+                    <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                        <History size={12} /> Histórico de Sets
+                    </h3>
+                </div>
+                <div className="grid grid-cols-5 gap-2 text-center">
                     {sets.map((s: any) => (
-                        <div key={s.set_number} className={`p-2 rounded border ${s.set_number == volleyState.current_set ? 'bg-yellow-900/20 border-yellow-500/50 text-yellow-500' : 'bg-gray-800 border-gray-700 text-gray-400'}`}>
-                            <div className="font-bold mb-1">{s.set_number}º</div>
-                            <div>{s.home_score} x {s.away_score}</div>
+                        <div key={s.set_number} className={`py-2 px-1 rounded-xl border transition-all ${s.set_number == volleyState.current_set ? 'bg-indigo-600 border-indigo-500 shadow-lg shadow-indigo-900/20' : 'bg-gray-800/40 border-gray-700/50 text-gray-500'}`}>
+                            <div className={`text-[9px] font-black mb-0.5 ${s.set_number == volleyState.current_set ? 'text-indigo-200' : 'text-gray-600'}`}>{s.set_number}º</div>
+                            <div className="text-xs font-black tabular-nums tracking-tighter">
+                                {s.home_score}<span className="mx-0.5 opacity-30">x</span>{s.away_score}
+                            </div>
                         </div>
                     ))}
                 </div>
