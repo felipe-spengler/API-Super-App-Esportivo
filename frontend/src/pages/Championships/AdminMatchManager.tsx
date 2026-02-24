@@ -888,17 +888,19 @@ export function AdminMatchManager() {
                                                                     <span className="text-[10px] font-bold uppercase md:hidden">{match.status === 'finished' ? 'Resumo' : 'Súmula'}</span>
                                                                 </button>
 
-                                                                <button
-                                                                    onClick={() => {
-                                                                        setSelectedMatch(match);
-                                                                        setIsAuditOpen(true);
-                                                                    }}
-                                                                    className="flex-1 md:flex-none flex items-center justify-center gap-1 px-3 py-2 text-blue-600 bg-blue-50 border border-blue-100 rounded-lg transition-all hover:bg-blue-100"
-                                                                    title="Auditoria de Voz e Logs"
-                                                                >
-                                                                    <ShieldCheck className="w-4 h-4" />
-                                                                    <span className="text-[10px] font-bold uppercase md:hidden">Auditar</span>
-                                                                </button>
+                                                                {championship?.sport?.name?.toLowerCase().includes('basquete') && (
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setSelectedMatch(match);
+                                                                            setIsAuditOpen(true);
+                                                                        }}
+                                                                        className="flex-1 md:flex-none flex items-center justify-center gap-1 px-3 py-2 text-blue-600 bg-blue-50 border border-blue-100 rounded-lg transition-all hover:bg-blue-100"
+                                                                        title="Auditoria de Voz e Logs"
+                                                                    >
+                                                                        <ShieldCheck className="w-4 h-4" />
+                                                                        <span className="text-[10px] font-bold uppercase md:hidden">Auditar</span>
+                                                                    </button>
+                                                                )}
 
 
 
