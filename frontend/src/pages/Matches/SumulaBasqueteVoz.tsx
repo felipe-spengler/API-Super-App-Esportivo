@@ -38,6 +38,7 @@ export function SumulaBasqueteVoz() {
     const [feedback, setFeedback] = useState('');
     const [pendingAction, setPendingAction] = useState<any>(null); // { type, team, player, value }
     const [showPlayers, setShowPlayers] = useState(false);
+    const [hasLoggedRoster, setHasLoggedRoster] = useState(false);
 
     const recognitionRef = useRef<any>(null);
     const timeRef = useRef(time);
@@ -155,6 +156,27 @@ export function SumulaBasqueteVoz() {
             }
             if (data.rosters) {
                 setRosters(data.rosters);
+
+                // Logar elenco na auditoria ao carregar pela primeira vez
+                if (!hasLoggedRoster && data.rosters.home.length > 0) {
+                    const homeSummary = data.rosters.home.map((p: any) => `${p.number}-${p.nickname || p.name}`).join(', ');
+                    const awaySummary = data.rosters.away.map((p: any) => `${p.number}-${p.nickname || p.name}`).join(', ');
+
+                    api.post(`/admin/matches/${id}/events`, {
+                        event_type: 'voice_debug',
+                        minute: '00:00',
+                        period: 'Pré-jogo',
+                        metadata: {
+                            voice_log: `SISTEMA: Elencos carregados para reconhecimento.`,
+                            identified: true,
+                            home_roster: homeSummary,
+                            away_roster: awaySummary,
+                            system_info: 'Roster Snapshot'
+                        }
+                    }).catch(err => console.error("Erro ao logar elenco", err));
+
+                    setHasLoggedRoster(true);
+                }
             }
             setLoading(false);
         } catch (e) {
@@ -201,61 +223,69 @@ export function SumulaBasqueteVoz() {
         return () => clearInterval(syncInterval);
     }, [isRunning, id]);
 
+    const normalizeText = (t: string) => (t || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
     const processVoiceCommand = async (text: string) => {
         console.log("Processando:", text);
         const lower = text.toLowerCase();
+        const normalized = normalizeText(text);
         let identified = false;
 
         let team: 'home' | 'away' | null = null;
         let points = 0;
         let type = '';
         let number: string | null = null;
+        let failureReason = '';
 
         // 1. Identificar Time
-        const homeName = matchData?.home_team?.name?.toLowerCase() || '';
-        const awayName = matchData?.away_team?.name?.toLowerCase() || '';
+        const homeName = normalizeText(matchData?.home_team?.name || '');
+        const awayName = normalizeText(matchData?.away_team?.name || '');
 
-        if (lower.includes('casa') || lower.includes('mandante') || (homeName && lower.includes(homeName))) {
+        if (normalized.includes('casa') || normalized.includes('mandante') || (homeName && normalized.includes(homeName))) {
             team = 'home';
-        } else if (lower.includes('visitante') || lower.includes('fora') || (awayName && lower.includes(awayName))) {
+        } else if (normalized.includes('visitante') || normalized.includes('fora') || (awayName && normalized.includes(awayName))) {
             team = 'away';
+        } else {
+            failureReason = 'Time não identificado';
         }
 
         // 2. Identificar Ação (Pontos)
-        // 2. Identificar Ação (Pontos)
-        const isThree = lower.includes('três') || lower.includes('3') || lower.includes('triplo') || lower.includes('triple');
-        const isPoints = lower.includes('ponto') || lower.includes('cesta') || lower.includes('marque') || lower.includes('marcar') || lower.includes('fez');
+        const isThree = normalized.includes('tres') || normalized.includes('3') || normalized.includes('triplo') || normalized.includes('triple');
+        const isOne = normalized.includes('um ponto') || normalized.includes('lance livre') || normalized.includes('1 ponto');
+        const isTwo = normalized.includes('dois pontos') || normalized.includes('cesta de dois') || normalized.includes('2 pontos');
+        const isFoul = normalized.includes('falta');
+        const isTechFoul = isFoul && (normalized.includes('tecnica') || normalized.includes('antitidesportiva'));
+        const isPoints = normalized.includes('ponto') || normalized.includes('cesta') || normalized.includes('marque') || normalized.includes('marcar') || normalized.includes('fez');
 
-        if (isThree && isPoints) {
+        if (isTechFoul) {
+            type = 'technical_foul';
+        } else if (isFoul) {
+            type = 'foul';
+        } else if (isThree) {
             points = 3;
             type = '3_points';
-        }
-
-        // Refine if other points matched (override order if specific)
-        if (lower.includes('dois pontos') || lower.includes('2 pontos') || lower.includes('cesta de dois')) {
-            points = 2;
-            type = '2_points';
-        } else if (lower.includes('um ponto') || lower.includes('lance livre') || (lower.includes('ponto') && !type)) {
+        } else if (isOne) {
             points = 1;
             type = '1_point';
-        } else if (lower.includes('técnica') && lower.includes('falta')) {
-            type = 'technical_foul';
-        } else if (lower.includes('falta')) {
-            type = 'foul';
-        } else if (lower.includes('substituição') || lower.includes('troca') || lower.includes('entra')) {
+        } else if (isTwo || isPoints) {
+            points = 2;
+            type = '2_points';
+        } else if (normalized.includes('substituicao') || normalized.includes('troca') || normalized.includes('entra')) {
             type = 'substitution';
+        } else {
+            if (!failureReason) failureReason = 'Ação não identificada';
         }
 
         // 3. Identificar Número do Jogador
         const numberMap: { [key: string]: string } = {
-            'zero': '0', 'um': '1', 'dois': '2', 'três': '3', 'quatro': '4', 'cinco': '5', 'seis': '6', 'sete': '7', 'oito': '8', 'nove': '9', 'dez': '10',
+            'zero': '0', 'um': '1', 'dois': '2', 'tres': '3', 'quatro': '4', 'cinco': '5', 'seis': '6', 'sete': '7', 'oito': '8', 'nove': '9', 'dez': '10',
             'onze': '11', 'doze': '12', 'treze': '13', 'quatorze': '14', 'quinze': '15', 'dezesseis': '16', 'dezessete': '17', 'dezoito': '18', 'dezenove': '19', 'vinte': '20',
-            'vinte e um': '21', 'vinte e dois': '22', 'vinte e três': '23', 'vinte e quatro': '24', 'vinte e cinco': '25', 'vinte e seis': '26', 'vinte e sete': '27', 'vinte e oito': '28', 'vinte e nove': '29', 'trinta': '30',
+            'vinte e um': '21', 'vinte e dois': '22', 'vinte e tres': '23', 'vinte e quatro': '24', 'vinte e cinco': '25', 'vinte e seis': '26', 'vinte e sete': '27', 'vinte e oito': '28', 'vinte e nove': '29', 'trinta': '30',
             'quarenta': '40', 'cinquenta': '50', 'sessenta': '60', 'setenta': '70', 'oitenta': '80', 'noventa': '90'
         };
 
         // Regex flexível: (camisa|número|jogador) + (número ou palavra)
-        const flexMatch = lower.match(/(?:camisa|número|jogador|atleta)\s+([a-z0-9\s]+)/);
+        const flexMatch = normalized.match(/(?:camisa|numero|jogador|atleta)\s+([a-z0-9\s]+)/);
         if (flexMatch) {
             const possibleNumber = flexMatch[1].trim().split(' ')[0]; // Pega a primeira palavra após "camisa"
             if (!isNaN(parseInt(possibleNumber))) {
@@ -275,12 +305,12 @@ export function SumulaBasqueteVoz() {
 
         // Fallback: Procura qualquer número isolado ou palavra de número no texto
         if (!number) {
-            const digits = lower.match(/\d+/);
+            const digits = normalized.match(/\d+/);
             if (digits) {
                 number = digits[0];
             } else {
                 for (const [key, val] of Object.entries(numberMap)) {
-                    if (lower.includes(` ${key}`) || lower.startsWith(key)) {
+                    if (normalized.includes(` ${key}`) || normalized.startsWith(key)) {
                         number = val;
                         break;
                     }
@@ -293,16 +323,22 @@ export function SumulaBasqueteVoz() {
             const roster = team === 'home' ? rosters.home : rosters.away;
 
             const player = roster.find((p: any) => {
-                const pName = (p.name || '').toLowerCase();
-                const pNick = (p.nickname || '').toLowerCase();
+                const pName = normalizeText(p.name || '');
+                const pNick = normalizeText(p.nickname || '');
+                const pFirst = pName.split(' ')[0];
                 const pNum = String(p.number);
 
                 // Prioridade 1: Número exato
                 if (number && pNum === number) return true;
 
-                // Prioridade 2: Nome ou Apelido contido na transcrição
-                if (pNick && lower.includes(pNick)) return true;
-                if (pName && lower.includes(pName) && pName.length > 3) return true;
+                // Prioridade 2: Apelido na frase
+                if (pNick && pNick.length > 2 && normalized.includes(pNick)) return true;
+
+                // Prioridade 3: Primeiro nome exato na frase
+                if (pFirst && pFirst.length > 2 && normalized.includes(pFirst)) return true;
+
+                // Prioridade 4: Nome completo na frase (caso o sistema ouça o nome inteiro)
+                if (pName && pName.length > 5 && normalized.includes(pName)) return true;
 
                 return false;
             });
@@ -319,13 +355,14 @@ export function SumulaBasqueteVoz() {
                 });
                 setFeedback(`Entendi: ${type === 'foul' ? 'Falta' : points + ' Pontos'} para ${playerIdentifier}. Confirma?`);
             } else {
+                failureReason = `Jogador não encontrado (Num: ${number || 'N/A'})`;
                 if (number) {
                     setFeedback(`Jogador camisa ${number} não encontrado no time ${team === 'home' ? 'da Casa' : 'Visitante'}.`);
                 } else {
                     setFeedback(`Não consegui identificar o jogador. Tente falar o número da camisa.`);
                 }
             }
-        } else if (lower.includes('tempo') || lower.includes('time out')) {
+        } else if (normalized.includes('tempo') || normalized.includes('time out')) {
             // Timeout detection
             identified = true;
             if (team) {
@@ -373,11 +410,12 @@ export function SumulaBasqueteVoz() {
                     voice_log: text,
                     identified: identified,
                     action_type: type || 'none',
-                    team: team || 'none'
+                    team: team || 'none',
+                    failure_reason: failureReason || (identified ? null : 'Desconhecido'),
+                    normalized_text: normalized
                 }
             });
             fetchMatchDetails(); // Recarrega histórico para mostrar o log
-            identified = true; // For debug purposes here
         } catch (e) {
             console.error("Erro ao salvar log de voz", e);
         }
