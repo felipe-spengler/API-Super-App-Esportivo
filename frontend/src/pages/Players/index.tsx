@@ -38,17 +38,45 @@ export function Players() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [error, setError] = useState('');
+    const [pagination, setPagination] = useState<any>(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [isSearching, setIsSearching] = useState(false);
 
     useEffect(() => {
-        loadPlayers();
-    }, []);
+        loadPlayers(currentPage, searchTerm);
+    }, [currentPage]);
 
-    async function loadPlayers() {
+    useEffect(() => {
+        const delayDebounceFn = setTimeout(() => {
+            if (currentPage === 1) {
+                loadPlayers(1, searchTerm);
+            } else {
+                setCurrentPage(1);
+            }
+        }, 500);
+
+        return () => clearTimeout(delayDebounceFn);
+    }, [searchTerm]);
+
+    async function loadPlayers(page = 1, search = '') {
         try {
             setLoading(true);
-            const response = await api.get('/admin/players');
-            const data = Array.isArray(response.data) ? response.data : (response.data.data || []);
-            setPlayers(data);
+            const response = await api.get('/admin/players', {
+                params: { page, search }
+            });
+
+            if (response.data.data) {
+                setPlayers(response.data.data);
+                setPagination({
+                    total: response.data.total,
+                    last_page: response.data.last_page,
+                    per_page: response.data.per_page,
+                    current_page: response.data.current_page
+                });
+            } else {
+                setPlayers(Array.isArray(response.data) ? response.data : []);
+                setPagination(null);
+            }
         } catch (err) {
             console.error(err);
             setError('Erro ao carregar lista de jogadores');
@@ -67,10 +95,8 @@ export function Players() {
         }
     }
 
-    const filtered = players.filter(p =>
-        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (p.email && p.email.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+    // A filtragem agora é feita no servidor
+    const displayPlayers = players;
 
     return (
         <div className="animate-in fade-in duration-500">
@@ -112,7 +138,7 @@ export function Players() {
                 <div className="flex justify-center py-12">
                     <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
                 </div>
-            ) : filtered.length === 0 ? (
+            ) : displayPlayers.length === 0 ? (
                 <div className="text-center py-16 bg-white rounded-xl border border-dashed border-gray-300">
                     <User className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                     <h3 className="text-lg font-medium text-gray-900">Nenhum atleta encontrado</h3>
@@ -132,7 +158,7 @@ export function Players() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
-                                {filtered.map((player) => (
+                                {displayPlayers.map((player) => (
                                     <tr key={player.id} className="hover:bg-gray-50 transition-colors">
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
@@ -192,7 +218,7 @@ export function Players() {
 
                     {/* Mobile View */}
                     <div className="md:hidden divide-y divide-gray-100">
-                        {filtered.map((player) => (
+                        {displayPlayers.map((player) => (
                             <div key={player.id} className="p-4 space-y-4">
                                 <div className="flex items-center gap-3">
                                     <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden shrink-0 border border-gray-100">
@@ -236,6 +262,59 @@ export function Players() {
                                 </div>
                             </div>
                         ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Pagination Controls */}
+            {pagination && pagination.last_page > 1 && (
+                <div className="mt-8 flex items-center justify-between bg-white px-6 py-4 rounded-xl border border-gray-100 shadow-sm">
+                    <div className="text-sm text-gray-500">
+                        Mostrando <span className="font-bold text-gray-900">{players.length}</span> de <span className="font-bold text-gray-900">{pagination.total}</span> atletas
+                    </div>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            disabled={currentPage === 1}
+                            className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                        >
+                            Anterior
+                        </button>
+                        {[...Array(pagination.last_page)].map((_, i) => {
+                            const page = i + 1;
+                            // Mostrar apenas algumas páginas se houver muitas
+                            if (
+                                page === 1 ||
+                                page === pagination.last_page ||
+                                (page >= currentPage - 1 && page <= currentPage + 1)
+                            ) {
+                                return (
+                                    <button
+                                        key={page}
+                                        onClick={() => setCurrentPage(page)}
+                                        className={`w-10 h-10 rounded-lg text-sm font-bold transition-all ${currentPage === page
+                                            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-100'
+                                            : 'text-gray-600 hover:bg-gray-50 border border-transparent'
+                                            }`}
+                                    >
+                                        {page}
+                                    </button>
+                                );
+                            } else if (
+                                page === currentPage - 2 ||
+                                page === currentPage + 2
+                            ) {
+                                return <span key={page} className="flex items-end pb-2 px-1 text-gray-400 text-xs">...</span>;
+                            }
+                            return null;
+                        })}
+                        <button
+                            onClick={() => setCurrentPage(p => Math.min(pagination.last_page, p + 1))}
+                            disabled={currentPage === pagination.last_page}
+                            className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                        >
+                            Próxima
+                        </button>
                     </div>
                 </div>
             )}

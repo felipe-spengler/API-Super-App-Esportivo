@@ -37,7 +37,7 @@ class AdminTeamController extends Controller
     // Show team details
     public function show(Request $request, $id)
     {
-        $team = Team::with(['club', 'championships.sport', 'championships.categories'])
+        $team = Team::with(['club', 'captain', 'championships.sport', 'championships.categories'])
             ->with([
                 'players' => function ($q) use ($request) {
                     if ($request->has('championship_id')) {

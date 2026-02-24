@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Save, ArrowLeft, Shield, User, Camera } from 'lucide-react';
+import { Save, ArrowLeft, Shield, User, Camera, Search, Loader2 } from 'lucide-react';
 import api from '../../services/api';
 
 interface UserOption {
@@ -18,6 +18,8 @@ export function TeamForm() {
     const [users, setUsers] = useState<UserOption[]>([]);
     const [loading, setLoading] = useState(false);
     const [fetching, setFetching] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [isSearching, setIsSearching] = useState(false);
 
     // Image Upload State
     const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -32,13 +34,28 @@ export function TeamForm() {
         }
     }, [id]);
 
-    async function loadUsers() {
+    useEffect(() => {
+        const delayDebounceFn = setTimeout(() => {
+            if (searchTerm.length >= 2 || searchTerm === '') {
+                loadUsers(searchTerm);
+            }
+        }, 500);
+
+        return () => clearTimeout(delayDebounceFn);
+    }, [searchTerm]);
+
+    async function loadUsers(search = '') {
         try {
-            const response = await api.get('/admin/players');
-            const data = Array.isArray(response.data) ? response.data : (response.data.data || []);
+            setIsSearching(true);
+            const response = await api.get('/admin/players', {
+                params: { search }
+            });
+            const data = Array.isArray(response.data.data) ? response.data.data : (response.data || []);
             setUsers(data);
         } catch (error) {
             console.error('Erro ao carregar usuários', error);
+        } finally {
+            setIsSearching(false);
         }
     }
 
@@ -50,6 +67,15 @@ export function TeamForm() {
             setName(team.name || '');
             setCity(team.city || '');
             setCaptainId(team.captain_id ? String(team.captain_id) : '');
+
+            // Se tem capitão e ele não está na lista inicial, vamos garantir que ele apareça
+            if (team.captain) {
+                setUsers(prev => {
+                    const exists = prev.find(u => u.id === team.captain.id);
+                    if (!exists) return [...prev, team.captain];
+                    return prev;
+                });
+            }
 
             if (team.logo_url) {
                 setLogoPreview(team.logo_url);
@@ -187,20 +213,38 @@ export function TeamForm() {
 
                     <div>
                         <label className="block text-sm font-bold text-gray-700 mb-2">Capitão / Responsável (Opcional)</label>
-                        <div className="relative">
-                            <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                            <select
-                                value={captainId}
-                                onChange={e => setCaptainId(e.target.value)}
-                                className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none appearance-none bg-white"
-                            >
-                                <option value="">Selecione um usuário...</option>
-                                {users.map(user => (
-                                    <option key={user.id} value={user.id}>
-                                        {user.name} ({user.email})
-                                    </option>
-                                ))}
-                            </select>
+                        <div className="space-y-2">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                                <input
+                                    type="text"
+                                    placeholder="Pesquisar por nome ou e-mail..."
+                                    value={searchTerm}
+                                    onChange={e => setSearchTerm(e.target.value)}
+                                    className="w-full pl-10 pr-10 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                />
+                                {isSearching && (
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                        <Loader2 className="w-5 h-5 text-indigo-500 animate-spin" />
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="relative">
+                                <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                                <select
+                                    value={captainId}
+                                    onChange={e => setCaptainId(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none appearance-none bg-white"
+                                >
+                                    <option value="">Selecione um usuário...</option>
+                                    {users.map(user => (
+                                        <option key={user.id} value={user.id}>
+                                            {user.name} ({user.email})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
                         <p className="text-xs text-gray-500 mt-1">
                             O capitão poderá gerenciar a equipe e adicionar jogadores.
