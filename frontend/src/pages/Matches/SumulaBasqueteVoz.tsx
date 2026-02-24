@@ -29,6 +29,7 @@ export function SumulaBasqueteVoz() {
     const [time, setTime] = useState(600);
     const [isRunning, setIsRunning] = useState(false);
     const [currentQuarter, setCurrentQuarter] = useState<Quarter>('1º Quarto');
+    const [voiceLogs, setVoiceLogs] = useState<any[]>([]);
 
     // Voice State
     const [isListening, setIsListening] = useState(false);
@@ -143,9 +144,10 @@ export function SumulaBasqueteVoz() {
         }
     };
 
-    const processVoiceCommand = (text: string) => {
+    const processVoiceCommand = async (text: string) => {
         console.log("Processando:", text);
         const lower = text.toLowerCase();
+        let identified = false;
 
         let team: 'home' | 'away' | null = null;
         let points = 0;
@@ -213,6 +215,7 @@ export function SumulaBasqueteVoz() {
 
             if (player) {
                 const playerIdentifier = player.nickname || player.name;
+                identified = true;
                 setPendingAction({
                     type,
                     team,
@@ -230,6 +233,7 @@ export function SumulaBasqueteVoz() {
             }
         } else if (lower.includes('tempo') || lower.includes('time out')) {
             // Timeout detection
+            identified = true;
             if (team) {
                 setPendingAction({
                     type: 'timeout',
@@ -242,6 +246,7 @@ export function SumulaBasqueteVoz() {
             }
         } else if (lower.includes('próximo quarto') || lower.includes('fim do quarto') || lower.includes('próximo período') || lower.includes('encerrar quarto')) {
             const currentIdx = quarters.indexOf(currentQuarter);
+            identified = true;
             if (currentIdx < quarters.length - 1) {
                 const next = quarters[currentIdx + 1];
                 setPendingAction({
@@ -261,6 +266,26 @@ export function SumulaBasqueteVoz() {
             if (missing.length > 0) {
                 setFeedback(`Não entendi ${missing.join(', ')}. Tente: "Três pontos time casa camisa dez"`);
             }
+        }
+
+        // SALVAR LOG DE VOZ NO BACKEND (MESMO SE NÃO RECONHECER)
+        try {
+            await api.post(`/admin/matches/${id}/events`, {
+                event_type: 'voice_debug',
+                team_id: identified ? (team === 'home' ? matchData.home_team_id : matchData.away_team_id) : null,
+                minute: formatTime(time),
+                period: currentQuarter,
+                metadata: {
+                    voice_log: text,
+                    identified: identified,
+                    action_type: type || 'none',
+                    team: team || 'none'
+                }
+            });
+            fetchMatchDetails(); // Recarrega histórico para mostrar o log
+            identified = true; // For debug purposes here
+        } catch (e) {
+            console.error("Erro ao salvar log de voz", e);
         }
     };
 
@@ -382,6 +407,36 @@ export function SumulaBasqueteVoz() {
         }
     };
 
+    const toggleTimer = async () => {
+        const newIsRunning = !isRunning;
+        setIsRunning(newIsRunning);
+
+        // Logar ação do cronômetro
+        try {
+            await api.post(`/admin/matches/${id}/events`, {
+                event_type: 'timer_control',
+                minute: formatTime(time),
+                period: currentQuarter,
+                metadata: {
+                    action: newIsRunning ? 'start' : 'pause',
+                    current_time: formatTime(time)
+                }
+            });
+
+            // Sincroniza estado no match_details
+            const currentDetails = matchData.match_details || {};
+            await api.put(`/admin/matches/${id}`, {
+                match_details: {
+                    ...currentDetails,
+                    current_timer_value: time,
+                    timer_running: newIsRunning
+                }
+            });
+        } catch (e) {
+            console.error("Erro ao logar controle de tempo", e);
+        }
+    };
+
     const toggleListening = async () => {
         if (Capacitor.isNativePlatform()) {
             if (isListening) {
@@ -469,7 +524,7 @@ export function SumulaBasqueteVoz() {
             <div className="flex flex-col items-center gap-2 mb-6">
                 <div className="flex items-center gap-4 bg-gray-900 px-6 py-2 rounded-2xl border border-gray-700 shadow-xl">
                     <button
-                        onClick={() => setIsRunning(!isRunning)}
+                        onClick={toggleTimer}
                         className={`p-2 rounded-full ${isRunning ? 'bg-red-500/20 text-red-500' : 'bg-green-500/20 text-green-500'}`}
                     >
                         {isRunning ? <Pause size={20} /> : <Play size={20} fill="currentColor" />}
@@ -598,41 +653,73 @@ export function SumulaBasqueteVoz() {
 
                     <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
                         {matchData.events && matchData.events.length > 0 ? (
-                            matchData.events.slice().reverse().map((event: any) => (
-                                <div key={event.id} className="bg-gray-900/80 border border-gray-800 rounded-xl p-3 flex items-center justify-between gap-3 animate-in fade-in slide-in-from-right-4">
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <span className="text-[10px] font-mono text-orange-500 bg-orange-500/10 px-1.5 py-0.5 rounded">
-                                                {event.game_time || '00:00'}
+                            matchData.events.slice().reverse().map((event: any) => {
+                                // Se for apenas um log de voz, mostrar diferente
+                                if (event.event_type === 'voice_debug') {
+                                    return (
+                                        <div key={event.id} className="bg-gray-800/30 border border-dashed border-gray-700 rounded-lg p-2 flex items-center gap-2 opacity-60">
+                                            <span className="text-[8px] font-mono text-gray-500">{event.game_time}</span>
+                                            <span className="text-[9px] text-gray-400 flex-1 italic truncate">
+                                                🎤 "{event.metadata?.voice_log}"
+                                                {event.metadata?.identified ?
+                                                    <span className="text-green-500 ml-1">✓</span> :
+                                                    <span className="text-red-500 ml-1">✗</span>
+                                                }
                                             </span>
-                                            <span className="text-[10px] text-gray-500 font-bold uppercase italic">
-                                                {event.period}
-                                            </span>
+                                            <button onClick={() => deleteEvent(event.id)} className="text-gray-600"><X size={10} /></button>
                                         </div>
-                                        <p className="text-xs font-bold text-white uppercase truncate">
-                                            {event.event_type === 'field_goal_3' ? '🏀 3 Pontos' :
-                                                event.event_type === 'field_goal_2' ? '🏀 2 Pontos' :
-                                                    event.event_type === 'free_throw' ? '🏀 L. Livre' :
-                                                        event.event_type === 'foul' ? '⚠️ Falta' :
-                                                            event.event_type === 'timeout' ? '⏱️ Tempo' : event.event_type}
-                                        </p>
-                                        <p className="text-[10px] text-gray-400 truncate">
-                                            {event.player?.name || event.team?.name || 'Evento de Jogo'}
-                                        </p>
-                                        {event.metadata?.voice_log && (
-                                            <p className="text-[9px] text-gray-600 italic mt-1 truncate">
-                                                🎤 "{event.metadata.voice_log}"
+                                    );
+                                }
+
+                                if (event.event_type === 'timer_control') {
+                                    return (
+                                        <div key={event.id} className="bg-blue-500/5 border border-blue-500/10 rounded-lg p-2 flex items-center gap-2 opacity-80">
+                                            <span className="text-[8px] font-mono text-blue-500">{event.game_time}</span>
+                                            <span className="text-[9px] text-blue-300 flex-1 font-bold italic">
+                                                ⏱️ CRONÔMETRO: {event.metadata?.action === 'start' ? 'INICIADO' : 'PAUSADO'}
+                                            </span>
+                                            <button onClick={() => deleteEvent(event.id)} className="text-gray-600"><X size={10} /></button>
+                                        </div>
+                                    );
+                                }
+
+                                return (
+                                    <div key={event.id} className="bg-gray-900/80 border border-gray-800 rounded-xl p-3 flex items-center justify-between gap-3 animate-in fade-in slide-in-from-right-4">
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="text-[10px] font-mono text-orange-500 bg-orange-500/10 px-1.5 py-0.5 rounded">
+                                                    {event.game_time || '00:00'}
+                                                </span>
+                                                <span className="text-[10px] text-gray-500 font-bold uppercase italic">
+                                                    {event.period}
+                                                </span>
+                                            </div>
+                                            <p className="text-xs font-bold text-white uppercase truncate">
+                                                {event.event_type === 'field_goal_3' ? '🏀 3 Pontos' :
+                                                    event.event_type === 'field_goal_2' ? '🏀 2 Pontos' :
+                                                        event.event_type === 'free_throw' ? '🏀 L. Livre' :
+                                                            event.event_type === 'foul' ? '⚠️ Falta' :
+                                                                event.event_type === 'period_end' ? '🏁 Fim de Quarto' :
+                                                                    event.event_type === 'timeout' ? '⏱️ Tempo' : event.event_type}
                                             </p>
-                                        )}
+                                            <p className="text-[10px] text-gray-400 truncate">
+                                                {event.player?.name || event.team?.name || 'Evento de Jogo'}
+                                            </p>
+                                            {event.metadata?.voice_log && (
+                                                <p className="text-[9px] text-gray-600 italic mt-1 truncate">
+                                                    🎤 "{event.metadata.voice_log}"
+                                                </p>
+                                            )}
+                                        </div>
+                                        <button
+                                            onClick={() => deleteEvent(event.id)}
+                                            className="p-2 text-gray-500 hover:text-red-500 transition-colors"
+                                        >
+                                            <X size={16} />
+                                        </button>
                                     </div>
-                                    <button
-                                        onClick={() => deleteEvent(event.id)}
-                                        className="p-2 text-gray-500 hover:text-red-500 transition-colors"
-                                    >
-                                        <X size={16} />
-                                    </button>
-                                </div>
-                            ))
+                                );
+                            })
                         ) : (
                             <div className="text-center py-8 bg-gray-900/30 rounded-2xl border border-dashed border-gray-800">
                                 <p className="text-gray-600 text-xs italic">Nenhum lançamento registrado ainda.</p>
