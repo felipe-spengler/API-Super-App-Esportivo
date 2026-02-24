@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Calendar, Trophy, Save, Plus, Trash2, CheckCircle, AlertCircle, List, Edit2, X, MapPin, Clock as ClockIcon, Loader2, Play, Printer, Users, Star, Shuffle, ImageIcon, Share2, Download, Mic } from 'lucide-react';
+import { ArrowLeft, Calendar, Trophy, Save, Plus, Trash2, CheckCircle, AlertCircle, List, Edit2, X, MapPin, Clock as ClockIcon, Loader2, Play, Printer, Users, Star, Shuffle, ImageIcon, Share2, Download, Mic, ShieldCheck } from 'lucide-react';
 import api from '../../services/api';
 
 interface Match {
@@ -56,14 +56,42 @@ export function AdminMatchManager() {
     const [groupAssignments, setGroupAssignments] = useState<Record<string, string>>({}); // teamId -> groupName
     const [availableGroupNames, setAvailableGroupNames] = useState<string[]>(['A', 'B', 'C', 'D']);
     const [loadingGroups, setLoadingGroups] = useState(false);
+    const [isAuditOpen, setIsAuditOpen] = useState(false);
 
     useEffect(() => {
-        if (isSummaryOpen && selectedMatch) {
-            fetchRosters(selectedMatch.id);
+        if ((isSummaryOpen || isAuditOpen || activeTab === 'audit') && selectedMatch) {
+            fetchFullDetails(selectedMatch.id);
             // @ts-ignore
             setSelectedMvpId(selectedMatch.mvp_player_id || '');
         }
-    }, [isSummaryOpen, selectedMatch]);
+    }, [isSummaryOpen, isAuditOpen, activeTab, selectedMatch]);
+
+    const fetchFullDetails = async (matchId: number) => {
+        try {
+            setLoadingRosters(true);
+            const response = await api.get(`/admin/matches/${matchId}/full-details`);
+            const data = response.data;
+
+            // Atualiza elencos
+            setRosters(data.rosters || { home: [], away: [] });
+
+            // Atualiza o selectedMatch com os eventos que vieram no full-details
+            if (data.match) {
+                setSelectedMatch(prev => {
+                    if (!prev || prev.id !== matchId) return prev;
+                    return {
+                        ...prev,
+                        ...data.match,
+                        events: data.match.events || []
+                    };
+                });
+            }
+        } catch (error) {
+            console.error("Erro ao carregar detalhes completos", error);
+        } finally {
+            setLoadingRosters(false);
+        }
+    };
 
     const fetchRosters = async (matchId: number) => {
         try {
@@ -860,6 +888,18 @@ export function AdminMatchManager() {
                                                                     <span className="text-[10px] font-bold uppercase md:hidden">{match.status === 'finished' ? 'Resumo' : 'Súmula'}</span>
                                                                 </button>
 
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setSelectedMatch(match);
+                                                                        setIsAuditOpen(true);
+                                                                    }}
+                                                                    className="flex-1 md:flex-none flex items-center justify-center gap-1 px-3 py-2 text-blue-600 bg-blue-50 border border-blue-100 rounded-lg transition-all hover:bg-blue-100"
+                                                                    title="Auditoria de Voz e Logs"
+                                                                >
+                                                                    <ShieldCheck className="w-4 h-4" />
+                                                                    <span className="text-[10px] font-bold uppercase md:hidden">Auditar</span>
+                                                                </button>
+
 
 
                                                                 <button
@@ -1080,6 +1120,14 @@ export function AdminMatchManager() {
                                     <ImageIcon className="w-4 h-4" /> Arte
                                 </span>
                             </button>
+                            <button
+                                onClick={() => setActiveTab('audit')}
+                                className={`flex-1 py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'audit' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                            >
+                                <span className="flex items-center justify-center gap-2">
+                                    <ShieldCheck className="w-4 h-4" /> Auditoria
+                                </span>
+                            </button>
                         </div>
 
                         {activeTab === 'summary' && (
@@ -1188,53 +1236,71 @@ export function AdminMatchManager() {
                             </div>
                         )}
 
-                        {activeTab === 'art' && (
-                            <div className="p-6">
-                                <div className="text-center space-y-2 mb-6">
-                                    <h3 className="font-bold text-gray-900">Gerador de Arte</h3>
-                                    <p className="text-sm text-gray-500">Arte oficial para divulgação do jogo nas redes sociais.</p>
-                                </div>
-                                <div className="flex flex-col items-center gap-6">
-                                    <div className="relative aspect-[4/5] w-full max-w-[280px] bg-slate-900 rounded-lg shadow-xl overflow-hidden group">
-                                        <img
-                                            src={`${api.defaults.baseURL}/public/art/match/${selectedMatch.id}/scheduled?t=${Date.now()}`}
-                                            className="w-full h-full object-cover"
-                                            alt="Arte do Jogo"
-                                        />
-                                    </div>
-                                    <div className="flex flex-col w-full max-w-[280px] gap-2">
-                                        <a
-                                            href={`${api.defaults.baseURL}/public/art/match/${selectedMatch.id}/scheduled?download=true`}
-                                            download={`jogo-${selectedMatch.id}.jpg`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all shadow-md active:scale-95"
-                                        >
-                                            <Download className="w-4 h-4" /> Baixar Imagem
-                                        </a>
-                                        {/* @ts-ignore */}
-                                        {navigator.share && (
-                                            <button
-                                                onClick={async () => {
-                                                    try {
-                                                        const response = await fetch(`${api.defaults.baseURL}/public/art/match/${selectedMatch.id}/scheduled`);
-                                                        const blob = await response.blob();
-                                                        const file = new File([blob], `jogo-${selectedMatch.id}.jpg`, { type: 'image/jpeg' });
-                                                        await navigator.share({
-                                                            title: `Jogo: ${selectedMatch.home_team?.name} vs ${selectedMatch.away_team?.name}`,
-                                                            text: 'Confira os detalhes da nossa próxima partida!',
-                                                            files: [file]
-                                                        });
-                                                    } catch (err) {
-                                                        console.error('Error sharing:', err);
-                                                    }
-                                                }}
-                                                className="w-full py-3 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-gray-50 transition-all"
-                                            >
-                                                <Share2 className="w-4 h-4" /> Compartilhar
-                                            </button>
-                                        )}
-                                    </div>
+                        {activeTab === 'audit' && (
+                            <div className="p-0 flex-1 overflow-y-auto max-h-[500px] bg-gray-50">
+                                <div className="p-4 space-y-3">
+                                    {(selectedMatch as any).events && (selectedMatch as any).events.length > 0 ? (
+                                        (selectedMatch as any).events.slice().reverse().map((event: any) => {
+                                            const isVoice = event.event_type === 'voice_debug';
+                                            const isTimer = event.event_type === 'timer_control';
+
+                                            return (
+                                                <div key={event.id} className={`p-3 rounded-xl border flex flex-col gap-1 ${isVoice ? 'bg-white border-gray-100 opacity-80' :
+                                                        isTimer ? 'bg-blue-50 border-blue-100' : 'bg-white border-gray-200 shadow-sm'
+                                                    }`}>
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[10px] font-mono font-bold text-blue-600">
+                                                                {event.game_time || '00:00'}
+                                                            </span>
+                                                            <span className="text-[10px] font-black text-gray-400 lowercase">
+                                                                {event.period}
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-[9px] text-gray-400">
+                                                            {new Date(event.created_at).toLocaleTimeString('pt-BR')}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={`text-[11px] font-black uppercase ${isVoice ? 'text-gray-400' :
+                                                                isTimer ? 'text-blue-600' : 'text-gray-800'
+                                                            }`}>
+                                                            {isVoice ? '🎙️ Voz' : isTimer ? '⏱️ Tempo' : `🏀 ${event.event_type}`}
+                                                        </span>
+                                                        {isVoice && (
+                                                            <span className={`text-[8px] font-bold px-1 py-0.5 rounded ${event.metadata?.identified ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                                                                }`}>
+                                                                {event.metadata?.identified ? '✓' : '✗'}
+                                                            </span>
+                                                        )}
+                                                    </div>
+
+                                                    {event.metadata?.voice_log && (
+                                                        <div className="text-xs italic text-gray-500 border-l-2 border-gray-200 pl-2 py-1 bg-gray-50/50">
+                                                            "{event.metadata.voice_log}"
+                                                        </div>
+                                                    )}
+
+                                                    {isTimer && (
+                                                        <div className="text-[11px] font-bold text-blue-700 uppercase">
+                                                            {event.metadata?.action === 'start' ? 'Iniciou Cronômetro' : 'Pausou Cronômetro'}
+                                                        </div>
+                                                    )}
+
+                                                    {event.player_name && !isVoice && !isTimer && (
+                                                        <div className="text-[11px] font-bold text-gray-600">
+                                                            Atleta: {event.player_name}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })
+                                    ) : (
+                                        <div className="text-center py-12 text-gray-400 text-sm italic">
+                                            Nenhum registro de auditoria disponível.
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -1543,6 +1609,97 @@ export function AdminMatchManager() {
                     </div>
                 )
             }
+            {/* Modal de Auditoria Completa (Extra-Súmula) */}
+            {isAuditOpen && selectedMatch && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                        <div className="bg-blue-600 p-4 text-white flex items-center justify-between shrink-0">
+                            <div className="flex items-center gap-2">
+                                <ShieldCheck className="w-5 h-5" />
+                                <h3 className="font-bold">Auditoria: {selectedMatch.home_team?.name} x {selectedMatch.away_team?.name}</h3>
+                            </div>
+                            <button onClick={() => setIsAuditOpen(false)} className="p-1 hover:bg-blue-700 rounded-full">
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
+                            {(selectedMatch as any).events && (selectedMatch as any).events.length > 0 ? (
+                                <div className="space-y-3">
+                                    {(selectedMatch as any).events.slice().reverse().map((event: any) => {
+                                        const isVoice = event.event_type === 'voice_debug';
+                                        const isTimer = event.event_type === 'timer_control';
+
+                                        return (
+                                            <div key={event.id} className={`p-4 rounded-xl border flex flex-col gap-2 ${isVoice ? 'bg-white border-gray-100' :
+                                                    isTimer ? 'bg-indigo-50 border-indigo-100' : 'bg-white border-gray-200 shadow-sm'
+                                                }`}>
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-xs font-black text-white bg-indigo-600 px-2 py-0.5 rounded shadow-sm">
+                                                            {event.game_time || '00:00'}
+                                                        </span>
+                                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">
+                                                            {event.period}
+                                                        </span>
+                                                    </div>
+                                                    <span className="text-[10px] font-bold text-gray-300">#{event.id} • {new Date(event.created_at).toLocaleTimeString('pt-BR')}</span>
+                                                </div>
+
+                                                <div className="flex items-center gap-2">
+                                                    <h4 className={`text-sm font-black uppercase ${isVoice ? 'text-gray-400' : isTimer ? 'text-indigo-600' : 'text-gray-900'
+                                                        }`}>
+                                                        {isVoice ? '🎙️ Entrada de Voz' : isTimer ? '⏱️ Controle do Tempo' : `🏀 Evento: ${event.event_type}`}
+                                                    </h4>
+                                                    {isVoice && (
+                                                        <span className={`text-[10px] font-black px-2 py-0.5 rounded shadow-sm ${event.metadata?.identified ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+                                                            }`}>
+                                                            {event.metadata?.identified ? 'SUCESSO' : 'FALHA'}
+                                                        </span>
+                                                    )}
+                                                </div>
+
+                                                {event.metadata?.voice_log && (
+                                                    <div className="text-sm font-medium italic text-gray-600 bg-gray-100/50 p-3 rounded-lg border border-gray-200/50">
+                                                        "{event.metadata.voice_log}"
+                                                    </div>
+                                                )}
+
+                                                {isTimer && (
+                                                    <div className="text-xs font-black text-indigo-700 flex items-center gap-1">
+                                                        {event.metadata?.action === 'start' ? <Play size={12} fill="currentColor" /> : <X size={12} />}
+                                                        SISTEMA: {event.metadata?.action === 'start' ? 'CRONÔMETRO INICIADO' : 'CRONÔMETRO PAUSADO'}
+                                                    </div>
+                                                )}
+
+                                                {event.player_name && !isVoice && !isTimer && (
+                                                    <div className="text-xs font-bold text-gray-600 flex items-center gap-2">
+                                                        <Users size={12} /> Atleta: {event.player_name}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <div className="text-center py-20">
+                                    <ShieldCheck className="w-16 h-16 text-gray-200 mx-auto mb-4" />
+                                    <p className="text-gray-400 italic">Nenhum dado auditável disponível nesta partida.</p>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="p-4 bg-white border-t border-gray-100 shrink-0">
+                            <button
+                                onClick={() => setIsAuditOpen(false)}
+                                className="w-full py-4 bg-gray-900 text-white font-black rounded-xl hover:bg-black transition-all shadow-xl active:scale-95 uppercase tracking-widest text-sm"
+                            >
+                                Fechar Auditoria
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 }
