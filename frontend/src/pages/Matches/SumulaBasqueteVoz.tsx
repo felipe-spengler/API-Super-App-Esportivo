@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Mic, MicOff, Check, X, Timer, Play, Pause } from 'lucide-react';
+import { ArrowLeft, Mic, MicOff, Check, X, Timer, Play, Pause, Plus } from 'lucide-react';
 import api from '../../services/api';
 import { SpeechRecognition } from '@capacitor-community/speech-recognition';
 import { Capacitor } from '@capacitor/core';
@@ -35,8 +35,21 @@ export function SumulaBasqueteVoz() {
     const [transcript, setTranscript] = useState('');
     const [feedback, setFeedback] = useState('');
     const [pendingAction, setPendingAction] = useState<any>(null); // { type, team, player, value }
+    const [showPlayers, setShowPlayers] = useState(false);
 
     const recognitionRef = useRef<any>(null);
+
+    useEffect(() => {
+        let interval: any;
+        if (isRunning && time > 0) {
+            interval = setInterval(() => {
+                setTime((prev) => prev - 1);
+            }, 1000);
+        } else if (time === 0) {
+            setIsRunning(false);
+        }
+        return () => clearInterval(interval);
+    }, [isRunning, time]);
 
     // Initial Load
     useEffect(() => {
@@ -75,7 +88,7 @@ export function SumulaBasqueteVoz() {
 
                 recognitionRef.current = recognition;
             } else {
-                setFeedback("Seu navegador não suporta reconhecimento de voz.");
+                setFeedback("Seu navegador não suporta reconhecimento de voz. Use Chrome ou Edge.");
             }
         } else {
             // Native Platform Initialization
@@ -145,13 +158,20 @@ export function SumulaBasqueteVoz() {
         }
 
         // 2. Identificar Ação (Pontos)
-        if (lower.includes('três pontos') || lower.includes('3 pontos')) {
+        // 2. Identificar Ação (Pontos)
+        const isThree = lower.includes('três') || lower.includes('3') || lower.includes('triplo') || lower.includes('triple');
+        const isPoints = lower.includes('ponto') || lower.includes('cesta') || lower.includes('marque') || lower.includes('marcar') || lower.includes('fez');
+
+        if (isThree && isPoints) {
             points = 3;
             type = '3_points';
-        } else if (lower.includes('dois pontos') || lower.includes('2 pontos')) {
+        }
+
+        // Refine if other points matched (override order if specific)
+        if (lower.includes('dois pontos') || lower.includes('2 pontos') || lower.includes('cesta de dois')) {
             points = 2;
             type = '2_points';
-        } else if (lower.includes('um ponto') || lower.includes('lance livre') || lower.includes('ponto')) {
+        } else if (lower.includes('um ponto') || lower.includes('lance livre') || (lower.includes('ponto') && !type)) {
             points = 1;
             type = '1_point';
         } else if (lower.includes('técnica') && lower.includes('falta')) {
@@ -262,15 +282,22 @@ export function SumulaBasqueteVoz() {
 
             const teamId = pendingAction.team === 'home' ? matchData.home_team_id : matchData.away_team_id;
 
+            const formatTime = (s: number) => {
+                const mins = Math.floor(s / 60);
+                const secs = s % 60;
+                return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            };
+
             await api.post(`/admin/matches/${id}/events`, {
                 event_type: apiType,
                 team_id: teamId,
-                minute: '00:00', // TODO: Get real time
+                minute: formatTime(600 - time), // Time elapsed in quarter
                 period: currentQuarter,
                 player_id: pendingAction.player?.id,
                 value: pendingAction.value,
                 metadata: {
-                    system_period: currentQuarter
+                    system_period: currentQuarter,
+                    quarter_time: formatTime(time)
                 }
             });
 
@@ -295,7 +322,6 @@ export function SumulaBasqueteVoz() {
                 const result: any = await SpeechRecognition.stop();
                 setIsListening(false);
 
-                // Use result matches or fallback to current transcript
                 const finalTranscript = (result && result.matches && result.matches.length > 0)
                     ? result.matches[0]
                     : transcript;
@@ -325,16 +351,37 @@ export function SumulaBasqueteVoz() {
                 }
             }
         } else {
-            // Web Logic
             if (isListening) {
-                recognitionRef.current?.stop();
+                try {
+                    recognitionRef.current?.stop();
+                } catch (e) {
+                    console.error(e);
+                    setIsListening(false);
+                }
             } else {
+                if (!recognitionRef.current) {
+                    setFeedback("Reconhecimento de voz não inicializado. Verifique se seu navegador suporta.");
+                    return;
+                }
                 setPendingAction(null);
                 setTranscript("");
-                recognitionRef.current?.start();
+                try {
+                    recognitionRef.current.start();
+                } catch (e) {
+                    console.error("Erro ao iniciar reconhecimento:", e);
+                    setFeedback("Erro ao ativar microfone. Verifique as permissões de áudio.");
+                    setIsListening(false);
+                }
             }
         }
     };
+
+    const formatTime = (s: number) => {
+        const mins = Math.floor(s / 60);
+        const secs = s % 60;
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
+
 
     if (loading || !matchData) return <div className="min-h-screen bg-black text-white flex items-center justify-center">Carregando...</div>;
 
@@ -352,15 +399,34 @@ export function SumulaBasqueteVoz() {
                 <div className="w-10"></div>
             </div>
 
-            {/* Scoreboard Simplificado */}
-            <div className="flex gap-8 mb-8">
-                <div className="text-center">
-                    <div className="text-6xl font-black text-orange-100">{matchData.scoreHome}</div>
-                    <div className="text-sm text-gray-400">CASA</div>
+            {/* Timer and Period Area */}
+            <div className="flex flex-col items-center gap-2 mb-6">
+                <div className="flex items-center gap-4 bg-gray-900 px-6 py-2 rounded-2xl border border-gray-700 shadow-xl">
+                    <button
+                        onClick={() => setIsRunning(!isRunning)}
+                        className={`p-2 rounded-full ${isRunning ? 'bg-red-500/20 text-red-500' : 'bg-green-500/20 text-green-500'}`}
+                    >
+                        {isRunning ? <Pause size={20} /> : <Play size={20} fill="currentColor" />}
+                    </button>
+                    <div className="text-4xl font-mono font-bold tracking-tighter text-orange-500 min-w-[100px] text-center">
+                        {formatTime(time)}
+                    </div>
                 </div>
+                <div className="text-xs font-bold text-gray-500 px-3 py-1 bg-gray-800 rounded-full uppercase tracking-widest">
+                    {currentQuarter}
+                </div>
+            </div>
+
+            {/* Scoreboard Simplificado */}
+            <div className="flex gap-12 mb-8 items-center">
                 <div className="text-center">
-                    <div className="text-6xl font-black text-orange-100">{matchData.scoreAway}</div>
-                    <div className="text-sm text-gray-400">VISITANTE</div>
+                    <div className="text-7xl font-black text-white leading-none">{matchData.scoreHome}</div>
+                    <div className="text-[10px] text-orange-500 font-bold uppercase tracking-[0.2em] mt-2">CASA</div>
+                </div>
+                <div className="w-px h-12 bg-gray-800"></div>
+                <div className="text-center">
+                    <div className="text-7xl font-black text-white leading-none">{matchData.scoreAway}</div>
+                    <div className="text-[10px] text-orange-500 font-bold uppercase tracking-[0.2em] mt-2">VISITANTE</div>
                 </div>
             </div>
 
@@ -392,10 +458,33 @@ export function SumulaBasqueteVoz() {
                     </button>
                 </div>
 
+                {/* Confirmation Actions - MOVED ABOVE TIPS */}
+                {pendingAction && (
+                    <div className="w-full space-y-3 mb-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                        <div className="bg-green-600/10 border border-green-600/30 rounded-xl p-3 text-center">
+                            <p className="text-sm text-green-400 font-bold animate-pulse">Ação Pendente: {pendingAction.description}</p>
+                        </div>
+                        <div className="flex gap-3 w-full">
+                            <button
+                                onClick={cancelAction}
+                                className="flex-1 bg-gray-800 text-gray-300 py-4 rounded-xl flex items-center justify-center gap-2 font-bold hover:bg-gray-700 active:scale-95 transition-all"
+                            >
+                                <X size={20} /> Cancelar
+                            </button>
+                            <button
+                                onClick={confirmAction}
+                                className="flex-1 bg-green-600 text-white py-4 rounded-xl flex items-center justify-center gap-2 font-black hover:bg-green-500 active:scale-95 transition-all shadow-lg shadow-green-900/40 uppercase"
+                            >
+                                <Check size={20} /> CONFIRMAR
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 <div className="bg-gray-900 border border-orange-500/20 rounded-2xl p-4 w-full text-[11px]">
                     <h3 className="text-orange-500 font-bold mb-2 flex items-center gap-1">📖 Dicas de Comandos:</h3>
                     <div className="grid grid-cols-1 gap-1.5 text-gray-400">
-                        <p>• <span className="text-gray-200">"Três pontos camisa dez casa"</span> (Lança 3 pontos)</p>
+                        <p>• <span className="text-gray-200">"Triplo camisa dez casa"</span> ou <span className="text-gray-200">"3 pontos..."</span></p>
                         <p>• <span className="text-gray-200">"Falta técnica camisa dez casa"</span> (Falta Técnica)</p>
                         <p>• <span className="text-gray-200">"Entra camisa cinco casa"</span> (Substituição)</p>
                         <p>• <span className="text-gray-200">"Tempo time casa"</span> (Pedido de Tempo/Timeout)</p>
@@ -403,27 +492,43 @@ export function SumulaBasqueteVoz() {
                     </div>
                 </div>
 
-                <p className="text-gray-600 text-[10px] text-center max-w-xs mt-2 italic">
+                {/* Rosters Section */}
+                <div className="w-full mt-2">
+                    <button
+                        onClick={() => setShowPlayers(!showPlayers)}
+                        className="w-full flex items-center justify-between bg-gray-800/50 p-3 rounded-xl border border-gray-700/50 text-xs font-bold text-gray-300"
+                    >
+                        <span>LISTA DE JOGADORES</span>
+                        {showPlayers ? <X size={14} /> : <Plus size={14} />}
+                    </button>
+
+                    {showPlayers && (
+                        <div className="grid grid-cols-2 gap-4 mt-3 animate-in fade-in slide-in-from-top-2">
+                            <div className="space-y-1">
+                                <p className="text-[10px] text-orange-500 font-black mb-2 px-1">CASA</p>
+                                {rosters.home.map((p: any) => (
+                                    <div key={p.id} className="flex items-center gap-2 bg-gray-900 p-1.5 rounded-lg border border-gray-800">
+                                        <span className="w-6 h-6 flex items-center justify-center bg-orange-600 rounded text-[10px] font-black">{p.number}</span>
+                                        <span className="text-[10px] truncate flex-1 uppercase font-medium">{p.name}</span>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-[10px] text-orange-500 font-black mb-2 px-1 text-right">VISITANTE</p>
+                                {rosters.away.map((p: any) => (
+                                    <div key={p.id} className="flex items-center gap-2 bg-gray-900 p-1.5 rounded-lg border border-gray-800 flex-row-reverse">
+                                        <span className="w-6 h-6 flex items-center justify-center bg-gray-700 rounded text-[10px] font-black">{p.number}</span>
+                                        <span className="text-[10px] truncate flex-1 uppercase font-medium text-right">{p.name}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                <p className="text-gray-600 text-[10px] text-center max-w-xs mt-4 italic">
                     Diga sempre: Ação + Camisa + Time
                 </p>
-
-                {/* Confirmation Actions */}
-                {pendingAction && (
-                    <div className="flex gap-4 w-full animate-in slide-in-from-bottom-5">
-                        <button
-                            onClick={cancelAction}
-                            className="flex-1 bg-red-900/50 text-red-200 py-4 rounded-xl flex items-center justify-center gap-2 font-bold hover:bg-red-900"
-                        >
-                            <X size={20} /> Cancelar
-                        </button>
-                        <button
-                            onClick={confirmAction}
-                            className="flex-1 bg-green-600 text-white py-4 rounded-xl flex items-center justify-center gap-2 font-bold hover:bg-green-500 shadow-lg shadow-green-900/50"
-                        >
-                            <Check size={20} /> CONFIRMAR
-                        </button>
-                    </div>
-                )}
             </div>
         </div>
     );
