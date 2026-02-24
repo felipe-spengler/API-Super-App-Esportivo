@@ -257,42 +257,57 @@ export function SumulaVolei() {
     };
 
     // --- Setup / Set Start ---
-    const startNextSet = async () => {
+    const confirmSetup = async () => {
+        if (!matchData) return;
+        const hFull = setupRotation.home.filter(x => x).length === 6;
+        const aFull = setupRotation.away.filter(x => x).length === 6;
+
+        if (!hFull || !aFull) {
+            alert("Preencha todos os jogadores da rotação inicial.");
+            return;
+        }
+
         try {
-            const nextSet = (volleyState.current_set || 0) + 1;
-            registerSystemEvent('period_start', `Início do ${nextSet}º Set. Vai começar!`);
             await api.post(`/admin/matches/${id}/volley/set-start`, {
-                set_number: nextSet,
-                serving_team_id: matchData.home_team_id,
-                home_rotation: rotations.home || [],
-                away_rotation: rotations.away || []
+                set_number: volleyState.current_set || 1,
+                home_rotation: setupRotation.home,
+                away_rotation: setupRotation.away,
+                serving_team_id: servingTeamId || matchData.home_team_id
             });
-            fetchState();
+
+            // If match is scheduled, start it
+            if (matchData.status === 'scheduled') {
+                await registerSystemEvent('match_start', 'Partida Iniciada!');
+            }
+
+            setSetupModalOpen(false);
+            fetchFullDetails();
         } catch (e) {
-            alert("Erro ao iniciar set");
+            alert('Erro ao salvar rotação');
         }
     };
 
-    const confirmSetup = async () => {
-        // Validate
-        const h = setupRotation.home.filter((x: any) => x).length;
-        const a = setupRotation.away.filter((x: any) => x).length;
-        if (h < 6 || a < 6) {
-            if (!window.confirm("Times incompletos (menos de 6). Deseja iniciar mesmo assim?")) return;
-        }
+    const handleNextSet = async () => {
+        if (!window.confirm("Deseja FINALIZAR este set e iniciar o próximo?")) return;
 
-        registerSystemEvent('match_start', 'Saque inicial! Começa a partida de Vôlei!');
-        registerSystemEvent('period_start', 'Início do 1º Set. Bola em jogo!');
+        // Automatic side swap rule for volleyball
+        setInvertedSides(prev => !prev);
 
-        await api.post(`/admin/matches/${id}/volley/set-start`, {
-            set_number: 1,
-            serving_team_id: matchData.home_team_id,
-            home_rotation: setupRotation.home,
-            away_rotation: setupRotation.away
-        });
-        setSetupModalOpen(false);
-        fetchState();
-    }
+        // Reset setup for next set
+        setSetupRotation({ home: Array(6).fill(null), away: Array(6).fill(null) });
+
+        // Advance local set to open modal correctly
+        setVolleyState((prev: any) => ({ ...prev, current_set: (prev?.current_set || 1) + 1 }));
+        setSetupModalOpen(true);
+    };
+
+    const copyLastRotation = (team: 'home' | 'away') => {
+        if (!rotations || !rotations[team]) return;
+        setSetupRotation(prev => ({
+            ...prev,
+            [team]: [...rotations[team]]
+        }));
+    };
 
     const fillSetupSlot = (team: 'home' | 'away', index: number, playerId: any) => {
         setSetupRotation(prev => {
@@ -405,13 +420,6 @@ export function SumulaVolei() {
                     </div>
                     <div className="flex items-center gap-2">
                         <button onClick={() => setInvertedSides(!invertedSides)} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-full" title="Inverter Lados"><ArrowRightLeft size={16} /></button>
-                        <button
-                            onClick={startNextSet}
-                            disabled={matchData.status !== 'live'}
-                            className="p-2 bg-indigo-600 rounded text-xs font-bold disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
-                        >
-                            Novo Set
-                        </button>
                     </div>
                 </div>
             </div>
@@ -476,16 +484,35 @@ export function SumulaVolei() {
                 </div>
 
                 {/* Status Bar / Serving Info */}
-                <div className="bg-gray-800/50 backdrop-blur-sm p-3 rounded-xl border border-gray-700/50 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <div className={`w-3 h-3 rounded-full ${servingTeamId === matchData.home_team_id ? 'bg-blue-500 animate-pulse' : 'bg-gray-700'}`} />
-                        <span className="text-[10px] font-bold text-gray-400 uppercase">Saque {matchData.home_team?.code}</span>
+                <div className="bg-gray-800/50 backdrop-blur-sm p-3 rounded-xl border border-gray-700/50 flex flex-col gap-3">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <div className={`w-3 h-3 rounded-full ${servingTeamId === matchData.home_team_id ? 'bg-blue-500 animate-pulse' : 'bg-gray-700'}`} />
+                            <span className="text-[10px] font-bold text-gray-400 uppercase">Saque {matchData.home_team?.code}</span>
+                        </div>
+
+                        <div className="flex flex-col items-center">
+                            <span className="text-[9px] text-gray-500 font-bold uppercase tracking-tighter">Set Timer</span>
+                            <span className="text-xs font-mono text-indigo-400">
+                                {sets.find(s => s.set_number == volleyState.current_set)?.start_time
+                                    ? new Date(new Date().getTime() - new Date(sets.find(s => s.set_number == volleyState.current_set).start_time).getTime()).toISOString().substr(14, 5)
+                                    : '00:00'}
+                            </span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase text-right">Saque {matchData.away_team?.code}</span>
+                            <div className={`w-3 h-3 rounded-full ${servingTeamId === matchData.away_team_id ? 'bg-green-500 animate-pulse' : 'bg-gray-700'}`} />
+                        </div>
                     </div>
-                    <div className="h-4 w-[1px] bg-gray-700"></div>
-                    <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase text-right">Saque {matchData.away_team?.code}</span>
-                        <div className={`w-3 h-3 rounded-full ${servingTeamId === matchData.away_team_id ? 'bg-green-500 animate-pulse' : 'bg-gray-700'}`} />
-                    </div>
+
+                    <button
+                        onClick={handleNextSet}
+                        disabled={matchData.status !== 'live'}
+                        className="w-full py-2 bg-indigo-600/20 hover:bg-indigo-600/40 border border-indigo-500/30 rounded-lg text-[10px] font-black text-indigo-300 uppercase tracking-widest transition-all disabled:opacity-50"
+                    >
+                        {matchData.home_score >= 3 || matchData.away_score >= 3 ? 'FINALIZAR PARTIDA' : 'FECHAR SET / PRÓXIMO'}
+                    </button>
                 </div>
             </div>
 
@@ -632,13 +659,42 @@ export function SumulaVolei() {
             {setupModalOpen && matchData && (
                 <div className="fixed inset-0 bg-gray-900 z-50 flex flex-col">
                     <div className="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-800">
-                        <h2 className="text-xl font-black text-yellow-400">ESCALAÇÃO INICIAL</h2>
-                        <button onClick={() => setSetupModalOpen(false)}><X /></button>
+                        <div className="flex flex-col">
+                            <h2 className="text-xl font-black text-yellow-400 leading-none">CONFIGURAR {volleyState.current_set}º SET</h2>
+                            <p className="text-[10px] text-gray-400 mt-1 uppercase font-bold tracking-tighter">Escolha a Formação Inicial e quem saca</p>
+                        </div>
+                        <button onClick={() => setSetupModalOpen(false)} className="bg-gray-700 p-2 rounded-lg"><X size={20} /></button>
                     </div>
                     <div className="flex-1 overflow-y-auto p-4 space-y-8">
+                        {/* Serving Selection */}
+                        <div className="bg-indigo-900/20 border border-indigo-500/30 p-4 rounded-2xl">
+                            <h3 className="text-center text-xs font-black text-indigo-300 uppercase mb-3 tracking-widest">Inicia Sacando:</h3>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setServingTeamId(matchData.home_team_id)}
+                                    className={`flex-1 py-3 rounded-xl border-2 font-black text-sm transition-all ${servingTeamId === matchData.home_team_id ? 'bg-blue-600 border-white text-white shadow-lg' : 'bg-gray-800 border-gray-700 text-gray-500'}`}
+                                >
+                                    {matchData.home_team?.code}
+                                </button>
+                                <button
+                                    onClick={() => setServingTeamId(matchData.away_team_id)}
+                                    className={`flex-1 py-3 rounded-xl border-2 font-black text-sm transition-all ${servingTeamId === matchData.away_team_id ? 'bg-green-600 border-white text-white shadow-lg' : 'bg-gray-800 border-gray-700 text-gray-500'}`}
+                                >
+                                    {matchData.away_team?.code}
+                                </button>
+                            </div>
+                        </div>
                         {/* Home Setup */}
                         <div>
-                            <h3 className="font-bold text-blue-400 mb-4 text-lg">{matchData.home_team?.name}</h3>
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="font-bold text-blue-400 text-lg">{matchData.home_team?.name}</h3>
+                                <button
+                                    onClick={() => copyLastRotation('home')}
+                                    className="text-[10px] bg-blue-600/20 text-blue-400 border border-blue-500/30 px-2 py-1 rounded font-black uppercase tracking-tighter"
+                                >
+                                    Repetir Rotação
+                                </button>
+                            </div>
                             <div className="grid grid-cols-3 gap-3">
                                 {[0, 1, 2, 3, 4, 5].map(i => (
                                     <div key={i} className="bg-gray-800 p-2 rounded border border-gray-700">
@@ -660,7 +716,15 @@ export function SumulaVolei() {
 
                         {/* Away Setup */}
                         <div>
-                            <h3 className="font-bold text-green-400 mb-4 text-lg">{matchData.away_team?.name}</h3>
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="font-bold text-green-400 text-lg">{matchData.away_team?.name}</h3>
+                                <button
+                                    onClick={() => copyLastRotation('away')}
+                                    className="text-[10px] bg-green-600/20 text-green-400 border border-green-500/30 px-2 py-1 rounded font-black uppercase tracking-tighter"
+                                >
+                                    Repetir Rotação
+                                </button>
+                            </div>
                             <div className="grid grid-cols-3 gap-3">
                                 {[0, 1, 2, 3, 4, 5].map(i => (
                                     <div key={i} className="bg-gray-800 p-2 rounded border border-gray-700">
