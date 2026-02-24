@@ -240,7 +240,7 @@ export function SumulaBasqueteVoz() {
             } else {
                 setFeedback("Diga de qual time é o pedido de tempo. Ex: 'Tempo time casa'");
             }
-        } else if (lower.includes('próximo quarto') || lower.includes('fim do quarto')) {
+        } else if (lower.includes('próximo quarto') || lower.includes('fim do quarto') || lower.includes('próximo período') || lower.includes('encerrar quarto')) {
             const currentIdx = quarters.indexOf(currentQuarter);
             if (currentIdx < quarters.length - 1) {
                 const next = quarters[currentIdx + 1];
@@ -249,7 +249,7 @@ export function SumulaBasqueteVoz() {
                     nextPeriod: next,
                     description: `Encerrar ${currentQuarter} e ir para ${next}`
                 });
-                setFeedback(`Confirmar mudança para ${next}?`);
+                setFeedback(`Confirmar mudança para ${next} e resetar cronômetro?`);
             }
         } else {
             // Fallback partial recognition loops could go here
@@ -269,16 +269,32 @@ export function SumulaBasqueteVoz() {
 
         try {
             if (pendingAction.type === 'period_end') {
-                setCurrentQuarter(pendingAction.nextPeriod);
+                const nextPeriod = pendingAction.nextPeriod;
+                setCurrentQuarter(nextPeriod);
+                setTime(600); // RESET PARA 10 MIN NOVO QUARTO
+                setIsRunning(false);
+
                 await api.post(`/admin/matches/${id}/events`, {
                     event_type: 'period_end',
                     team_id: matchData.home_team_id,
                     minute: '00:00',
                     period: currentQuarter,
-                    metadata: { label: `Fim do ${currentQuarter}`, system_period: currentQuarter }
+                    metadata: {
+                        label: `Fim do ${currentQuarter}`,
+                        system_period: currentQuarter,
+                        next_period: nextPeriod,
+                        voice_log: transcript
+                    }
                 });
+
+                // Atualizar o cronômetro no banco também
+                await api.put(`/admin/matches/${id}`, {
+                    match_details: { ...matchData.match_details, current_timer_value: 600 }
+                });
+
                 setPendingAction(null);
-                setFeedback(`Mudamos para ${pendingAction.nextPeriod}`);
+                setFeedback(`Mudamos para ${nextPeriod}. Cronômetro resetado.`);
+                fetchMatchDetails(); // Atualiza lista de eventos
                 return;
             }
 
@@ -341,6 +357,7 @@ export function SumulaBasqueteVoz() {
             setPendingAction(null);
             setFeedback("Lançamento confirmado!");
             setTranscript("");
+            fetchMatchDetails(); // Atualiza o histórico imediatamente
         } catch (e) {
             console.error(e);
             alert("Erro ao salvar.");
@@ -351,6 +368,18 @@ export function SumulaBasqueteVoz() {
         setPendingAction(null);
         setFeedback("Cancelado. Pode falar novamente.");
         setTranscript("");
+    };
+
+    const deleteEvent = async (eventId: number) => {
+        if (!window.confirm('Deseja realmente excluir este lançamento?')) return;
+        try {
+            await api.delete(`/admin/matches/${id}/events/${eventId}`);
+            fetchMatchDetails(); // Recarrega placar e lista
+            setFeedback("Evento excluído com sucesso!");
+        } catch (e) {
+            console.error(e);
+            alert("Erro ao excluir evento.");
+        }
     };
 
     const toggleListening = async () => {
@@ -561,6 +590,55 @@ export function SumulaBasqueteVoz() {
                             </div>
                         </div>
                     )}
+                </div>
+
+                {/* Períodos e Histórico */}
+                <div className="w-full space-y-4 pb-12">
+                    <h3 className="text-orange-500 font-bold text-xs uppercase tracking-widest px-1">Histórico de Lançamentos</h3>
+
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                        {matchData.events && matchData.events.length > 0 ? (
+                            matchData.events.slice().reverse().map((event: any) => (
+                                <div key={event.id} className="bg-gray-900/80 border border-gray-800 rounded-xl p-3 flex items-center justify-between gap-3 animate-in fade-in slide-in-from-right-4">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="text-[10px] font-mono text-orange-500 bg-orange-500/10 px-1.5 py-0.5 rounded">
+                                                {event.game_time || '00:00'}
+                                            </span>
+                                            <span className="text-[10px] text-gray-500 font-bold uppercase italic">
+                                                {event.period}
+                                            </span>
+                                        </div>
+                                        <p className="text-xs font-bold text-white uppercase truncate">
+                                            {event.event_type === 'field_goal_3' ? '🏀 3 Pontos' :
+                                                event.event_type === 'field_goal_2' ? '🏀 2 Pontos' :
+                                                    event.event_type === 'free_throw' ? '🏀 L. Livre' :
+                                                        event.event_type === 'foul' ? '⚠️ Falta' :
+                                                            event.event_type === 'timeout' ? '⏱️ Tempo' : event.event_type}
+                                        </p>
+                                        <p className="text-[10px] text-gray-400 truncate">
+                                            {event.player?.name || event.team?.name || 'Evento de Jogo'}
+                                        </p>
+                                        {event.metadata?.voice_log && (
+                                            <p className="text-[9px] text-gray-600 italic mt-1 truncate">
+                                                🎤 "{event.metadata.voice_log}"
+                                            </p>
+                                        )}
+                                    </div>
+                                    <button
+                                        onClick={() => deleteEvent(event.id)}
+                                        className="p-2 text-gray-500 hover:text-red-500 transition-colors"
+                                    >
+                                        <X size={16} />
+                                    </button>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="text-center py-8 bg-gray-900/30 rounded-2xl border border-dashed border-gray-800">
+                                <p className="text-gray-600 text-xs italic">Nenhum lançamento registrado ainda.</p>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 <p className="text-gray-600 text-[10px] text-center max-w-xs mt-4 italic">
