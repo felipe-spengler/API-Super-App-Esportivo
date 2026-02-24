@@ -14,12 +14,20 @@ class AdminPlayerController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-
         $query = User::query();
 
-        // Filter by club if not super admin
-        if ($user->club_id) {
-            $query->where('club_id', $user->club_id);
+        // Determina o club_id (preferência para o parâmetro da URL, fallback para o clube do admin)
+        $clubId = $request->query('club_id', $user->club_id);
+
+        if ($clubId) {
+            $query->where(function ($q) use ($clubId) {
+                // Usuário vinculado diretamente ao clube
+                $q->where('club_id', $clubId)
+                    // OU usuário que joga em algum time deste clube
+                    ->orWhereHas('teamsAsPlayer', function ($sq) use ($clubId) {
+                        $sq->where('club_id', $clubId);
+                    });
+            });
         }
 
         if ($request->has('search')) {

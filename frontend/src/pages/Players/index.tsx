@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Search, User, AlertCircle, Loader2, Edit, Trash2 } from 'lucide-react';
 import api from '../../services/api';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
 interface Player {
     id: number;
@@ -41,10 +41,12 @@ export function Players() {
     const [pagination, setPagination] = useState<any>(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [isSearching, setIsSearching] = useState(false);
+    const [searchParams] = useSearchParams();
+    const clubId = searchParams.get('club_id');
 
     useEffect(() => {
         loadPlayers(currentPage, searchTerm);
-    }, [currentPage]);
+    }, [currentPage, clubId]);
 
     useEffect(() => {
         const delayDebounceFn = setTimeout(() => {
@@ -62,7 +64,7 @@ export function Players() {
         try {
             setLoading(true);
             const response = await api.get('/admin/players', {
-                params: { page, search }
+                params: { page, search, club_id: clubId }
             });
 
             if (response.data.data) {
