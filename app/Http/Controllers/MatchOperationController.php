@@ -82,6 +82,7 @@ class MatchOperationController extends Controller
                 'id' => $player->id,
                 'number' => $player->pivot->number ?? '',
                 'name' => $player->name,
+                'nickname' => $player->nickname,
                 'position' => $player->pivot->position
             ];
         });

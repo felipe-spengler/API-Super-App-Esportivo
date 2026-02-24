@@ -43,6 +43,7 @@ export function SumulaBasqueteVoz() {
     const recognitionRef = useRef<any>(null);
     const timeRef = useRef(time);
     const matchDataRef = useRef(matchData);
+    const rostersRef = useRef(rosters);
 
     useEffect(() => {
         timeRef.current = time;
@@ -51,6 +52,10 @@ export function SumulaBasqueteVoz() {
     useEffect(() => {
         matchDataRef.current = matchData;
     }, [matchData]);
+
+    useEffect(() => {
+        rostersRef.current = rosters;
+    }, [rosters]);
 
     useEffect(() => {
         let interval: any;
@@ -159,8 +164,8 @@ export function SumulaBasqueteVoz() {
 
                 // Logar elenco na auditoria ao carregar pela primeira vez
                 if (!hasLoggedRoster && data.rosters.home.length > 0) {
-                    const homeSummary = data.rosters.home.map((p: any) => `${p.number}-${p.nickname || p.name}`).join(', ');
-                    const awaySummary = data.rosters.away.map((p: any) => `${p.number}-${p.nickname || p.name}`).join(', ');
+                    const homeSummary = data.rosters.home.map((p: any) => `${p.number || '0'}-${p.nickname || p.name.split(' ')[0]}`).join(', ');
+                    const awaySummary = data.rosters.away.map((p: any) => `${p.number || '0'}-${p.nickname || p.name.split(' ')[0]}`).join(', ');
 
                     api.post(`/admin/matches/${id}/events`, {
                         event_type: 'voice_debug',
@@ -223,7 +228,14 @@ export function SumulaBasqueteVoz() {
         return () => clearInterval(syncInterval);
     }, [isRunning, id]);
 
-    const normalizeText = (t: string) => (t || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const normalizeText = (t: string) => {
+        return (t || '')
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[.:,!?;]/g, "") // Remove pontuação
+            .toLowerCase()
+            .trim();
+    };
 
     const processVoiceCommand = async (text: string) => {
         console.log("Processando:", text);
@@ -238,8 +250,8 @@ export function SumulaBasqueteVoz() {
         let failureReason = '';
 
         // 1. Identificar Time
-        const homeName = normalizeText(matchData?.home_team?.name || '');
-        const awayName = normalizeText(matchData?.away_team?.name || '');
+        const homeName = normalizeText(matchDataRef.current?.home_team?.name || '');
+        const awayName = normalizeText(matchDataRef.current?.away_team?.name || '');
 
         if (normalized.includes('casa') || normalized.includes('mandante') || (homeName && normalized.includes(homeName))) {
             team = 'home';
@@ -343,16 +355,17 @@ export function SumulaBasqueteVoz() {
 
         if (type && team) {
             // Find player - NOW SEARCHING BY NUMBER OR NAME/NICKNAME
-            const roster = team === 'home' ? rosters.home : rosters.away;
+            const currentRosters = rostersRef.current;
+            const roster = team === 'home' ? currentRosters.home : currentRosters.away;
 
             const player = roster.find((p: any) => {
                 const pName = normalizeText(p.name || '');
                 const pNick = normalizeText(p.nickname || '');
                 const pFirst = pName.split(' ')[0];
-                const pNum = String(p.number);
+                const pNum = String(p.number || ''); // Garante string vazia se nulo
 
-                // Prioridade 1: Número exato
-                if (number && pNum === number) return true;
+                // Prioridade 1: Número exato (se houver número identificado na fala)
+                if (number && pNum && pNum === number) return true;
 
                 // Prioridade 2: Apelido na frase
                 if (pNick && pNick.length > 2 && normalized.includes(pNick)) return true;
@@ -378,14 +391,34 @@ export function SumulaBasqueteVoz() {
                 });
                 setFeedback(`Entendi: ${type === 'foul' ? 'Falta' : points + ' Pontos'} para ${playerIdentifier}. Confirma?`);
             } else {
-                failureReason = `Jogador não encontrado (Num: ${number || 'N/A'})`;
+                const currentFailureReason = `Jogador nao encontrado (Num identificada: ${number || 'N/A'}) no time ${team}. Roster size: ${roster.length}`;
                 if (number) {
                     setFeedback(`Jogador camisa ${number} não encontrado no time ${team === 'home' ? 'da Casa' : 'Visitante'}.`);
                 } else {
                     setFeedback(`Não consegui identificar o jogador. Tente falar o número da camisa.`);
                 }
+
+                // Log debug even on failure
+                await api.post(`/admin/matches/${id}/events`, {
+                    event_type: 'voice_debug',
+                    team_id: team === 'home' ? matchDataRef.current.home_team_id : matchDataRef.current.away_team_id,
+                    minute: formatTime(time),
+                    period: currentQuarter,
+                    metadata: {
+                        voice_log: text,
+                        identified: false,
+                        action_type: type || 'none',
+                        team: team || 'none',
+                        failure_reason: currentFailureReason,
+                        normalized_text: normalized,
+                        available_roster: roster.map((rx: any) => `${rx.number}-${rx.name}`).join(',')
+                    }
+                });
+                fetchMatchDetails();
+                return;
             }
-        } else if (normalized.includes('tempo') || normalized.includes('time out')) {
+        }
+        else if (normalized.includes('tempo') || normalized.includes('time out')) {
             // Timeout detection
             identified = true;
             if (team) {
