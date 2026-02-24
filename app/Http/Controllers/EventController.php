@@ -169,7 +169,6 @@ class EventController extends Controller
                     $teamsData[$awayId]['stats']['sets_won'] += $aScore;
                     $teamsData[$awayId]['stats']['sets_lost'] += $hScore;
 
-                    // Regra Simplificada: 3 pontos por vitória, 0 derrota, independente do placar de sets
                     if ($hScore > $aScore) {
                         $teamsData[$homeId]['stats']['wins']++;
                         $teamsData[$awayId]['stats']['losses']++;
@@ -180,12 +179,27 @@ class EventController extends Controller
                         $teamsData[$awayId]['stats']['points'] += 3;
                     }
 
-                    // Mapeia Sets para "Gols" para exibir na tabela genérica
                     $teamsData[$homeId]['stats']['goals_for'] = $teamsData[$homeId]['stats']['sets_won'];
                     $teamsData[$homeId]['stats']['goals_against'] = $teamsData[$homeId]['stats']['sets_lost'];
                     $teamsData[$awayId]['stats']['goals_for'] = $teamsData[$awayId]['stats']['sets_won'];
                     $teamsData[$awayId]['stats']['goals_against'] = $teamsData[$awayId]['stats']['sets_lost'];
 
+                } elseif ($sportSlug == 'basquete') {
+                    // Basquete: Não tem empate. Saldo de pontos.
+                    $teamsData[$homeId]['stats']['goals_for'] += $hScore;
+                    $teamsData[$homeId]['stats']['goals_against'] += $aScore;
+                    $teamsData[$awayId]['stats']['goals_for'] += $aScore;
+                    $teamsData[$awayId]['stats']['goals_against'] += $hScore;
+
+                    if ($hScore > $aScore) {
+                        $teamsData[$homeId]['stats']['wins']++;
+                        $teamsData[$awayId]['stats']['losses']++;
+                        $teamsData[$homeId]['stats']['points'] += 2; // Basquete FIBA: 2 Vitória, 1 Derrota? Vamos usar 2/0 ou 2/1 se quiser ser fiel.
+                    } else {
+                        $teamsData[$awayId]['stats']['wins']++;
+                        $teamsData[$homeId]['stats']['losses']++;
+                        $teamsData[$awayId]['stats']['points'] += 2;
+                    }
                 } else {
                     // Futebol / Futsal / Padrão
                     $teamsData[$homeId]['stats']['goals_for'] += $hScore;

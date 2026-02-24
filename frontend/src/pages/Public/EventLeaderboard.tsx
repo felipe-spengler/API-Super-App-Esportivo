@@ -40,6 +40,7 @@ export function EventLeaderboard() {
     const [championshipFormat, setChampionshipFormat] = useState('league');
     const [loading, setLoading] = useState(true);
 
+    const [champ, setChamp] = useState<any>(null);
     const [champName, setChampName] = useState('');
 
     useEffect(() => {
@@ -47,6 +48,7 @@ export function EventLeaderboard() {
             setLoading(true);
             try {
                 const champRes = await api.get(`/championships/${id}`);
+                setChamp(champRes.data);
                 setChampName(champRes.data.name);
                 const format = champRes.data.format || 'league';
                 setChampionshipFormat(format);
@@ -69,54 +71,69 @@ export function EventLeaderboard() {
         loadData();
     }, [id, categoryId]);
 
-    // Render functions for each format
-    const renderLeagueTable = () => (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                    <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-100">
-                        <tr>
-                            <th className="px-4 py-3 font-bold">#</th>
-                            <th className="px-4 py-3 font-bold w-full">Time</th>
-                            <th className="px-4 py-3 font-bold text-center" title="Pontos">P</th>
-                            <th className="px-4 py-3 font-bold text-center" title="Jogos">J</th>
-                            <th className="px-4 py-3 font-bold text-center" title="Vitórias">V</th>
-                            <th className="px-4 py-3 font-bold text-center hidden sm:table-cell" title="Empates">E</th>
-                            <th className="px-4 py-3 font-bold text-center hidden sm:table-cell" title="Derrotas">D</th>
-                            <th className="px-4 py-3 font-bold text-center hidden md:table-cell" title="Gols Pró">GP</th>
-                            <th className="px-4 py-3 font-bold text-center hidden md:table-cell" title="Gols Contra">GC</th>
-                            <th className="px-4 py-3 font-bold text-center hidden sm:table-cell" title="Saldo de Gols">SG</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {standings.map((team, index) => (
-                            <tr key={team.id || index} className={`border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors ${index < 4 ? 'bg-indigo-50/10' : ''}`}>
-                                <td className="px-4 py-3 font-bold text-gray-500">
-                                    <span className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${getMedalClass(team.position)}`}>
-                                        {team.position}
-                                    </span>
-                                </td>
-                                <td className="px-4 py-3">
-                                    <div className="flex items-center gap-3">
-                                        {team.team_logo && <img src={team.team_logo} alt="" className="w-6 h-6 rounded-full object-cover bg-gray-100" />}
-                                        <span className="font-bold text-gray-800">{team.team_name}</span>
-                                    </div>
-                                </td>
-                                <td className="px-4 py-3 font-black text-center text-indigo-900">{team.points}</td>
-                                <td className="px-4 py-3 text-center text-gray-600">{team.played}</td>
-                                <td className="px-4 py-3 text-center text-gray-600">{team.won}</td>
-                                <td className="px-4 py-3 text-center text-gray-600 hidden sm:table-cell">{team.drawn}</td>
-                                <td className="px-4 py-3 text-center text-gray-600 hidden sm:table-cell">{team.lost}</td>
-                                <td className="px-4 py-3 text-center text-gray-600 hidden md:table-cell">{team.goals_for}</td>
-                                <td className="px-4 py-3 text-center text-gray-600 hidden md:table-cell">{team.goals_against}</td>
-                                <td className="px-4 py-3 text-center text-gray-600 hidden sm:table-cell">{team.goal_difference}</td>
+    const renderLeagueTable = (data: Standing[] = standings) => {
+        const sport = champ?.sport?.name?.toLowerCase() || 'futebol';
+        const isBasquete = sport.includes('basquete');
+        const isVolei = sport.includes('volei');
+
+        return (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                        <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-100">
+                            <tr>
+                                <th className="px-4 py-3 font-bold">#</th>
+                                <th className="px-4 py-3 font-bold w-full">Time</th>
+                                <th className="px-3 py-3 font-bold text-center" title="Pontos">P</th>
+                                <th className="px-3 py-3 font-bold text-center" title="Jogos">J</th>
+                                <th className="px-3 py-3 font-bold text-center" title="Vitórias">V</th>
+                                {!isBasquete && !isVolei && (
+                                    <th className="px-3 py-3 font-bold text-center hidden sm:table-cell" title="Empates">E</th>
+                                )}
+                                <th className="px-3 py-3 font-bold text-center hidden sm:table-cell" title="Derrotas">D</th>
+                                <th className="px-3 py-3 font-bold text-center hidden md:table-cell" title={isBasquete ? "Pontos Pró" : (isVolei ? "Sets Pró" : "Gols Pró")}>
+                                    {isBasquete ? "PF" : (isVolei ? "SP" : "GP")}
+                                </th>
+                                <th className="px-3 py-3 font-bold text-center hidden md:table-cell" title={isBasquete ? "Pontos Contra" : (isVolei ? "Sets Contra" : "Gols Contra")}>
+                                    {isBasquete ? "PC" : (isVolei ? "SC" : "GC")}
+                                </th>
+                                <th className="px-3 py-3 font-bold text-center hidden sm:table-cell" title={isBasquete ? "Saldo de Pontos" : (isVolei ? "Saldo de Sets" : "Saldo de Gols")}>
+                                    {isBasquete ? "SP" : (isVolei ? "SS" : "SG")}
+                                </th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {data.map((team, index) => (
+                                <tr key={team.id || index} className={`border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors ${index < 4 ? 'bg-indigo-50/10' : ''}`}>
+                                    <td className="px-4 py-3 font-bold text-gray-500">
+                                        <span className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${getMedalClass(team.position)}`}>
+                                            {team.position}
+                                        </span>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <div className="flex items-center gap-3">
+                                            {team.team_logo && <img src={team.team_logo} alt="" className="w-6 h-6 rounded-full object-cover bg-gray-100" />}
+                                            <span className="font-bold text-gray-800">{team.team_name}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-3 py-3 font-black text-center text-indigo-900">{team.points}</td>
+                                    <td className="px-3 py-3 text-center text-gray-600">{team.played}</td>
+                                    <td className="px-3 py-3 text-center text-gray-600">{team.won}</td>
+                                    {!isBasquete && !isVolei && (
+                                        <td className="px-3 py-3 text-center text-gray-600 hidden sm:table-cell">{team.drawn}</td>
+                                    )}
+                                    <td className="px-3 py-3 text-center text-gray-600 hidden sm:table-cell">{team.lost}</td>
+                                    <td className="px-3 py-3 text-center text-gray-600 hidden md:table-cell">{team.goals_for}</td>
+                                    <td className="px-3 py-3 text-center text-gray-600 hidden md:table-cell">{team.goals_against}</td>
+                                    <td className="px-3 py-3 text-center text-gray-600 hidden sm:table-cell">{team.goal_difference}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </div>
-        </div>
-    );
+        );
+    };
 
     const renderGroupStage = () => {
         // Group teams by group_name
@@ -130,49 +147,12 @@ export function EventLeaderboard() {
         return (
             <div className="space-y-6">
                 {Object.entries(groups).sort().map(([groupName, teams]) => (
-                    <div key={groupName} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-3">
-                            <h3 className="font-bold text-white text-sm uppercase tracking-wide">{groupName}</h3>
+                    <div key={groupName} className="space-y-3">
+                        <div className="flex items-center gap-3 px-2">
+                            <div className="h-6 w-1 rounded-full bg-indigo-600" />
+                            <h3 className="font-black text-gray-900 text-base uppercase tracking-tight">{groupName}</h3>
                         </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-100">
-                                    <tr>
-                                        <th className="px-4 py-2 font-bold">#</th>
-                                        <th className="px-4 py-2 font-bold text-left">Time</th>
-                                        <th className="px-3 py-2 font-bold text-center" title="Pontos">P</th>
-                                        <th className="px-3 py-2 font-bold text-center" title="Jogos">J</th>
-                                        <th className="px-3 py-2 font-bold text-center hidden sm:table-cell" title="Vitórias">V</th>
-                                        <th className="px-3 py-2 font-bold text-center hidden sm:table-cell" title="Empates">E</th>
-                                        <th className="px-3 py-2 font-bold text-center hidden sm:table-cell" title="Derrotas">D</th>
-                                        <th className="px-3 py-2 font-bold text-center hidden md:table-cell" title="Gols Pró">GP</th>
-                                        <th className="px-3 py-2 font-bold text-center hidden md:table-cell" title="Gols Contra">GC</th>
-                                        <th className="px-3 py-2 font-bold text-center hidden sm:table-cell" title="Saldo">SG</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {teams.map((team, idx) => (
-                                        <tr key={team.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
-                                            <td className="px-4 py-2 font-bold text-gray-600 text-center">{idx + 1}</td>
-                                            <td className="px-4 py-2">
-                                                <div className="flex items-center gap-2">
-                                                    {team.team_logo && <img src={team.team_logo} alt="" className="w-5 h-5 rounded-full object-cover" />}
-                                                    <span className="font-semibold text-gray-800 text-sm">{team.team_name}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-3 py-2 text-center font-bold text-indigo-900">{team.points}</td>
-                                            <td className="px-3 py-2 text-center text-gray-600">{team.played}</td>
-                                            <td className="px-3 py-2 text-center text-gray-600 hidden sm:table-cell">{team.won}</td>
-                                            <td className="px-3 py-2 text-center text-gray-600 hidden sm:table-cell">{team.drawn}</td>
-                                            <td className="px-3 py-2 text-center text-gray-600 hidden sm:table-cell">{team.lost}</td>
-                                            <td className="px-3 py-2 text-center text-gray-600 hidden md:table-cell">{team.goals_for}</td>
-                                            <td className="px-3 py-2 text-center text-gray-600 hidden md:table-cell">{team.goals_against}</td>
-                                            <td className="px-3 py-2 text-center text-gray-600 hidden sm:table-cell">{team.goal_difference}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                        {renderLeagueTable(teams)}
                     </div>
                 ))}
             </div>

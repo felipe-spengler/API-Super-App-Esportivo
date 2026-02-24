@@ -7,6 +7,7 @@ import api from '../../services/api';
 const ALL_SPORTS = [
     { id: 'futebol', name: 'Futebol', icon: 'fluent-emoji:soccer-ball' },
     { id: 'volei', name: 'Vôlei', icon: 'fluent-emoji:volleyball' },
+    { id: 'basquete', name: 'Basquete', icon: 'fluent-emoji:basketball' },
     { id: 'corrida', name: 'Corrida', icon: 'fluent-emoji:running-shoe' },
     { id: 'tenis', name: 'Tênis', icon: 'fluent-emoji:tennis' },
     { id: 'lutas', name: 'Lutas', icon: 'fluent-emoji:boxing-glove' },

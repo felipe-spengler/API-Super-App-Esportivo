@@ -162,12 +162,18 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
         const sorted = [...details.events].sort((a, b) => {
             const timeA = parseInt(String(a.minute).replace(/\D/g, '')) || 0;
             const timeB = parseInt(String(b.minute).replace(/\D/g, '')) || 0;
-            return timeB - timeA;
+            if (timeA !== timeB) return timeB - timeA;
+            // secondary sort by ID if available to keep order consistent
+            return (b.id || 0) - (a.id || 0);
         });
 
-        // 2. Filter duplicate system events (keep only the most recent one of each type/period combo)
+        // 2. Filter duplicate system events and HIDDEN events
         const seenSystemEvents = new Set<string>();
+        const hiddenEvents = ['voice_debug', 'timer_control', 'roster_snapshot'];
+
         return sorted.filter(event => {
+            if (hiddenEvents.includes(event.type)) return false;
+
             const isUniqSystemEvent = ['match_start', 'match_end', 'period_start', 'period_end'].includes(event.type);
             if (!isUniqSystemEvent) return true;
 
@@ -336,15 +342,13 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                             >
                                 Resumo
                             </button>
-                            {(match?.status === 'scheduled' || match?.status === 'upcoming') && (
-                                <button
-                                    onClick={() => setActiveTab('art')}
-                                    className={`flex-1 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors ${activeTab === 'art' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
-                                >
-                                    🎨 Arte
-                                </button>
-                            )}
-                            {isFinished && (
+                            <button
+                                onClick={() => setActiveTab('art')}
+                                className={`flex-1 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors ${activeTab === 'art' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                            >
+                                🎨 Arte
+                            </button>
+                            {(isFinished || match?.mvp || match?.status === 'live') && (
                                 <>
                                     <button
                                         onClick={() => setActiveTab('mvp')}
@@ -397,6 +401,7 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                                             if (p.includes('prorrog')) return 'Início da Prorrogação';
                                                             if (p.includes('2º') || p.includes('2o')) return 'Início do 2º Tempo';
                                                             if (p.includes('1º') || p.includes('1o')) return 'Início do 1º Tempo';
+                                                            if (p.includes('quarto')) return `Início do ${event.period}`;
                                                             return event.period ? `Início de ${event.period}` : 'Novo Período';
                                                         }
                                                         if (event.type === 'period_end') {
@@ -404,6 +409,7 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                                             if (p.includes('prorrog')) return 'Fim da Prorrogação';
                                                             if (p.includes('2º') || p.includes('2o') || p.includes('normal')) return 'Fim do Tempo Normal';
                                                             if (p.includes('1º') || p.includes('1o') || p.includes('intervalo')) return 'Fim do 1º Tempo';
+                                                            if (p.includes('quarto')) return `Fim do ${event.period}`;
                                                             return event.period ? `Fim de ${event.period}` : 'Fim do Período';
                                                         }
                                                         return '';
@@ -465,8 +471,13 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                                         <div className="hidden sm:block flex-1" />
 
                                                         {/* Minute circle (desktop center line) */}
-                                                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white border-2 border-indigo-100 flex items-center justify-center text-[10px] sm:text-xs font-bold text-gray-600 z-10 shrink-0 shadow-sm ml-4.5 sm:ml-0">
-                                                            {event.minute}'
+                                                        <div className="flex flex-col items-center z-10 shrink-0 ml-4 lg:ml-0">
+                                                            <div className="w-8 h-8 rounded-full bg-white border-2 border-indigo-100 flex items-center justify-center text-[10px] font-black text-gray-700 shadow-sm mb-0.5">
+                                                                {event.minute}'
+                                                            </div>
+                                                            <span className="text-[7px] font-black text-indigo-500 uppercase tracking-tighter bg-indigo-50 px-1 rounded border border-indigo-100/50">
+                                                                {event.period?.replace('Quarto', 'Q') || '1T'}
+                                                            </span>
                                                         </div>
 
                                                         {/* Event card */}
@@ -497,6 +508,7 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                                                         {['foul', 'technical_foul', 'unsportsmanlike_foul', 'disqualifying_foul'].includes(event.type) && (
                                                                             <div className={event.type === 'foul' ? "text-orange-500" : "text-red-500"}><Triangle size={14} fill="currentColor" /></div>
                                                                         )}
+                                                                        {event.type === 'substitution' && '🔄'}
                                                                         {event.type === 'assist' && '👟'}
                                                                         {event.type === 'suspension_2min' && '⏱'}
                                                                         {event.type === 'shootout_goal' && '⚽'}
@@ -509,15 +521,16 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                                                                     event.type === 'technical_foul' ? 'Falta Técnica' :
                                                                                         event.type === 'unsportsmanlike_foul' ? 'Falta Antidesportiva' :
                                                                                             event.type === 'disqualifying_foul' ? 'Falta Desqualificante' :
-                                                                                                event.type === 'field_goal_3' ? 'Cesta de 3 Pontos' :
-                                                                                                    event.type === 'field_goal_2' ? 'Cesta de 2 Pontos' :
-                                                                                                        event.type === 'free_throw' ? 'Lance Livre' :
+                                                                                                event.type === 'field_goal_3' || event.type === '3_points' ? 'Cesta de 3 Pts' :
+                                                                                                    event.type === 'field_goal_2' || event.type === '2_points' ? 'Cesta de 2 Pts' :
+                                                                                                        event.type === 'free_throw' || event.type === '1_point' ? 'Lance Livre' :
                                                                                                             event.type === 'game_won' ? 'Game Vencido' :
                                                                                                                 event.type === 'assist' ? 'Assistência' :
-                                                                                                                    event.type === 'suspension_2min' ? 'Suspensão 2min' :
-                                                                                                                        event.type === 'shootout_goal' ? 'Pênalti Convertido' :
-                                                                                                                            event.type === 'shootout_miss' ? 'Pênalti Perdido' : event.type}
-                                                                            {event.player_name && ` - ${event.player_name}`}
+                                                                                                                    event.type === 'substitution' ? 'Substituição' :
+                                                                                                                        event.type === 'suspension_2min' ? 'Suspensão 2min' :
+                                                                                                                            event.type === 'shootout_goal' ? 'Pênalti Convertido' :
+                                                                                                                                event.type === 'shootout_miss' ? 'Pênalti Perdido' : event.type}
+                                                                            {event.player_name && <span className="text-gray-900 font-black"> - {event.player_name}</span>}
                                                                         </span>
                                                                         {/* Team name — desktop only */}
                                                                         <span className={`hidden sm:block text-[10px] text-indigo-600 font-medium mt-0.5`}>

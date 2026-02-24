@@ -30,7 +30,18 @@ export function SumulaBasqueteVoz() {
     const [time, setTime] = useState(600);
     const [isRunning, setIsRunning] = useState(false);
     const [currentQuarter, setCurrentQuarter] = useState<Quarter>('1º Quarto');
+    const currentQuarterRef = useRef<Quarter>(currentQuarter);
     const [voiceLogs, setVoiceLogs] = useState<any[]>([]);
+
+    useEffect(() => {
+        currentQuarterRef.current = currentQuarter;
+    }, [currentQuarter]);
+
+    const formatTime = (s: number) => {
+        const mins = Math.floor(s / 60);
+        const secs = s % 60;
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
 
     // Voice State
     const [isListening, setIsListening] = useState(false);
@@ -299,6 +310,14 @@ export function SumulaBasqueteVoz() {
             }
         } else if (hasAny(synonyms.sub)) {
             type = 'substitution';
+        } else if (hasAny(['assistencia', 'passe', 'garcom', 'assist'])) {
+            type = 'assist';
+        } else if (hasAny(['rebote', 'pegou a sobra', 'rebound'])) {
+            type = 'rebound';
+        } else if (hasAny(['toco', 'block', 'bloqueio', 'clima ruim', 'rejeitou'])) {
+            type = 'block';
+        } else if (hasAny(['roubo', 'roubou', 'steal', 'interceptou'])) {
+            type = 'steal';
         } else {
             if (!failureReason) failureReason = 'Ação não identificada';
         }
@@ -383,9 +402,9 @@ export function SumulaBasqueteVoz() {
                     team,
                     player, // SALVA O OBJETO COMPLETO AQUI
                     value: points,
-                    description: `${type === 'foul' ? 'Falta' : points + ' Pontos'} - ${playerIdentifier} (${team === 'home' ? 'Casa' : 'Visitante'})`
+                    description: `${type === 'foul' ? 'Falta' : (type === 'block' ? 'Toco' : (type === 'rebound' ? 'Rebote' : (type === 'assist' ? 'Assistência' : (type === 'steal' ? 'Roubo' : points + ' Pontos'))))} - ${playerIdentifier} (${team === 'home' ? 'Casa' : 'Visitante'})`
                 });
-                setFeedback(`Entendi: ${type === 'foul' ? 'Falta' : points + ' Pontos'} para ${playerIdentifier}. Confirma?`);
+                setFeedback(`Entendi: ${type === 'foul' ? 'Falta' : (type === 'block' ? 'Toco' : (type === 'rebound' ? 'Rebote' : (type === 'assist' ? 'Assistência' : (type === 'steal' ? 'Roubo' : points + ' Pontos'))))} para ${playerIdentifier}. Confirma?`);
             } else {
                 const currentFailureReason = `Jogador nao encontrado (Num identificada: ${number || 'N/A'}) no time ${team}. Roster size: ${roster.length}`;
                 if (number) {
@@ -398,8 +417,8 @@ export function SumulaBasqueteVoz() {
                 await api.post(`/admin/matches/${id}/events`, {
                     event_type: 'voice_debug',
                     team_id: team === 'home' ? matchDataRef.current.home_team_id : matchDataRef.current.away_team_id,
-                    minute: formatTime(time),
-                    period: currentQuarter,
+                    minute: formatTime(600 - timeRef.current),
+                    period: currentQuarterRef.current,
                     metadata: {
                         voice_log: text,
                         identified: false,
@@ -427,17 +446,17 @@ export function SumulaBasqueteVoz() {
             } else {
                 setFeedback("Diga de qual time é o pedido de tempo. Ex: 'Tempo time casa'");
             }
-        } else if (lower.includes('próximo quarto') || lower.includes('fim do quarto') || lower.includes('próximo período') || lower.includes('encerrar quarto')) {
-            const currentIdx = quarters.indexOf(currentQuarter);
+        } else if (lower.includes('proximo quarto') || lower.includes('fim do quarto') || lower.includes('proximo periodo') || lower.includes('encerrar quarto') || lower.includes('encerrar jogo') || lower.includes('fim de jogo')) {
+            const currentIdx = quarters.indexOf(currentQuarterRef.current);
             identified = true;
             if (currentIdx < quarters.length - 1) {
                 const next = quarters[currentIdx + 1];
                 setPendingAction({
                     type: 'period_end',
                     nextPeriod: next,
-                    description: `Encerrar ${currentQuarter} e ir para ${next}`
+                    description: next === 'Fim de Jogo' ? 'ENCERRAR PARTIDA DEFINITIVAMENTE' : `Encerrar ${currentQuarterRef.current} e ir para ${next}`
                 });
-                setFeedback(`Confirmar mudança para ${next} e resetar cronômetro?`);
+                setFeedback(next === 'Fim de Jogo' ? 'Deseja ENCERRAR a partida agora?' : `Confirmar mudança para ${next} e resetar cronômetro?`);
             }
         } else {
             // Fallback partial recognition loops could go here
@@ -455,9 +474,9 @@ export function SumulaBasqueteVoz() {
         try {
             await api.post(`/admin/matches/${id}/events`, {
                 event_type: 'voice_debug',
-                team_id: identified ? (team === 'home' ? matchData.home_team_id : matchData.away_team_id) : null,
-                minute: formatTime(time),
-                period: currentQuarter,
+                team_id: identified ? (team === 'home' ? matchDataRef.current.home_team_id : matchDataRef.current.away_team_id) : null,
+                minute: formatTime(600 - timeRef.current),
+                period: currentQuarterRef.current,
                 metadata: {
                     voice_log: text,
                     identified: identified,
@@ -484,25 +503,35 @@ export function SumulaBasqueteVoz() {
                 setIsRunning(false);
 
                 await api.post(`/admin/matches/${id}/events`, {
-                    event_type: 'period_end',
+                    event_type: nextPeriod === 'Fim de Jogo' ? 'match_end' : 'period_end',
                     team_id: matchData.home_team_id,
-                    minute: '00:00',
+                    minute: formatTime(600 - time),
                     period: currentQuarter,
                     metadata: {
-                        label: `Fim do ${currentQuarter}`,
+                        label: nextPeriod === 'Fim de Jogo' ? 'Fim de Partida' : `Fim do ${currentQuarter}`,
                         system_period: currentQuarter,
                         next_period: nextPeriod,
                         voice_log: transcript
                     }
                 });
 
-                // Atualizar o cronômetro no banco também
-                await api.put(`/admin/matches/${id}`, {
-                    match_details: { ...matchData.match_details, current_timer_value: 600 }
-                });
+                // Se for fim de jogo, atualiza status da partida
+                if (nextPeriod === 'Fim de Jogo') {
+                    await api.put(`/admin/matches/${id}`, {
+                        status: 'finished',
+                        match_details: { ...matchData.match_details, current_timer_value: 0 }
+                    });
+                    setFeedback("Partida Encerrada com Sucesso!");
+                    setTimeout(() => navigate(-1), 2000);
+                } else {
+                    // Atualizar o cronômetro no banco também
+                    await api.put(`/admin/matches/${id}`, {
+                        match_details: { ...matchData.match_details, current_timer_value: 600 }
+                    });
+                    setFeedback(`Mudamos para ${nextPeriod}. Cronômetro resetado.`);
+                }
 
                 setPendingAction(null);
-                setFeedback(`Mudamos para ${nextPeriod}. Cronômetro resetado.`);
                 fetchMatchDetails(); // Atualiza lista de eventos
                 return;
             }
@@ -530,12 +559,6 @@ export function SumulaBasqueteVoz() {
             }
 
             const teamId = pendingAction.team === 'home' ? matchData.home_team_id : matchData.away_team_id;
-
-            const formatTime = (s: number) => {
-                const mins = Math.floor(s / 60);
-                const secs = s % 60;
-                return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-            };
 
             await api.post(`/admin/matches/${id}/events`, {
                 event_type: apiType,
@@ -681,13 +704,6 @@ export function SumulaBasqueteVoz() {
         }
     };
 
-    const formatTime = (s: number) => {
-        const mins = Math.floor(s / 60);
-        const secs = s % 60;
-        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    };
-
-
     if (loading || !matchData) return <div className="min-h-screen bg-black text-white flex items-center justify-center">Carregando...</div>;
 
     return (
@@ -717,8 +733,29 @@ export function SumulaBasqueteVoz() {
                         {formatTime(time)}
                     </div>
                 </div>
-                <div className="text-xs font-bold text-gray-500 px-3 py-1 bg-gray-800 rounded-full uppercase tracking-widest">
-                    {currentQuarter}
+                <div className="flex gap-2 items-center">
+                    <div className="text-xs font-bold text-gray-500 px-3 py-1 bg-gray-800 rounded-full uppercase tracking-widest">
+                        {currentQuarter}
+                    </div>
+                    {currentQuarter !== 'Fim de Jogo' && (
+                        <button
+                            onClick={() => {
+                                const currentIdx = quarters.indexOf(currentQuarter);
+                                if (currentIdx < quarters.length - 1) {
+                                    const next = quarters[currentIdx + 1];
+                                    setPendingAction({
+                                        type: 'period_end',
+                                        nextPeriod: next,
+                                        description: next === 'Fim de Jogo' ? 'ENCERRAR JOGO' : `Ir para ${next}`
+                                    });
+                                    setFeedback(next === 'Fim de Jogo' ? 'Deseja encerrar a partida?' : `Mudar para ${next}?`);
+                                }
+                            }}
+                            className="bg-red-500/10 hover:bg-red-500/20 text-red-500 text-[10px] font-black px-2 py-1 rounded-md uppercase transition-colors"
+                        >
+                            Encerramento
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -792,8 +829,9 @@ export function SumulaBasqueteVoz() {
                         <p>• <span className="text-gray-200">"Triplo camisa dez casa"</span> ou <span className="text-gray-200">"3 pontos..."</span></p>
                         <p>• <span className="text-gray-200">"Falta técnica camisa dez casa"</span> (Falta Técnica)</p>
                         <p>• <span className="text-gray-200">"Entra camisa cinco casa"</span> (Substituição)</p>
-                        <p>• <span className="text-gray-200">"Tempo time casa"</span> (Pedido de Tempo/Timeout)</p>
-                        <p>• <span className="text-gray-200">"Próximo quarto"</span> (Muda o período do jogo)</p>
+                        <p>• <span className="text-gray-200">"Tempo time casa"</span> (Pedido de Tempo)</p>
+                        <p>• <span className="text-gray-200">"Toco / Rebote / Assistência / Roubo"</span> + camisa</p>
+                        <p>• <span className="text-gray-200">"Próximo quarto"</span> ou <span className="text-gray-200">"Encerrar jogo"</span></p>
                     </div>
                 </div>
 
@@ -884,7 +922,11 @@ export function SumulaBasqueteVoz() {
                                                         event.event_type === 'free_throw' ? '🏀 L. Livre' :
                                                             event.event_type === 'foul' ? '⚠️ Falta' :
                                                                 event.event_type === 'period_end' ? '🏁 Fim de Quarto' :
-                                                                    event.event_type === 'timeout' ? '⏱️ Tempo' : event.event_type}
+                                                                    event.event_type === 'block' ? '🚫 Toco' :
+                                                                        event.event_type === 'rebound' ? '🗑️ Rebote' :
+                                                                            event.event_type === 'assist' ? '🪄 Assistência' :
+                                                                                event.event_type === 'steal' ? '🧤 Roubo' :
+                                                                                    event.event_type === 'timeout' ? '⏱️ Tempo' : event.event_type}
                                             </p>
                                             <p className="text-[10px] text-gray-400 truncate">
                                                 {event.player?.name || event.team?.name || 'Evento de Jogo'}

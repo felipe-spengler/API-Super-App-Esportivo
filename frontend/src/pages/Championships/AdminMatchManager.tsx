@@ -1122,14 +1122,16 @@ export function AdminMatchManager() {
                                     <ImageIcon className="w-4 h-4" /> Arte
                                 </span>
                             </button>
-                            <button
-                                onClick={() => setActiveTab('audit')}
-                                className={`flex-1 py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'audit' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-                            >
-                                <span className="flex items-center justify-center gap-2">
-                                    <ShieldCheck className="w-4 h-4" /> Auditoria
-                                </span>
-                            </button>
+                            {championship?.sport?.name?.toLowerCase().includes('basquete') && (
+                                <button
+                                    onClick={() => setActiveTab('audit')}
+                                    className={`flex-1 py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'audit' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                                >
+                                    <span className="flex items-center justify-center gap-2">
+                                        <ShieldCheck className="w-4 h-4" /> Auditoria
+                                    </span>
+                                </button>
+                            )}
                         </div>
 
                         {activeTab === 'summary' && (
@@ -1245,54 +1247,78 @@ export function AdminMatchManager() {
                                         (selectedMatch as any).events.slice().reverse().map((event: any) => {
                                             const isVoice = event.event_type === 'voice_debug';
                                             const isTimer = event.event_type === 'timer_control';
+                                            const isRosterLog = event.metadata?.system_info === 'Roster Snapshot';
+
+                                            const getFriendlyEvent = (type: string) => {
+                                                const t = (type || '').toLowerCase().trim();
+                                                const map: any = {
+                                                    'field_goal_2': { label: 'Cesta de 2 Pontos', icon: '🏀' },
+                                                    'field_goal_3': { label: 'Cesta de 3 Pontos', icon: '🎯' },
+                                                    'free_throw': { label: 'Lance Livre', icon: '🗑️' },
+                                                    'foul': { label: 'Falta Comum', icon: '⚠️' },
+                                                    'technical_foul': { label: 'Falta Técnica', icon: '🟨' },
+                                                    'unsportsmanlike_foul': { label: 'Falta Antidesportiva', icon: '🟧' },
+                                                    'disqualifying_foul': { label: 'Falta Desqualificante', icon: '🟥' },
+                                                    'timeout': { label: 'Pedido de Tempo', icon: '⏱️' },
+                                                    'substitution': { label: 'Substituição', icon: '🔄' },
+                                                    'match_start': { label: 'Início da Partida', icon: '🏁' },
+                                                    'match_end': { label: 'Fim de Jogo', icon: '🛑' },
+                                                    'period_start': { label: 'Início de Período', icon: '▶️' },
+                                                    'period_end': { label: 'Fim de Período', icon: '⏸️' },
+                                                };
+                                                return map[t] || { label: type, icon: '⚽' };
+                                            };
+
+                                            const display = getFriendlyEvent(event.event_type);
 
                                             return (
-                                                <div key={event.id} className={`p-3 rounded-xl border flex flex-col gap-1 ${isVoice ? 'bg-white border-gray-100 opacity-80' :
-                                                    isTimer ? 'bg-blue-50 border-blue-100' : 'bg-white border-gray-200 shadow-sm'
+                                                <div key={event.id} className={`p-4 rounded-xl border flex flex-col gap-2 ${isVoice ? 'bg-white border-gray-100' :
+                                                    isTimer ? 'bg-indigo-50 border-indigo-100' : 'bg-white border-gray-200 shadow-sm'
                                                     }`}>
                                                     <div className="flex items-center justify-between">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-[10px] font-mono font-bold text-blue-600">
+                                                        <div className="flex items-center gap-3">
+                                                            <span className="text-xs font-black text-white bg-indigo-600 px-2 py-0.5 rounded shadow-sm">
                                                                 {event.game_time || '00:00'}
                                                             </span>
-                                                            <span className="text-[10px] font-black text-gray-400 lowercase">
+                                                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">
                                                                 {event.period}
                                                             </span>
                                                         </div>
-                                                        <div className="text-[9px] text-gray-400">
-                                                            {new Date(event.created_at).toLocaleTimeString('pt-BR')}
-                                                        </div>
+                                                        <span className="text-[10px] font-bold text-gray-300">#{event.id} • {new Date(event.created_at).toLocaleTimeString('pt-BR')}</span>
                                                     </div>
 
                                                     <div className="flex items-center gap-2">
-                                                        <span className={`text-[11px] font-black uppercase ${isVoice ? 'text-gray-400' :
-                                                            isTimer ? 'text-blue-600' : 'text-gray-800'
+                                                        <h4 className={`text-sm font-black uppercase ${isVoice ? 'text-gray-400' : isTimer ? 'text-indigo-600' : 'text-gray-900'
                                                             }`}>
-                                                            {isVoice ? '🎙️ Voz' : isTimer ? '⏱️ Tempo' : `🏀 ${event.event_type}`}
-                                                        </span>
-                                                        {isVoice && (
-                                                            <span className={`text-[8px] font-bold px-1 py-0.5 rounded ${event.metadata?.identified ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                                                            {isRosterLog ? '📋 Registro do Sistema' :
+                                                                isVoice ? '🎙️ Entrada de Voz' :
+                                                                    isTimer ? '⏱️ Controle do Tempo' :
+                                                                        `${display.icon} Evento: ${display.label}`}
+                                                        </h4>
+                                                        {isVoice && !isRosterLog && (
+                                                            <span className={`text-[10px] font-black px-2 py-0.5 rounded shadow-sm ${event.metadata?.identified ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
                                                                 }`}>
-                                                                {event.metadata?.identified ? '✓' : '✗'}
+                                                                {event.metadata?.identified ? 'SUCESSO' : 'FALHA'}
                                                             </span>
                                                         )}
                                                     </div>
 
                                                     {event.metadata?.voice_log && (
-                                                        <div className="text-xs italic text-gray-500 border-l-2 border-gray-200 pl-2 py-1 bg-gray-50/50">
+                                                        <div className="text-sm font-medium italic text-gray-600 bg-gray-100/50 p-3 rounded-lg border border-gray-200/50">
                                                             "{event.metadata.voice_log}"
                                                         </div>
                                                     )}
 
-                                                    {isTimer && (
-                                                        <div className="text-[11px] font-bold text-blue-700 uppercase">
-                                                            {event.metadata?.action === 'start' ? 'Iniciou Cronômetro' : 'Pausou Cronômetro'}
-                                                        </div>
-                                                    )}
-
-                                                    {event.player_name && !isVoice && !isTimer && (
-                                                        <div className="text-[11px] font-bold text-gray-600">
-                                                            Atleta: {event.player_name}
+                                                    {event.metadata?.home_roster && (
+                                                        <div className="mt-2 space-y-2">
+                                                            <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg">
+                                                                <div className="text-[10px] font-black text-blue-600 uppercase mb-1">Time da Casa</div>
+                                                                <div className="text-xs font-bold text-blue-800 leading-relaxed">{event.metadata.home_roster}</div>
+                                                            </div>
+                                                            <div className="p-3 bg-red-50 border border-red-100 rounded-lg">
+                                                                <div className="text-[10px] font-black text-red-600 uppercase mb-1">Time Visitante</div>
+                                                                <div className="text-xs font-bold text-red-800 leading-relaxed">{event.metadata.away_roster}</div>
+                                                            </div>
                                                         </div>
                                                     )}
                                                 </div>
@@ -1631,6 +1657,29 @@ export function AdminMatchManager() {
                                     {(selectedMatch as any).events.slice().reverse().map((event: any) => {
                                         const isVoice = event.event_type === 'voice_debug';
                                         const isTimer = event.event_type === 'timer_control';
+                                        const isRosterLog = event.metadata?.system_info === 'Roster Snapshot';
+
+                                        const getFriendlyEvent = (type: string) => {
+                                            const t = (type || '').toLowerCase().trim();
+                                            const map: any = {
+                                                'field_goal_2': { label: 'Cesta de 2 Pontos', icon: '🏀' },
+                                                'field_goal_3': { label: 'Cesta de 3 Pontos', icon: '🎯' },
+                                                'free_throw': { label: 'Lance Livre', icon: '🗑️' },
+                                                'foul': { label: 'Falta Comum', icon: '⚠️' },
+                                                'technical_foul': { label: 'Falta Técnica', icon: '🟨' },
+                                                'unsportsmanlike_foul': { label: 'Falta Antidesportiva', icon: '🟧' },
+                                                'disqualifying_foul': { label: 'Falta Desqualificante', icon: '🟥' },
+                                                'timeout': { label: 'Pedido de Tempo', icon: '⏱️' },
+                                                'substitution': { label: 'Substituição', icon: '🔄' },
+                                                'period_start': { label: 'Início de Período', icon: '🏁' },
+                                                'period_end': { label: 'Fim de Período', icon: '🏁' },
+                                                'match_start': { label: 'Início da Partida', icon: '🏀' },
+                                                'match_end': { label: 'Fim da Partida', icon: '🏆' },
+                                            };
+                                            return map[t] || { label: type, icon: '🏀' };
+                                        };
+
+                                        const display = getFriendlyEvent(event.event_type);
 
                                         return (
                                             <div key={event.id} className={`p-4 rounded-xl border flex flex-col gap-2 ${isVoice ? 'bg-white border-gray-100' :
@@ -1651,9 +1700,12 @@ export function AdminMatchManager() {
                                                 <div className="flex items-center gap-2">
                                                     <h4 className={`text-sm font-black uppercase ${isVoice ? 'text-gray-400' : isTimer ? 'text-indigo-600' : 'text-gray-900'
                                                         }`}>
-                                                        {isVoice ? '🎙️ Entrada de Voz' : isTimer ? '⏱️ Controle do Tempo' : `🏀 Evento: ${event.event_type}`}
+                                                        {isRosterLog ? '📋 Registro do Sistema' :
+                                                            isVoice ? '🎙️ Entrada de Voz' :
+                                                                isTimer ? '⏱️ Controle do Tempo' :
+                                                                    `${display.icon} Evento: ${display.label}`}
                                                     </h4>
-                                                    {isVoice && (
+                                                    {isVoice && !isRosterLog && (
                                                         <span className={`text-[10px] font-black px-2 py-0.5 rounded shadow-sm ${event.metadata?.identified ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
                                                             }`}>
                                                             {event.metadata?.identified ? 'SUCESSO' : 'FALHA'}
