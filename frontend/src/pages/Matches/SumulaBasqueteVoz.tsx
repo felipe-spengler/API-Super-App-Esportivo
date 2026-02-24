@@ -195,22 +195,33 @@ export function SumulaBasqueteVoz() {
             }
         }
 
-        if (type && team && number) {
-            // Find player
+        if (type && team) {
+            // Find player - NOW SEARCHING BY NUMBER OR NAME/NICKNAME
             const roster = team === 'home' ? rosters.home : rosters.away;
-            const player = roster.find((p: any) => p.number == number || p.number == parseInt(number || '0'));
+
+            const player = roster.find((p: any) => {
+                const nameMatch = p.name && lower.includes(p.name.toLowerCase());
+                const nickMatch = p.nickname && lower.includes(p.nickname.toLowerCase());
+                const numMatch = number && (p.number == number || p.number == parseInt(number || '0'));
+                return nameMatch || nickMatch || numMatch;
+            });
 
             if (player) {
+                const playerIdentifier = player.nickname || player.name;
                 setPendingAction({
                     type,
                     team,
                     player,
                     value: points,
-                    description: `${type === 'foul' ? 'Falta' : points + ' Pontos'} - ${player.name} (${team === 'home' ? 'Casa' : 'Visitante'})`
+                    description: `${type === 'foul' ? 'Falta' : points + ' Pontos'} - ${playerIdentifier} (${team === 'home' ? 'Casa' : 'Visitante'})`
                 });
-                setFeedback(`Entendi: ${type === 'foul' ? 'Falta' : points + ' Pontos'} para camisa ${number}. Confirma?`);
+                setFeedback(`Entendi: ${type === 'foul' ? 'Falta' : points + ' Pontos'} para ${playerIdentifier}. Confirma?`);
             } else {
-                setFeedback(`Jogador camisa ${number} não encontrado no time ${team === 'home' ? 'da Casa' : 'Visitante'}.`);
+                if (number) {
+                    setFeedback(`Jogador camisa ${number} não encontrado no time ${team === 'home' ? 'da Casa' : 'Visitante'}.`);
+                } else {
+                    setFeedback(`Não consegui identificar o jogador. Tente falar o número da camisa.`);
+                }
             }
         } else if (lower.includes('tempo') || lower.includes('time out')) {
             // Timeout detection
