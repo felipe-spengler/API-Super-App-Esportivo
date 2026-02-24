@@ -129,7 +129,12 @@ export function SumulaBasqueteVoz() {
                     scoreHome: parseInt(data.match.home_score || 0),
                     scoreAway: parseInt(data.match.away_score || 0)
                 });
-                if (data.rosters) setRosters(data.rosters);
+                if (data.match.match_details?.current_timer_value !== undefined) {
+                    setTime(data.match.match_details.current_timer_value);
+                }
+                if (data.match.status === 'live') {
+                    setIsRunning(false); // Mantém pausado por padrão ao carregar
+                }
             }
             setLoading(false);
         } catch (e) {
@@ -282,7 +287,15 @@ export function SumulaBasqueteVoz() {
             if (pendingAction.type === '2_points') apiType = 'field_goal_2';
             if (pendingAction.type === '3_points') apiType = 'field_goal_3';
 
-            // Optimistic Update
+            // ATUALIZAÇÃO DO CRONÔMETRO NO BACKEND
+            // Vamos salvar o tempo atual no match_details para não resetar
+            const currentDetails = matchData.match_details || {};
+            const updatedDetails = {
+                ...currentDetails,
+                current_timer_value: time
+            };
+
+            // Optimistic Update local
             if (pendingAction.value > 0) {
                 setMatchData((prev: any) => ({
                     ...prev,
@@ -308,8 +321,21 @@ export function SumulaBasqueteVoz() {
                 value: pendingAction.value,
                 metadata: {
                     system_period: currentQuarter,
-                    quarter_time: formatTime(time)
+                    quarter_time: formatTime(time),
+                    voice_log: transcript, // SALVA O LOG DA FALA AQUI
+                    original_text: transcript
                 }
+            });
+
+            // Atualiza o estado local para refletir o tempo salvo
+            setMatchData((prev: any) => ({
+                ...prev,
+                match_details: updatedDetails
+            }));
+
+            // Sincroniza o tempo salvo com o servidor também através de um update na partida
+            await api.put(`/admin/matches/${id}`, {
+                match_details: updatedDetails
             });
 
             setPendingAction(null);
