@@ -11,12 +11,25 @@ export function PublicLayout() {
     const isActive = (path: string) => location.pathname === path;
 
     const getImageUrl = (path: string | null | undefined) => {
-        if (!path) return null;
-        if (path.startsWith('http')) return path;
-        const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || '';
-        const cleanPath = path.startsWith('/') ? path : `/${path}`;
-        // Forçamos a URL a passar pelo backend se for storage
-        return `${baseUrl}${cleanPath}`;
+        if (!path) return '';
+        const apiUrl = import.meta.env.VITE_API_URL || '';
+        const cleanApiUrl = apiUrl.replace(/\/$/, '');
+        const apiBase = cleanApiUrl.replace(/\/api$/, '');
+        let result = '';
+
+        if (path.includes('/storage/')) {
+            const storagePath = path.substring(path.indexOf('/storage/'));
+            result = `${apiBase}/api${storagePath}`;
+        } else if (path.startsWith('http')) {
+            result = path;
+        } else if (path.startsWith('/')) {
+            result = path;
+        } else {
+            result = `${cleanApiUrl}/storage/${path}`;
+        }
+
+        console.log('[getImageUrl] Path:', path, '-> Result:', result);
+        return result;
     };
 
     return (
@@ -28,8 +41,8 @@ export function PublicLayout() {
                         {/* Logo Area */}
                         <div className="flex-shrink-0 flex items-center gap-3 group cursor-pointer">
                             <Link to="/" className="flex items-center gap-4">
-                                <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-all duration-500">
-                                    <Icon icon="fluent-emoji:trophy" className="w-8 h-8" />
+                                <div className="p-1 group-hover:scale-110 transition-all duration-500">
+                                    <img src="/logo.png" alt="Esportes7 Logo" className="w-12 h-12 object-contain" />
                                 </div>
                                 <div className="flex flex-col">
                                     <span translate="no" className="font-black text-2xl text-slate-900 tracking-tighter leading-none group-hover:text-indigo-600 transition-colors">

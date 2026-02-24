@@ -24,6 +24,21 @@ export function Settings() {
         art_settings: {} as any
     });
 
+    const getImageUrl = (path: string | null | undefined) => {
+        if (!path) return '';
+        const apiUrl = import.meta.env.VITE_API_URL || '';
+        const cleanApiUrl = apiUrl.replace(/\/$/, '');
+        const apiBase = cleanApiUrl.replace(/\/api$/, '');
+
+        if (path.includes('/storage/')) {
+            const storagePath = path.substring(path.indexOf('/storage/'));
+            return `${apiBase}/api${storagePath}`;
+        }
+        if (path.startsWith('http')) return path;
+        if (path.startsWith('/')) return path;
+        return `${cleanApiUrl}/storage/${path}`;
+    };
+
     const artConfig: any = {
         futebol: {
             name: "Futebol",
@@ -462,7 +477,7 @@ export function Settings() {
                                         <div className="flex items-center gap-4">
                                             <div className="w-20 h-20 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center bg-gray-50 overflow-hidden">
                                                 {settings.logo_url ? (
-                                                    <img src={settings.logo_url} alt="Brasão" className="w-full h-full object-cover" />
+                                                    <img src={getImageUrl(settings.logo_url)} alt="Brasão" className="w-full h-full object-cover" />
                                                 ) : (
                                                     <Trophy className="w-8 h-8 text-gray-300" />
                                                 )}
@@ -491,7 +506,7 @@ export function Settings() {
                                         <div className="flex flex-col gap-4">
                                             {settings.banner_url && (
                                                 <div className="w-full h-32 rounded-xl border-2 border-gray-200 overflow-hidden bg-gray-50">
-                                                    <img src={settings.banner_url} alt="Banner" className="w-full h-full object-cover" />
+                                                    <img src={getImageUrl(settings.banner_url)} alt="Banner" className="w-full h-full object-cover" />
                                                 </div>
                                             )}
                                             <div className="flex items-center gap-3">

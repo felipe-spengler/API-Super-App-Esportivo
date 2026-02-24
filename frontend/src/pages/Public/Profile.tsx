@@ -12,11 +12,25 @@ export function Profile() {
     const [showEdit, setShowEdit] = useState(false);
 
     const getImageUrl = (path: string | null | undefined) => {
-        if (!path) return null;
-        if (path.startsWith('http')) return path;
-        const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || '';
-        const cleanPath = path.startsWith('/') ? path : `/${path}`;
-        return `${baseUrl}${cleanPath}`;
+        if (!path) return '';
+        const apiUrl = import.meta.env.VITE_API_URL || '';
+        const cleanApiUrl = apiUrl.replace(/\/$/, '');
+        const apiBase = cleanApiUrl.replace(/\/api$/, '');
+        let result = '';
+
+        if (path.includes('/storage/')) {
+            const storagePath = path.substring(path.indexOf('/storage/'));
+            result = `${apiBase}/api${storagePath}`;
+        } else if (path.startsWith('http')) {
+            result = path;
+        } else if (path.startsWith('/')) {
+            result = path;
+        } else {
+            result = `${cleanApiUrl}/storage/${path}`;
+        }
+
+        console.log('[Profile:getImageUrl] Path:', path, '-> Result:', result);
+        return result;
     };
 
     if (!user) {

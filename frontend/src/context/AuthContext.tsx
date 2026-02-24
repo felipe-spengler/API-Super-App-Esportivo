@@ -10,7 +10,9 @@ interface User {
     is_admin?: boolean;
     club_id?: number | null;
     photo_url?: string;
+    photo_path?: string;
     photo_urls?: string[];
+    photos?: string[];
 }
 
 interface AuthContextData {

@@ -123,7 +123,7 @@ class StatisticsController extends Controller
                 $standings[$match->home_team_id] = [
                     'team_id' => $match->home_team_id,
                     'team_name' => $match->homeTeam->name ?? 'N/A',
-                    'team_logo' => $match->homeTeam->logo_path ? asset('storage/' . $match->homeTeam->logo_path) : null,
+                    'team_logo' => $match->homeTeam->logo_path ? url('api/storage/' . $match->homeTeam->logo_path) : null,
                     'group_name' => $groupName,
                     'played' => 0,
                     'won' => 0,
@@ -140,7 +140,7 @@ class StatisticsController extends Controller
                 $standings[$match->away_team_id] = [
                     'team_id' => $match->away_team_id,
                     'team_name' => $match->awayTeam->name ?? 'N/A',
-                    'team_logo' => $match->awayTeam->logo_path ? asset('storage/' . $match->awayTeam->logo_path) : null,
+                    'team_logo' => $match->awayTeam->logo_path ? url('api/storage/' . $match->awayTeam->logo_path) : null,
                     'group_name' => $groupName,
                     'played' => 0,
                     'won' => 0,

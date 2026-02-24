@@ -24,11 +24,18 @@ export function ClubHome() {
     const [loading, setLoading] = useState(true);
 
     const getImageUrl = (path: string | null | undefined) => {
-        if (!path) return null;
+        if (!path) return '';
+        const apiUrl = import.meta.env.VITE_API_URL || '';
+        const cleanApiUrl = apiUrl.replace(/\/$/, '');
+        const apiBase = cleanApiUrl.replace(/\/api$/, '');
+
+        if (path.includes('/storage/')) {
+            const storagePath = path.substring(path.indexOf('/storage/'));
+            return `${apiBase}/api${storagePath}`;
+        }
         if (path.startsWith('http')) return path;
-        const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || '';
-        const cleanPath = path.startsWith('/') ? path : `/${path}`;
-        return `${baseUrl}${cleanPath}`;
+        if (path.startsWith('/')) return path;
+        return `${cleanApiUrl}/storage/${path}`;
     };
 
     useEffect(() => {

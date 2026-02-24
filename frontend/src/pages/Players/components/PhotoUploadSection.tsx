@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Camera, Loader2, X, Plus } from 'lucide-react';
 import api from '../../../services/api';
+import { useAuth } from '../../../context/AuthContext';
 
 interface PhotoUploadSectionProps {
     playerId: string;
@@ -9,15 +10,39 @@ interface PhotoUploadSectionProps {
 }
 
 export function PhotoUploadSection({ playerId, currentPhotos }: PhotoUploadSectionProps) {
+    const { user, updateUser } = useAuth();
     const [photos, setPhotos] = useState<string[]>([]);
     const [loadingIndex, setLoadingIndex] = useState<number | null>(null);
+
+    const getImageUrl = (path: string | null | undefined) => {
+        if (!path) return '';
+        const apiUrl = import.meta.env.VITE_API_URL || '';
+        const cleanApiUrl = apiUrl.replace(/\/$/, '');
+        const apiBase = cleanApiUrl.replace(/\/api$/, '');
+        let result = '';
+
+        if (path.includes('/storage/')) {
+            const storagePath = path.substring(path.indexOf('/storage/'));
+            // Usar o protocolo/host atual para evitar problemas de CORS ou mismatch de porta
+            result = `${apiBase}/api${storagePath}`;
+        } else if (path.startsWith('http')) {
+            result = path;
+        } else if (path.startsWith('/')) {
+            result = path;
+        } else {
+            result = `${cleanApiUrl}/storage/${path}`;
+        }
+
+        console.log('[PhotoUpload:getImageUrl] Path:', path, '-> Result:', result);
+        return result;
+    };
 
     useEffect(() => {
         // Normalize input to array
         if (Array.isArray(currentPhotos)) {
-            setPhotos(currentPhotos);
+            setPhotos(currentPhotos.map(p => getImageUrl(p)));
         } else if (typeof currentPhotos === 'string' && currentPhotos) {
-            setPhotos([currentPhotos]);
+            setPhotos([getImageUrl(currentPhotos)]);
         } else {
             setPhotos([]);
         }
@@ -43,20 +68,34 @@ export function PhotoUploadSection({ playerId, currentPhotos }: PhotoUploadSecti
             });
 
             const newUrl = res.data.photo_nobg_url || res.data.photo_url;
-            const absoluteUrl = newUrl.startsWith('http') ? newUrl : `${import.meta.env.VITE_API_URL?.replace('/api', '')}${newUrl}`;
+            const absoluteUrl = getImageUrl(newUrl);
 
             setPhotos(prev => {
                 const newPhotos = [...prev];
-                // Fill gaps if index > length
                 while (newPhotos.length <= index) {
                     newPhotos.push('');
                 }
                 newPhotos[index] = absoluteUrl;
-                // Clean empty slots at end if any? No, keep it stable
                 return newPhotos;
             });
 
-            // alert('Foto atualizada!'); // Optional
+            // Atualizar o contexto do usuário se for o próprio jogador
+            if (user && user.id.toString() === playerId) {
+                const updatedPhotos = [...(user.photos || [])];
+                while (updatedPhotos.length <= index) updatedPhotos.push('');
+                updatedPhotos[index] = res.data.photo_path;
+
+                const updatedUser = {
+                    ...user,
+                    photos: updatedPhotos,
+                    photo_path: updatedPhotos[0],
+                    // Forçar atualização das URLs computadas
+                    photo_url: getImageUrl(updatedPhotos[0]),
+                    photo_urls: updatedPhotos.map(p => getImageUrl(p))
+                };
+                updateUser(updatedUser as any);
+                console.log('[PhotoUpload] User context updated:', updatedUser);
+            }
         } catch (error) {
             console.error(error);
             alert('Erro ao enviar foto');

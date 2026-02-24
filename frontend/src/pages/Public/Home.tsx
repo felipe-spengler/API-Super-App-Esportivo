@@ -23,11 +23,18 @@ type Club = {
 
 export function PublicHome() {
     const getImageUrl = (path: string | null | undefined) => {
-        if (!path) return null;
+        if (!path) return '';
+        const apiUrl = import.meta.env.VITE_API_URL || '';
+        const cleanApiUrl = apiUrl.replace(/\/$/, '');
+        const apiBase = cleanApiUrl.replace(/\/api$/, '');
+
+        if (path.includes('/storage/')) {
+            const storagePath = path.substring(path.indexOf('/storage/'));
+            return `${apiBase}/api${storagePath}`;
+        }
         if (path.startsWith('http')) return path;
-        const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || '';
-        const cleanPath = path.startsWith('/') ? path : `/${path}`;
-        return `${baseUrl}${cleanPath}`;
+        if (path.startsWith('/')) return path;
+        return `${cleanApiUrl}/storage/${path}`;
     };
     const navigate = useNavigate();
     const [cities, setCities] = useState<City[]>([]);
@@ -82,8 +89,8 @@ export function PublicHome() {
                     <div className="absolute bottom-0 left-0 w-32 h-32 bg-violet-50 rounded-full -ml-16 -mb-16 blur-3xl opacity-50"></div>
 
                     <div className="mb-10 text-center relative z-10">
-                        <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-indigo-600 to-violet-600 rounded-2xl shadow-lg shadow-indigo-200 mb-6 transform hover:rotate-6 transition-transform">
-                            <Icon icon="fluent-emoji:trophy" className="w-8 h-8" />
+                        <div className="inline-flex items-center justify-center w-32 h-32 mb-6 transform hover:scale-105 transition-transform duration-500">
+                            <img src="/logo.png" alt="Esportes7" className="w-full h-full object-contain" />
                         </div>
                         <h1 className="text-3xl font-black text-slate-900 mb-3 tracking-tight">
                             Onde você quer <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600">jogar?</span>

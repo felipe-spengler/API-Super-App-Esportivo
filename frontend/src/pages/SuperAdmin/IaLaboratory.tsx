@@ -10,6 +10,21 @@ export function IaLaboratory() {
     const [result, setResult] = useState<any>(null);
     const [error, setError] = useState<string | null>(null);
 
+    const getImageUrl = (path: string | null | undefined) => {
+        if (!path) return '';
+        const apiUrl = import.meta.env.VITE_API_URL || '';
+        const cleanApiUrl = apiUrl.replace(/\/$/, '');
+        const apiBase = cleanApiUrl.replace(/\/api$/, '');
+
+        if (path.includes('/storage/')) {
+            const storagePath = path.substring(path.indexOf('/storage/'));
+            return `${apiBase}/api${storagePath}`;
+        }
+        if (path.startsWith('http')) return path;
+        if (path.startsWith('/')) return path;
+        return `${cleanApiUrl}/storage/${path}`;
+    };
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selected = e.target.files?.[0];
         if (selected) {
@@ -174,7 +189,7 @@ export function IaLaboratory() {
                         <div className="flex-1 flex flex-col">
                             <div className="bg-checkered rounded-xl border border-gray-200 overflow-hidden relative group grow mb-4">
                                 <img
-                                    src={`${import.meta.env.VITE_API_URL?.replace('/api', '')}${result.photo_nobg_url}`}
+                                    src={getImageUrl(result.photo_nobg_url)}
                                     className="w-full h-full object-contain"
                                     alt="Resultado"
                                 />
@@ -196,7 +211,7 @@ export function IaLaboratory() {
                                 </div>
 
                                 <a
-                                    href={`${import.meta.env.VITE_API_URL?.replace('/api', '')}${result.photo_nobg_url}`}
+                                    href={getImageUrl(result.photo_nobg_url)}
                                     download="atleta-sem-fundo.png"
                                     className="w-full py-3 bg-green-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-green-700 transition-all shadow-lg shadow-green-100"
                                 >

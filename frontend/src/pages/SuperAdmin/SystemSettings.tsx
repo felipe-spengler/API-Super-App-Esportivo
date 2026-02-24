@@ -93,6 +93,21 @@ export function SystemSettings() {
         }
     }
 
+    const getImageUrl = (path: string | null | undefined) => {
+        if (!path) return '';
+        const apiUrl = import.meta.env.VITE_API_URL || '';
+        const cleanApiUrl = apiUrl.replace(/\/$/, '');
+        const apiBase = cleanApiUrl.replace(/\/api$/, '');
+
+        if (path.includes('/storage/')) {
+            const storagePath = path.substring(path.indexOf('/storage/'));
+            return `${apiBase}/api${storagePath}`;
+        }
+        if (path.startsWith('http')) return path;
+        if (path.startsWith('/')) return path;
+        return `${cleanApiUrl}/storage/${path}`;
+    };
+
     const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>, settingKey: string) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -171,7 +186,7 @@ export function SystemSettings() {
                                 {section.items.map((item) => {
                                     const settingKey = `default_art_${section.sportSlug}_${item.key}`;
                                     const currentVal = settings[settingKey];
-                                    const previewUrl = currentVal ? `${import.meta.env.VITE_API_URL?.replace('/api', '')}/storage/${currentVal}` : null;
+                                    const previewUrl = currentVal ? getImageUrl(`/storage/${currentVal}`) : null;
 
                                     return (
                                         <div key={item.key} className="space-y-2 border border-gray-100 rounded-lg p-4 hover:shadow-md transition-shadow">

@@ -14,6 +14,26 @@ interface Player {
 }
 
 export function Players() {
+    const getImageUrl = (path: string | null | undefined) => {
+        if (!path) return '';
+        const apiUrl = import.meta.env.VITE_API_URL || '';
+        const cleanApiUrl = apiUrl.replace(/\/$/, '');
+        const apiBase = cleanApiUrl.replace(/\/api$/, '');
+        let result = '';
+
+        if (path.includes('/storage/')) {
+            const storagePath = path.substring(path.indexOf('/storage/'));
+            result = `${apiBase}/api${storagePath}`;
+        } else if (path.startsWith('http')) {
+            result = path;
+        } else if (path.startsWith('/')) {
+            result = path;
+        } else {
+            result = `${cleanApiUrl}/storage/${path}`;
+        }
+        return result;
+    };
+
     const [players, setPlayers] = useState<Player[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -118,7 +138,7 @@ export function Players() {
                                             <div className="flex items-center gap-3">
                                                 <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden shrink-0">
                                                     {player.photo_url ? (
-                                                        <img src={player.photo_url} alt={player.name} className="w-full h-full object-cover" />
+                                                        <img src={getImageUrl(player.photo_url)} alt={player.name} className="w-full h-full object-cover" />
                                                     ) : (
                                                         <User className="w-5 h-5 text-gray-500" />
                                                     )}
@@ -177,7 +197,7 @@ export function Players() {
                                 <div className="flex items-center gap-3">
                                     <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden shrink-0 border border-gray-100">
                                         {player.photo_url ? (
-                                            <img src={player.photo_url} alt={player.name} className="w-full h-full object-cover" />
+                                            <img src={getImageUrl(player.photo_url)} alt={player.name} className="w-full h-full object-cover" />
                                         ) : (
                                             <User className="w-6 h-6 text-gray-500" />
                                         )}

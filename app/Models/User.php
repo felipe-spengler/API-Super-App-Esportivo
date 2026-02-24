@@ -117,8 +117,8 @@ class User extends Authenticatable
             return $this->photo_path;
         }
 
-        // Return full URL
-        return asset('storage/' . $this->photo_path);
+        // Return full URL via API proxy to avoid 404s in production environments
+        return url('api/storage/' . $this->photo_path);
     }
 
     /**
@@ -139,7 +139,7 @@ class User extends Authenticatable
             if (str_starts_with($path, 'http')) {
                 return $path;
             }
-            return asset('storage/' . $path);
+            return url('api/storage/' . $path);
         }, $photos);
     }
 }
