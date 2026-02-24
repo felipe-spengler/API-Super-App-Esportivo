@@ -250,27 +250,42 @@ export function SumulaBasqueteVoz() {
         }
 
         // 2. Identificar Ação (Pontos)
-        const isThree = normalized.includes('tres') || normalized.includes('3') || normalized.includes('triplo') || normalized.includes('triple');
-        const isOne = normalized.includes('um ponto') || normalized.includes('lance livre') || normalized.includes('1 ponto');
-        const isTwo = normalized.includes('dois pontos') || normalized.includes('cesta de dois') || normalized.includes('2 pontos');
-        const isFoul = normalized.includes('falta');
-        const isTechFoul = isFoul && (normalized.includes('tecnica') || normalized.includes('antitidesportiva'));
-        const isPoints = normalized.includes('ponto') || normalized.includes('cesta') || normalized.includes('marque') || normalized.includes('marcar') || normalized.includes('fez');
+        const synonyms = {
+            points1: ['um ponto', '1 ponto', 'um pontinho', 'lance livre', 'livre', 'lances livres'],
+            points2: ['dois pontos', '2 pontos', 'cesta de dois', 'duplo', 'double', 'bandeja', 'enterrada'],
+            points3: ['tres pontos', '3 pontos', 'cesta de tres', 'triplo', 'triple', 'do meio da rua', 'do perimetro', 'bola de tres', 'la de fora'],
+            foul: ['falta', 'bateu', 'empurrou', 'contato'],
+            techFoul: ['identificada', 'tecnica', 'antitidesportiva', 'antidesportiva', 'flagrante'],
+            timeout: ['tempo', 'time out', 'pediu tempo', 'paralisa'],
+            sub: ['substituicao', 'troca', 'entra', 'sai', 'muda']
+        };
 
-        if (isTechFoul) {
+        const hasAny = (list: string[]) => list.some(s => normalized.includes(s));
+
+        if (hasAny(synonyms.techFoul) && (normalized.includes('falta') || normalized.includes('tecnica'))) {
             type = 'technical_foul';
-        } else if (isFoul) {
+        } else if (hasAny(synonyms.foul)) {
             type = 'foul';
-        } else if (isThree) {
+        } else if (hasAny(synonyms.points3)) {
             points = 3;
             type = '3_points';
-        } else if (isOne) {
+        } else if (hasAny(synonyms.points1)) {
             points = 1;
             type = '1_point';
-        } else if (isTwo || isPoints) {
+        } else if (hasAny(synonyms.points2)) {
             points = 2;
             type = '2_points';
-        } else if (normalized.includes('substituicao') || normalized.includes('troca') || normalized.includes('entra')) {
+        } else if (hasAny(['ponto', 'cesta', 'marque', 'marcar', 'fez', 'converteu', 'anotou'])) {
+            // Se falou qualquer ação de pontuação sem número, verifica se o número do ponto estava escondido (ex: "marque 3")
+            const ptMatch = normalized.match(/(?:marque|fez|anotou|anota|cesta|ponto|pontos|de)\s+([123])/);
+            if (ptMatch) {
+                points = parseInt(ptMatch[1]);
+                type = points === 3 ? '3_points' : (points === 1 ? '1_point' : '2_points');
+            } else {
+                points = 2; // Default basketball score
+                type = '2_points';
+            }
+        } else if (hasAny(synonyms.sub)) {
             type = 'substitution';
         } else {
             if (!failureReason) failureReason = 'Ação não identificada';
@@ -305,12 +320,20 @@ export function SumulaBasqueteVoz() {
 
         // Fallback: Procura qualquer número isolado ou palavra de número no texto
         if (!number) {
+            // Tenta achar números de 0 a 99 tanto em dígito quanto por extenso
             const digits = normalized.match(/\d+/);
             if (digits) {
-                number = digits[0];
-            } else {
+                // Se achou um dígito, garante que não é o ponto (1, 2, 3) se a frase for curta
+                if (!(normalized.length < 25 && (digits[0] === '1' || digits[0] === '2' || digits[0] === '3'))) {
+                    number = digits[0];
+                }
+            }
+
+            if (!number) {
                 for (const [key, val] of Object.entries(numberMap)) {
-                    if (normalized.includes(` ${key}`) || normalized.startsWith(key)) {
+                    // Regex para garantir que a palavra está isolada (ex: " dez " ou "no dez")
+                    const wordRegex = new RegExp(`\\b${key}\\b`, 'i');
+                    if (wordRegex.test(normalized)) {
                         number = val;
                         break;
                     }
