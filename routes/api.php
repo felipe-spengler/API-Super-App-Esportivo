@@ -141,6 +141,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Gestão de Partidas (NEW)
         Route::get('/matches', [\App\Http\Controllers\Admin\AdminMatchController::class, 'index']);
+        Route::get('/matches/{id}', [\App\Http\Controllers\Admin\AdminMatchController::class, 'show']);
         Route::post('/matches', [\App\Http\Controllers\Admin\AdminMatchController::class, 'store']);
         Route::put('/matches/{id}', [\App\Http\Controllers\Admin\AdminMatchController::class, 'update']);
         Route::patch('/matches/{id}', [\App\Http\Controllers\Admin\AdminMatchController::class, 'update']);

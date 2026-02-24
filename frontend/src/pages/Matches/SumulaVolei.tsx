@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, RefreshCw, PlusCircle, History, Trophy, Maximize2, X, Repeat, ArrowRightLeft, UserPlus, AlertOctagon } from 'lucide-react';
+import { ArrowLeft, RefreshCw, PlusCircle, History, Trophy, Maximize2, X, Repeat, ArrowRightLeft, UserPlus, AlertOctagon, ChevronDown, ChevronUp, XCircle } from 'lucide-react';
 import api from '../../services/api';
 
 export function SumulaVolei() {
@@ -17,6 +17,7 @@ export function SumulaVolei() {
     // UI Modal States
     const [rotationViewOpen, setRotationViewOpen] = useState(false);
     const [subModalOpen, setSubModalOpen] = useState(false);
+    const [courtMinimized, setCourtMinimized] = useState(true);
 
     // Point Flow State: Step 1 (Type) -> Step 2 (Player)
     const [pointFlow, setPointFlow] = useState<{ step: 'type' | 'player', teamId: number, type?: string } | null>(null);
@@ -51,14 +52,8 @@ export function SumulaVolei() {
     const fetchFullDetails = async (silent = false) => {
         try {
             if (!silent) setLoading(true);
-            // 1. Get Match Core Data including players
-            const fullMatch = await api.get(`/admin/matches/${id}`);
 
-            const homeP = fullMatch.data.home_team?.players || [];
-            const awayP = fullMatch.data.away_team?.players || [];
-            setTeamPlayers({ home: homeP, away: awayP });
-
-            // 2. Get Volley State
+            // Get All Volley State (Now includes players and match data)
             const response = await api.get(`/admin/matches/${id}/volley-state`);
             processStateResponse(response.data);
 
@@ -93,6 +88,18 @@ export function SumulaVolei() {
         setSets(data.sets);
         setRotations(data.current_rotations);
         setServingTeamId(data.state.serving_team_id);
+
+        // Update players from match data
+        if (data.match) {
+            // Check both snake_case and camelCase for safety
+            const homeTeam = data.match.home_team || data.match.homeTeam;
+            const awayTeam = data.match.away_team || data.match.awayTeam;
+
+            const homeP = homeTeam?.players || [];
+            const awayP = awayTeam?.players || [];
+            setTeamPlayers({ home: homeP, away: awayP });
+        }
+
         setLoading(false);
     }
 
@@ -132,6 +139,26 @@ export function SumulaVolei() {
             fetchState();
         } catch (e) {
             alert('Erro ao rotacionar');
+        }
+    };
+
+    const handleSelfError = async (committingTeamId: number) => {
+        if (!matchData) return;
+
+        const receivingTeamId = committingTeamId === matchData.home_team_id ? matchData.away_team_id : matchData.home_team_id;
+        const receivingTeamName = receivingTeamId === matchData.home_team_id ? matchData.home_team?.name : matchData.away_team?.name;
+
+        if (!window.confirm(`Registrar ERRO COMETIDO por este time? \n(Ponto para ${receivingTeamName})`)) return;
+
+        try {
+            await api.post(`/admin/matches/${id}/volley/point`, {
+                team_id: receivingTeamId,
+                point_type: 'erro',
+                player_id: null
+            });
+            fetchState();
+        } catch (e) {
+            alert('Erro ao registrar ponto');
         }
     };
 
@@ -293,33 +320,44 @@ export function SumulaVolei() {
         return (
             <div className={`rounded-xl border-2 ${isServing ? 'border-yellow-500 bg-yellow-900/10' : 'border-gray-700 bg-gray-800'} p-4`}>
                 <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-bold uppercase text-sm">{teamName}</h3>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setCourtMinimized(!courtMinimized)}
+                            className="p-1 hover:bg-gray-700 rounded transition-colors text-gray-400 hover:text-white"
+                            title={courtMinimized ? "Mostrar Rodízio" : "Recolher Rodízio"}
+                        >
+                            {courtMinimized ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
+                        </button>
+                        <h3 className="font-bold uppercase text-sm">{teamName}</h3>
+                    </div>
                     {isServing && <span className="text-xs bg-yellow-500 text-black px-2 py-1 rounded-full font-bold animate-pulse">SAQUE</span>}
                     <button onClick={() => setRotationViewOpen(true)} className="ml-auto p-1 hover:bg-gray-700 rounded"><Maximize2 size={16} /></button>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 mb-4">
-                    {/* Front Row: 4, 3, 2 (Indices 3, 2, 1) */}
-                    {[3, 2, 1].map((idx) => (
-                        <div key={idx}
-                            onClick={() => openSubModal(teamId, (idx === 3 ? 3 : idx === 2 ? 2 : 1), rotation?.[idx === 3 ? 3 : idx === 2 ? 2 : 1])}
-                            className="aspect-square bg-gray-700/50 rounded flex flex-col items-center justify-center relative border border-gray-600/30 hover:bg-gray-600 cursor-pointer transition-colors">
-                            <span className="text-xs absolute top-1 left-1 text-gray-500">P{idx === 3 ? 4 : idx === 2 ? 3 : 2}</span>
-                            <span className="font-bold text-sm text-center px-1">{getPlayerName(rotation?.[idx === 3 ? 3 : idx === 2 ? 2 : 1])}</span>
-                        </div>
-                    ))}
-                    {/* Back Row: 5, 6, 1 (Indices 4, 5, 0) */}
-                    {[4, 5, 0].map((rotIdx) => (
-                        <div key={rotIdx}
-                            onClick={() => openSubModal(teamId, (rotIdx === 4 ? 4 : rotIdx === 5 ? 5 : 0), rotation?.[rotIdx])}
-                            className="aspect-square bg-gray-700/50 rounded flex flex-col items-center justify-center relative border border-gray-600/30 hover:bg-gray-600 cursor-pointer transition-colors">
-                            <span className="text-xs absolute top-1 left-1 text-gray-500">P{rotIdx === 4 ? 5 : rotIdx === 5 ? 6 : 1}</span>
-                            <span className="font-bold text-sm text-center px-1 text-gray-300">{getPlayerName(rotation?.[rotIdx])}</span>
-                        </div>
-                    ))}
-                </div>
+                {!courtMinimized && (
+                    <div className="grid grid-cols-3 gap-2 mb-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                        {/* Front Row: 4, 3, 2 (Indices 3, 2, 1) */}
+                        {[3, 2, 1].map((idx) => (
+                            <div key={idx}
+                                onClick={() => openSubModal(teamId, (idx === 3 ? 3 : idx === 2 ? 2 : 1), rotation?.[idx === 3 ? 3 : idx === 2 ? 2 : 1])}
+                                className="aspect-square bg-gray-700/50 rounded flex flex-col items-center justify-center relative border border-gray-600/30 hover:bg-gray-600 cursor-pointer transition-colors">
+                                <span className="text-xs absolute top-1 left-1 text-gray-500">P{idx === 3 ? 4 : idx === 2 ? 3 : 2}</span>
+                                <span className="font-bold text-sm text-center px-1">{getPlayerName(rotation?.[idx === 3 ? 3 : idx === 2 ? 2 : 1])}</span>
+                            </div>
+                        ))}
+                        {/* Back Row: 5, 6, 1 (Indices 4, 5, 0) */}
+                        {[4, 5, 0].map((rotIdx) => (
+                            <div key={rotIdx}
+                                onClick={() => openSubModal(teamId, (rotIdx === 4 ? 4 : rotIdx === 5 ? 5 : 0), rotation?.[rotIdx])}
+                                className="aspect-square bg-gray-700/50 rounded flex flex-col items-center justify-center relative border border-gray-600/30 hover:bg-gray-600 cursor-pointer transition-colors">
+                                <span className="text-xs absolute top-1 left-1 text-gray-500">P{rotIdx === 4 ? 5 : rotIdx === 5 ? 6 : 1}</span>
+                                <span className="font-bold text-sm text-center px-1 text-gray-300">{getPlayerName(rotation?.[rotIdx])}</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
 
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                     <button
                         onClick={() => handleRotation(teamId, 'forward')}
                         disabled={matchData.status !== 'live'}
@@ -340,6 +378,13 @@ export function SumulaVolei() {
                         className="p-2 bg-gray-700 hover:bg-gray-600 rounded text-xs flex items-center justify-center gap-1 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
                     >
                         <AlertOctagon size={14} /> Cartão
+                    </button>
+                    <button
+                        onClick={() => handleSelfError(teamId)}
+                        disabled={matchData.status !== 'live'}
+                        className="p-2 bg-red-900/40 hover:bg-red-900/60 rounded text-xs flex items-center justify-center gap-1 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed text-red-200"
+                    >
+                        <XCircle size={14} /> Erro
                     </button>
                 </div>
             </div>

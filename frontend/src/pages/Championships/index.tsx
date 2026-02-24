@@ -174,10 +174,10 @@ export function Championships() {
 
                             <div className="p-4 md:p-6 flex-1 flex flex-col">
                                 <h3 className="text-lg font-black text-gray-900 mb-1 group-hover:text-indigo-600 transition-colors leading-tight">{camp.name}</h3>
-                                <p className="text-sm text-indigo-600 font-bold mb-4 flex items-center gap-1.5">
+                                <div className="text-sm text-indigo-600 font-bold mb-4 flex items-center gap-1.5">
                                     <div className="w-1.5 h-1.5 rounded-full bg-indigo-600" />
                                     {typeof camp.sport === 'object' ? (camp.sport as any)?.name : camp.sport || 'Esporte não definido'}
-                                </p>
+                                </div>
 
                                 <div className="mt-auto flex items-center text-gray-400 text-xs font-medium mb-5">
                                     <Calendar className="w-3.5 h-3.5 mr-1.5" />

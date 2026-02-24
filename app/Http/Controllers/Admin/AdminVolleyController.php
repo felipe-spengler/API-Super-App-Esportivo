@@ -13,7 +13,11 @@ class AdminVolleyController extends Controller
 {
     public function getState($matchId)
     {
-        $match = GameMatch::with(['homeTeam', 'awayTeam'])->find($matchId);
+        $match = GameMatch::with([
+            'homeTeam.players',
+            'awayTeam.players',
+            'championship.sport'
+        ])->find($matchId);
         if (!$match)
             return response()->json(['error' => 'Partida não encontrada'], 404);
 

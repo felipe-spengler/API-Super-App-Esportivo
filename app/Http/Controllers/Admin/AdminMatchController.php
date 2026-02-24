@@ -46,6 +46,15 @@ class AdminMatchController extends Controller
         return response()->json($matches);
     }
 
+    // Get single match details
+    public function show($id)
+    {
+        $match = GameMatch::with(['homeTeam.players', 'awayTeam.players', 'championship.sport', 'category'])
+            ->findOrFail($id);
+
+        return response()->json($match);
+    }
+
     // Create new match
     public function store(StoreMatchRequest $request)
     {

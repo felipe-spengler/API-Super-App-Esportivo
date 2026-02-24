@@ -166,6 +166,17 @@ export function TeamDetails() {
         }
     }
 
+    async function handleDeleteTeam() {
+        if (!window.confirm('Tem certeza que deseja excluir esta equipe permanentemente? Esta ação não pode ser desfeita.')) return;
+        try {
+            await api.delete(`/admin/teams/${id}`);
+            navigate('/admin/teams');
+        } catch (error: any) {
+            console.error(error);
+            alert(error.response?.data?.message || 'Erro ao excluir equipe.');
+        }
+    }
+
     if (loading) {
         return (
             <div className="flex h-64 items-center justify-center">
@@ -197,13 +208,24 @@ export function TeamDetails() {
                     Detalhes da equipe
                     {fromChampionshipId && <span className="text-sm font-normal text-gray-500 ml-2">(Contexto: Campeonato)</span>}
                 </h1>
-                <button
-                    onClick={() => navigate(`/admin/teams/${id}/edit`)}
-                    className="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium flex items-center gap-2 shadow-sm"
-                >
-                    <Shield className="w-4 h-4 text-indigo-500" />
-                    Editar Dados
-                </button>
+                <div className="flex items-center gap-2">
+                    {isAdmin && team?.championships.length === 0 && team?.players.length === 0 && (
+                        <button
+                            onClick={handleDeleteTeam}
+                            className="px-4 py-2 bg-red-50 text-red-600 border border-red-100 rounded-lg hover:bg-red-100 transition-colors font-bold flex items-center gap-2 shadow-sm"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                            Excluir Equipe
+                        </button>
+                    )}
+                    <button
+                        onClick={() => navigate(`/admin/teams/${id}/edit`)}
+                        className="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium flex items-center gap-2 shadow-sm"
+                    >
+                        <Shield className="w-4 h-4 text-indigo-500" />
+                        Editar Dados
+                    </button>
+                </div>
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center gap-6">
