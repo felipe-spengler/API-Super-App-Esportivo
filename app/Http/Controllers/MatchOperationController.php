@@ -32,7 +32,8 @@ class MatchOperationController extends Controller
                     'player_name' => $e->player?->name ?? '?',
                     'minute' => $e->game_time ?? '00:00',
                     'period' => $e->metadata['period'] ?? ($e->metadata['label'] ?? '1º Tempo'),
-                    'value' => $e->value
+                    'value' => $e->value,
+                    'metadata' => $e->metadata
                 ];
             });
             $details['events'] = $tableEvents;

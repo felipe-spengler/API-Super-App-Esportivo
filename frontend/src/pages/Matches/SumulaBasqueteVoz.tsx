@@ -4,6 +4,7 @@ import { ArrowLeft, Mic, MicOff, Check, X, Timer, Play, Pause, Plus } from 'luci
 import api from '../../services/api';
 import { SpeechRecognition } from '@capacitor-community/speech-recognition';
 import { Capacitor } from '@capacitor/core';
+import echo from '../../services/echo';
 
 // Extend window interface for SpeechRecognition
 declare global {
@@ -39,6 +40,16 @@ export function SumulaBasqueteVoz() {
     const [showPlayers, setShowPlayers] = useState(false);
 
     const recognitionRef = useRef<any>(null);
+    const timeRef = useRef(time);
+    const matchDataRef = useRef(matchData);
+
+    useEffect(() => {
+        timeRef.current = time;
+    }, [time]);
+
+    useEffect(() => {
+        matchDataRef.current = matchData;
+    }, [matchData]);
 
     useEffect(() => {
         let interval: any;
@@ -130,11 +141,16 @@ export function SumulaBasqueteVoz() {
                     scoreHome: parseInt(data.match.home_score || 0),
                     scoreAway: parseInt(data.match.away_score || 0)
                 });
-                if (data.match.match_details?.current_timer_value !== undefined) {
-                    setTime(data.match.match_details.current_timer_value);
+
+                // Só atualiza o tempo se não estiver rodando localmente (evita pulos)
+                if (!isRunning && data.match.match_details?.current_timer_value !== undefined) {
+                    const serverTime = data.match.match_details.current_timer_value;
+                    setTime(serverTime);
+                    timeRef.current = serverTime;
                 }
-                if (data.match.status === 'live') {
-                    setIsRunning(false); // Mantém pausado por padrão ao carregar
+
+                if (data.match.status === 'live' && !isRunning) {
+                    // setIsRunning(false); // Já está false
                 }
             }
             if (data.rosters) {
@@ -146,6 +162,44 @@ export function SumulaBasqueteVoz() {
             alert('Erro ao carregar jogo.');
         }
     };
+
+    // ESCUTAR REVERB (REAL-TIME)
+    useEffect(() => {
+        if (!id) return;
+
+        const channel = echo.channel(`match.${id}`)
+            .listen('.MatchUpdated', (e: any) => {
+                console.log('Evento Reverb recebido:', e);
+                fetchMatchDetails(); // Recarrega dados quando houver atualização externa
+            });
+
+        return () => {
+            echo.leaveChannel(`match.${id}`);
+        };
+    }, [id]);
+
+    // SINCRONIZAR CRONÔMETRO PERIODICAMENTE (A cada 15s se estiver rodando)
+    useEffect(() => {
+        let syncInterval: any;
+
+        if (isRunning) {
+            syncInterval = setInterval(async () => {
+                try {
+                    await api.put(`/admin/matches/${id}`, {
+                        match_details: {
+                            ...matchDataRef.current?.match_details,
+                            current_timer_value: timeRef.current,
+                            timer_running: true
+                        }
+                    });
+                } catch (e) {
+                    console.error("Erro na sync periódica do tempo", e);
+                }
+            }, 15000); // 15 segundos
+        }
+
+        return () => clearInterval(syncInterval);
+    }, [isRunning, id]);
 
     const processVoiceCommand = async (text: string) => {
         console.log("Processando:", text);
@@ -193,15 +247,44 @@ export function SumulaBasqueteVoz() {
         }
 
         // 3. Identificar Número do Jogador
-        // Regex para "camisa X", "número Y", ou apenas números soltos se o contexto ajudar
-        const numberMatch = lower.match(/(?:camisa|número|jogador)\s+(\d{1,3})/);
-        if (numberMatch) {
-            number = numberMatch[1];
-        } else {
-            // Tenta achar numero solto no final da frase
-            const lastWord = lower.split(' ').pop();
-            if (lastWord && !isNaN(parseInt(lastWord))) {
-                number = lastWord;
+        const numberMap: { [key: string]: string } = {
+            'zero': '0', 'um': '1', 'dois': '2', 'três': '3', 'quatro': '4', 'cinco': '5', 'seis': '6', 'sete': '7', 'oito': '8', 'nove': '9', 'dez': '10',
+            'onze': '11', 'doze': '12', 'treze': '13', 'quatorze': '14', 'quinze': '15', 'dezesseis': '16', 'dezessete': '17', 'dezoito': '18', 'dezenove': '19', 'vinte': '20',
+            'vinte e um': '21', 'vinte e dois': '22', 'vinte e três': '23', 'vinte e quatro': '24', 'vinte e cinco': '25', 'vinte e seis': '26', 'vinte e sete': '27', 'vinte e oito': '28', 'vinte e nove': '29', 'trinta': '30',
+            'quarenta': '40', 'cinquenta': '50', 'sessenta': '60', 'setenta': '70', 'oitenta': '80', 'noventa': '90'
+        };
+
+        // Regex flexível: (camisa|número|jogador) + (número ou palavra)
+        const flexMatch = lower.match(/(?:camisa|número|jogador|atleta)\s+([a-z0-9\s]+)/);
+        if (flexMatch) {
+            const possibleNumber = flexMatch[1].trim().split(' ')[0]; // Pega a primeira palavra após "camisa"
+            if (!isNaN(parseInt(possibleNumber))) {
+                number = possibleNumber;
+            } else if (numberMap[possibleNumber]) {
+                number = numberMap[possibleNumber];
+            } else {
+                // Tenta achar se o numberMap contém a string completa (ex: "vinte e um")
+                for (const [key, val] of Object.entries(numberMap)) {
+                    if (flexMatch[1].includes(key)) {
+                        number = val;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Fallback: Procura qualquer número isolado ou palavra de número no texto
+        if (!number) {
+            const digits = lower.match(/\d+/);
+            if (digits) {
+                number = digits[0];
+            } else {
+                for (const [key, val] of Object.entries(numberMap)) {
+                    if (lower.includes(` ${key}`) || lower.startsWith(key)) {
+                        number = val;
+                        break;
+                    }
+                }
             }
         }
 
@@ -210,10 +293,18 @@ export function SumulaBasqueteVoz() {
             const roster = team === 'home' ? rosters.home : rosters.away;
 
             const player = roster.find((p: any) => {
-                const nameMatch = p.name && lower.includes(p.name.toLowerCase());
-                const nickMatch = p.nickname && lower.includes(p.nickname.toLowerCase());
-                const numMatch = number && (p.number == number || p.number == parseInt(number || '0'));
-                return nameMatch || nickMatch || numMatch;
+                const pName = (p.name || '').toLowerCase();
+                const pNick = (p.nickname || '').toLowerCase();
+                const pNum = String(p.number);
+
+                // Prioridade 1: Número exato
+                if (number && pNum === number) return true;
+
+                // Prioridade 2: Nome ou Apelido contido na transcrição
+                if (pNick && lower.includes(pNick)) return true;
+                if (pName && lower.includes(pName) && pName.length > 3) return true;
+
+                return false;
             });
 
             if (player) {
