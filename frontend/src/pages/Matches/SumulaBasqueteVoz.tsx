@@ -137,6 +137,9 @@ export function SumulaBasqueteVoz() {
                     setIsRunning(false); // Mantém pausado por padrão ao carregar
                 }
             }
+            if (data.rosters) {
+                setRosters(data.rosters);
+            }
             setLoading(false);
         } catch (e) {
             console.error(e);
