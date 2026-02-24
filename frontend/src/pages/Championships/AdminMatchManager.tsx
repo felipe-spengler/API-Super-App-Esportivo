@@ -1246,7 +1246,7 @@ export function AdminMatchManager() {
 
                                             return (
                                                 <div key={event.id} className={`p-3 rounded-xl border flex flex-col gap-1 ${isVoice ? 'bg-white border-gray-100 opacity-80' :
-                                                        isTimer ? 'bg-blue-50 border-blue-100' : 'bg-white border-gray-200 shadow-sm'
+                                                    isTimer ? 'bg-blue-50 border-blue-100' : 'bg-white border-gray-200 shadow-sm'
                                                     }`}>
                                                     <div className="flex items-center justify-between">
                                                         <div className="flex items-center gap-2">
@@ -1264,7 +1264,7 @@ export function AdminMatchManager() {
 
                                                     <div className="flex items-center gap-2">
                                                         <span className={`text-[11px] font-black uppercase ${isVoice ? 'text-gray-400' :
-                                                                isTimer ? 'text-blue-600' : 'text-gray-800'
+                                                            isTimer ? 'text-blue-600' : 'text-gray-800'
                                                             }`}>
                                                             {isVoice ? '🎙️ Voz' : isTimer ? '⏱️ Tempo' : `🏀 ${event.event_type}`}
                                                         </span>
@@ -1632,7 +1632,7 @@ export function AdminMatchManager() {
 
                                         return (
                                             <div key={event.id} className={`p-4 rounded-xl border flex flex-col gap-2 ${isVoice ? 'bg-white border-gray-100' :
-                                                    isTimer ? 'bg-indigo-50 border-indigo-100' : 'bg-white border-gray-200 shadow-sm'
+                                                isTimer ? 'bg-indigo-50 border-indigo-100' : 'bg-white border-gray-200 shadow-sm'
                                                 }`}>
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-3">
@@ -1662,6 +1662,31 @@ export function AdminMatchManager() {
                                                 {event.metadata?.voice_log && (
                                                     <div className="text-sm font-medium italic text-gray-600 bg-gray-100/50 p-3 rounded-lg border border-gray-200/50">
                                                         "{event.metadata.voice_log}"
+                                                    </div>
+                                                )}
+
+                                                {event.metadata?.home_roster && (
+                                                    <div className="mt-2 space-y-2">
+                                                        <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg">
+                                                            <div className="text-[10px] font-black text-blue-600 uppercase mb-1">Time da Casa</div>
+                                                            <div className="text-xs font-bold text-blue-800 leading-relaxed">{event.metadata.home_roster}</div>
+                                                        </div>
+                                                        <div className="p-3 bg-red-50 border border-red-100 rounded-lg">
+                                                            <div className="text-[10px] font-black text-red-600 uppercase mb-1">Time Visitante</div>
+                                                            <div className="text-xs font-bold text-red-800 leading-relaxed">{event.metadata.away_roster}</div>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {event.metadata?.failure_reason && (
+                                                    <div className="text-[10px] font-black text-red-600 bg-red-50 p-2 rounded border border-red-100 uppercase">
+                                                        Motivo da Falha: {event.metadata.failure_reason}
+                                                    </div>
+                                                )}
+
+                                                {event.metadata?.normalized_text && !event.metadata?.identified && (
+                                                    <div className="text-[10px] font-bold text-gray-400">
+                                                        O que o sistema processou: "{event.metadata.normalized_text}"
                                                     </div>
                                                 )}
 
