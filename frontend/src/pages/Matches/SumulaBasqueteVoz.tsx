@@ -361,20 +361,15 @@ export function SumulaBasqueteVoz() {
             const player = roster.find((p: any) => {
                 const pName = normalizeText(p.name || '');
                 const pNick = normalizeText(p.nickname || '');
-                const pFirst = pName.split(' ')[0];
-                const pNum = String(p.number || ''); // Garante string vazia se nulo
+                const pFirst = normalizeText(pName.split(' ')[0]);
+                const pNum = String(p.number || '');
 
-                // Prioridade 1: Número exato (se houver número identificado na fala)
+                // Prioridade 1: Número exatíssimo
                 if (number && pNum && pNum === number) return true;
 
-                // Prioridade 2: Apelido na frase
+                // Prioridade 2: Primeiro nome ou apelido
                 if (pNick && pNick.length > 2 && normalized.includes(pNick)) return true;
-
-                // Prioridade 3: Primeiro nome exato na frase
                 if (pFirst && pFirst.length > 2 && normalized.includes(pFirst)) return true;
-
-                // Prioridade 4: Nome completo na frase (caso o sistema ouça o nome inteiro)
-                if (pName && pName.length > 5 && normalized.includes(pName)) return true;
 
                 return false;
             });
@@ -382,10 +377,11 @@ export function SumulaBasqueteVoz() {
             if (player) {
                 const playerIdentifier = player.nickname || player.name;
                 identified = true;
+                console.log("Jogador Associado:", { id: player.id, name: player.name, number: player.number });
                 setPendingAction({
                     type,
                     team,
-                    player,
+                    player, // SALVA O OBJETO COMPLETO AQUI
                     value: points,
                     description: `${type === 'foul' ? 'Falta' : points + ' Pontos'} - ${playerIdentifier} (${team === 'home' ? 'Casa' : 'Visitante'})`
                 });
@@ -544,14 +540,14 @@ export function SumulaBasqueteVoz() {
             await api.post(`/admin/matches/${id}/events`, {
                 event_type: apiType,
                 team_id: teamId,
-                minute: formatTime(600 - time), // Time elapsed in quarter
+                minute: formatTime(600 - time),
                 period: currentQuarter,
-                player_id: pendingAction.player?.id,
+                player_id: pendingAction.player?.id, // ID DO JOGADOR SENDO ENVIADO
                 value: pendingAction.value,
                 metadata: {
                     system_period: currentQuarter,
                     quarter_time: formatTime(time),
-                    voice_log: transcript, // SALVA O LOG DA FALA AQUI
+                    voice_log: transcript || pendingAction.description,
                     original_text: transcript
                 }
             });
