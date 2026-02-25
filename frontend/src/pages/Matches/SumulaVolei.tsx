@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, RefreshCw, PlusCircle, History, Trophy, Maximize2, X, Repeat, ArrowRightLeft, UserPlus, AlertOctagon, ChevronDown, ChevronUp, XCircle } from 'lucide-react';
+import { ArrowLeft, RefreshCw, PlusCircle, History, Trophy, X, Repeat, ArrowRightLeft, UserPlus, AlertOctagon, XCircle } from 'lucide-react';
 import api from '../../services/api';
 
 export function SumulaVolei() {
@@ -17,7 +17,7 @@ export function SumulaVolei() {
     // UI Modal States
     const [rotationViewOpen, setRotationViewOpen] = useState(false);
     const [subModalOpen, setSubModalOpen] = useState(false);
-    const [courtMinimized, setCourtMinimized] = useState(true);
+    const [courtVisible, setCourtVisible] = useState(true); // toggle da visão da quadra
 
     // Point Flow State: Step 1 (Type) -> Step 2 (Player)
     const [pointFlow, setPointFlow] = useState<{ step: 'type' | 'player', teamId: number, type?: string } | null>(null);
@@ -157,7 +157,7 @@ export function SumulaVolei() {
             registerSystemEvent('user_action', `Cancelou registro de erro do time ${committingTeamSide}`);
             return;
         }
-        registerSystemEvent('user_action', `Registrou erro do time ${committingTeamSide} — ponto para ${receivingTeamName}`);
+        registerSystemEvent('user_action', `Registrou erro do time ${committingTeamSide} �?" ponto para ${receivingTeamName}`);
 
         try {
             await api.post(`/admin/matches/${id}/volley/point`, {
@@ -286,26 +286,27 @@ export function SumulaVolei() {
         }
     };
 
-    // --- Setup / Set Start ---
+    // --- Setup / Iniciar Set ---
+    // Posições são preenchidas diretamente nas células da quadra.
+    // Este modal só confirma quem vai sacar e valida que todas as posições estão preenchidas.
     const confirmSetup = async () => {
         if (!matchData) return;
-        const hFull = setupRotation.home.filter(x => x).length === 6;
-        const aFull = setupRotation.away.filter(x => x).length === 6;
+        const hFull = (rotations?.home || []).filter((x: any) => x).length === 6;
+        const aFull = (rotations?.away || []).filter((x: any) => x).length === 6;
 
         if (!hFull || !aFull) {
-            alert("Preencha todos os jogadores da rotação inicial.");
+            alert("Ainda há posições vazias na quadra. Toque em \"?\" em cada posição para selecionar o jogador.");
             return;
         }
 
         try {
             await api.post(`/admin/matches/${id}/volley/set-start`, {
                 set_number: volleyState.current_set || 1,
-                home_rotation: setupRotation.home,
-                away_rotation: setupRotation.away,
+                home_rotation: rotations.home,
+                away_rotation: rotations.away,
                 serving_team_id: servingTeamId || matchData.home_team_id
             });
 
-            // If match is scheduled, start it
             if (matchData.status === 'scheduled') {
                 await registerSystemEvent('match_start', 'Partida Iniciada!');
             }
@@ -313,7 +314,7 @@ export function SumulaVolei() {
             setSetupModalOpen(false);
             fetchFullDetails();
         } catch (e) {
-            alert('Erro ao salvar rotação');
+            alert('Erro ao salvar configuração do set');
         }
     };
 
@@ -352,89 +353,124 @@ export function SumulaVolei() {
 
     const currentSetObj = sets.find((s: any) => s.set_number == volleyState.current_set) || { home_score: 0, away_score: 0 };
 
-    // Helper to render court position
-    const renderCourt = (teamId: number, teamName: string, rotation: any[]) => {
+    // Painel de ações por time
+    const renderCourt = (teamId: number, isHome: boolean) => {
         const isServing = servingTeamId === teamId;
-        const roster = teamId === matchData.home_team_id ? teamPlayers.home : teamPlayers.away;
-
-        const getPlayerName = (pid: number) => {
-            const p = roster?.find((x: any) => x.id == pid);
-            return p ? (`${p.number ? p.number + '. ' : ''}${p.nickname || p.name.split(' ')[0]}`) : '???';
-        }
-
+        const teamName = isHome ? matchData.home_team?.name : matchData.away_team?.name;
+        const border = isServing ? 'border-yellow-500' : isHome ? 'border-blue-700/40' : 'border-green-700/40';
         return (
-            <div className={`rounded-xl border-2 ${isServing ? 'border-yellow-500 bg-yellow-900/10' : 'border-gray-700 bg-gray-800'} p-4`}>
-                <div className="flex justify-between items-center mb-4">
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={() => setCourtMinimized(!courtMinimized)}
-                            className="p-1 hover:bg-gray-700 rounded transition-colors text-gray-400 hover:text-white"
-                            title={courtMinimized ? "Mostrar Rodízio" : "Recolher Rodízio"}
-                        >
-                            {courtMinimized ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
-                        </button>
-                        <h3 className="font-bold uppercase text-sm">{teamName}</h3>
-                    </div>
-                    {isServing && <span className="text-xs bg-yellow-500 text-black px-2 py-1 rounded-full font-bold animate-pulse">SAQUE</span>}
-                    <button onClick={() => setRotationViewOpen(true)} className="ml-auto p-1 hover:bg-gray-700 rounded"><Maximize2 size={16} /></button>
+            <div className={`rounded-xl border ${border} bg-gray-800/60 p-2`}>
+                <div className="flex items-center justify-between mb-2 px-1">
+                    <span className={`text-[10px] font-black uppercase tracking-widest truncate ${isHome ? 'text-blue-400' : 'text-green-400'}`}>{teamName}</span>
+                    {isServing && <span className="text-[9px] bg-yellow-500 text-black px-1.5 py-0.5 rounded-full font-black animate-pulse">SAQUE �-�</span>}
                 </div>
-
-                {!courtMinimized && (
-                    <div className="grid grid-cols-3 gap-2 mb-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                        {/* Front Row: 4, 3, 2 (Indices 3, 2, 1) */}
-                        {[3, 2, 1].map((idx) => (
-                            <div key={idx}
-                                onClick={() => openSubModal(teamId, (idx === 3 ? 3 : idx === 2 ? 2 : 1), rotation?.[idx === 3 ? 3 : idx === 2 ? 2 : 1])}
-                                className="aspect-square bg-gray-700/50 rounded flex flex-col items-center justify-center relative border border-gray-600/30 hover:bg-gray-600 cursor-pointer transition-colors">
-                                <span className="text-xs absolute top-1 left-1 text-gray-500">P{idx === 3 ? 4 : idx === 2 ? 3 : 2}</span>
-                                <span className="font-bold text-sm text-center px-1">{getPlayerName(rotation?.[idx === 3 ? 3 : idx === 2 ? 2 : 1])}</span>
-                            </div>
-                        ))}
-                        {/* Back Row: 5, 6, 1 (Indices 4, 5, 0) */}
-                        {[4, 5, 0].map((rotIdx) => (
-                            <div key={rotIdx}
-                                onClick={() => openSubModal(teamId, (rotIdx === 4 ? 4 : rotIdx === 5 ? 5 : 0), rotation?.[rotIdx])}
-                                className="aspect-square bg-gray-700/50 rounded flex flex-col items-center justify-center relative border border-gray-600/30 hover:bg-gray-600 cursor-pointer transition-colors">
-                                <span className="text-xs absolute top-1 left-1 text-gray-500">P{rotIdx === 4 ? 5 : rotIdx === 5 ? 6 : 1}</span>
-                                <span className="font-bold text-sm text-center px-1 text-gray-300">{getPlayerName(rotation?.[rotIdx])}</span>
-                            </div>
-                        ))}
-                    </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-2">
-                    <button
-                        onClick={() => handleRotation(teamId, 'forward')}
-                        disabled={matchData.status !== 'live'}
-                        className="p-2 bg-gray-700 hover:bg-gray-600 rounded text-xs flex items-center justify-center gap-1 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
-                    >
-                        <RefreshCw size={14} /> Rodar
+                <div className="grid grid-cols-2 gap-1.5">
+                    <button onClick={() => handleRotation(teamId, 'forward')} disabled={matchData.status !== 'live'} className="p-2 bg-gray-700 hover:bg-gray-600 rounded text-xs flex items-center justify-center gap-1 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed">
+                        <RefreshCw size={13} /> Rodar
                     </button>
-                    <button
-                        onClick={() => handleTimeout(teamId)}
-                        disabled={matchData.status !== 'live'}
-                        className="p-2 bg-gray-700 hover:bg-gray-600 rounded text-xs flex items-center justify-center gap-1 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
-                    >
-                        <History size={14} /> Tempo
+                    <button onClick={() => handleTimeout(teamId)} disabled={matchData.status !== 'live'} className="p-2 bg-gray-700 hover:bg-gray-600 rounded text-xs flex items-center justify-center gap-1 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed">
+                        <History size={13} /> Tempo
                     </button>
-                    <button
-                        onClick={() => openCardModal(teamId)}
-                        disabled={matchData.status !== 'live'}
-                        className="p-2 bg-gray-700 hover:bg-gray-600 rounded text-xs flex items-center justify-center gap-1 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
-                    >
-                        <AlertOctagon size={14} /> Cartão
+                    <button onClick={() => openCardModal(teamId)} disabled={matchData.status !== 'live'} className="p-2 bg-gray-700 hover:bg-gray-600 rounded text-xs flex items-center justify-center gap-1 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed">
+                        <AlertOctagon size={13} /> Cartão
                     </button>
-                    <button
-                        onClick={() => handleSelfError(teamId)}
-                        disabled={matchData.status !== 'live'}
-                        className="p-2 bg-red-900/40 hover:bg-red-900/60 rounded text-xs flex items-center justify-center gap-1 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed text-red-200"
-                    >
-                        <XCircle size={14} /> Erro
+                    <button onClick={() => handleSelfError(teamId)} disabled={matchData.status !== 'live'} className="p-2 bg-red-900/40 hover:bg-red-900/60 rounded text-xs flex items-center justify-center gap-1 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed text-red-200">
+                        <XCircle size={13} /> Erro
                     </button>
                 </div>
             </div>
         );
     };
+
+    // Visão lateral mesário: [Fundo A | Frente A | REDE | Frente B | Fundo B]
+    const renderUnifiedCourt = () => {
+        const posLabel = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6'];
+        const homeRot: any[] = rotations?.home || Array(6).fill(null);
+        const awayRot: any[] = rotations?.away || Array(6).fill(null);
+        // Fundos: P5(4), P6(5), P1(0) | Frente: P4(3), P3(2), P2(1)
+        const hBIdxs = [4, 5, 0]; const hFIdxs = [3, 2, 1];
+        const aBIdxs = [0, 5, 4]; const aFIdxs = [1, 2, 3];
+        const leftIsHome = !invertedSides;
+        const leftId = leftIsHome ? matchData.home_team_id : matchData.away_team_id;
+        const rightId = leftIsHome ? matchData.away_team_id : matchData.home_team_id;
+        const leftRot = leftIsHome ? homeRot : awayRot;
+        const rightRot = leftIsHome ? awayRot : homeRot;
+        const lBIdxs = leftIsHome ? hBIdxs : aBIdxs;
+        const lFIdxs = leftIsHome ? hFIdxs : aFIdxs;
+        const rFIdxs = leftIsHome ? aFIdxs : hFIdxs;
+        const rBIdxs = leftIsHome ? aBIdxs : hBIdxs;
+        const lColor = leftIsHome ? 'blue' : 'green';
+        const rColor = leftIsHome ? 'green' : 'blue';
+
+        const getLabel = (teamId: number, pid: number | null) => {
+            if (!pid) return { num: '', name: '?' };
+            const roster = teamId === matchData.home_team_id ? teamPlayers.home : teamPlayers.away;
+            const p = roster?.find((x: any) => x.id == pid);
+            return p ? { num: p.number ? `#${p.number}` : '', name: p.nickname || p.name?.split(' ')[0] || '?' } : { num: '', name: '?' };
+        };
+
+        const Cell = ({ teamId, idx, rot }: { teamId: number; idx: number; rot: any[] }) => {
+            const pid = rot?.[idx] ?? null;
+            const { num, name } = getLabel(teamId, pid);
+            return (
+                <div onClick={() => openSubModal(teamId, idx, pid)} className="rounded-lg p-1.5 text-center cursor-pointer hover:bg-white/10 active:scale-95 transition-all border border-white/10 bg-white/5 flex flex-col items-center justify-center min-h-[52px] min-w-[56px] max-w-[68px]">
+                    <span className="text-[8px] text-gray-500 font-mono">{posLabel[idx]}</span>
+                    {num && <span className="text-[9px] font-black text-yellow-400">{num}</span>}
+                    <span className="text-[10px] font-bold text-white leading-tight">{name}</span>
+                </div>
+            );
+        };
+
+        const ZL = ({ t, c }: { t: string; c: string }) => (
+            <div className={`text-[8px] font-black text-center uppercase tracking-widest mb-1 ${c === 'blue' ? 'text-blue-400' : 'text-green-400'}`}>{t}</div>
+        );
+
+        return (
+            <div className="bg-gray-800/40 rounded-xl border border-gray-700/50 p-2">
+                <div className="flex items-center justify-between mb-2 px-1">
+                    <span className={`text-[10px] font-black uppercase ${lColor === 'blue' ? 'text-blue-400' : 'text-green-400'}`}>{leftIsHome ? matchData.home_team?.name : matchData.away_team?.name}</span>
+                    <button
+                        onClick={() => setCourtVisible(v => !v)}
+                        className="flex items-center gap-1 text-[9px] text-gray-400 hover:text-white font-bold uppercase tracking-tight transition-colors px-2 py-0.5 rounded hover:bg-gray-700"
+                    >
+                        {courtVisible ? '▲ Ocultar' : '▼ Rodizio'}
+                    </button>
+                    <span className={`text-[10px] font-black uppercase ${rColor === 'blue' ? 'text-blue-400' : 'text-green-400'}`}>{leftIsHome ? matchData.away_team?.name : matchData.home_team?.name}</span>
+                </div>
+                {courtVisible && (
+                    <>
+                        <div className="overflow-x-auto">
+                            <div className="flex items-stretch gap-0.5 mx-auto w-fit">
+                                <div className={`flex flex-col gap-1 p-1.5 rounded-l-xl border ${lColor === 'blue' ? 'bg-blue-900/20 border-blue-700/30' : 'bg-green-900/20 border-green-700/30'}`}>
+                                    <ZL t="Fundo" c={lColor} />
+                                    {lBIdxs.map(i => <Cell key={i} teamId={leftId} idx={i} rot={leftRot} />)}
+                                </div>
+                                <div className={`flex flex-col gap-1 p-1.5 border-y border-r ${lColor === 'blue' ? 'bg-blue-900/30 border-blue-600/40' : 'bg-green-900/30 border-green-600/40'}`}>
+                                    <ZL t="Frente" c={lColor} />
+                                    {lFIdxs.map(i => <Cell key={i} teamId={leftId} idx={i} rot={leftRot} />)}
+                                </div>
+                                {/* REDE */}
+                                <div className="flex flex-col items-center justify-center px-1 bg-gray-900/70 border-y border-gray-600">
+                                    {[...Array(9)].map((_, i) => <div key={i} className="w-3 h-[11px] mb-[2px] border border-gray-500/40 rounded-sm bg-gray-700/20" />)}
+                                    <span className="text-[7px] text-gray-400 font-black mt-1" style={{ writingMode: 'vertical-rl' }}>REDE</span>
+                                </div>
+                                <div className={`flex flex-col gap-1 p-1.5 border-y border-l ${rColor === 'blue' ? 'bg-blue-900/30 border-blue-600/40' : 'bg-green-900/30 border-green-600/40'}`}>
+                                    <ZL t="Frente" c={rColor} />
+                                    {rFIdxs.map(i => <Cell key={i} teamId={rightId} idx={i} rot={rightRot} />)}
+                                </div>
+                                <div className={`flex flex-col gap-1 p-1.5 rounded-r-xl border ${rColor === 'blue' ? 'bg-blue-900/20 border-blue-700/30' : 'bg-green-900/20 border-green-700/30'}`}>
+                                    <ZL t="Fundo" c={rColor} />
+                                    {rBIdxs.map(i => <Cell key={i} teamId={rightId} idx={i} rot={rightRot} />)}
+                                </div>
+                            </div>
+                        </div>
+                        <p className="text-center text-[9px] text-gray-600 mt-1.5">Toque em um jogador para substituir</p>
+                    </>
+                )}
+            </div>
+        );
+    };
+
 
     return (
         <div className="min-h-screen bg-gray-900 text-white font-sans pb-20">
@@ -483,33 +519,48 @@ export function SumulaVolei() {
                 </div>
             </div>
 
-            {/* Quick Actions & Court Container */}
-            <div className="p-3 space-y-4 max-w-5xl mx-auto">
-                <div className="grid grid-cols-2 gap-3 items-start">
-                    {/* Home Interaction Column */}
-                    <div className={`space-y-3 ${invertedSides ? 'order-2' : 'order-1'}`}>
-                        <button
-                            onClick={() => handlePointClick(matchData.home_team_id)}
-                            disabled={matchData.status !== 'live'}
-                            className="w-full py-5 bg-blue-600 active:bg-blue-700 rounded-2xl shadow-lg border-b-4 border-blue-800 active:border-b-0 active:translate-y-[2px] transition-all flex flex-col items-center justify-center gap-1 disabled:opacity-50 disabled:grayscale"
-                        >
-                            <PlusCircle size={24} />
-                            <span className="text-xs font-black uppercase tracking-widest">+ PONTO</span>
-                        </button>
-                        {renderCourt(matchData.home_team_id, matchData.home_team?.name, rotations.home)}
-                    </div>
+            {/* Ações + Quadra */}
+            <div className="p-3 space-y-3 max-w-5xl mx-auto">
+                {/* Botão Iniciar Partida */}
+                {matchData.status === 'scheduled' && (
+                    <button
+                        onClick={() => setSetupModalOpen(true)}
+                        className="w-full py-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 rounded-2xl shadow-xl border-b-4 border-emerald-800 active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-3 font-black text-lg uppercase tracking-widest"
+                    >
+                        &#9654; Configurar e Iniciar Partida
+                    </button>
+                )}
 
-                    {/* Away Interaction Column */}
-                    <div className={`space-y-3 ${invertedSides ? 'order-1' : 'order-2'}`}>
-                        <button
-                            onClick={() => handlePointClick(matchData.away_team_id)}
-                            disabled={matchData.status !== 'live'}
-                            className="w-full py-5 bg-green-600 active:bg-green-700 rounded-2xl shadow-lg border-b-4 border-green-800 active:border-b-0 active:translate-y-[2px] transition-all flex flex-col items-center justify-center gap-1 disabled:opacity-50 disabled:grayscale"
-                        >
-                            <PlusCircle size={24} />
-                            <span className="text-xs font-black uppercase tracking-widest">+ PONTO</span>
-                        </button>
-                        {renderCourt(matchData.away_team_id, matchData.away_team?.name, rotations.away)}
+                {/* + PONTO */}
+                <div className="grid grid-cols-2 gap-3">
+                    <button
+                        onClick={() => handlePointClick(matchData.home_team_id)}
+                        disabled={matchData.status !== 'live'}
+                        className={`py-5 bg-blue-600 active:bg-blue-700 rounded-2xl shadow-lg border-b-4 border-blue-800 active:border-b-0 active:translate-y-[2px] transition-all flex flex-col items-center justify-center gap-1 disabled:opacity-50 disabled:grayscale ${invertedSides ? 'order-2' : 'order-1'}`}
+                    >
+                        <PlusCircle size={24} />
+                        <span className="text-xs font-black uppercase tracking-widest">+ PONTO</span>
+                    </button>
+                    <button
+                        onClick={() => handlePointClick(matchData.away_team_id)}
+                        disabled={matchData.status !== 'live'}
+                        className={`py-5 bg-green-600 active:bg-green-700 rounded-2xl shadow-lg border-b-4 border-green-800 active:border-b-0 active:translate-y-[2px] transition-all flex flex-col items-center justify-center gap-1 disabled:opacity-50 disabled:grayscale ${invertedSides ? 'order-1' : 'order-2'}`}
+                    >
+                        <PlusCircle size={24} />
+                        <span className="text-xs font-black uppercase tracking-widest">+ PONTO</span>
+                    </button>
+                </div>
+
+                {/* Quadra unificada: visão lateral mesário */}
+                {renderUnifiedCourt()}
+
+                {/* Ações por time */}
+                <div className="grid grid-cols-2 gap-3">
+                    <div className={invertedSides ? 'order-2' : 'order-1'}>
+                        {renderCourt(matchData.home_team_id, true)}
+                    </div>
+                    <div className={invertedSides ? 'order-1' : 'order-2'}>
+                        {renderCourt(matchData.away_team_id, false)}
                     </div>
                 </div>
 
@@ -541,7 +592,7 @@ export function SumulaVolei() {
                         disabled={matchData.status !== 'live'}
                         className="w-full py-2 bg-indigo-600/20 hover:bg-indigo-600/40 border border-indigo-500/30 rounded-lg text-[10px] font-black text-indigo-300 uppercase tracking-widest transition-all disabled:opacity-50"
                     >
-                        {matchData.home_score >= 3 || matchData.away_score >= 3 ? 'FINALIZAR PARTIDA' : 'FECHAR SET / PRÓXIMO'}
+                        {matchData.home_score >= 3 || matchData.away_score >= 3 ? 'FINALIZAR PARTIDA' : 'FECHAR SET / PROXIMO'}
                     </button>
                 </div>
             </div>
@@ -590,10 +641,10 @@ export function SumulaVolei() {
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             <div className={`order-${invertedSides ? '2' : '1'}`}>
-                                {renderCourt(matchData.home_team_id, matchData.home_team?.name, rotations.home)}
+                                {renderCourt(matchData.home_team_id, true)}
                             </div>
                             <div className={`order-${invertedSides ? '1' : '2'}`}>
-                                {renderCourt(matchData.away_team_id, matchData.away_team?.name, rotations.away)}
+                                {renderCourt(matchData.away_team_id, false)}
                             </div>
                         </div>
                     </div>
@@ -601,25 +652,42 @@ export function SumulaVolei() {
             )}
 
             {/* Substitution Modal */}
-            {subModalOpen && subData && (
-                <div className="fixed inset-0 bg-black/80 z-50 flex items-end sm:items-center justify-center">
-                    <div className="bg-gray-800 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-6">
-                        <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Repeat size={20} /> Substituição - P{subData.position}</h3>
-                        <div className="mb-4 text-sm text-gray-400">Jogadores no Banco:</div>
-
-                        <div className="grid grid-cols-3 gap-2 max-h-60 overflow-y-auto mb-4">
-                            {(subData.teamId === matchData.home_team_id ? teamPlayers.home : teamPlayers.away)
-                                .map((p: any) => (
-                                    <button key={p.id} onClick={() => confirmSubstitution(p.id)} className="p-2 bg-gray-700 hover:bg-gray-600 rounded flex flex-col items-center">
-                                        <span className="font-bold text-lg">{p.number || '#'}</span>
-                                        <span className="text-xs truncate w-full text-center">{p.nickname || p.name}</span>
-                                    </button>
-                                ))}
+            {subModalOpen && subData && (() => {
+                const isHome = subData.teamId === matchData.home_team_id;
+                const teamRot: any[] = (isHome ? rotations?.home : rotations?.away) || [];
+                const allPlayers: any[] = isHome ? teamPlayers.home : teamPlayers.away;
+                // IDs já em campo em OUTRAS posições (não a posição atual sendo editada)
+                const currentPosIdx = subData.position - 1;
+                const occupiedIds = new Set(
+                    teamRot
+                        .map((id: any, idx: number) => idx !== currentPosIdx ? id : null)
+                        .filter((id: any) => id != null)
+                        .map((id: any) => Number(id))
+                );
+                const availablePlayers = allPlayers.filter((p: any) => !occupiedIds.has(Number(p.id)));
+                return (
+                    <div className="fixed inset-0 bg-black/80 z-50 flex items-end sm:items-center justify-center">
+                        <div className="bg-gray-800 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-6">
+                            <h3 className="text-lg font-bold mb-1 flex items-center gap-2"><Repeat size={20} /> Substituição - P{subData.position}</h3>
+                            <p className="text-xs text-gray-500 mb-4">Jogadores disponíveis (não estão em outra posição)</p>
+                            {availablePlayers.length === 0 ? (
+                                <div className="text-center text-gray-500 py-6">Todos os jogadores já estão em campo.</div>
+                            ) : (
+                                <div className="grid grid-cols-3 gap-2 max-h-60 overflow-y-auto mb-4">
+                                    {availablePlayers.map((p: any) => (
+                                        <button key={p.id} onClick={() => confirmSubstitution(p.id)} className="p-2 bg-gray-700 hover:bg-gray-600 rounded flex flex-col items-center">
+                                            <span className="font-bold text-lg">{p.number || '#'}</span>
+                                            <span className="text-xs truncate w-full text-center">{p.nickname || p.name}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                            <button onClick={() => setSubModalOpen(false)} className="w-full py-3 bg-red-600/20 text-red-500 rounded-xl font-bold">Cancelar</button>
                         </div>
-                        <button onClick={() => setSubModalOpen(false)} className="w-full py-3 bg-red-600/20 text-red-500 rounded-xl font-bold">Cancelar</button>
                     </div>
-                </div>
-            )}
+                );
+            })()}
+
 
             {/* Point Flow Modal */}
             {pointFlow && (
@@ -666,7 +734,6 @@ export function SumulaVolei() {
                     <div className="bg-gray-800 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-6">
                         <h3 className="text-center font-bold text-xl mb-4 text-yellow-400 flex items-center justify-center gap-2"><AlertOctagon /> Aplicar Cartão</h3>
                         <div className="mb-4 text-xs text-center text-gray-400">Clique na <span className="font-bold text-yellow-500">Esquerda</span> ou <span className="font-bold text-red-500">Direita</span> do jogador para selecionar o tipo de cartão.</div>
-
                         <div className="grid grid-cols-1 gap-2 max-h-80 overflow-y-auto mb-4">
                             {(cardFlow.teamId === matchData.home_team_id ? teamPlayers.home : teamPlayers.away).map((p: any) => (
                                 <div key={p.id} className="flex items-center gap-2 bg-gray-700/50 rounded p-1">
@@ -676,7 +743,6 @@ export function SumulaVolei() {
                                         <span className="text-xs truncate">{p.nickname || p.name.split(' ')[0]}</span>
                                     </div>
                                     <button onClick={() => confirmCard(p.id, 'red')} className="w-12 h-12 bg-red-600 rounded font-bold text-white hover:bg-red-500 flex items-center justify-center">CV</button>
-                                    <div className="w-1 h-8 border-l border-gray-600 mx-1"></div>
                                 </div>
                             ))}
                         </div>
@@ -685,99 +751,47 @@ export function SumulaVolei() {
                 </div>
             )}
 
-            {/* Setup Modal */}
+            {/* Setup Modal - Simplificado: só quem saca */}
             {setupModalOpen && matchData && (
-                <div className="fixed inset-0 bg-gray-900 z-50 flex flex-col">
-                    <div className="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-800">
-                        <div className="flex flex-col">
-                            <h2 className="text-xl font-black text-yellow-400 leading-none">CONFIGURAR {volleyState.current_set}º SET</h2>
-                            <p className="text-[10px] text-gray-400 mt-1 uppercase font-bold tracking-tighter">Escolha a Formação Inicial e quem saca</p>
+                <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
+                    <div className="bg-gray-800 w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl border border-gray-700">
+                        <div className="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-800/80">
+                            <h2 className="text-lg font-black text-yellow-400">&#9654; Iniciar {volleyState.current_set}º Set</h2>
+                            <button onClick={() => setSetupModalOpen(false)} className="bg-gray-700 p-2 rounded-lg"><X size={18} /></button>
                         </div>
-                        <button onClick={() => setSetupModalOpen(false)} className="bg-gray-700 p-2 rounded-lg"><X size={20} /></button>
-                    </div>
-                    <div className="flex-1 overflow-y-auto p-4 space-y-8">
-                        {/* Serving Selection */}
-                        <div className="bg-indigo-900/20 border border-indigo-500/30 p-4 rounded-2xl">
-                            <h3 className="text-center text-xs font-black text-indigo-300 uppercase mb-3 tracking-widest">Inicia Sacando:</h3>
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={() => setServingTeamId(matchData.home_team_id)}
-                                    className={`flex-1 py-3 rounded-xl border-2 font-black text-sm transition-all ${servingTeamId === matchData.home_team_id ? 'bg-blue-600 border-white text-white shadow-lg' : 'bg-gray-800 border-gray-700 text-gray-500'}`}
-                                >
-                                    {matchData.home_team?.code}
-                                </button>
-                                <button
-                                    onClick={() => setServingTeamId(matchData.away_team_id)}
-                                    className={`flex-1 py-3 rounded-xl border-2 font-black text-sm transition-all ${servingTeamId === matchData.away_team_id ? 'bg-green-600 border-white text-white shadow-lg' : 'bg-gray-800 border-gray-700 text-gray-500'}`}
-                                >
-                                    {matchData.away_team?.code}
-                                </button>
+                        <div className="p-5 space-y-5">
+                            <div className="grid grid-cols-2 gap-3">
+                                {[
+                                    { label: matchData.home_team?.name, rot: rotations?.home, color: 'blue' },
+                                    { label: matchData.away_team?.name, rot: rotations?.away, color: 'green' }
+                                ].map(({ label, rot, color }) => {
+                                    const filled = (rot || []).filter((x: any) => x).length;
+                                    const full = filled === 6;
+                                    return (
+                                        <div key={label} className={`p-3 rounded-xl border text-center ${full ? (color === 'blue' ? 'border-blue-500 bg-blue-900/20' : 'border-green-500 bg-green-900/20') : 'border-red-700 bg-red-900/10'}`}>
+                                            <div className={`text-[10px] font-black uppercase mb-1 ${color === 'blue' ? 'text-blue-400' : 'text-green-400'}`}>{label}</div>
+                                            <div className="text-2xl font-black">{filled}/6</div>
+                                            <div className={`text-[9px] font-bold mt-0.5 ${full ? 'text-gray-400' : 'text-red-400'}`}>{full ? '&#10003; Pronto' : 'Preencha na quadra'}</div>
+                                        </div>
+                                    );
+                                })}
                             </div>
+                            <div className="bg-indigo-900/20 border border-indigo-500/30 p-4 rounded-2xl">
+                                <h3 className="text-center text-xs font-black text-indigo-300 uppercase mb-3 tracking-widest">Quem inicia sacando?</h3>
+                                <div className="flex gap-3">
+                                    <button onClick={() => setServingTeamId(matchData.home_team_id)} className={`flex-1 py-3 rounded-xl border-2 font-black text-sm transition-all ${servingTeamId === matchData.home_team_id ? 'bg-blue-600 border-white text-white shadow-lg scale-105' : 'bg-gray-900 border-gray-700 text-gray-500 hover:border-blue-700'}`}>
+                                        {matchData.home_team?.code || matchData.home_team?.name}
+                                    </button>
+                                    <button onClick={() => setServingTeamId(matchData.away_team_id)} className={`flex-1 py-3 rounded-xl border-2 font-black text-sm transition-all ${servingTeamId === matchData.away_team_id ? 'bg-green-600 border-white text-white shadow-lg scale-105' : 'bg-gray-900 border-gray-700 text-gray-500 hover:border-green-700'}`}>
+                                        {matchData.away_team?.code || matchData.away_team?.name}
+                                    </button>
+                                </div>
+                            </div>
+                            <button onClick={confirmSetup} className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-lg rounded-xl transition-all active:scale-95 shadow-lg">
+                                &#10003; CONFIRMAR E INICIAR
+                            </button>
+                            <p className="text-center text-[10px] text-gray-500">Posições vazias? Feche este modal e toque nas células da quadra para preencher.</p>
                         </div>
-                        {/* Home Setup */}
-                        <div>
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="font-bold text-blue-400 text-lg">{matchData.home_team?.name}</h3>
-                                <button
-                                    onClick={() => copyLastRotation('home')}
-                                    className="text-[10px] bg-blue-600/20 text-blue-400 border border-blue-500/30 px-2 py-1 rounded font-black uppercase tracking-tighter"
-                                >
-                                    Repetir Rotação
-                                </button>
-                            </div>
-                            <div className="grid grid-cols-3 gap-3">
-                                {[0, 1, 2, 3, 4, 5].map(i => (
-                                    <div key={i} className="bg-gray-800 p-2 rounded border border-gray-700">
-                                        <label className="text-[10px] text-gray-500 font-bold block mb-1">POSIÇÃO {i + 1}</label>
-                                        <select
-                                            className="w-full bg-gray-900 text-white text-sm p-2 rounded"
-                                            value={setupRotation.home[i] || ''}
-                                            onChange={(e) => fillSetupSlot('home', i, e.target.value)}
-                                        >
-                                            <option value="">Selecione...</option>
-                                            {teamPlayers.home?.map((p: any) => (
-                                                <option key={p.id} value={p.id}>{p.number} - {p.nickname || p.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Away Setup */}
-                        <div>
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="font-bold text-green-400 text-lg">{matchData.away_team?.name}</h3>
-                                <button
-                                    onClick={() => copyLastRotation('away')}
-                                    className="text-[10px] bg-green-600/20 text-green-400 border border-green-500/30 px-2 py-1 rounded font-black uppercase tracking-tighter"
-                                >
-                                    Repetir Rotação
-                                </button>
-                            </div>
-                            <div className="grid grid-cols-3 gap-3">
-                                {[0, 1, 2, 3, 4, 5].map(i => (
-                                    <div key={i} className="bg-gray-800 p-2 rounded border border-gray-700">
-                                        <label className="text-[10px] text-gray-500 font-bold block mb-1">POSIÇÃO {i + 1}</label>
-                                        <select
-                                            className="w-full bg-gray-900 text-white text-sm p-2 rounded"
-                                            value={setupRotation.away[i] || ''}
-                                            onChange={(e) => fillSetupSlot('away', i, e.target.value)}
-                                        >
-                                            <option value="">Selecione...</option>
-                                            {teamPlayers.away?.map((p: any) => (
-                                                <option key={p.id} value={p.id}>{p.number} - {p.nickname || p.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                    <div className="p-4 bg-gray-800 border-t border-gray-700">
-                        <button onClick={confirmSetup} className="w-full py-4 bg-yellow-500 hover:bg-yellow-400 text-black font-black text-xl rounded-xl">
-                            CONFIRMAR INÍCIO
-                        </button>
                     </div>
                 </div>
             )}
