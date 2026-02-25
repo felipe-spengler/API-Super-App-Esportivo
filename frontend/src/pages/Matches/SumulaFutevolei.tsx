@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Minus, RotateCcw, Trophy, Waves } from 'lucide-react';
+import { ArrowLeft, Plus, Minus, RotateCcw, Trophy, Waves, AlertOctagon, RefreshCw } from 'lucide-react';
 import api from '../../services/api';
+import { useOfflineResilience } from '../../hooks/useOfflineResilience';
 
 export function SumulaFutevolei() {
     const { id } = useParams();
@@ -11,16 +12,26 @@ export function SumulaFutevolei() {
     const [loading, setLoading] = useState(true);
     const [matchData, setMatchData] = useState<any>(null);
     const [rosters, setRosters] = useState<any>({ home: [], away: [] });
-
-    // Match State
     const [sets, setSets] = useState<any[]>([]);
     const [currentSet, setCurrentSet] = useState(1);
-    const [score, setScore] = useState({ home: 0, away: 0 }); // Pontos no set atual
+    const [score, setScore] = useState({ home: 0, away: 0 });
     const [matchFinished, setMatchFinished] = useState(false);
 
-    const POINTS_TO_WIN = 18; // Futevôlei geralmente é 18 ou 21 pontos
+    const POINTS_TO_WIN = 18;
     const MIN_MARGIN = 2;
-    const BEST_OF = 3; // Melhor de 3 sets
+    const BEST_OF = 3;
+
+    // 🛡️ Resilience Shield
+    const { isOnline, syncing, addToQueue, registerSystemEvent, pendingCount } = useOfflineResilience(id, 'Futevôlei', async (action, data) => {
+        let url = '';
+        switch (action) {
+            case 'event': url = `/admin/matches/${id}/events`; break;
+            case 'set': url = `/admin/matches/${id}/sets`; break;
+            case 'finish': url = `/admin/matches/${id}/finish`; break;
+            case 'patch_match': url = `/admin/matches/${id}`; return await api.patch(url, data);
+        }
+        if (url) return await api.post(url, data);
+    });
 
     const fetchMatchDetails = async (silent = false) => {
         try {
@@ -28,172 +39,69 @@ export function SumulaFutevolei() {
             const response = await api.get(`/admin/matches/${id}/full-details`);
             const data = response.data;
             if (data.match) {
-                setMatchData({
-                    ...data.match,
-                    scoreHome: parseInt(data.match.home_score || 0),
-                    scoreAway: parseInt(data.match.away_score || 0)
-                });
-
+                setMatchData({ ...data.match, scoreHome: parseInt(data.match.home_score || 0), scoreAway: parseInt(data.match.away_score || 0) });
                 if (data.rosters) setRosters(data.rosters);
-
-                if (data.details?.sets && data.details.sets.length > 0) {
-                    setSets(data.details.sets);
-                }
-
-                // Recover current state from server sync
+                if (data.details?.sets && data.details.sets.length > 0) setSets(data.details.sets);
                 if (data.match.match_details?.sync_state) {
                     const ss = data.match.match_details.sync_state;
                     if (ss.score) setScore(ss.score);
                     if (ss.currentSet) setCurrentSet(ss.currentSet);
                 }
             }
-        } catch (e) {
-            console.error(e);
-            if (!silent) alert('Erro ao carregar jogo.');
-        } finally {
-            if (!silent) setLoading(false);
-        }
+        } catch (e) { console.error(e); } finally { if (!silent) setLoading(false); }
     };
-
-    // --- PERSISTENCE ---
-    const STORAGE_KEY = `match_state_futevolei_${id}`;
 
     useEffect(() => {
         if (id) {
-            // Initial Fetch
             fetchMatchDetails();
-
-            // Sync Interval
-            const syncInterval = setInterval(() => {
-                fetchMatchDetails(true);
-            }, 2000);
-
-            const saved = localStorage.getItem(STORAGE_KEY);
-            if (saved) {
-                try {
-                    const parsed = JSON.parse(saved);
-                    if (parsed.sets) setSets(parsed.sets);
-                    if (parsed.currentSet) setCurrentSet(parsed.currentSet);
-                    if (parsed.score) setScore(parsed.score);
-                    if (parsed.matchFinished) setMatchFinished(parsed.matchFinished);
-                } catch (e) {
-                    console.error("Failed to recover state", e);
-                }
-            }
+            const syncInterval = setInterval(() => fetchMatchDetails(true), 3000);
             return () => clearInterval(syncInterval);
         }
     }, [id]);
 
     useEffect(() => {
-        if (!id || loading) return;
-        const stateToSave = {
-            sets,
-            currentSet,
-            score,
-            matchFinished
-        };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
-    }, [id, loading, sets, currentSet, score, matchFinished]);
-
-    // PING - Sync local state TO server (Every 3 seconds)
-    useEffect(() => {
-        if (!id || matchFinished || loading || !matchData) return;
-
+        if (!id || matchFinished || loading || !matchData || !isOnline) return;
         const pingInterval = setInterval(async () => {
             try {
                 await api.patch(`/admin/matches/${id}`, {
-                    match_details: {
-                        ...matchData.match_details,
-                        sync_state: {
-                            score,
-                            currentSet,
-                            updated_at: Date.now()
-                        }
-                    }
+                    match_details: { ...matchData.match_details, sync_state: { score, currentSet, updated_at: Date.now() } }
                 });
-            } catch (e) {
-                console.error("State sync failed", e);
-            }
+            } catch (e) { console.error("State sync failed", e); }
         }, 3000);
-
         return () => clearInterval(pingInterval);
-    }, [id, score, currentSet]);
+    }, [id, score, currentSet, isOnline]);
 
-    const addPoint = async (team: 'home' | 'away') => {
+    const addPoint = (team: 'home' | 'away') => {
         if (matchFinished) return;
-
-        // If match is still scheduled, try to set to live on first point
         if (matchData && (matchData.status === 'scheduled' || matchData.status === 'Agendado')) {
             registerSystemEvent('match_start', 'Shark Attack autorizado! Começa o jogo!');
+            setMatchData((prev: any) => ({ ...prev, status: 'live' }));
         }
-
         const newScore = { ...score };
         newScore[team]++;
         setScore(newScore);
-
-        // Check if set won
         if (newScore[team] >= POINTS_TO_WIN && newScore[team] >= newScore[team === 'home' ? 'away' : 'home'] + MIN_MARGIN) {
-            await finishSet(newScore);
+            finishSet(newScore);
         }
-
-        // Save point event
-        try {
-            await api.post(`/admin/matches/${id}/events`, {
-                event_type: 'point',
-                team_id: team === 'home' ? matchData.home_team_id : matchData.away_team_id,
-                period: `Set ${currentSet}`,
-                value: 1
-            });
-        } catch (e) {
-            console.error(e);
-        }
+        addToQueue('event', { event_type: 'point', team_id: team === 'home' ? matchData.home_team_id : matchData.away_team_id, period: `Set ${currentSet}`, value: 1 });
     };
 
-    const removePoint = (team: 'home' | 'away') => {
-        if (score[team] > 0) {
-            setScore(prev => ({ ...prev, [team]: prev[team] - 1 }));
-        }
-    };
+    const removePoint = (team: 'home' | 'away') => score[team] > 0 && setScore(prev => ({ ...prev, [team]: prev[team] - 1 }));
 
-    const finishSet = async (finalScore: any) => {
-        const setData = {
-            set_number: currentSet,
-            home_score: finalScore.home,
-            away_score: finalScore.away
-        };
-
+    const finishSet = (finalScore: any) => {
+        const setData = { set_number: currentSet, home_score: finalScore.home, away_score: finalScore.away };
         const newSets = [...sets, setData];
         setSets(newSets);
-
-        // Update match score (sets won)
         const homeSetsWon = newSets.filter(s => s.home_score > s.away_score).length;
         const awaySetsWon = newSets.filter(s => s.away_score > s.home_score).length;
-
-        setMatchData((prev: any) => ({
-            ...prev,
-            scoreHome: homeSetsWon,
-            scoreAway: awaySetsWon
-        }));
-
-        // Save set to backend
-        try {
-            await api.post(`/admin/matches/${id}/sets`, {
-                set_number: currentSet,
-                home_score: finalScore.home,
-                away_score: finalScore.away
-            });
-        } catch (e) {
-            console.error(e);
-        }
-
-        // Check if match is finished
+        setMatchData((prev: any) => ({ ...prev, scoreHome: homeSetsWon, scoreAway: awaySetsWon }));
+        addToQueue('set', setData);
         const setsNeededToWin = Math.ceil(BEST_OF / 2);
         if (homeSetsWon === setsNeededToWin || awaySetsWon === setsNeededToWin) {
             setMatchFinished(true);
             alert(`🏆 Partida encerrada! ${homeSetsWon > awaySetsWon ? matchData.home_team?.name : matchData.away_team?.name} venceu!`);
             registerSystemEvent('match_end', `Show de bola! Vitória de ${homeSetsWon > awaySetsWon ? matchData.home_team?.name : matchData.away_team?.name}`);
         } else {
-            // Start new set
             setCurrentSet(currentSet + 1);
             setScore({ home: 0, away: 0 });
             registerSystemEvent('period_start', `Início do ${currentSet + 1}º Set`);
@@ -202,182 +110,87 @@ export function SumulaFutevolei() {
 
     const handleFinish = async () => {
         if (!window.confirm('Encerrar e salvar partida?')) return;
-        try {
-            await registerSystemEvent('match_end', 'Partida Finalizada na quadra de areia!');
-
-            await api.post(`/admin/matches/${id}/finish`, {
-                home_score: matchData.scoreHome,
-                away_score: matchData.scoreAway
-            });
-
-            localStorage.removeItem(STORAGE_KEY);
-            navigate(-1);
-        } catch (e) {
-            console.error(e);
-        }
+        addToQueue('finish', { home_score: matchData.scoreHome, away_score: matchData.scoreAway });
+        registerSystemEvent('user_action', 'Finalizou partida via Futevôlei');
+        navigate(-1);
     };
 
-    const registerSystemEvent = async (type: string, label: string) => {
-        if (!matchData) return;
-        try {
-            await api.post(`/admin/matches/${id}/events`, {
-                event_type: type,
-                team_id: matchData.home_team_id || matchData.away_team_id,
-                minute: 0,
-                period: `Set ${currentSet}`,
-                metadata: { label }
-            });
-
-            // If we successfully started the match, update status locally
-            if (type === 'match_start') {
-                setMatchData((prev: any) => ({ ...prev, status: 'live' }));
-            }
-        } catch (e) {
-            console.error("Erro ao registrar evento de sistema", e);
-            if (type === 'match_start') {
-                alert("Erro de conexão ao iniciar partida no servidor.");
-            }
-        }
-    };
-
-    const resetSet = () => {
-        if (window.confirm('Resetar set atual?')) {
-            setScore({ home: 0, away: 0 });
-        }
-    };
-
-    if (loading || !matchData) return <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white"><span className="loading loading-spinner loading-lg"></span></div>;
+    if (loading || !matchData) return <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white"><span className="loading loading-spinner"></span></div>;
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-cyan-900 via-blue-900 to-indigo-900 text-white font-sans pb-20">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-cyan-600 to-blue-600 pb-3 pt-4 sticky top-0 z-10 border-b border-cyan-700 shadow-2xl">
-                <div className="px-4 flex items-center justify-between mb-4">
-                    <button onClick={() => navigate(-1)} className="p-2 bg-white/20 rounded-full backdrop-blur">
-                        <ArrowLeft className="w-5 h-5" />
-                    </button>
-                    <div className="flex flex-col items-center">
-                        <div className="flex items-center gap-2">
-                            <Waves className="w-5 h-5 text-cyan-200" />
-                            <span className="text-[11px] font-bold tracking-widest text-white drop-shadow-lg">FUTEVÔLEI</span>
-                        </div>
-                        {matchData.details?.arbitration?.referee && <span className="text-[10px] text-cyan-100">{matchData.details.arbitration.referee}</span>}
-                    </div>
-                    <button onClick={resetSet} className="p-2 bg-white/20 rounded-full backdrop-blur hover:bg-white/30" disabled={matchFinished}>
-                        <RotateCcw className="w-5 h-5" />
-                    </button>
+            {!isOnline && (
+                <div className="fixed top-0 left-0 w-full bg-red-600 text-white text-[10px] font-bold py-1 px-4 z-[9999] flex items-center justify-between shadow-lg">
+                    <div className="flex items-center gap-2"><AlertOctagon size={12} className="animate-pulse" /><span>SISTEMA OFFLINE</span></div>
+                    <span>{pendingCount} PENDENTES</span>
                 </div>
-
-                {/* Scoreboard - Sets Won */}
-                <div className="px-4 mb-3">
-                    <div className="flex items-center justify-center gap-4">
-                        <div className="text-center flex-1">
-                            <div className="text-6xl sm:text-7xl font-black font-mono leading-none mb-1 text-cyan-100 drop-shadow-[0_4px_8px_rgba(0,255,255,0.3)]">{matchData.scoreHome}</div>
-                            <h2 className="font-bold text-sm text-cyan-200 truncate max-w-[140px] mx-auto">{matchData.home_team?.name || 'Dupla 1'}</h2>
-                        </div>
-                        <div className="text-[10px] font-bold text-white/70 uppercase">Sets</div>
-                        <div className="text-center flex-1">
-                            <div className="text-6xl sm:text-7xl font-black font-mono leading-none mb-1 text-cyan-100 drop-shadow-[0_4px_8px_rgba(0,255,255,0.3)]">{matchData.scoreAway}</div>
-                            <h2 className="font-bold text-sm text-cyan-200 truncate max-w-[140px] mx-auto">{matchData.away_team?.name || 'Dupla 2'}</h2>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Current Set Score */}
-                {!matchFinished && (
-                    <div className="px-4">
-                        <div className="bg-white/10 backdrop-blur rounded-xl p-4 border border-white/20">
-                            <div className="text-center text-[10px] font-bold text-cyan-100 mb-3 uppercase tracking-wider">Set {currentSet}</div>
-                            <div className="flex items-center justify-center gap-8">
-                                <div className="text-6xl font-black text-white drop-shadow-[0_4px_12px_rgba(255,255,255,0.3)]">{score.home}</div>
-                                <div className="text-2xl text-white/50">-</div>
-                                <div className="text-6xl font-black text-white drop-shadow-[0_4px_12px_rgba(255,255,255,0.3)]">{score.away}</div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            {/* Action Buttons */}
-            {!matchFinished && (
-                <div className="p-4 grid grid-cols-2 gap-4 max-w-3xl mx-auto">
-                    <div className="space-y-2">
-                        <div className="text-center text-xs font-bold text-cyan-300 mb-1">{matchData.home_team?.name || 'Dupla 1'}</div>
-                        <button
-                            onClick={() => addPoint('home')}
-                            className="w-full py-12 bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl font-black text-5xl border-b-8 border-blue-900 active:scale-95 transition-all shadow-2xl hover:from-blue-400 hover:to-blue-600 flex items-center justify-center"
-                        >
-                            <Plus size={48} />
-                        </button>
-                        <button
-                            onClick={() => removePoint('home')}
-                            className="w-full py-3 bg-gray-700 hover:bg-gray-600 rounded-xl font-bold text-sm border-b-4 border-gray-900 active:scale-95 transition-all flex items-center justify-center gap-2"
-                        >
-                            <Minus size={16} /> Remover
-                        </button>
-                    </div>
-
-                    <div className="space-y-2">
-                        <div className="text-center text-xs font-bold text-cyan-300 mb-1">{matchData.away_team?.name || 'Dupla 2'}</div>
-                        <button
-                            onClick={() => addPoint('away')}
-                            className="w-full py-12 bg-gradient-to-br from-green-500 to-green-700 rounded-2xl font-black text-5xl border-b-8 border-green-900 active:scale-95 transition-all shadow-2xl hover:from-green-400 hover:to-green-600 flex items-center justify-center"
-                        >
-                            <Plus size={48} />
-                        </button>
-                        <button
-                            onClick={() => removePoint('away')}
-                            className="w-full py-3 bg-gray-700 hover:bg-gray-600 rounded-xl font-bold text-sm border-b-4 border-gray-900 active:scale-95 transition-all flex items-center justify-center gap-2"
-                        >
-                            <Minus size={16} /> Remover
-                        </button>
-                    </div>
+            )}
+            {isOnline && pendingCount > 0 && (
+                <div className="fixed top-0 left-0 w-full bg-yellow-600 text-white text-[10px] font-bold py-1 px-4 z-[9999] flex items-center justify-between shadow-lg">
+                    <div className="flex items-center gap-2"><RefreshCw size={12} className="animate-spin" /><span>SINCRONIZANDO...</span></div>
+                    <span>{pendingCount} RESTANTES</span>
                 </div>
             )}
 
-            {/* Sets History */}
-            <div className="px-4 mt-4 max-w-3xl mx-auto">
-                <h3 className="text-sm font-bold text-white uppercase mb-3 flex items-center gap-2">
-                    <Trophy size={16} /> Histórico de Sets
-                </h3>
-                <div className="space-y-2">
-                    {sets.map((set, idx) => (
-                        <div key={idx} className="bg-white/10 backdrop-blur p-4 rounded-xl border border-white/20 flex items-center justify-between">
-                            <span className="font-bold text-lg text-cyan-100">Set {set.set_number}</span>
-                            <div className="flex items-center gap-6">
-                                <span className={`text-2xl font-bold ${set.home_score > set.away_score ? 'text-green-300' : 'text-white/60'}`}>
-                                    {set.home_score}
-                                </span>
-                                <span className="text-white/50">-</span>
-                                <span className={`text-2xl font-bold ${set.away_score > set.home_score ? 'text-green-300' : 'text-white/60'}`}>
-                                    {set.away_score}
-                                </span>
+            <div className="bg-gradient-to-r from-cyan-600 to-blue-600 pb-3 pt-4 sticky top-0 z-10 border-b border-cyan-700 shadow-2xl">
+                <div className="px-4 flex items-center justify-between mb-4">
+                    <button onClick={() => navigate(-1)} className="p-2 bg-white/20 rounded-full backdrop-blur"><ArrowLeft className="w-5 h-5" /></button>
+                    <div className="flex flex-col items-center">
+                        <div className="flex items-center gap-2"><Waves className="w-5 h-5 text-cyan-200" /><span className="text-[11px] font-bold tracking-widest text-white">FUTEVÔLEI</span></div>
+                    </div>
+                    <button onClick={() => setScore({ home: 0, away: 0 })} className="p-2 bg-white/20 rounded-full backdrop-blur"><RotateCcw className="w-5 h-5" /></button>
+                </div>
+                <div className="px-4 mb-3">
+                    <div className="flex items-center justify-center gap-4">
+                        <div className="text-center flex-1">
+                            <div className="text-6xl font-black text-white">{matchData.scoreHome}</div>
+                            <h2 className="font-bold text-xs truncate">{matchData.home_team?.name}</h2>
+                        </div>
+                        <div className="text-[10px] font-bold text-white/50 uppercase">Sets</div>
+                        <div className="text-center flex-1">
+                            <div className="text-6xl font-black text-white">{matchData.scoreAway}</div>
+                            <h2 className="font-bold text-xs truncate">{matchData.away_team?.name}</h2>
+                        </div>
+                    </div>
+                </div>
+                {!matchFinished && (
+                    <div className="px-4">
+                        <div className="bg-white/10 backdrop-blur rounded-xl p-4 border border-white/20 text-center">
+                            <div className="text-[10px] font-bold text-cyan-100 mb-2 uppercase">Set {currentSet}</div>
+                            <div className="flex items-center justify-center gap-8 text-5xl font-black">
+                                <span>{score.home}</span><span className="text-2xl text-white/30">-</span><span>{score.away}</span>
                             </div>
                         </div>
-                    ))}
-                    {sets.length === 0 && <div className="text-center text-white/60 py-8 text-sm">Nenhum set finalizado ainda.</div>}
-                </div>
-
-                {matchFinished && (
-                    <div className="mt-6">
-                        <button onClick={handleFinish} className="w-full py-4 bg-gradient-to-r from-green-600 to-green-800 rounded-xl font-black text-xl border-b-4 border-green-900 active:scale-95 transition-all shadow-2xl">
-                            ✅ SALVAR E ENCERRAR PARTIDA
-                        </button>
                     </div>
                 )}
             </div>
 
-            {/* Instructions */}
-            <div className="px-4 mt-6 max-w-3xl mx-auto">
-                <div className="bg-black/20 backdrop-blur rounded-xl p-4 border border-white/20">
-                    <h4 className="font-bold text-xs text-cyan-200 mb-2 uppercase">ℹ️ Regras do Futevôlei</h4>
-                    <ul className="text-[11px] text-white/80 space-y-1">
-                        <li>• Set: Primeiro a {POINTS_TO_WIN} pontos (com {MIN_MARGIN} de diferença)</li>
-                        <li>• Match: Melhor de {BEST_OF} sets</li>
-                        <li>• Não há rotação - Duplas fixas</li>
-                        <li>• Saque com os pés, sem uso das mãos</li>
-                    </ul>
+            {!matchFinished && (
+                <div className="p-4 grid grid-cols-2 gap-4 max-w-3xl mx-auto">
+                    {[{ t: 'home', color: 'blue' }, { t: 'away', color: 'green' }].map(({ t, color }: any) => (
+                        <div key={t} className="space-y-2">
+                            <button onClick={() => addPoint(t)} className={`w-full py-12 bg-${color}-600 rounded-2xl font-black text-5xl border-b-8 border-${color}-900 active:scale-95 transition-all shadow-xl flex items-center justify-center`}><Plus size={48} /></button>
+                            <button onClick={() => removePoint(t)} className="w-full py-3 bg-gray-700 rounded-xl font-bold text-sm flex items-center justify-center gap-2"><Minus size={16} /> Remover</button>
+                        </div>
+                    ))}
                 </div>
+            )}
+
+            <div className="px-4 mt-4 max-w-3xl mx-auto">
+                <h3 className="text-sm font-bold uppercase mb-3 flex items-center gap-2"><Trophy size={16} /> Histórico de Sets</h3>
+                <div className="space-y-2">
+                    {sets.map((set, idx) => (
+                        <div key={idx} className="bg-white/10 backdrop-blur p-4 rounded-xl border border-white/20 flex items-center justify-between">
+                            <span className="font-bold">Set {set.set_number}</span>
+                            <div className="flex items-center gap-6 font-bold text-xl">
+                                <span className={set.home_score > set.away_score ? 'text-green-300' : 'text-white/40'}>{set.home_score}</span>
+                                <span className="text-white/20">-</span>
+                                <span className={set.away_score > set.home_score ? 'text-green-300' : 'text-white/40'}>{set.away_score}</span>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                {matchFinished && <button onClick={handleFinish} className="w-full py-4 mt-6 bg-green-600 rounded-xl font-black text-xl shadow-2xl">✅ SALVAR E ENCERRAR PARTIDA</button>}
             </div>
         </div>
     );
