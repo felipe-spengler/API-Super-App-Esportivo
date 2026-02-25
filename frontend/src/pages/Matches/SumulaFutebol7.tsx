@@ -252,88 +252,74 @@ export function SumulaFutebol7() {
         <div className="min-h-screen bg-gray-900 text-white font-sans">
 
 
-            <div className="bg-gray-800 p-4 sticky top-0 z-10 shadow-lg border-b border-gray-700">
+            <div className="bg-gray-800 p-2 sticky top-0 z-10 shadow-lg border-b border-gray-700">
                 <div className="flex items-center justify-between max-w-5xl mx-auto">
-                    <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-700 rounded-full"><ArrowLeft /></button>
+                    <button onClick={() => navigate(-1)} className="p-1.5 hover:bg-gray-700 rounded-full"><ArrowLeft size={20} /></button>
                     <div className="text-center relative">
                         {(!isOnline || pendingCount > 0) && (
-                            <div className="absolute -top-6 left-1/2 -translate-x-1/2 flex items-center gap-2 whitespace-nowrap">
+                            <div className="absolute -top-5 left-1/2 -translate-x-1/2 flex items-center gap-2 whitespace-nowrap">
                                 {!isOnline ? (
-                                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-red-500/20 border border-red-500/50 rounded-full text-[8px] font-black text-red-500 animate-pulse uppercase">
-                                        <AlertOctagon size={10} /> Offline
+                                    <div className="flex items-center gap-1 px-2 text-[8px] font-black text-red-500 animate-pulse uppercase">
+                                        Offline
                                     </div>
                                 ) : (
-                                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-yellow-500/20 border border-yellow-500/50 rounded-full text-[8px] font-black text-yellow-500 uppercase">
-                                        <RefreshCw size={10} className="animate-spin" /> {pendingCount} Pendente{pendingCount > 1 ? 's' : ''}
+                                    <div className="flex items-center gap-1 px-2 text-[8px] font-black text-yellow-500 uppercase">
+                                        <RefreshCw size={10} className="animate-spin" /> {pendingCount}
                                     </div>
                                 )}
                             </div>
                         )}
-                        <div className="flex items-center gap-2 justify-center text-yellow-500 mb-1">
-                            <Timer size={16} />
-                            <span className="text-xs font-black uppercase tracking-widest">{currentPeriod}</span>
+                        <div className="flex items-center gap-1.2 justify-center text-yellow-500 -mb-1">
+                            <Timer size={14} />
+                            <span className="text-[10px] font-black uppercase tracking-widest">{currentPeriod}</span>
                         </div>
-                        <div className="text-4xl font-mono font-black tabular-nums tracking-tighter">{formatTime(time)}</div>
+                        <div className="text-3xl font-mono font-black tabular-nums tracking-tighter">{formatTime(time)}</div>
                     </div>
-                    <div className="flex gap-2">
-                        <button onClick={() => setIsRunning(!isRunning)} className={`p-3 rounded-full ${isRunning ? 'bg-orange-600' : 'bg-emerald-600'}`}>
-                            {isRunning ? <Pause size={20} /> : <Play size={20} />}
+                    <div className="flex gap-1">
+                        <button onClick={() => setIsRunning(!isRunning)} className={`p-2.5 rounded-full ${isRunning ? 'bg-orange-600' : 'bg-emerald-600'}`}>
+                            {isRunning ? <Pause size={18} /> : <Play size={18} />}
                         </button>
                     </div>
                 </div>
             </div>
 
-            <div className="p-4 max-w-5xl mx-auto space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="p-2 max-w-5xl mx-auto space-y-3">
+                <div className="grid grid-cols-2 gap-2">
                     {/* Home Team */}
-                    <div className="bg-gray-800 rounded-2xl p-6 border border-blue-900/30">
-                        <div className="flex justify-between items-start mb-6">
-                            <div>
-                                <h2 className="text-blue-400 font-black text-xl uppercase italic">{matchData.home_team?.name}</h2>
-                                <div className="text-5xl font-black mt-2">{homeScore}</div>
-                            </div>
-                            <div className="text-right">
-                                <div className="text-[10px] font-bold text-gray-500 uppercase mb-1">Faltas</div>
-                                {renderFouls(fouls.home)}
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <button onClick={() => handleEvent('home', 'goal')} className="p-4 bg-emerald-600 rounded-xl font-black uppercase">Gol</button>
-                            <button onClick={() => handleEvent('home', 'foul')} className="p-4 bg-gray-700 rounded-xl font-black uppercase">Falta</button>
-                            <button onClick={() => handleEvent('home', 'yellow_card')} className="p-4 bg-yellow-500 text-black rounded-xl font-black uppercase tracking-tighter text-xs">Amarelo</button>
-                            <button onClick={() => handleEvent('home', 'red_card')} className="p-4 bg-red-600 rounded-xl font-black uppercase tracking-tighter text-xs">Vermelho</button>
+                    <div className="bg-gray-800 rounded-xl p-2 border border-blue-900/30 flex flex-col items-center text-center">
+                        <h2 className="text-blue-400 font-bold text-[10px] uppercase italic truncate w-full mb-0.5">{matchData.home_team?.name}</h2>
+                        <div className="text-4xl font-black leading-tight mb-1">{homeScore}</div>
+                        <div className="scale-90 mb-2">{renderFouls(fouls.home)}</div>
+                        <div className="grid grid-cols-2 gap-1 w-full">
+                            <button onClick={() => handleEvent('home', 'goal')} className="py-2.5 bg-emerald-600 rounded-lg font-black uppercase text-[10px]">Gol</button>
+                            <button onClick={() => handleEvent('home', 'foul')} className="py-2.5 bg-gray-700 rounded-lg font-black uppercase text-[10px]">Falta</button>
+                            <button onClick={() => handleEvent('home', 'yellow_card')} className="py-2 bg-yellow-500 text-black rounded-lg font-black uppercase tracking-tighter text-[9px]">Card 🟨</button>
+                            <button onClick={() => handleEvent('home', 'red_card')} className="py-2 bg-red-600 rounded-lg font-black uppercase tracking-tighter text-[9px]">Card 🟥</button>
                         </div>
                     </div>
 
                     {/* Away Team */}
-                    <div className="bg-gray-800 rounded-2xl p-6 border border-green-900/30">
-                        <div className="flex justify-between items-start mb-6">
-                            <div className="text-right order-2">
-                                <h2 className="text-green-400 font-black text-xl uppercase italic">{matchData.away_team?.name}</h2>
-                                <div className="text-5xl font-black mt-2">{awayScore}</div>
-                            </div>
-                            <div className="text-left order-1">
-                                <div className="text-[10px] font-bold text-gray-500 uppercase mb-1">Faltas</div>
-                                {renderFouls(fouls.away)}
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <button onClick={() => handleEvent('away', 'goal')} className="p-4 bg-emerald-600 rounded-xl font-black uppercase">Gol</button>
-                            <button onClick={() => handleEvent('away', 'foul')} className="p-4 bg-gray-700 rounded-xl font-black uppercase">Falta</button>
-                            <button onClick={() => handleEvent('away', 'yellow_card')} className="p-4 bg-yellow-500 text-black rounded-xl font-black uppercase tracking-tighter text-xs">Amarelo</button>
-                            <button onClick={() => handleEvent('away', 'red_card')} className="p-4 bg-red-600 rounded-xl font-black uppercase tracking-tighter text-xs">Vermelho</button>
+                    <div className="bg-gray-800 rounded-xl p-2 border border-green-900/30 flex flex-col items-center text-center">
+                        <h2 className="text-green-400 font-bold text-[10px] uppercase italic truncate w-full mb-0.5">{matchData.away_team?.name}</h2>
+                        <div className="text-4xl font-black leading-tight mb-1">{awayScore}</div>
+                        <div className="scale-90 mb-2">{renderFouls(fouls.away)}</div>
+                        <div className="grid grid-cols-2 gap-1 w-full">
+                            <button onClick={() => handleEvent('away', 'goal')} className="py-2.5 bg-emerald-600 rounded-lg font-black uppercase text-[10px]">Gol</button>
+                            <button onClick={() => handleEvent('away', 'foul')} className="py-2.5 bg-gray-700 rounded-lg font-black uppercase text-[10px]">Falta</button>
+                            <button onClick={() => handleEvent('away', 'yellow_card')} className="py-2 bg-yellow-500 text-black rounded-lg font-black uppercase tracking-tighter text-[9px]">Card 🟨</button>
+                            <button onClick={() => handleEvent('away', 'red_card')} className="py-2 bg-red-600 rounded-lg font-black uppercase tracking-tighter text-[9px]">Card 🟥</button>
                         </div>
                     </div>
                 </div>
 
-                <div className="flex gap-4">
-                    <button onClick={handlePeriodChange} className="flex-1 py-4 bg-indigo-600 rounded-xl font-black uppercase italic tracking-widest">Próximo Período</button>
-                    <button onClick={handleFinish} className="px-6 py-4 bg-gray-800 rounded-xl font-black uppercase italic border border-gray-700">Encerrar</button>
+                <div className="flex gap-2">
+                    <button onClick={handlePeriodChange} className="flex-1 py-3 bg-indigo-600 rounded-lg font-black uppercase italic tracking-widest text-xs">Próximo Período</button>
+                    <button onClick={handleFinish} className="px-4 py-3 bg-gray-800 rounded-lg font-black uppercase italic border border-gray-700 text-xs">Encerrar</button>
                 </div>
 
-                <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
-                    <h3 className="font-black uppercase tracking-widest mb-4 flex items-center gap-2"><Clock size={16} /> Histórico</h3>
-                    <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                <div className="bg-gray-800 rounded-xl p-3 border border-gray-700">
+                    <h3 className="font-black uppercase tracking-widest text-xs mb-2 flex items-center gap-2"><Clock size={14} /> Histórico</h3>
+                    <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
                         {events.length === 0 ? <p className="text-center text-gray-500 py-10">Inicie a partida para registrar eventos.</p> : events.map((ev: any) => (
                             <div key={ev.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-900/50 border border-gray-700">
                                 <div>

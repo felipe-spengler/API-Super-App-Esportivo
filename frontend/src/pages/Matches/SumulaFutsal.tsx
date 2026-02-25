@@ -248,45 +248,37 @@ export function SumulaFutsal() {
                 </div>
             </div>
 
-            <div className="p-4 max-w-5xl mx-auto space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="p-2 max-w-5xl mx-auto space-y-3">
+                <div className="grid grid-cols-2 gap-2">
                     {/* Home Team */}
-                    <div className="bg-gray-800 rounded-2xl p-6 border border-blue-900/30">
-                        <div className="flex justify-between items-start mb-6">
-                            <div>
-                                <h2 className="text-blue-400 font-black text-xl uppercase italic">{matchData.home_team?.name}</h2>
-                                <div className="text-5xl font-black mt-2">{homeScore}</div>
-                            </div>
-                            <div className="text-right">
-                                <div className="text-[10px] font-bold text-gray-500 uppercase mb-1">Faltas</div>
-                                <div className="flex gap-1">{[...Array(6)].map((_, i) => <div key={i} className={`w-3 h-3 rounded-full border border-black ${i < fouls.home ? (i >= 5 ? 'bg-orange-500 animate-pulse' : 'bg-red-500') : 'bg-gray-700'}`}></div>)}</div>
-                            </div>
+                    <div className="bg-gray-800 rounded-xl p-2 border border-blue-900/30 flex flex-col items-center text-center">
+                        <h2 className="text-blue-400 font-bold text-[10px] uppercase italic truncate w-full mb-0.5">{matchData.home_team?.name}</h2>
+                        <div className="text-4xl font-black leading-tight mb-1">{homeScore}</div>
+                        <div className="text-[8px] font-bold text-gray-500 uppercase mb-0.5">Faltas</div>
+                        <div className="flex gap-0.5 mb-2 scale-90">
+                            {[...Array(6)].map((_, i) => <div key={i} className={`w-2.5 h-2.5 rounded-full border border-black ${i < fouls.home ? (i >= 5 ? 'bg-orange-500 animate-pulse' : 'bg-red-500') : 'bg-gray-700'}`}></div>)}
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <button onClick={() => handleEvent('home', 'goal')} className="p-4 bg-emerald-600 rounded-xl font-black uppercase">Gol</button>
-                            <button onClick={() => handleEvent('home', 'foul')} className="p-4 bg-gray-700 rounded-xl font-black uppercase">Falta</button>
-                            <button onClick={() => handleEvent('home', 'yellow_card')} className="p-4 bg-yellow-500 text-black rounded-xl font-black uppercase tracking-tighter text-xs">Amarelo</button>
-                            <button onClick={() => handleEvent('home', 'red_card')} className="p-4 bg-red-600 rounded-xl font-black uppercase tracking-tighter text-xs">Vermelho</button>
+                        <div className="grid grid-cols-2 gap-1 w-full">
+                            <button onClick={() => handleEvent('home', 'goal')} className="py-2.5 bg-emerald-600 rounded-lg font-black uppercase text-[10px]">Gol</button>
+                            <button onClick={() => handleEvent('home', 'foul')} className="py-2.5 bg-gray-700 rounded-lg font-black uppercase text-[10px]">Falta</button>
+                            <button onClick={() => handleEvent('home', 'yellow_card')} className="py-2 bg-yellow-500 text-black rounded-lg font-black uppercase tracking-tighter text-[9px]">Card 🟨</button>
+                            <button onClick={() => handleEvent('home', 'red_card')} className="py-2 bg-red-600 rounded-lg font-black uppercase tracking-tighter text-[9px]">Card 🟥</button>
                         </div>
                     </div>
 
                     {/* Away Team */}
-                    <div className="bg-gray-800 rounded-2xl p-6 border border-green-900/30">
-                        <div className="flex justify-between items-start mb-6 text-right">
-                            <div className="order-2">
-                                <h2 className="text-green-400 font-black text-xl uppercase italic">{matchData.away_team?.name}</h2>
-                                <div className="text-5xl font-black mt-2">{awayScore}</div>
-                            </div>
-                            <div className="order-1 text-left">
-                                <div className="text-[10px] font-bold text-gray-500 uppercase mb-1">Faltas</div>
-                                <div className="flex gap-1">{[...Array(6)].map((_, i) => <div key={i} className={`w-3 h-3 rounded-full border border-black ${i < fouls.away ? (i >= 5 ? 'bg-orange-500 animate-pulse' : 'bg-red-500') : 'bg-gray-700'}`}></div>)}</div>
-                            </div>
+                    <div className="bg-gray-800 rounded-xl p-2 border border-green-900/30 flex flex-col items-center text-center">
+                        <h2 className="text-green-400 font-bold text-[10px] uppercase italic truncate w-full mb-0.5">{matchData.away_team?.name}</h2>
+                        <div className="text-4xl font-black leading-tight mb-1">{awayScore}</div>
+                        <div className="text-[8px] font-bold text-gray-500 uppercase mb-0.5">Faltas</div>
+                        <div className="flex gap-0.5 mb-2 scale-90">
+                            {[...Array(6)].map((_, i) => <div key={i} className={`w-2.5 h-2.5 rounded-full border border-black ${i < fouls.away ? (i >= 5 ? 'bg-orange-500 animate-pulse' : 'bg-red-500') : 'bg-gray-700'}`}></div>)}
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <button onClick={() => handleEvent('away', 'goal')} className="p-4 bg-emerald-600 rounded-xl font-black uppercase">Gol</button>
-                            <button onClick={() => handleEvent('away', 'foul')} className="p-4 bg-gray-700 rounded-xl font-black uppercase">Falta</button>
-                            <button onClick={() => handleEvent('away', 'yellow_card')} className="p-4 bg-yellow-500 text-black rounded-xl font-black uppercase tracking-tighter text-xs">Amarelo</button>
-                            <button onClick={() => handleEvent('away', 'red_card')} className="p-4 bg-red-600 rounded-xl font-black uppercase tracking-tighter text-xs">Vermelho</button>
+                        <div className="grid grid-cols-2 gap-1 w-full">
+                            <button onClick={() => handleEvent('away', 'goal')} className="py-2.5 bg-emerald-600 rounded-lg font-black uppercase text-[10px]">Gol</button>
+                            <button onClick={() => handleEvent('away', 'foul')} className="py-2.5 bg-gray-700 rounded-lg font-black uppercase text-[10px]">Falta</button>
+                            <button onClick={() => handleEvent('away', 'yellow_card')} className="py-2 bg-yellow-500 text-black rounded-lg font-black uppercase tracking-tighter text-[9px]">Card 🟨</button>
+                            <button onClick={() => handleEvent('away', 'red_card')} className="py-2 bg-red-600 rounded-lg font-black uppercase tracking-tighter text-[9px]">Card 🟥</button>
                         </div>
                     </div>
                 </div>

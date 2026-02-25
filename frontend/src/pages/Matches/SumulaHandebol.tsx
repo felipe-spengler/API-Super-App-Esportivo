@@ -208,7 +208,7 @@ export function SumulaHandebol() {
 
 
             <div className="bg-gradient-to-r from-purple-600 to-indigo-600 pb-2 pt-4 sticky top-0 z-10 border-b border-purple-700 shadow-2xl">
-                <div className="px-4 flex items-center justify-between mb-4">
+                <div className="px-4 flex items-center justify-between mb-2">
                     <button onClick={() => navigate(-1)} className="p-2 bg-black/30 rounded-full backdrop-blur"><ArrowLeft className="w-5 h-5" /></button>
                     <div className="flex flex-col items-center relative">
                         {(!isOnline || pendingCount > 0) && (
@@ -226,38 +226,34 @@ export function SumulaHandebol() {
                         )}
                         <span className="text-[10px] font-bold tracking-widest text-purple-200 uppercase">Handebol</span>
                     </div>
-                    <button onClick={handlePeriodChange} className="px-4 py-2 bg-indigo-600 rounded-lg text-xs font-bold uppercase transition-colors">{currentPeriod === 'Fim' ? 'Finalizado' : 'Próximo Período'}</button>
+                    <button onClick={handlePeriodChange} className="px-4 py-2 bg-indigo-600 rounded-lg text-[10px] font-bold uppercase transition-colors">{currentPeriod === 'Fim' ? 'Fim' : 'Período'}</button>
                 </div>
-                <div className="flex items-center justify-center gap-2 px-2">
-                    <div className="text-center flex-1">
-                        <div className="text-5xl font-black font-mono leading-none mb-1 text-purple-100">{matchData.scoreHome}</div>
-                        <h2 className="font-bold text-xs text-purple-200 truncate max-w-[100px] mx-auto">{matchData.home_team?.name}</h2>
-                        {suspensions.home > 0 && <div className="mt-1 flex justify-center gap-1">{[...Array(suspensions.home)].map((_, i) => <div key={i} className="w-3 h-3 rounded bg-yellow-500 border border-black animate-pulse"></div>)}</div>}
-                    </div>
-                    <div className="flex flex-col items-center w-28 bg-black/50 backdrop-blur rounded-xl py-2 border border-purple-500/50">
-                        <div onClick={() => setIsRunning(!isRunning)} className="cursor-pointer mb-1">{isRunning ? <Pause className="w-5 h-5 text-green-400 fill-current animate-pulse" /> : <Play className="w-5 h-5 text-gray-500 fill-current" />}</div>
-                        <div className="text-3xl font-mono font-bold text-yellow-400 tracking-wider mb-1">{formatTime(time)}</div>
-                        <div className="text-[9px] text-purple-300 uppercase font-bold px-2 py-0.5 bg-purple-900/50 rounded">{currentPeriod}</div>
-                    </div>
-                    <div className="text-center flex-1">
-                        <div className="text-5xl font-black font-mono leading-none mb-1 text-purple-100">{matchData.scoreAway}</div>
-                        <h2 className="font-bold text-xs text-purple-200 truncate max-w-[100px] mx-auto">{matchData.away_team?.name}</h2>
-                        {suspensions.away > 0 && <div className="mt-1 flex justify-center gap-1">{[...Array(suspensions.away)].map((_, i) => <div key={i} className="w-3 h-3 rounded bg-yellow-500 border border-black animate-pulse"></div>)}</div>}
+                <div className="flex items-center justify-center gap-4">
+                    <div className="flex flex-col items-center w-28 bg-black/50 backdrop-blur rounded-xl py-1 border border-purple-500/50">
+                        <div onClick={() => setIsRunning(!isRunning)} className="cursor-pointer mb-0.5">{isRunning ? <Pause className="w-4 h-4 text-green-400 fill-current animate-pulse" /> : <Play className="w-4 h-4 text-gray-500 fill-current" />}</div>
+                        <div className="text-2xl font-mono font-bold text-yellow-400 tracking-wider leading-none mb-1">{formatTime(time)}</div>
+                        <div className="text-[8px] text-purple-300 uppercase font-bold px-1.5 py-0.5 bg-purple-900/50 rounded">{currentPeriod}</div>
                     </div>
                 </div>
             </div>
 
-            <div className="p-2 sm:p-4 grid grid-cols-2 gap-2 sm:gap-4 max-w-4xl mx-auto">
-                {[{ t: 'home', color: 'blue' }, { t: 'away', color: 'green' }].map(({ t, color }: any) => (
-                    <div key={t} className={`bg-${color}-900/10 p-3 rounded-xl border border-${color}-900/30 space-y-2`}>
-                        <button onClick={() => openEventModal(t, 'goal')} disabled={!isRunning} className={`w-full py-4 bg-${t === 'home' ? 'blue' : 'green'}-600 rounded-lg font-black text-xl border-b-4 border-${t === 'home' ? 'blue' : 'green'}-800 active:scale-95 disabled:opacity-50`}>GOL</button>
-                        <div className="grid grid-cols-2 gap-2">
-                            <button onClick={() => openEventModal(t, 'yellow_card')} disabled={!isRunning} className="py-3 bg-yellow-500 text-black rounded-lg font-bold border-b-4 border-yellow-700 text-xs active:scale-95 disabled:opacity-50">🟨 Cartão</button>
-                            <button onClick={() => openEventModal(t, 'red_card')} disabled={!isRunning} className="py-3 bg-red-600 rounded-lg font-bold border-b-4 border-red-800 text-xs active:scale-95 disabled:opacity-50">🟥 Cartão</button>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                            <button onClick={() => openEventModal(t, 'suspension_2min')} disabled={!isRunning} className="py-2 bg-orange-600 rounded-lg font-bold text-[10px] active:scale-95 border-b-2 border-orange-800 disabled:opacity-50"><UserX size={14} /> 2min</button>
-                            <button onClick={() => registerTimeout(t)} disabled={!isRunning} className="py-2 bg-gray-700 rounded-lg font-bold text-[10px] active:scale-95 border-b-2 border-gray-900 disabled:opacity-50"><Timer size={14} /> Tempo</button>
+            <div className="p-2 max-w-4xl mx-auto grid grid-cols-2 gap-2">
+                {[{ t: 'home', color: 'blue', team: matchData.home_team }, { t: 'away', color: 'green', team: matchData.away_team }].map(({ t, color, team }: any) => (
+                    <div key={t} className={`bg-${color}-900/10 p-2 rounded-xl border border-${color}-900/30 flex flex-col items-center text-center`}>
+                        <h2 className="text-purple-200 font-bold text-[10px] uppercase italic truncate w-full mb-0.5">{team?.name}</h2>
+                        <div className="text-4xl font-black leading-tight mb-1 text-purple-100">{t === 'home' ? matchData.scoreHome : matchData.scoreAway}</div>
+                        {suspensions[t as 'home' | 'away'] > 0 && <div className="mb-2 flex justify-center gap-0.5">{[...Array(suspensions[t as 'home' | 'away'])].map((_, i) => <div key={i} className="w-2.5 h-2.5 rounded bg-yellow-500 border border-black animate-pulse"></div>)}</div>}
+
+                        <div className="space-y-1 w-full">
+                            <button onClick={() => openEventModal(t, 'goal')} disabled={!isRunning} className={`w-full py-3 bg-${t === 'home' ? 'blue' : 'green'}-600 rounded-lg font-black text-lg border-b-4 border-${t === 'home' ? 'blue' : 'green'}-800 active:scale-95 disabled:opacity-50`}>GOL</button>
+                            <div className="grid grid-cols-2 gap-1 px-1">
+                                <button onClick={() => openEventModal(t, 'yellow_card')} disabled={!isRunning} className="py-2 bg-yellow-500 text-black rounded-lg font-bold border-b-2 border-yellow-700 text-[9px] active:scale-95 disabled:opacity-50 leading-tight">Card 🟨</button>
+                                <button onClick={() => openEventModal(t, 'suspension_2min')} disabled={!isRunning} className="py-2 bg-orange-600 rounded-lg font-bold text-[9px] active:scale-95 border-b-2 border-orange-800 disabled:opacity-50 leading-tight">2min ⏱️</button>
+                            </div>
+                            <div className="grid grid-cols-2 gap-1 px-1">
+                                <button onClick={() => openEventModal(t, 'red_card')} disabled={!isRunning} className="py-2 bg-red-600 rounded-lg font-bold border-b-2 border-red-800 text-[9px] active:scale-95 disabled:opacity-50 leading-tight">Card 🟥</button>
+                                <button onClick={() => registerTimeout(t)} disabled={!isRunning} className="py-2 bg-gray-700 rounded-lg font-bold text-[9px] active:scale-95 border-b-2 border-gray-900 disabled:opacity-50 leading-tight">Tempo 🕒</button>
+                            </div>
                         </div>
                     </div>
                 ))}
