@@ -239,43 +239,58 @@ export function SumulaFutebol() {
         let newPeriod = '';
         if (currentPeriod === '1º Tempo') {
             if (!window.confirm('Encerrar 1º Tempo?')) return;
-            setIsRunning(false); newPeriod = 'Intervalo';
+            setIsRunning(false);
+            newPeriod = 'Intervalo';
+            timerRef.current = { ...timerRef.current, currentPeriod: newPeriod, isRunning: false };
             registerSystemEvent('period_end', 'Fim do 1º Tempo. Intervalo!');
         } else if (currentPeriod === 'Intervalo') {
-            newPeriod = '2º Tempo'; setIsRunning(true);
+            newPeriod = '2º Tempo';
+            setIsRunning(true);
+            timerRef.current = { ...timerRef.current, currentPeriod: newPeriod, isRunning: true };
             registerSystemEvent('period_start', 'Começa o 2º Tempo! Vamos pro jogo!');
         } else if (currentPeriod === '2º Tempo') {
             if (!window.confirm('Encerrar Tempo Normal?')) return;
             setIsRunning(false);
+            newPeriod = 'Encerrado (Normal)';
+            timerRef.current = { ...timerRef.current, currentPeriod: newPeriod, isRunning: false };
             registerSystemEvent('period_end', 'Fim do Tempo Normal. A batalha continua?');
             const choice = window.confirm("Tempo Normal encerrado!\n\n'OK' → Prorrogação ou Pênaltis\n'Cancelar' → Encerrar agora");
             if (choice) {
                 if (window.confirm('Deseja iniciar a PRORROGAÇÃO?')) {
                     newPeriod = 'Prorrogação'; setIsRunning(true);
+                    timerRef.current = { ...timerRef.current, currentPeriod: newPeriod, isRunning: true };
                     registerSystemEvent('period_start', 'Início da Prorrogação. Haja coração!');
                 } else if (window.confirm('Deseja ir DIRETO para os PÊNALTIS?')) {
                     newPeriod = 'Pênaltis';
+                    timerRef.current = { ...timerRef.current, currentPeriod: newPeriod };
                     registerSystemEvent('period_start', 'Início dos Pênaltis. É agora!');
-                } else { newPeriod = 'Encerrado (Normal)'; }
+                }
+                // else mantém 'Encerrado (Normal)' já setado
             } else { handleFinish(); return; }
         } else if (currentPeriod === 'Encerrado (Normal)') {
             if (window.confirm('Iniciar Prorrogação?')) {
                 newPeriod = 'Prorrogação'; setIsRunning(true);
+                timerRef.current = { ...timerRef.current, currentPeriod: newPeriod, isRunning: true };
                 registerSystemEvent('period_start', 'Início da Prorrogação. Haja coração!');
             } else if (window.confirm('Iniciar Pênaltis?')) {
                 newPeriod = 'Pênaltis';
+                timerRef.current = { ...timerRef.current, currentPeriod: newPeriod };
                 registerSystemEvent('period_start', 'Início dos Pênaltis. É agora!');
             } else { handleFinish(); return; }
         } else if (currentPeriod === 'Prorrogação') {
             if (!window.confirm('Encerrar Prorrogação?')) return;
             setIsRunning(false);
+            newPeriod = 'Encerrado (Normal)';
+            timerRef.current = { ...timerRef.current, currentPeriod: newPeriod, isRunning: false };
             registerSystemEvent('period_end', 'Fim da Prorrogação.');
             if (window.confirm('Iniciar Pênaltis?')) {
                 newPeriod = 'Pênaltis';
+                timerRef.current = { ...timerRef.current, currentPeriod: newPeriod };
                 registerSystemEvent('period_start', 'Início dos Pênaltis. Haja coração!');
             } else { handleFinish(); return; }
         } else if (currentPeriod === 'Pênaltis') {
             if (!window.confirm('Encerrar Disputa de Pênaltis?')) return;
+            timerRef.current = { ...timerRef.current, currentPeriod: 'Pênaltis' };
             registerSystemEvent('period_end', 'Fim dos Pênaltis. Temos um vencedor?');
             handleFinish(); return;
         }
@@ -470,8 +485,8 @@ export function SumulaFutebol() {
                         <div className="flex items-center gap-2">
                             <span className="text-[10px] font-black tracking-[0.25em] text-gray-500 uppercase">Súmula · Futebol</span>
                             <div className={`w-2 h-2 rounded-full ${!isOnline ? 'bg-orange-500 animate-pulse shadow-[0_0_6px_rgba(249,115,22,0.8)]' :
-                                    syncStatus === 'synced' ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)]' :
-                                        syncStatus === 'syncing' ? 'bg-blue-400 animate-pulse' : 'bg-red-500 animate-bounce'
+                                syncStatus === 'synced' ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)]' :
+                                    syncStatus === 'syncing' ? 'bg-blue-400 animate-pulse' : 'bg-red-500 animate-bounce'
                                 }`} title={!isOnline ? `Offline — ${pendingCount} na fila` : syncStatus} />
                         </div>
                         {matchData.details?.arbitration?.referee && (
@@ -480,10 +495,10 @@ export function SumulaFutebol() {
                     </div>
 
                     <button onClick={handlePeriodChange} className={`px-4 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-wider transition-all border ${currentPeriod === 'Intervalo' || currentPeriod === 'Encerrado (Normal)'
-                            ? 'bg-amber-500/20 border-amber-500/40 text-amber-400'
-                            : currentPeriod.includes('Fim')
-                                ? 'bg-red-600/20 border-red-600/40 text-red-400'
-                                : 'bg-indigo-600/20 border-indigo-500/40 text-indigo-400 hover:bg-indigo-600/30'
+                        ? 'bg-amber-500/20 border-amber-500/40 text-amber-400'
+                        : currentPeriod.includes('Fim')
+                            ? 'bg-red-600/20 border-red-600/40 text-red-400'
+                            : 'bg-indigo-600/20 border-indigo-500/40 text-indigo-400 hover:bg-indigo-600/30'
                         }`}>
                         {periodBtnLabel}
                     </button>
@@ -643,8 +658,8 @@ export function SumulaFutebol() {
                             : ev.period === 'Prorrogação' ? 'Prorrog.' : ev.period;
                         return (
                             <div key={idx} className={`rounded-2xl border px-3 py-2.5 flex items-center justify-between transition-all hover:brightness-110 ${isOwnGoal && ev.type === 'goal'
-                                    ? 'bg-red-950/40 border-red-800/40'
-                                    : isHome ? 'bg-blue-950/25 border-blue-900/30' : 'bg-green-950/25 border-green-900/30'
+                                ? 'bg-red-950/40 border-red-800/40'
+                                : isHome ? 'bg-blue-950/25 border-blue-900/30' : 'bg-green-950/25 border-green-900/30'
                                 }`}>
                                 <div className="flex items-center gap-2.5">
                                     <div className={`font-mono text-sm font-black tabular-nums min-w-[38px] ${isOwnGoal && ev.type === 'goal' ? 'text-red-400' : isHome ? 'text-blue-400' : 'text-green-400'
@@ -799,8 +814,8 @@ export function SumulaFutebol() {
                                         <button key={player.id}
                                             onClick={() => confirmEvent(isSelectingOwnGoal ? { ...player, isOwnGoal: true } : player)}
                                             className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all group border active:scale-[0.98] ${isSelectingOwnGoal
-                                                    ? 'bg-red-950/30 hover:bg-red-900/40 border-red-800/30 hover:border-red-600/50'
-                                                    : 'bg-white/5 hover:bg-white/10 border-transparent hover:border-indigo-600/30'
+                                                ? 'bg-red-950/30 hover:bg-red-900/40 border-red-800/30 hover:border-red-600/50'
+                                                : 'bg-white/5 hover:bg-white/10 border-transparent hover:border-indigo-600/30'
                                                 }`}>
                                             <div className={`w-9 h-9 rounded-full flex items-center justify-center font-black text-sm shrink-0 ${isSelectingOwnGoal ? 'bg-red-700/60 text-red-200' : 'bg-white/10 text-gray-300 group-hover:bg-indigo-600 group-hover:text-white'
                                                 } transition-colors`}>

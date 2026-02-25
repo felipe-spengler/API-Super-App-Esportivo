@@ -274,43 +274,60 @@ export function SumulaFutebol7() {
         let newPeriod = '';
         if (currentPeriod === '1º Tempo') {
             if (!window.confirm('Encerrar 1º Tempo?')) return;
-            setIsRunning(false); newPeriod = 'Intervalo';
+            setIsRunning(false);
+            newPeriod = 'Intervalo';
+            // Atualiza timerRef antes do registerSystemEvent para gravar o período correto
+            timerRef.current = { ...timerRef.current, currentPeriod: newPeriod };
             registerSystemEvent('period_end', 'Fim do 1º Tempo. Respirem!');
         } else if (currentPeriod === 'Intervalo') {
-            newPeriod = '2º Tempo'; setIsRunning(true);
+            newPeriod = '2º Tempo';
+            setIsRunning(true);
+            // Atualiza timerRef antes do registerSystemEvent para gravar o período correto
+            timerRef.current = { ...timerRef.current, currentPeriod: newPeriod, isRunning: true };
             registerSystemEvent('period_start', 'Começa o 2º Tempo! Decisão!');
         } else if (currentPeriod === '2º Tempo') {
             if (!window.confirm('Encerrar Tempo Normal?')) return;
             setIsRunning(false);
+            newPeriod = 'Fim de Tempo Normal';
+            timerRef.current = { ...timerRef.current, currentPeriod: newPeriod, isRunning: false };
             registerSystemEvent('period_end', 'Fim do Tempo Normal de Jogo.');
             const choice = window.confirm("Tempo Normal encerrado!\n\n'OK' → Prorrogação ou Pênaltis\n'Cancelar' → Encerrar agora");
             if (choice) {
                 if (window.confirm('Deseja iniciar a PRORROGAÇÃO?')) {
                     newPeriod = 'Prorrogação'; setIsRunning(true);
+                    timerRef.current = { ...timerRef.current, currentPeriod: newPeriod, isRunning: true };
                     registerSystemEvent('period_start', 'Início da Prorrogação. Aguenta coração!');
                 } else if (window.confirm('Deseja ir DIRETO para os PÊNALTIS?')) {
                     newPeriod = 'Pênaltis';
+                    timerRef.current = { ...timerRef.current, currentPeriod: newPeriod };
                     registerSystemEvent('period_start', 'Início dos Shoot-outs. É agora ou nunca!');
-                } else { newPeriod = 'Fim de Tempo Normal'; }
+                }
+                // else mantém 'Fim de Tempo Normal' já setado
             } else { handleFinish(); return; }
         } else if (currentPeriod === 'Fim de Tempo Normal') {
             if (window.confirm('Iniciar Prorrogação?')) {
                 newPeriod = 'Prorrogação'; setIsRunning(true);
+                timerRef.current = { ...timerRef.current, currentPeriod: newPeriod, isRunning: true };
                 registerSystemEvent('period_start', 'Início da Prorrogação. Aguenta coração!');
             } else if (window.confirm('Ir para Pênaltis?')) {
                 newPeriod = 'Pênaltis';
+                timerRef.current = { ...timerRef.current, currentPeriod: newPeriod };
                 registerSystemEvent('period_start', 'Início dos Shoot-outs. É agora ou nunca!');
             } else { handleFinish(); return; }
         } else if (currentPeriod === 'Prorrogação') {
             if (!window.confirm('Encerrar Prorrogação?')) return;
             setIsRunning(false);
+            newPeriod = 'Fim de Tempo Normal';
+            timerRef.current = { ...timerRef.current, currentPeriod: newPeriod, isRunning: false };
             registerSystemEvent('period_end', 'Fim da Prorrogação.');
             if (window.confirm('Ir para Pênaltis?')) {
                 newPeriod = 'Pênaltis';
+                timerRef.current = { ...timerRef.current, currentPeriod: newPeriod };
                 registerSystemEvent('period_start', 'Início dos Pênaltis');
             } else { handleFinish(); return; }
         } else if (currentPeriod === 'Pênaltis') {
             if (!window.confirm('Encerrar Disputa de Pênaltis?')) return;
+            timerRef.current = { ...timerRef.current, currentPeriod: 'Pênaltis' };
             registerSystemEvent('period_end', 'Fim dos Pênaltis. Quem levou a melhor?');
             handleFinish(); return;
         }
