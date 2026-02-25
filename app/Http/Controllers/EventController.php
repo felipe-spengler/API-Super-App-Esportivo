@@ -443,6 +443,12 @@ class EventController extends Controller
                     'details' => []
                 ];
             }
+
+            // Skip own goals for scorer stats
+            if ($type === 'goals' && isset($metadata['own_goal']) && $metadata['own_goal'] === true) {
+                continue;
+            }
+
             $playerStats[$pName]['value'] += $event->value;
 
             // Add detail

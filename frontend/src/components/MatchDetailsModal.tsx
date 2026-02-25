@@ -255,9 +255,9 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                             {!loading && (
                                 <div className="flex flex-col items-center">
                                     <div className="flex items-center gap-2 sm:gap-4">
-                                        <span className="text-3xl sm:text-5xl font-black text-white">{match?.home_score ?? 0}</span>
+                                        <span className="text-3xl sm:text-5xl font-black text-white tabular-nums">{match?.home_score ?? 0}</span>
                                         <span className="text-white/40 text-xl sm:text-2xl font-light">x</span>
-                                        <span className="text-3xl sm:text-5xl font-black text-white">{match?.away_score ?? 0}</span>
+                                        <span className="text-3xl sm:text-5xl font-black text-white tabular-nums">{match?.away_score ?? 0}</span>
                                     </div>
 
                                     {/* Placar de Sets/Games para Tênis/Vôlei/Beach Tennis */}
@@ -456,7 +456,7 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                                     );
                                                 }
 
-                                                const isOwnGoal = event.metadata?.own_goal === true;
+                                                const isOwnGoal = (event.metadata?.own_goal === true || event.metadata?.is_own_goal === true);
                                                 let isHome = event.team_id === match?.home_team_id;
                                                 if (isOwnGoal) isHome = !isHome;
 
@@ -518,9 +518,13 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                                                         <span className="text-gray-800 leading-tight">
                                                                             {(() => {
                                                                                 // Prefere label enviado pelo backend; fallback para mapa local
-                                                                                if (event.label) return event.label + (event.type === 'goal' && event.metadata?.own_goal ? ' Contra' : '');
+                                                                                if (event.label) {
+                                                                                    const alreadyMarked = event.label.toLowerCase().includes('contra') || event.label.toLowerCase().includes('próprio');
+                                                                                    if (isOwnGoal && !alreadyMarked) return event.label + ' (Contra)';
+                                                                                    return event.label;
+                                                                                }
                                                                                 const friendlyMap: Record<string, string> = {
-                                                                                    goal: event.metadata?.own_goal ? 'Gol Contra!' : 'Gol!',
+                                                                                    goal: isOwnGoal ? 'Gol Contra!' : 'Gol!',
                                                                                     yellow_card: 'Cartão Amarelo',
                                                                                     red_card: 'Cartão Vermelho',
                                                                                     blue_card: 'Cartão Azul',
