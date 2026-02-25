@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import api from '../services/api';
 
 interface OfflineAction {
@@ -17,15 +17,39 @@ export function useOfflineResilience(matchId: string | undefined, sportName: str
     const STORAGE_KEY = `offline_queue_${sportName}_${matchId}`;
     const CRASH_KEY = `crash_log_${sportName}_${matchId}`;
 
-    // 1. Initial Load & Network Listeners
+    const queueRef = useRef(offlineQueue);
+    useEffect(() => {
+        queueRef.current = offlineQueue;
+    }, [offlineQueue]);
+
+    const resolverRef = useRef(resolver);
+    useEffect(() => {
+        resolverRef.current = resolver;
+    }, [resolver]);
+
+    // 1. Initial Load (Once per matchId)
     useEffect(() => {
         if (!matchId) return;
-
-        // Load saved queue
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
-            try { setOfflineQueue(JSON.parse(saved)); } catch (e) { console.error("Error loading queue", e); }
+            try {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed)) setOfflineQueue(parsed);
+            } catch (e) {
+                console.error("Error loading queue", e);
+            }
         }
+    }, [matchId]);
+
+    // 2. Persistence (Sync to LocalStorage)
+    useEffect(() => {
+        if (!matchId) return;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(offlineQueue));
+    }, [offlineQueue, matchId]);
+
+    // 3. Network & System Listeners
+    useEffect(() => {
+        if (!matchId) return;
 
         // Crash Recovery
         const lastCrash = localStorage.getItem(CRASH_KEY);
@@ -52,12 +76,11 @@ export function useOfflineResilience(matchId: string | undefined, sportName: str
         window.addEventListener('offline', handleOffline);
         window.addEventListener('error', handleError);
 
-        // Protection: Pull-to-refresh & Accidental Close
         document.body.style.overscrollBehavior = 'none';
         document.documentElement.style.overscrollBehavior = 'none';
 
         const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-            if (offlineQueue.length > 0) {
+            if (queueRef.current.length > 0) {
                 const msg = "Você tem lançamentos pendentes que ainda não foram salvos no servidor.";
                 e.preventDefault(); e.returnValue = msg; return msg;
             }
@@ -72,13 +95,7 @@ export function useOfflineResilience(matchId: string | undefined, sportName: str
             document.body.style.overscrollBehavior = 'auto';
             document.documentElement.style.overscrollBehavior = 'auto';
         };
-    }, [matchId, offlineQueue.length]);
-
-    // 2. Persistence
-    useEffect(() => {
-        if (!matchId) return;
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(offlineQueue));
-    }, [offlineQueue, matchId]);
+    }, [matchId, sportName]);
 
     const registerSystemEvent = useCallback(async (type: string, label: string) => {
         if (!matchId) return;
@@ -106,15 +123,15 @@ export function useOfflineResilience(matchId: string | undefined, sportName: str
         setOfflineQueue(prev => [...prev, newItem]);
     }, []);
 
-    // 3. Sync Logic
+    // 4. Sync Logic
     useEffect(() => {
         const sync = async () => {
-            if (syncing || offlineQueue.length === 0 || !isOnline || !resolver) return;
+            if (syncing || queueRef.current.length === 0 || !isOnline || !resolverRef.current) return;
             setSyncing(true);
 
-            const item = offlineQueue[0];
+            const item = queueRef.current[0];
             try {
-                await resolver(item.action, item.data);
+                await resolverRef.current(item.action, item.data);
                 setOfflineQueue(prev => prev.filter(i => i.id !== item.id));
             } catch (e: any) {
                 console.error(`[Sync] Failed ${item.action}:`, e);
@@ -132,7 +149,7 @@ export function useOfflineResilience(matchId: string | undefined, sportName: str
 
         const timer = setInterval(sync, 1500);
         return () => clearInterval(timer);
-    }, [isOnline, offlineQueue, syncing, resolver]);
+    }, [isOnline, syncing]);
 
     return {
         isOnline,
@@ -143,3 +160,4 @@ export function useOfflineResilience(matchId: string | undefined, sportName: str
         pendingCount: offlineQueue.length
     };
 }
+

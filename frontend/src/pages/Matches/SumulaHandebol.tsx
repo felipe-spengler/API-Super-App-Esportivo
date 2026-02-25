@@ -88,9 +88,13 @@ export function SumulaHandebol() {
     useEffect(() => {
         if (!id) return;
         fetchMatchDetails(true);
-        const syncInterval = setInterval(() => fetchMatchDetails(), 3000);
+        const syncInterval = setInterval(() => {
+            if (!pendingCount || pendingCount === 0) {
+                fetchMatchDetails();
+            }
+        }, 5000);
         return () => clearInterval(syncInterval);
-    }, [id]);
+    }, [id, pendingCount]);
 
     useEffect(() => {
         let interval: any = null;
@@ -201,23 +205,25 @@ export function SumulaHandebol() {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-purple-900 via-gray-900 to-black text-white font-sans pb-20">
-            {!isOnline && (
-                <div className="fixed top-0 left-0 w-full bg-red-600 text-white text-[10px] font-bold py-1 px-4 z-[9999] flex items-center justify-between shadow-lg">
-                    <div className="flex items-center gap-2"><AlertOctagon size={12} className="animate-pulse" /><span>SISTEMA OFFLINE</span></div>
-                    <span>{pendingCount} PENDENTES</span>
-                </div>
-            )}
-            {isOnline && pendingCount > 0 && (
-                <div className="fixed top-0 left-0 w-full bg-yellow-600 text-white text-[10px] font-bold py-1 px-4 z-[9999] flex items-center justify-between shadow-lg">
-                    <div className="flex items-center gap-2"><RefreshCw size={12} className="animate-spin" /><span>SINCRONIZANDO...</span></div>
-                    <span>{pendingCount} RESTANTES</span>
-                </div>
-            )}
+
 
             <div className="bg-gradient-to-r from-purple-600 to-indigo-600 pb-2 pt-4 sticky top-0 z-10 border-b border-purple-700 shadow-2xl">
                 <div className="px-4 flex items-center justify-between mb-4">
                     <button onClick={() => navigate(-1)} className="p-2 bg-black/30 rounded-full backdrop-blur"><ArrowLeft className="w-5 h-5" /></button>
-                    <div className="flex flex-col items-center">
+                    <div className="flex flex-col items-center relative">
+                        {(!isOnline || pendingCount > 0) && (
+                            <div className="absolute -top-6 left-1/2 -translate-x-1/2 flex items-center gap-2 whitespace-nowrap">
+                                {!isOnline ? (
+                                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-red-500/20 border border-red-500/50 rounded-full text-[8px] font-black text-red-500 animate-pulse uppercase">
+                                        Offline
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-yellow-500/20 border border-yellow-500/50 rounded-full text-[8px] font-black text-yellow-500 uppercase">
+                                        <RefreshCw size={10} className="animate-spin" /> {pendingCount}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                         <span className="text-[10px] font-bold tracking-widest text-purple-200 uppercase">Handebol</span>
                     </div>
                     <button onClick={handlePeriodChange} className="px-4 py-2 bg-indigo-600 rounded-lg text-xs font-bold uppercase transition-colors">{currentPeriod === 'Fim' ? 'Finalizado' : 'Próximo Período'}</button>

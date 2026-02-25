@@ -48,10 +48,14 @@ export function SumulaVolei() {
     useEffect(() => {
         if (id) {
             fetchFullDetails();
-            const timer = setInterval(() => fetchState(true), 3000);
+            const timer = setInterval(() => {
+                if (!pendingCount || pendingCount === 0) {
+                    fetchState(true);
+                }
+            }, 5000);
             return () => clearInterval(timer);
         }
-    }, [id, isOnline]);
+    }, [id, pendingCount]);
 
     const fetchFullDetails = async (silent = false) => {
         try {
@@ -389,23 +393,25 @@ export function SumulaVolei() {
 
     return (
         <div className="min-h-screen bg-gray-900 text-white font-sans selection:bg-indigo-500/30">
-            {!isOnline && (
-                <div className="fixed top-0 left-0 w-full bg-red-600 text-white text-[10px] font-bold py-1 px-4 z-[9999] flex items-center justify-between shadow-lg">
-                    <div className="flex items-center gap-2"><AlertOctagon size={12} className="animate-pulse" /><span>SISTEMA OFFLINE • DADOS SALVOS LOCALMENTE</span></div>
-                    <span>{pendingCount} PENDENTES</span>
-                </div>
-            )}
-            {isOnline && pendingCount > 0 && (
-                <div className="fixed top-0 left-0 w-full bg-yellow-600 text-white text-[10px] font-bold py-1 px-4 z-[9999] flex items-center justify-between shadow-lg">
-                    <div className="flex items-center gap-2"><RefreshCw size={12} className="animate-spin" /><span>SINCRONIZANDO COM O SERVIDOR...</span></div>
-                    <span>{pendingCount} RESTANTES</span>
-                </div>
-            )}
+
 
             <div className="bg-gray-800 p-3 border-b border-gray-700 sticky top-0 z-20 shadow-lg">
                 <div className="flex items-center justify-between">
                     <button onClick={() => navigate(-1)} className="p-2 bg-gray-700 rounded-full"><ArrowLeft className="w-5 h-5" /></button>
-                    <div className="text-center">
+                    <div className="text-center relative">
+                        {(!isOnline || pendingCount > 0) && (
+                            <div className="absolute -top-6 left-1/2 -translate-x-1/2 flex items-center gap-2 whitespace-nowrap">
+                                {!isOnline ? (
+                                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-red-500/20 border border-red-500/50 rounded-full text-[8px] font-black text-red-500 animate-pulse uppercase">
+                                        <AlertOctagon size={10} /> Offline
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-yellow-500/20 border border-yellow-500/50 rounded-full text-[8px] font-black text-yellow-500 uppercase">
+                                        <RefreshCw size={10} className="animate-spin" /> {pendingCount} Pendente{pendingCount > 1 ? 's' : ''}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                         <div className="text-[10px] font-bold tracking-widest text-gray-400 uppercase">Súmula Digital</div>
                         <div className="text-yellow-400 font-black text-xl flex items-center gap-2 justify-center"><Trophy size={16} /> {volleyState?.current_set}º SET</div>
                     </div>
@@ -485,16 +491,26 @@ export function SumulaVolei() {
             {setupModalOpen && (
                 <div className="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-4 backdrop-blur-md">
                     <div className="bg-gray-900 border-2 border-indigo-500/30 w-full max-w-md rounded-[2.5rem] overflow-hidden shadow-[0_0_50px_rgba(79,70,229,0.3)]">
-                        <div className="bg-indigo-600 p-6 text-center"><Trophy className="mx-auto mb-2 text-yellow-300" size={32} /><h2 className="text-2xl font-black text-white italic uppercase tracking-tighter">Configuração do Set</h2><p className="text-indigo-200 text-xs font-bold uppercase tracking-widest italic">{volleyState?.current_set}º SET • VOLLEY PRO</p></div>
+                        <div className="bg-indigo-600 p-6 text-center relative">
+                            <button
+                                onClick={() => setSetupModalOpen(false)}
+                                className="absolute top-4 right-4 p-2 bg-black/20 hover:bg-black/30 rounded-full text-white/80 hover:text-white transition-all transform active:scale-95"
+                            >
+                                <X size={20} />
+                            </button>
+                            <Trophy className="mx-auto mb-2 text-yellow-300" size={32} />
+                            <h2 className="text-2xl font-black text-white italic uppercase tracking-tighter">Configuração do Set</h2>
+                            <p className="text-indigo-200 text-xs font-bold uppercase tracking-widest italic">{volleyState?.current_set}º SET • VOLLEY PRO</p>
+                        </div>
                         <div className="p-6 space-y-6">
                             <div className="grid grid-cols-2 gap-4">
-                                {[{ label: matchData.home_team?.name, rot: setupRotation.home, color: 'blue', team: 'home' }, { label: matchData.away_team?.name, rot: setupRotation.away, color: 'green', team: 'away' }].map(({ label, rot, color, team }: any) => {
+                                {[{ label: matchData.home_team?.name, rot: rotations.home, color: 'blue', team: 'home' }, { label: matchData.away_team?.name, rot: rotations.away, color: 'green', team: 'away' }].map(({ label, rot, color, team }: any) => {
                                     const filled = (rot || []).filter((x: any) => x).length;
                                     const full = filled === 6;
                                     return (
                                         <div key={label} className={`p-3 rounded-xl border text-center flex flex-col justify-between ${full ? (color === 'blue' ? 'border-blue-500 bg-blue-900/20' : 'border-green-500 bg-green-900/20') : 'border-red-700 bg-red-900/10'}`}>
                                             <div><div className={`text-[10px] font-black uppercase mb-1 truncate ${color === 'blue' ? 'text-blue-400' : 'text-green-400'}`}>{label}</div><div className="text-2xl font-black">{filled}/6</div></div>
-                                            <button onClick={() => copyLastRotation(team)} className="mt-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-[8px] font-bold text-gray-300 uppercase">Repetir Anterior</button>
+                                            {/* Removido o botão de repetir pois as rotações já persistem no estado local */}
                                         </div>
                                     );
                                 })}
@@ -506,7 +522,8 @@ export function SumulaVolei() {
                                     <button onClick={() => setServingTeamId(matchData.away_team_id)} className={`flex-1 py-3 px-1 rounded-xl border-2 font-black text-xs transition-all ${servingTeamId === matchData.away_team_id ? 'bg-green-600 border-white text-white shadow-lg scale-105' : 'bg-gray-900 border-gray-700 text-gray-500'}`}>{matchData.away_team?.code || matchData.away_team?.name}</button>
                                 </div>
                             </div>
-                            <button onClick={confirmSetup} className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-lg rounded-xl shadow-lg">✓ CONFIRMAR E INICIAR</button>
+                            <button onClick={confirmSetup} className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-lg rounded-xl shadow-lg border-b-4 border-emerald-800 active:border-b-0 active:translate-y-1 transition-all">✓ CONFIRMAR E INICIAR</button>
+                            <button onClick={() => setSetupModalOpen(false)} className="w-full py-2 text-indigo-400 font-black text-xs uppercase tracking-widest hover:text-indigo-300 transition-colors">Voltar</button>
                         </div>
                     </div>
                 </div>

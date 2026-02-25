@@ -102,9 +102,14 @@ export function SumulaFutebol7() {
     useEffect(() => {
         if (!id) return;
         fetchMatchDetails(true);
-        const syncInterval = setInterval(() => fetchMatchDetails(), 3000);
+        const syncInterval = setInterval(() => {
+            // Só busca do servidor se não houver nada pendente localmente
+            if (!pendingCount || pendingCount === 0) {
+                fetchMatchDetails();
+            }
+        }, 5000);
         return () => clearInterval(syncInterval);
-    }, [id]);
+    }, [id, pendingCount]);
 
     useEffect(() => {
         let interval: any = null;
@@ -197,8 +202,26 @@ export function SumulaFutebol7() {
             case 'assist': labelText = `Assistência: ${pName}`; break;
             case 'mvp': labelText = `Melhor em Campo: ${pName}`; break;
         }
-        const newEvent = { id: 'temp-' + Date.now(), type, team: selectedTeam, time: formatTime(time), period: currentPeriod, player_name: pName };
+        const newEvent = { id: 'temp-' + Date.now(), type, team: selectedTeam, time: formatTime(time), period: currentPeriod, player_name: pName, is_own_goal: isSelectingOwnGoal };
         setEvents(prev => [newEvent, ...prev]);
+
+        // Atualização Otimista do Placar no matchData
+        if (type === 'goal') {
+            setMatchData((prev: any) => {
+                if (!prev) return prev;
+                const isHomeGoal = (selectedTeam === 'home' && !isSelectingOwnGoal) || (selectedTeam === 'away' && isSelectingOwnGoal);
+                return {
+                    ...prev,
+                    scoreHome: isHomeGoal ? (prev.scoreHome || 0) + 1 : prev.scoreHome,
+                    scoreAway: !isHomeGoal ? (prev.scoreAway || 0) + 1 : prev.scoreAway
+                };
+            });
+        }
+
+        if (type === 'foul') {
+            setFouls(prev => ({ ...prev, [selectedTeam!]: prev[selectedTeam!] + 1 }));
+        }
+
         addToQueue('event', { event_type: type, team_id: tid, player_id: pid, minute: formatTime(time), period: currentPeriod, metadata: { label: labelText, is_own_goal: isSelectingOwnGoal } });
         setShowEventModal(false);
         setEventType(null);
@@ -227,23 +250,25 @@ export function SumulaFutebol7() {
 
     return (
         <div className="min-h-screen bg-gray-900 text-white font-sans">
-            {!isOnline && (
-                <div className="fixed top-0 left-0 w-full bg-red-600 text-white text-[10px] font-bold py-1 px-4 z-[9999] flex items-center justify-between shadow-lg">
-                    <div className="flex items-center gap-2"><Flag size={12} className="animate-pulse" /><span>SISTEMA OFFLINE</span></div>
-                    <span>{pendingCount} PENDENTES</span>
-                </div>
-            )}
-            {isOnline && pendingCount > 0 && (
-                <div className="fixed top-0 left-0 w-full bg-yellow-600 text-white text-[10px] font-bold py-1 px-4 z-[9999] flex items-center justify-between shadow-lg">
-                    <div className="flex items-center gap-2"><RefreshCw size={12} className="animate-spin" /><span>SINCRONIZANDO...</span></div>
-                    <span>{pendingCount} RESTANTES</span>
-                </div>
-            )}
+
 
             <div className="bg-gray-800 p-4 sticky top-0 z-10 shadow-lg border-b border-gray-700">
                 <div className="flex items-center justify-between max-w-5xl mx-auto">
                     <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-700 rounded-full"><ArrowLeft /></button>
-                    <div className="text-center">
+                    <div className="text-center relative">
+                        {(!isOnline || pendingCount > 0) && (
+                            <div className="absolute -top-6 left-1/2 -translate-x-1/2 flex items-center gap-2 whitespace-nowrap">
+                                {!isOnline ? (
+                                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-red-500/20 border border-red-500/50 rounded-full text-[8px] font-black text-red-500 animate-pulse uppercase">
+                                        <AlertOctagon size={10} /> Offline
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-yellow-500/20 border border-yellow-500/50 rounded-full text-[8px] font-black text-yellow-500 uppercase">
+                                        <RefreshCw size={10} className="animate-spin" /> {pendingCount} Pendente{pendingCount > 1 ? 's' : ''}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                         <div className="flex items-center gap-2 justify-center text-yellow-500 mb-1">
                             <Timer size={16} />
                             <span className="text-xs font-black uppercase tracking-widest">{currentPeriod}</span>
