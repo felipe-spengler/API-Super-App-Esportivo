@@ -49,8 +49,19 @@ class AdminMatchController extends Controller
     // Get single match details
     public function show($id)
     {
-        $match = GameMatch::with(['homeTeam.players', 'awayTeam.players', 'championship.sport', 'category'])
-            ->findOrFail($id);
+        $match = GameMatch::findOrFail($id);
+        $champId = $match->championship_id;
+
+        $match->load([
+            'homeTeam.players' => function ($q) use ($champId) {
+                $q->where('team_players.championship_id', $champId);
+            },
+            'awayTeam.players' => function ($q) use ($champId) {
+                $q->where('team_players.championship_id', $champId);
+            },
+            'championship.sport',
+            'category'
+        ]);
 
         return response()->json($match);
     }
@@ -434,18 +445,18 @@ class AdminMatchController extends Controller
             $isVolley = $match->championship && ($match->championship->sport->id == 4 || stripos($match->championship->sport->name, 'vôlei') !== false || stripos($match->championship->sport->name, 'volei') !== false);
 
             if ($isVolley) {
-                 // Try to find the set by period string (e.g. "1º Set")
-                 $setNumber = preg_replace('/[^0-9]/', '', $event->period);
-                 if ($setNumber) {
-                     $set = \App\Models\MatchSet::where('game_match_id', $match->id)->where('set_number', (string)$setNumber)->first();
-                     if ($set) {
-                         if ($event->team_id == $match->home_team_id) {
+                // Try to find the set by period string (e.g. "1º Set")
+                $setNumber = preg_replace('/[^0-9]/', '', $event->period);
+                if ($setNumber) {
+                    $set = \App\Models\MatchSet::where('game_match_id', $match->id)->where('set_number', (string) $setNumber)->first();
+                    if ($set) {
+                        if ($event->team_id == $match->home_team_id) {
                             $set->increment('home_score', $value);
-                         } else {
+                        } else {
                             $set->increment('away_score', $value);
-                         }
-                     }
-                 }
+                        }
+                    }
+                }
             } else {
                 // Check if it's an own goal - if so, invert the team that receives the point
                 $isOwnGoal = isset($event->metadata['own_goal']) && $event->metadata['own_goal'] === true;
@@ -504,9 +515,41 @@ class AdminMatchController extends Controller
     // Get match events
     public function events($id)
     {
-        $match = GameMatch::with(['events.team', 'events.player'])->findOrFail($id);
+        $match = GameMatch::findOrFail($id);
+        $auditTypes = ['system_error', 'user_action', 'user_action_blocked', 'timer_control', 'voice_input'];
 
-        return response()->json($match->events);
+        $events = \App\Models\MatchEvent::where('game_match_id', $id)
+            ->whereNotIn('event_type', $auditTypes)
+            ->with(['player'])
+            ->orderBy('id', 'desc')
+            ->get();
+
+        $formatted = $events->map(function ($e) use ($match) {
+            $player = $e->player;
+            $number = null;
+            if ($player) {
+                $number = DB::table('team_players')
+                    ->where('user_id', $player->id)
+                    ->where('team_id', $e->team_id ?? 0)
+                    ->where('championship_id', $match->championship_id)
+                    ->value('number');
+            }
+
+            return [
+                'id' => $e->id,
+                'team_id' => $e->team_id,
+                'player_id' => $e->player_id,
+                'event_type' => $e->event_type,
+                'game_time' => $e->game_time,
+                'period' => $e->period,
+                'metadata' => $e->metadata,
+                'player_name' => $player ? ($player->nickname ?: $player->name) : null,
+                'player_number' => $number,
+                'created_at' => $e->created_at,
+            ];
+        });
+
+        return response()->json($formatted);
     }
 
     // Delete match
@@ -562,18 +605,18 @@ class AdminMatchController extends Controller
             $isVolley = $match->championship && ($match->championship->sport->id == 4 || stripos($match->championship->sport->name, 'vôlei') !== false || stripos($match->championship->sport->name, 'volei') !== false);
 
             if ($isVolley) {
-                 // Try to find the set by period string (e.g. "1º Set")
-                 $setNumber = preg_replace('/[^0-9]/', '', $event->period);
-                 if ($setNumber) {
-                     $set = \App\Models\MatchSet::where('game_match_id', $match->id)->where('set_number', (string)$setNumber)->first();
-                     if ($set) {
-                         if ($event->team_id == $match->home_team_id) {
-                             $set->decrement('home_score', $value);
-                         } else {
-                             $set->decrement('away_score', $value);
-                         }
-                     }
-                 }
+                // Try to find the set by period string (e.g. "1º Set")
+                $setNumber = preg_replace('/[^0-9]/', '', $event->period);
+                if ($setNumber) {
+                    $set = \App\Models\MatchSet::where('game_match_id', $match->id)->where('set_number', (string) $setNumber)->first();
+                    if ($set) {
+                        if ($event->team_id == $match->home_team_id) {
+                            $set->decrement('home_score', $value);
+                        } else {
+                            $set->decrement('away_score', $value);
+                        }
+                    }
+                }
             } else {
                 // Check if it's an own goal - if so, invert the team that loses the point
                 $isOwnGoal = isset($event->metadata['own_goal']) && $event->metadata['own_goal'] === true;

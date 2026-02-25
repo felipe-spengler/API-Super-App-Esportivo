@@ -13,11 +13,18 @@ class AdminVolleyController extends Controller
 {
     public function getState($matchId)
     {
-        $match = GameMatch::with([
-            'homeTeam.players',
-            'awayTeam.players',
+        $match = GameMatch::findOrFail($matchId);
+        $champId = $match->championship_id;
+
+        $match->load([
+            'homeTeam.players' => function ($q) use ($champId) {
+                $q->where('team_players.championship_id', $champId);
+            },
+            'awayTeam.players' => function ($q) use ($champId) {
+                $q->where('team_players.championship_id', $champId);
+            },
             'championship.sport'
-        ])->find($matchId);
+        ]);
         if (!$match)
             return response()->json(['error' => 'Partida não encontrada'], 404);
 
@@ -35,7 +42,7 @@ class AdminVolleyController extends Controller
         $currentSetNum = $volleyState['current_set'];
         $dbRotations = DB::table('match_positions')
             ->where('game_match_id', $matchId)
-            // ->where('set_number', $currentSetNum) // Disable set filter if positions are global or handle sets
+            ->where('set_number', (string) $currentSetNum)
             ->get()
             ->groupBy('team_id');
 
@@ -190,7 +197,17 @@ class AdminVolleyController extends Controller
             ];
 
             $player = $playerId ? \App\Models\User::find($playerId) : null;
-            $playerLabel = $player ? " ({$player->nickname} #{$player->number})" : "";
+            $number = null;
+            if ($player) {
+                $number = DB::table('team_players')
+                    ->where('user_id', $playerId)
+                    ->where('team_id', $teamId)
+                    ->where('championship_id', $match->championship_id)
+                    ->value('number');
+            }
+
+            $playerName = $player ? ($player->nickname ?: $player->name) : "";
+            $playerLabel = $playerName ? " (" . $playerName . ($number ? " #{$number}" : "") . ")" : "";
 
             DB::table('match_events')->insert([
                 'game_match_id' => $match->id,
@@ -326,7 +343,7 @@ class AdminVolleyController extends Controller
         DB::table('match_positions')
             ->where('game_match_id', $matchId)
             ->where('team_id', $teamId)
-            // ->where('set_number', $setNum) // Depending on if table has set_number
+            ->where('set_number', (string) $setNum)
             ->delete();
 
         $data = [];

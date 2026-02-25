@@ -41,30 +41,49 @@ class MatchOperationController extends Controller
             'match_end' => ['label' => 'Fim de Jogo', 'icon' => '🛑'],
             'period_start' => ['label' => 'Início de Período', 'icon' => '▶️'],
             'period_end' => ['label' => 'Fim de Período', 'icon' => '⏸️'],
-            'ataque' => ['label' => 'Ataque', 'icon' => '💥'],
-            'bloqueio' => ['label' => 'Bloqueio', 'icon' => '🤚'],
-            'saque' => ['label' => 'Ace (Saque)', 'icon' => '🏐'],
-            'erro' => ['label' => 'Erro', 'icon' => '❌'],
-            'game' => ['label' => 'Game', 'icon' => '🎾'],
-            'set' => ['label' => 'Set', 'icon' => '🏆'],
-            'point' => ['label' => 'Ponto', 'icon' => '🎾'],
+            'point' => ['label' => 'Ponto', 'icon' => '🏐'],
+            'ace' => ['label' => 'Ponto de Saque (Ace)', 'icon' => '🏐'],
+            'block' => ['label' => 'Ponto de Bloqueio', 'icon' => '🤚'],
+            'ataque' => ['label' => 'Ponto de Ataque', 'icon' => '💥'],
+            'bloqueio' => ['label' => 'Ponto de Bloqueio', 'icon' => '🤚'],
+            'saque' => ['label' => 'Ponto de Saque (Ace)', 'icon' => '🏐'],
         ];
 
         if ($match->events->count() > 0) {
             $tableEvents = $match->events
+                ->sortByDesc('id') // O mais recente primeiro
                 ->filter(fn($e) => !in_array($e->event_type, $auditTypes))
-                ->map(function ($e) use ($eventLabels) {
+                ->map(function ($e) use ($eventLabels, $match) {
+                    $isVolley = ($match->championship->sport->slug ?? '') === 'volei';
                     $info = $eventLabels[$e->event_type] ?? ['label' => ucfirst(str_replace('_', ' ', $e->event_type)), 'icon' => '📋'];
+
+                    // Ajuste de ícone dinâmico baseado no esporte
+                    $icon = $info['icon'];
+                    if ($isVolley && in_array($e->event_type, ['point', 'ace', 'ataque', 'saque', 'block', 'bloqueio'])) {
+                        $icon = '🏐';
+                    }
+
+                    $player = $e->player;
+                    $number = null;
+                    if ($player) {
+                        $number = DB::table('team_players')
+                            ->where('user_id', $player->id)
+                            ->where('team_id', $e->team_id ?? 0)
+                            ->where('championship_id', $match->championship_id)
+                            ->value('number');
+                    }
+
                     return [
                         'id' => $e->id,
                         'type' => $e->event_type,
                         'label' => $info['label'],
-                        'icon' => $info['icon'],
+                        'icon' => $icon,
                         'team_id' => $e->team_id,
                         'player_id' => $e->player_id,
-                        'player_name' => $e->player?->name ?? '?',
+                        'player_name' => $player ? ($player->nickname ?: $player->name) : '?',
+                        'player_number' => $number,
                         'minute' => $e->game_time ?? '00:00',
-                        'period' => $e->period ?? '1º Tempo',
+                        'period' => $e->period ?? ($isVolley ? '1º Set' : '1º Tempo'),
                         'value' => $e->value,
                         'metadata' => $e->metadata,
                     ];

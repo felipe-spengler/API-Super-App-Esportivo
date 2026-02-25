@@ -143,6 +143,10 @@ export function SumulaVolei() {
         setRotations(data.current_rotations);
         setServingTeamId(data.state.serving_team_id);
 
+        // Se o set atual no banco está finalizado (tem end_time), 
+        // mas o volleyState local ainda não avançou, podemos detectar que estamos em "Intervalo"
+        // No vôlei, se o set atual atingiu 25 (ou 15 no 5º) e abriu 2, ele está tecnicamente encerrado.
+
         // Update players from match data
         if (data.match) {
             // Check both snake_case and camelCase for safety
@@ -398,12 +402,17 @@ export function SumulaVolei() {
             return;
         }
 
+        if (!servingTeamId) {
+            alert("Por favor, selecione qual equipe inicia sacando.");
+            return;
+        }
+
         try {
             await api.post(`/admin/matches/${id}/volley/set-start`, {
                 set_number: volleyState.current_set || 1,
                 home_rotation: rotations.home,
                 away_rotation: rotations.away,
-                serving_team_id: servingTeamId || matchData.home_team_id
+                serving_team_id: servingTeamId
             });
 
             if (matchData.status === 'scheduled') {
@@ -418,17 +427,44 @@ export function SumulaVolei() {
     };
 
     const handleNextSet = async () => {
-        if (!window.confirm("Deseja FINALIZAR este set e iniciar o próximo?")) return;
+        const currentSetNum = volleyState.current_set || 1;
+        const currentSet = sets.find((s: any) => s.set_number == currentSetNum);
 
-        // Automatic side swap rule for volleyball
-        setInvertedSides(prev => !prev);
+        // Se o set atual ainda não acabou (placar não atingiu limite), não permite avançar sem aviso
+        const limit = currentSetNum === 5 ? 15 : 25;
+        const isSetFinished = currentSet && ((currentSet.home_score >= limit && currentSet.home_score >= currentSet.away_score + 2) || (currentSet.away_score >= limit && currentSet.away_score >= currentSet.home_score + 2));
 
-        // Reset setup for next set
-        setSetupRotation({ home: Array(6).fill(null), away: Array(6).fill(null) });
+        if (!isSetFinished) {
+            if (!window.confirm("O set atual ainda não atingiu a pontuação final. Deseja realmente ENCERRAR este set e ir para o intervalo?")) return;
+        } else {
+            if (!window.confirm("Deseja FINALIZAR este set e iniciar o intervalo?")) return;
+        }
 
-        // Advance local set to open modal correctly
-        setVolleyState((prev: any) => ({ ...prev, current_set: (prev?.current_set || 1) + 1 }));
-        setSetupModalOpen(true);
+        try {
+            // Em vez de só abrir o modal, vamos registrar que o set acabou (se o servidor já não o fez)
+            // No vôlei, o servidor auto-finaliza o set no registerPoint se atingir o score.
+            // Aqui garantimos a troca de estado.
+
+            // Inverter lados preventivamente para o próximo
+            setInvertedSides(prev => !prev);
+
+            // Zerar rodízio local para o próximo set (obriga o mesário a colocar ou copiar)
+            setRotations({ home: Array(6).fill(null), away: Array(6).fill(null) });
+            setServingTeamId(null); // Resetar saque
+
+            // Registra auditoria
+            registerSystemEvent('user_action', `Set ${currentSetNum} finalizado pelo mesário. Entrando em intervalo.`);
+
+            // Em vez de abrir o modal direto, vamos mostrar um botão de "Iniciar Próximo Set"
+            // No momento, vou apenas forçar o usuário a ver o placar final antes.
+            alert(`Set ${currentSetNum} finalizado! O próximo set será o ${currentSetNum + 1}º. Lados invertidos e rodízio zerado.`);
+
+            // Avança o número do set NO ESTADO para o modal abrir com o número correto
+            setVolleyState((prev: any) => ({ ...prev, current_set: currentSetNum + 1 }));
+            setSetupModalOpen(true);
+        } catch (e) {
+            console.error(e);
+        }
     };
 
     const copyLastRotation = (team: 'home' | 'away') => {
@@ -464,11 +500,11 @@ export function SumulaVolei() {
                     {isServing && <span className="text-[9px] bg-yellow-500 text-black px-1.5 py-0.5 rounded-full font-black animate-pulse flex items-center gap-1">SAQUE <ArrowRightLeft size={10} /></span>}
                 </div>
                 <div className="grid grid-cols-2 gap-1.5">
-                    <button onClick={() => handleRotation(teamId, 'forward')} disabled={matchData.status !== 'live'} className="p-2 bg-gray-700 hover:bg-gray-600 rounded text-xs flex flex-col items-center justify-center gap-0.5 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed">
+                    <button onClick={() => handleRotation(teamId, 'backward')} disabled={matchData.status !== 'live'} className="p-2 bg-gray-700 hover:bg-gray-600 rounded text-xs flex flex-col items-center justify-center gap-0.5 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed">
                         <RefreshCw size={13} className="text-yellow-400" />
                         <span className="text-[10px] font-bold">Rodar +</span>
                     </button>
-                    <button onClick={() => handleRotation(teamId, 'backward')} disabled={matchData.status !== 'live'} className="p-2 bg-gray-700 hover:bg-gray-600 rounded text-xs flex flex-col items-center justify-center gap-0.5 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed">
+                    <button onClick={() => handleRotation(teamId, 'forward')} disabled={matchData.status !== 'live'} className="p-2 bg-gray-700 hover:bg-gray-600 rounded text-xs flex flex-col items-center justify-center gap-0.5 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed">
                         <RefreshCw size={13} className="text-gray-400 -scale-x-100" />
                         <span className="text-[10px] font-bold">Rodar -</span>
                     </button>
@@ -634,6 +670,19 @@ export function SumulaVolei() {
                         </div>
                     </div>
                 </div>
+
+                {/* BOTÃO DE CONTROLE DE SET - Logo abaixo do placar */}
+                <div className="mt-4 max-w-sm mx-auto">
+                    {matchData.status === 'live' && (
+                        <button
+                            onClick={handleNextSet}
+                            className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-900/40 rounded-xl flex items-center justify-center gap-2 font-black text-[11px] uppercase tracking-widest transition-all active:scale-95 border-b-4 border-indigo-800 active:border-b-0"
+                        >
+                            <Trophy size={14} />
+                            {matchData.home_score >= 3 || matchData.away_score >= 3 ? 'FINALIZAR PARTIDA' : 'ENCERRAR SET / PRÓXIMO'}
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* Ações + Quadra */}
@@ -710,14 +759,6 @@ export function SumulaVolei() {
                             <div className={`w-3 h-3 rounded-full ${servingTeamId === matchData.away_team_id ? 'bg-green-500 animate-pulse' : 'bg-gray-700'}`} />
                         </div>
                     </div>
-
-                    <button
-                        onClick={handleNextSet}
-                        disabled={matchData.status !== 'live'}
-                        className="w-full py-2 bg-indigo-600/20 hover:bg-indigo-600/40 border border-indigo-500/30 rounded-lg text-[10px] font-black text-indigo-300 uppercase tracking-widest transition-all disabled:opacity-50"
-                    >
-                        {matchData.home_score >= 3 || matchData.away_score >= 3 ? 'FINALIZAR PARTIDA' : 'FECHAR SET / PROXIMO'}
-                    </button>
                 </div>
             </div>
 
@@ -730,8 +771,7 @@ export function SumulaVolei() {
                     {events.length === 0 ? (
                         <div className="text-center py-4 bg-gray-800/20 rounded-xl border border-dashed border-gray-700 text-gray-600 text-[10px] font-bold uppercase">Nenhum evento registrado</div>
                     ) : (
-                        events.filter(ev => ['point', 'ace', 'block', 'goal', 'erro', 'yellow_card', 'red_card', 'timeout', 'substitution'].includes(ev.event_type))
-                            .reverse()
+                        events.filter((ev: any) => ['point', 'ace', 'block', 'goal', 'erro', 'yellow_card', 'red_card', 'timeout', 'substitution'].includes(ev.event_type))
                             .map((ev: any) => {
                                 const isHome = ev.team_id == matchData.home_team_id;
                                 const teamLabel = isHome ? matchData.home_team?.code : matchData.away_team?.code;
@@ -754,10 +794,10 @@ export function SumulaVolei() {
                                     return map[type] || type;
                                 };
 
-                                // Get player info from event or metadata
-                                const playerInfo = ev.player ?
-                                    `${ev.player.nickname || ev.player.name} (#${ev.player.number})` :
-                                    (ev.metadata?.player_name ? ev.metadata.player_name : '');
+                                // Get player info from event mapping or object
+                                const pName = ev.player_name || (ev.player ? (ev.player.nickname || ev.player.name) : (ev.metadata?.player_name || ''));
+                                const pNum = ev.player_number || ev.player?.number;
+                                const playerInfo = pName ? `${pName}${pNum ? ` (#${pNum})` : ''}` : '';
 
                                 return (
                                     <div key={ev.id} className="bg-gray-800/60 border border-gray-700/50 rounded-lg p-2 flex items-center justify-between group transition-all hover:bg-gray-700/60">
@@ -769,9 +809,9 @@ export function SumulaVolei() {
                                                     <span className="text-[8px] text-gray-500 font-mono">{ev.period}</span>
                                                 </div>
                                                 <div className="text-[11px] font-bold flex items-center gap-1">
-                                                    {isPoint && <span className="text-yellow-400">+1</span>}
-                                                    <span className="text-gray-300">
-                                                        {ev.metadata?.label || `${getFriendlyLabel(ev.event_type)}: ${playerInfo || 'Equipe'}`}
+                                                    {isPoint && <span className="text-emerald-400 font-bold tracking-tighter w-4">+1</span>}
+                                                    <span className="text-gray-200">
+                                                        {ev.metadata?.label || `${getFriendlyLabel(ev.event_type)}${playerInfo ? `: ${playerInfo}` : ''}`}
                                                     </span>
                                                 </div>
                                             </div>
@@ -949,7 +989,7 @@ export function SumulaVolei() {
                 <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
                     <div className="bg-gray-800 w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl border border-gray-700">
                         <div className="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-800/80">
-                            <h2 className="text-lg font-black text-yellow-400">&#9654; Iniciar {volleyState.current_set}º Set</h2>
+                            <h2 className="text-lg font-black text-yellow-400">▶ Iniciar {volleyState.current_set}º Set</h2>
                             <button onClick={() => setSetupModalOpen(false)} className="bg-gray-700 p-2 rounded-lg"><X size={18} /></button>
                         </div>
                         <div className="p-5 space-y-5">
@@ -961,10 +1001,24 @@ export function SumulaVolei() {
                                     const filled = (rot || []).filter((x: any) => x).length;
                                     const full = filled === 6;
                                     return (
-                                        <div key={label} className={`p-3 rounded-xl border text-center ${full ? (color === 'blue' ? 'border-blue-500 bg-blue-900/20' : 'border-green-500 bg-green-900/20') : 'border-red-700 bg-red-900/10'}`}>
-                                            <div className={`text-[10px] font-black uppercase mb-1 ${color === 'blue' ? 'text-blue-400' : 'text-green-400'}`}>{label}</div>
-                                            <div className="text-2xl font-black">{filled}/6</div>
-                                            <div className={`text-[9px] font-bold mt-0.5 ${full ? 'text-gray-400' : 'text-red-400'}`}>{full ? '&#10003; Pronto' : 'Preencha na quadra'}</div>
+                                        <div key={label} className={`p-3 rounded-xl border text-center overflow-hidden flex flex-col justify-between ${full ? (color === 'blue' ? 'border-blue-500 bg-blue-900/20' : 'border-green-500 bg-green-900/20') : 'border-red-700 bg-red-900/10'}`}>
+                                            <div>
+                                                <div className={`text-[10px] font-black uppercase mb-1 truncate px-1 ${color === 'blue' ? 'text-blue-400' : 'text-green-400'}`} title={label}>{label}</div>
+                                                <div className="text-2xl font-black">{filled}/6</div>
+                                                <div className={`text-[9px] font-bold mt-0.5 ${full ? 'text-gray-400' : 'text-red-400'}`}>{full ? '✓ Pronto' : 'Preencha na quadra'}</div>
+                                            </div>
+
+                                            {/* Botão de Atalho para copiar último rodízio */}
+                                            {volleyState.current_set > 1 && !full && (
+                                                <button
+                                                    onClick={() => {
+                                                        alert("Toque nas células da quadra (ao fechar este modal) para preencher os jogadores.");
+                                                    }}
+                                                    className="mt-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-[8px] font-bold text-gray-300 uppercase"
+                                                >
+                                                    Rodízio Manual
+                                                </button>
+                                            )}
                                         </div>
                                     );
                                 })}
@@ -972,16 +1026,16 @@ export function SumulaVolei() {
                             <div className="bg-indigo-900/20 border border-indigo-500/30 p-4 rounded-2xl">
                                 <h3 className="text-center text-xs font-black text-indigo-300 uppercase mb-3 tracking-widest">Quem inicia sacando?</h3>
                                 <div className="flex gap-3">
-                                    <button onClick={() => setServingTeamId(matchData.home_team_id)} className={`flex-1 py-3 rounded-xl border-2 font-black text-sm transition-all ${servingTeamId === matchData.home_team_id ? 'bg-blue-600 border-white text-white shadow-lg scale-105' : 'bg-gray-900 border-gray-700 text-gray-500 hover:border-blue-700'}`}>
-                                        {matchData.home_team?.code || matchData.home_team?.name}
+                                    <button onClick={() => setServingTeamId(matchData.home_team_id)} className={`flex-1 py-3 px-1 rounded-xl border-2 font-black text-xs transition-all overflow-hidden ${servingTeamId === matchData.home_team_id ? 'bg-blue-600 border-white text-white shadow-lg scale-105' : 'bg-gray-900 border-gray-700 text-gray-500 hover:border-blue-700'}`}>
+                                        <div className="truncate">{matchData.home_team?.code || matchData.home_team?.name}</div>
                                     </button>
-                                    <button onClick={() => setServingTeamId(matchData.away_team_id)} className={`flex-1 py-3 rounded-xl border-2 font-black text-sm transition-all ${servingTeamId === matchData.away_team_id ? 'bg-green-600 border-white text-white shadow-lg scale-105' : 'bg-gray-900 border-gray-700 text-gray-500 hover:border-green-700'}`}>
-                                        {matchData.away_team?.code || matchData.away_team?.name}
+                                    <button onClick={() => setServingTeamId(matchData.away_team_id)} className={`flex-1 py-3 px-1 rounded-xl border-2 font-black text-xs transition-all overflow-hidden ${servingTeamId === matchData.away_team_id ? 'bg-green-600 border-white text-white shadow-lg scale-105' : 'bg-gray-900 border-gray-700 text-gray-500 hover:border-green-700'}`}>
+                                        <div className="truncate">{matchData.away_team?.code || matchData.away_team?.name}</div>
                                     </button>
                                 </div>
                             </div>
                             <button onClick={confirmSetup} className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-lg rounded-xl transition-all active:scale-95 shadow-lg">
-                                &#10003; CONFIRMAR E INICIAR
+                                ✓ CONFIRMAR E INICIAR
                             </button>
                             <p className="text-center text-[10px] text-gray-500">Posições vazias? Feche este modal e toque nas células da quadra para preencher.</p>
                         </div>
