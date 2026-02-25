@@ -129,10 +129,12 @@ export function Matches() {
         if (!selectedMatch) return;
         try {
             setLoadingRosters(true);
-            // Busca jogadores dos dois times diretamente (mesmo que a súmula)
+            const champId = selectedMatch.championship_id;
+            // Passa championship_id para que o backend filtre pelo pivot correto
+            const params = champId ? { params: { championship_id: champId } } : {};
             const [homeRes, awayRes] = await Promise.all([
-                api.get(`/admin/teams/${selectedMatch.home_team_id}`),
-                api.get(`/admin/teams/${selectedMatch.away_team_id}`)
+                api.get(`/admin/teams/${selectedMatch.home_team_id}`, params),
+                api.get(`/admin/teams/${selectedMatch.away_team_id}`, params)
             ]);
 
             const mapPlayers = (team: any) =>

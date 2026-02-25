@@ -58,13 +58,16 @@ export function AdminMatchManager() {
     const [loadingGroups, setLoadingGroups] = useState(false);
     const [isAuditOpen, setIsAuditOpen] = useState(false);
 
+    // IMPORTANTE: selectedMatch intencionalmente fora das deps para evitar loop:
+    // fetchFullDetails → setSelectedMatch → useEffect → fetchFullDetails → ...
     useEffect(() => {
-        if ((isSummaryOpen || isAuditOpen || activeTab === 'audit') && selectedMatch) {
+        if (!selectedMatch) return;
+        if (isSummaryOpen || isAuditOpen || activeTab === 'audit') {
             fetchFullDetails(selectedMatch.id);
-            // @ts-ignore
             setSelectedMvpId(selectedMatch.mvp_player_id || '');
         }
-    }, [isSummaryOpen, isAuditOpen, activeTab, selectedMatch]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isSummaryOpen, isAuditOpen, activeTab]); // selectedMatch excluído intencionalmente
 
     const fetchFullDetails = async (matchId: number) => {
         try {
@@ -72,20 +75,8 @@ export function AdminMatchManager() {
             const response = await api.get(`/admin/matches/${matchId}/full-details`);
             const data = response.data;
 
-            // Atualiza elencos
+            // Atualiza apenas elencos — NÃO chama setSelectedMatch para não criar loop
             setRosters(data.rosters || { home: [], away: [] });
-
-            // Atualiza o selectedMatch com os eventos que vieram no full-details
-            if (data.match) {
-                setSelectedMatch(prev => {
-                    if (!prev || prev.id !== matchId) return prev;
-                    return {
-                        ...prev,
-                        ...data.match,
-                        events: data.match.events || []
-                    };
-                });
-            }
         } catch (error) {
             console.error("Erro ao carregar detalhes completos", error);
         } finally {
