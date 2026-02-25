@@ -26,9 +26,12 @@ return [
         'http://localhost',                         // Android WebView (Capacitor)
         'capacitor://localhost',                    // iOS Capacitor
         'ionic://localhost',                        // Ionic compat
+        'http://gg8sko0ook088www8s0cswgo.72.61.37.70.sslip.io', // Novo frontend (Coolify temp)
     ],
 
-    'allowed_origins_patterns' => [],
+    'allowed_origins_patterns' => [
+        '#^http://.*\.72\.61\.37\.70\.sslip\.io$#', // Aceita qualquer subdomínio temporário do Coolify nesta VPS
+    ],
 
     'allowed_headers' => ['*'],
 
