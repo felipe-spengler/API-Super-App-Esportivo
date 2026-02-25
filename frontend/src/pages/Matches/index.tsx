@@ -39,22 +39,22 @@ export function Matches() {
     const [tempScore, setTempScore] = useState({ home: 0, away: 0, home_penalty: 0, away_penalty: 0 });
     const [isSavingScore, setIsSavingScore] = useState(false);
 
+    // Carrega dados apenas quando o modal de resumo ABRE (isSummaryOpen torna-se true)
     useEffect(() => {
-        if (isSummaryOpen && selectedMatch) {
-            fetchRosters(selectedMatch.id);
-            fetchEvents(selectedMatch.id);
-            // @ts-ignore
-            setSelectedMvpId(selectedMatch.mvp_player_id || '');
-            setTempScore({
-                home: selectedMatch.home_score || 0,
-                away: selectedMatch.away_score || 0,
-                home_penalty: selectedMatch.home_penalty_score || 0,
-                away_penalty: selectedMatch.away_penalty_score || 0
-            });
-            setIsEditingScore(false);
-            setIsAddingEvent(false);
-        }
-    }, [isSummaryOpen, selectedMatch]);
+        if (!isSummaryOpen || !selectedMatch) return;
+        fetchRosters(selectedMatch.id);
+        fetchEvents(selectedMatch.id);
+        setSelectedMvpId(selectedMatch.mvp_player_id || '');
+        setTempScore({
+            home: selectedMatch.home_score || 0,
+            away: selectedMatch.away_score || 0,
+            home_penalty: selectedMatch.home_penalty_score || 0,
+            away_penalty: selectedMatch.away_penalty_score || 0
+        });
+        setIsEditingScore(false);
+        setIsAddingEvent(false);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isSummaryOpen]); // INTENCIONALMENTE só isSummaryOpen — selectedMatch é fixo ao abrir
 
     const fetchEvents = async (matchId: number) => {
         try {
@@ -126,12 +126,31 @@ export function Matches() {
     };
 
     const fetchRosters = async (matchId: number) => {
+        if (!selectedMatch) return;
         try {
             setLoadingRosters(true);
-            const response = await api.get(`/admin/matches/${matchId}/full-details`);
-            setRosters(response.data.rosters || { home: [], away: [] });
+            // Busca jogadores dos dois times diretamente (mesmo que a súmula)
+            const [homeRes, awayRes] = await Promise.all([
+                api.get(`/admin/teams/${selectedMatch.home_team_id}`),
+                api.get(`/admin/teams/${selectedMatch.away_team_id}`)
+            ]);
+
+            const mapPlayers = (team: any) =>
+                (team?.players ?? []).map((p: any) => ({
+                    id: p.id,
+                    name: p.name,
+                    nickname: p.nickname,
+                    number: p.pivot?.number ?? p.number ?? '',
+                    position: p.pivot?.position ?? p.position ?? ''
+                }));
+
+            setRosters({
+                home: mapPlayers(homeRes.data),
+                away: mapPlayers(awayRes.data)
+            });
         } catch (error) {
             console.error("Erro ao carregar elencos", error);
+            setRosters({ home: [], away: [] });
         } finally {
             setLoadingRosters(false);
         }

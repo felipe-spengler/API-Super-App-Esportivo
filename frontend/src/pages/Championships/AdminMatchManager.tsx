@@ -888,19 +888,17 @@ export function AdminMatchManager() {
                                                                     <span className="text-[10px] font-bold uppercase md:hidden">{match.status === 'finished' ? 'Resumo' : 'Súmula'}</span>
                                                                 </button>
 
-                                                                {championship?.sport?.name?.toLowerCase().includes('basquete') && (
-                                                                    <button
-                                                                        onClick={() => {
-                                                                            setSelectedMatch(match);
-                                                                            setIsAuditOpen(true);
-                                                                        }}
-                                                                        className="flex-1 md:flex-none flex items-center justify-center gap-1 px-3 py-2 text-blue-600 bg-blue-50 border border-blue-100 rounded-lg transition-all hover:bg-blue-100"
-                                                                        title="Auditoria de Voz e Logs"
-                                                                    >
-                                                                        <ShieldCheck className="w-4 h-4" />
-                                                                        <span className="text-[10px] font-bold uppercase md:hidden">Auditar</span>
-                                                                    </button>
-                                                                )}
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setSelectedMatch(match);
+                                                                        setIsAuditOpen(true);
+                                                                    }}
+                                                                    className="flex-1 md:flex-none flex items-center justify-center gap-1 px-3 py-2 text-blue-600 bg-blue-50 border border-blue-100 rounded-lg transition-all hover:bg-blue-100"
+                                                                    title="Auditoria de Voz e Logs"
+                                                                >
+                                                                    <ShieldCheck className="w-4 h-4" />
+                                                                    <span className="text-[10px] font-bold uppercase md:hidden">Auditar</span>
+                                                                </button>
 
 
 
@@ -1293,11 +1291,11 @@ export function AdminMatchManager() {
 
                                             return (
                                                 <div key={event.id} className={`p-4 rounded-xl border flex flex-col gap-2 ${isError ? 'bg-red-50 border-red-200' :
-                                                        isBlocked ? 'bg-orange-50 border-orange-200' :
-                                                            isUserAction ? 'bg-green-50 border-green-200' :
-                                                                isVoice ? 'bg-white border-gray-100' :
-                                                                    isTimer ? 'bg-indigo-50 border-indigo-100' :
-                                                                        'bg-white border-gray-200 shadow-sm'
+                                                    isBlocked ? 'bg-orange-50 border-orange-200' :
+                                                        isUserAction ? 'bg-green-50 border-green-200' :
+                                                            isVoice ? 'bg-white border-gray-100' :
+                                                                isTimer ? 'bg-indigo-50 border-indigo-100' :
+                                                                    'bg-white border-gray-200 shadow-sm'
                                                     }`}>
                                                     <div className="flex items-center justify-between">
                                                         <div className="flex items-center gap-3">
@@ -1313,11 +1311,11 @@ export function AdminMatchManager() {
 
                                                     <div className="flex items-center gap-2 flex-wrap">
                                                         <h4 className={`text-sm font-black uppercase ${isError ? 'text-red-600' :
-                                                                isBlocked ? 'text-orange-600' :
-                                                                    isUserAction ? 'text-green-700' :
-                                                                        isVoice ? 'text-gray-400' :
-                                                                            isTimer ? 'text-indigo-600' :
-                                                                                'text-gray-900'
+                                                            isBlocked ? 'text-orange-600' :
+                                                                isUserAction ? 'text-green-700' :
+                                                                    isVoice ? 'text-gray-400' :
+                                                                        isTimer ? 'text-indigo-600' :
+                                                                            'text-gray-900'
                                                             }`}>
                                                             {isRosterLog ? '📋 Registro do Sistema' :
                                                                 isError ? '🔴 Erro de Sistema' :
@@ -1337,9 +1335,9 @@ export function AdminMatchManager() {
                                                     {/* Label / Descrição do evento */}
                                                     {event.metadata?.label && (
                                                         <div className={`text-xs font-medium p-2 rounded-lg border ${isError ? 'bg-red-100/50 border-red-200 text-red-800' :
-                                                                isBlocked ? 'bg-orange-100/50 border-orange-200 text-orange-800' :
-                                                                    isUserAction ? 'bg-green-100/50 border-green-200 text-green-800' :
-                                                                        'bg-gray-100/50 border-gray-200/50 text-gray-600'
+                                                            isBlocked ? 'bg-orange-100/50 border-orange-200 text-orange-800' :
+                                                                isUserAction ? 'bg-green-100/50 border-green-200 text-green-800' :
+                                                                    'bg-gray-100/50 border-gray-200/50 text-gray-600'
                                                             }`}>
                                                             {event.metadata.label}
                                                         </div>
