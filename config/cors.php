@@ -19,7 +19,14 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['*', 'http://localhost:5173'],
+    // Origens explícitas para suportar: web (produção), dev local, app mobile (Capacitor iOS/Android)
+    'allowed_origins' => [
+        'https://esportivo.techinteligente.site',  // web produção
+        'http://localhost:5173',                    // dev local Vite
+        'http://localhost',                         // Android WebView (Capacitor)
+        'capacitor://localhost',                    // iOS Capacitor
+        'ionic://localhost',                        // Ionic compat
+    ],
 
     'allowed_origins_patterns' => [],
 
@@ -29,6 +36,7 @@ return [
 
     'max_age' => 0,
 
-    'supports_credentials' => true,
+    // false: usa Bearer token no header (não cookie), compatível com * e com mobile
+    'supports_credentials' => false,
 
 ];
