@@ -25,7 +25,7 @@ services:
   reverb:
     image: app-esportivo-api
     restart: always
-    command: sh -c "sleep 10 && php artisan reverb:start --host=0.0.0.0 --port=9090"
+    command: sh -c "sleep 10 && php artisan reverb:start --host=0.0.0.0 --port=9090 2>&1 | tee /var/www/storage/logs/reverb.log"
     environment:
       APP_ENV: production
       APP_DEBUG: 'false'
@@ -47,8 +47,15 @@ services:
     depends_on:
       - db
       - api
+    volumes:
+      - storage_volume:/var/www/storage  # mesmo volume do api → logs acessíveis em ambos
     expose:
       - "9090"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"   # máximo 10MB por arquivo de log do Docker
+        max-file: "5"     # mantém os últimos 5 arquivos rotacionados
     labels:
       # Labels do Traefik no padrão do Coolify
       - "traefik.enable=true"
