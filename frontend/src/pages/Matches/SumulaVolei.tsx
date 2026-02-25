@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, RefreshCw, PlusCircle, History, Trophy, X, Repeat, ArrowRightLeft, UserPlus, AlertOctagon, XCircle } from 'lucide-react';
+import { ArrowLeft, RefreshCw, PlusCircle, History, Trophy, X, Repeat, ArrowRightLeft, UserPlus, AlertOctagon, XCircle, Trash2 } from 'lucide-react';
 import api from '../../services/api';
 
 export function SumulaVolei() {
@@ -13,6 +13,7 @@ export function SumulaVolei() {
     const [rotations, setRotations] = useState<any>({ home: Array(6).fill(null), away: Array(6).fill(null) });
     const [sets, setSets] = useState<any[]>([]);
     const [teamPlayers, setTeamPlayers] = useState<any>({ home: [], away: [] });
+    const [events, setEvents] = useState<any[]>([]);
 
     // UI Modal States
     const [rotationViewOpen, setRotationViewOpen] = useState(false);
@@ -53,7 +54,10 @@ export function SumulaVolei() {
         try {
             if (!silent) setLoading(true);
 
-            // Get All Volley State (Now includes players and match data)
+            // Fetch both state and events
+            await fetchState(true);
+
+            // But we still need the logic from before for setup modal
             const response = await api.get(`/admin/matches/${id}/volley-state`);
             processStateResponse(response.data);
 
@@ -75,10 +79,17 @@ export function SumulaVolei() {
 
     const fetchState = async (silent = false) => {
         try {
-            const response = await api.get(`/admin/matches/${id}/volley-state`);
-            processStateResponse(response.data);
-        } catch (e) {
+            const [stateRes, eventsRes] = await Promise.all([
+                api.get(`/admin/matches/${id}/volley-state`),
+                api.get(`/admin/matches/${id}/events`)
+            ]);
+            processStateResponse(stateRes.data);
+            setEvents(eventsRes.data || []);
+        } catch (e: any) {
             console.error(e);
+            if (!silent) {
+                registerSystemEvent('sync_error', `Falha ao sincronizar dados: ${e?.message || 'Erro de rede'}`);
+            }
         }
     };
 
@@ -135,13 +146,17 @@ export function SumulaVolei() {
     };
 
     const handleRotation = async (teamId: number, direction: 'forward' | 'backward') => {
+        const teamSide = teamId === matchData?.home_team_id ? 'Mandante' : 'Visitante';
+        const dirLabel = direction === 'forward' ? 'Avançar (+)' : 'Voltar (-)';
         try {
             await api.post(`/admin/matches/${id}/volley/rotation`, {
                 team_id: teamId,
                 direction: direction
             });
+            registerSystemEvent('user_action', `Rodizio ${dirLabel} para ${teamSide}`);
             fetchState();
-        } catch (e) {
+        } catch (e: any) {
+            registerSystemEvent('system_error', `Erro ao rotacionar ${teamSide}: ${e?.message}`);
             alert('Erro ao rotacionar');
         }
     };
@@ -157,7 +172,7 @@ export function SumulaVolei() {
             registerSystemEvent('user_action', `Cancelou registro de erro do time ${committingTeamSide}`);
             return;
         }
-        registerSystemEvent('user_action', `Registrou erro do time ${committingTeamSide} �?" ponto para ${receivingTeamName}`);
+        registerSystemEvent('user_action', `Registrou erro do time ${committingTeamSide} -> ponto para ${receivingTeamName}`);
 
         try {
             await api.post(`/admin/matches/${id}/volley/point`, {
@@ -174,8 +189,23 @@ export function SumulaVolei() {
 
     const handleTimeout = async (teamId: number) => {
         const teamSide = teamId === matchData?.home_team_id ? 'Mandante' : 'Visitante';
+        const currentSetLabel = `${volleyState.current_set}º Set`;
+
+        // Contar quantos tempos já foram usados por este time no set atual
+        const usedTimeouts = events.filter(ev =>
+            ev.event_type === 'timeout' &&
+            ev.team_id === teamId &&
+            ev.period === currentSetLabel
+        ).length;
+
+        if (usedTimeouts >= 2) {
+            alert("Limite de tempos atingido para este set (Máximo 2).");
+            registerSystemEvent('user_action_blocked', `Tentativa de pedido de tempo bloqueada: limite excedido para ${teamSide}`);
+            return;
+        }
+
         try {
-            if (!window.confirm("Registrar Pedido de Tempo?")) {
+            if (!window.confirm(`Registrar Pedido de Tempo? (Uso: ${usedTimeouts + 1}/2)`)) {
                 registerSystemEvent('user_action', `Cancelou pedido de tempo do time ${teamSide}`);
                 return;
             }
@@ -183,7 +213,7 @@ export function SumulaVolei() {
             await api.post(`/admin/matches/${id}/events`, {
                 event_type: 'timeout',
                 team_id: teamId,
-                minute: 0,
+                minute: "00:00",
                 period: `${volleyState.current_set}º Set`,
                 metadata: {
                     label: 'Tempo Técnico solicitado!',
@@ -201,10 +231,13 @@ export function SumulaVolei() {
     const registerSystemEvent = async (type: string, label: string) => {
         if (!matchData) return;
         try {
+            // Ensure we have a valid team_id or null
+            const teamId = matchData.home_team_id || matchData.away_team_id || null;
+
             await api.post(`/admin/matches/${id}/events`, {
                 event_type: type,
-                team_id: matchData.home_team_id || matchData.away_team_id,
-                minute: 0,
+                team_id: teamId,
+                minute: "00:00",
                 period: volleyState ? `${volleyState.current_set}º Set` : 'Pré-jogo',
                 metadata: {
                     label,
@@ -216,24 +249,31 @@ export function SumulaVolei() {
                 setMatchData((prev: any) => ({ ...prev, status: 'live' }));
             }
         } catch (e: any) {
-            console.error("Erro ao registrar evento de sistema", e);
+            console.error(`Erro ao registrar evento '${type}':`, e.response?.data || e.message);
+
+            // If it's a validation error (422), the server is telling us what's wrong
+            if (e.response?.status === 422) {
+                console.warn("Validação falhou:", e.response.data.errors);
+            }
+
             if (type !== 'system_error') {
                 try {
                     await api.post(`/admin/matches/${id}/events`, {
                         event_type: 'system_error',
                         team_id: null,
-                        minute: 0,
+                        minute: "00:00",
                         period: volleyState ? `${volleyState.current_set}º Set` : 'Pré-jogo',
                         metadata: {
-                            label: `Erro ao registrar '${type}': ${e?.message || 'Falha de rede'}`,
+                            label: `Erro ao registrar '${type}': ${JSON.stringify(e.response?.data || e.message)}`,
                             origin: 'registerSystemEvent',
                             triggered_type: type
                         }
                     });
                 } catch (_) { }
             }
+
             if (type === 'match_start') {
-                alert("Erro de conexão ao iniciar partida no servidor.");
+                alert("Partida configurada no servidor, mas houve um erro ao registrar o evento de início. Você pode continuar a súmula normalmente.");
             }
         }
     };
@@ -252,7 +292,7 @@ export function SumulaVolei() {
                 event_type: cardType === 'yellow' ? 'yellow_card' : 'red_card',
                 team_id: teamId,
                 player_id: playerId,
-                minute: 0,
+                minute: "00:00",
                 period: `${volleyState.current_set}º Set`,
                 metadata: {
                     system_period: `${volleyState.current_set}º Set`
@@ -272,17 +312,32 @@ export function SumulaVolei() {
 
     const confirmSubstitution = async (playerInId: number) => {
         if (!subData) return;
+        const teamSide = subData.teamId === matchData?.home_team_id ? 'Mandante' : 'Visitante';
         try {
             await api.post(`/admin/matches/${id}/volley/substitution`, {
                 team_id: subData.teamId,
                 position: subData.position,
                 player_in: playerInId
             });
+            registerSystemEvent('user_action', `Substituição realizada no time ${teamSide} na P${subData.position + 1}`);
             setSubModalOpen(false);
             setSubData(null);
             fetchState();
-        } catch (e) {
+        } catch (e: any) {
+            registerSystemEvent('system_error', `Erro na substituição (${teamSide}): ${e?.message}`);
             alert('Erro na substituição');
+        }
+    };
+
+    const handleDeleteEvent = async (eventId: number) => {
+        if (!window.confirm("Deseja cancelar este lançamento? (O placar será ajustado automaticamente se for um ponto)")) return;
+        try {
+            await api.delete(`/admin/matches/${id}/events/${eventId}`);
+            registerSystemEvent('user_action', `Excluiu/Cancelou evento ID: ${eventId}`);
+            fetchState();
+        } catch (e: any) {
+            registerSystemEvent('system_error', `Erro ao excluir evento: ${e?.message}`);
+            alert("Erro ao excluir evento");
         }
     };
 
@@ -362,20 +417,36 @@ export function SumulaVolei() {
             <div className={`rounded-xl border ${border} bg-gray-800/60 p-2`}>
                 <div className="flex items-center justify-between mb-2 px-1">
                     <span className={`text-[10px] font-black uppercase tracking-widest truncate ${isHome ? 'text-blue-400' : 'text-green-400'}`}>{teamName}</span>
-                    {isServing && <span className="text-[9px] bg-yellow-500 text-black px-1.5 py-0.5 rounded-full font-black animate-pulse">SAQUE �-�</span>}
+                    {isServing && <span className="text-[9px] bg-yellow-500 text-black px-1.5 py-0.5 rounded-full font-black animate-pulse flex items-center gap-1">SAQUE <ArrowRightLeft size={10} /></span>}
                 </div>
                 <div className="grid grid-cols-2 gap-1.5">
-                    <button onClick={() => handleRotation(teamId, 'forward')} disabled={matchData.status !== 'live'} className="p-2 bg-gray-700 hover:bg-gray-600 rounded text-xs flex items-center justify-center gap-1 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed">
-                        <RefreshCw size={13} /> Rodar
+                    <button onClick={() => handleRotation(teamId, 'forward')} disabled={matchData.status !== 'live'} className="p-2 bg-gray-700 hover:bg-gray-600 rounded text-xs flex flex-col items-center justify-center gap-0.5 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed">
+                        <RefreshCw size={13} className="text-yellow-400" />
+                        <span className="text-[10px] font-bold">Rodar +</span>
                     </button>
-                    <button onClick={() => handleTimeout(teamId)} disabled={matchData.status !== 'live'} className="p-2 bg-gray-700 hover:bg-gray-600 rounded text-xs flex items-center justify-center gap-1 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed">
-                        <History size={13} /> Tempo
+                    <button onClick={() => handleRotation(teamId, 'backward')} disabled={matchData.status !== 'live'} className="p-2 bg-gray-700 hover:bg-gray-600 rounded text-xs flex flex-col items-center justify-center gap-0.5 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed">
+                        <RefreshCw size={13} className="text-gray-400 -scale-x-100" />
+                        <span className="text-[10px] font-bold">Rodar -</span>
                     </button>
-                    <button onClick={() => openCardModal(teamId)} disabled={matchData.status !== 'live'} className="p-2 bg-gray-700 hover:bg-gray-600 rounded text-xs flex items-center justify-center gap-1 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed">
-                        <AlertOctagon size={13} /> Cartão
+                    <button onClick={() => handleTimeout(teamId)} disabled={matchData.status !== 'live'} className="p-2 bg-gray-700 hover:bg-gray-600 rounded text-xs flex flex-col items-center justify-center gap-0.5 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed text-blue-300 relative">
+                        <History size={13} />
+                        <span className="text-[10px] font-bold">Tempo</span>
+                        <div className="flex gap-1 mt-0.5">
+                            {[1, 2].map(i => {
+                                const usedTimeouts = events.filter(ev =>
+                                    ev.event_type === 'timeout' &&
+                                    ev.team_id === teamId &&
+                                    ev.period === `${volleyState.current_set}º Set`
+                                ).length;
+                                return (
+                                    <div key={i} className={`w-1.5 h-1.5 rounded-full ${i <= usedTimeouts ? 'bg-red-500 shadow-[0_0_5px_rgba(239,68,68,0.8)]' : 'bg-gray-500'}`} />
+                                );
+                            })}
+                        </div>
                     </button>
-                    <button onClick={() => handleSelfError(teamId)} disabled={matchData.status !== 'live'} className="p-2 bg-red-900/40 hover:bg-red-900/60 rounded text-xs flex items-center justify-center gap-1 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed text-red-200">
-                        <XCircle size={13} /> Erro
+                    <button onClick={() => openCardModal(teamId)} disabled={matchData.status !== 'live'} className="p-2 bg-gray-700 hover:bg-gray-600 rounded text-xs flex flex-col items-center justify-center gap-0.5 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed text-orange-400">
+                        <AlertOctagon size={13} />
+                        <span className="text-[10px] font-bold">Cartão</span>
                     </button>
                 </div>
             </div>
@@ -414,9 +485,11 @@ export function SumulaVolei() {
             const { num, name } = getLabel(teamId, pid);
             return (
                 <div onClick={() => openSubModal(teamId, idx, pid)} className="rounded-lg p-1.5 text-center cursor-pointer hover:bg-white/10 active:scale-95 transition-all border border-white/10 bg-white/5 flex flex-col items-center justify-center min-h-[52px] min-w-[56px] max-w-[68px]">
-                    <span className="text-[8px] text-gray-500 font-mono">{posLabel[idx]}</span>
-                    {num && <span className="text-[9px] font-black text-yellow-400">{num}</span>}
-                    <span className="text-[10px] font-bold text-white leading-tight">{name}</span>
+                    <span className="text-[8px] text-gray-500 font-mono mb-0.5">{posLabel[idx]}</span>
+                    <div className="flex flex-col items-center leading-none">
+                        {num && <span className="text-[12px] font-black text-yellow-400 drop-shadow-sm mb-0.5">{num}</span>}
+                        <span className="text-[9px] font-bold text-white uppercase tracking-tighter truncate w-full max-w-[54px]">{name}</span>
+                    </div>
                 </div>
             );
         };
@@ -575,9 +648,16 @@ export function SumulaVolei() {
                         <div className="flex flex-col items-center">
                             <span className="text-[9px] text-gray-500 font-bold uppercase tracking-tighter">Set Timer</span>
                             <span className="text-xs font-mono text-indigo-400">
-                                {sets.find(s => s.set_number == volleyState.current_set)?.start_time
-                                    ? new Date(new Date().getTime() - new Date(sets.find(s => s.set_number == volleyState.current_set).start_time).getTime()).toISOString().substr(14, 5)
-                                    : '00:00'}
+                                {(() => {
+                                    const currentSet = sets.find(s => s.set_number == volleyState.current_set);
+                                    if (!currentSet?.start_time) return '00:00';
+                                    try {
+                                        const diff = new Date().getTime() - new Date(currentSet.start_time).getTime();
+                                        return new Date(diff).toISOString().substr(14, 5);
+                                    } catch (e) {
+                                        return '00:00';
+                                    }
+                                })()}
                             </span>
                         </div>
 
@@ -597,7 +677,56 @@ export function SumulaVolei() {
                 </div>
             </div>
 
-            {/* History Feed */}
+            {/* Point-by-Point History List */}
+            <div className="px-4 mb-8 max-w-5xl mx-auto">
+                <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-2 mb-3">
+                    <History size={12} /> Últimos Lançamentos
+                </h3>
+                <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                    {events.length === 0 ? (
+                        <div className="text-center py-4 bg-gray-800/20 rounded-xl border border-dashed border-gray-700 text-gray-600 text-[10px] font-bold uppercase">Nenhum evento registrado</div>
+                    ) : (
+                        events.filter(ev => ['point', 'ace', 'block', 'goal', 'erro', 'yellow_card', 'red_card', 'timeout', 'substitution'].includes(ev.event_type))
+                            .reverse()
+                            .map((ev: any) => {
+                                const isHome = ev.team_id == matchData.home_team_id;
+                                const teamLabel = isHome ? matchData.home_team?.code : matchData.away_team?.code;
+                                const isPoint = ['point', 'ace', 'block', 'goal'].includes(ev.event_type);
+                                return (
+                                    <div key={ev.id} className="bg-gray-800/60 border border-gray-700/50 rounded-lg p-2 flex items-center justify-between group transition-all hover:bg-gray-700/60">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-1 h-8 rounded-full ${isHome ? 'bg-blue-500' : 'bg-green-500'}`} />
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`text-[10px] font-black ${isHome ? 'text-blue-400' : 'text-green-400'}`}>{teamLabel}</span>
+                                                    <span className="text-[8px] text-gray-500 font-mono">{ev.period}</span>
+                                                </div>
+                                                <div className="text-[11px] font-bold flex items-center gap-1">
+                                                    {isPoint && <span className="text-yellow-400">+1</span>}
+                                                    <span className="capitalize">{ev.event_type.replace('_', ' ')}:</span>
+                                                    <span className="text-gray-300">
+                                                        {ev.metadata?.label ||
+                                                            (ev.player?.nickname ? `${ev.player.nickname} (#${ev.player.number})` : 'Equipe')
+                                                        }
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => handleDeleteEvent(ev.id)}
+                                            className="p-3 text-gray-400 hover:text-red-400 transition-colors bg-gray-700/30 rounded-full"
+                                            title="Remover lançamento"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
+                                );
+                            })
+                    )}
+                </div>
+            </div>
+
+            {/* History Feed - Sets */}
             <div className="px-4 pb-10 max-w-5xl mx-auto">
                 <div className="flex items-center justify-between mb-3 px-1">
                     <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">

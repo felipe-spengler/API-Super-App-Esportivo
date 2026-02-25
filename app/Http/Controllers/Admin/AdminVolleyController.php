@@ -181,7 +181,31 @@ class AdminVolleyController extends Controller
             $match->match_details = $details;
             $match->save();
 
-            // 3. Update Match Score (Sets Won)
+            // 3. Record Match Event for Timeline
+            $categoryMap = [
+                'ataque' => 'point',
+                'bloqueio' => 'block',
+                'saque' => 'ace',
+                'erro' => 'point'
+            ];
+            
+            DB::table('match_events')->insert([
+                'game_match_id' => $match->id,
+                'team_id' => $teamId,
+                'player_id' => $playerId,
+                'event_type' => $categoryMap[$pointType] ?? 'point',
+                'period' => "{$setNum}º Set",
+                'game_time' => '00:00',
+                'metadata' => json_encode([
+                    'label' => "Ponto de " . ucfirst($pointType),
+                    'volley_type' => $pointType,
+                    'system_period' => "{$setNum}º Set"
+                ]),
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            // 4. Update Match Score (Sets Won)
             $finished = $this->updateMatchSetsScore($match, $set);
 
             // 4. If set finished, record end_time
