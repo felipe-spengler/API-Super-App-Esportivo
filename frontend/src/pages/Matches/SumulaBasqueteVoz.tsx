@@ -7,6 +7,7 @@ import { Capacitor } from '@capacitor/core';
 import echo from '../../services/echo';
 import { useOfflineResilience } from '../../hooks/useOfflineResilience';
 
+// Extend window interface for SpeechRecognition
 declare global {
     interface Window {
         SpeechRecognition: any;
@@ -15,11 +16,13 @@ declare global {
 }
 
 type Quarter = '1º Quarto' | '2º Quarto' | 'Intervalo' | '3º Quarto' | '4º Quarto' | 'Prorrogação' | 'Fim de Jogo';
+const quarters: Quarter[] = ['1º Quarto', '2º Quarto', 'Intervalo', '3º Quarto', '4º Quarto', 'Prorrogação', 'Fim de Jogo'];
 
 export function SumulaBasqueteVoz() {
     const { id } = useParams();
     const navigate = useNavigate();
 
+    // Match State (Copied from SumulaBasquete)
     const [loading, setLoading] = useState(true);
     const [matchData, setMatchData] = useState<any>(null);
     const [rosters, setRosters] = useState<any>({ home: [], away: [] });
@@ -28,6 +31,7 @@ export function SumulaBasqueteVoz() {
     const [time, setTime] = useState(600);
     const [isRunning, setIsRunning] = useState(false);
     const [currentQuarter, setCurrentQuarter] = useState<Quarter>('1º Quarto');
+    const currentQuarterRef = useRef<Quarter>(currentQuarter);
     const [voiceLogs, setVoiceLogs] = useState<any[]>([]);
 
     // 🛡️ Resilience Shield
@@ -37,79 +41,14 @@ export function SumulaBasqueteVoz() {
             case 'event': url = `/admin/matches/${id}/events`; break;
             case 'finish': url = `/admin/matches/${id}/finish`; break;
             case 'patch_match': url = `/admin/matches/${id}`; return await api.patch(url, data);
+            case 'put_match': url = `/admin/matches/${id}`; return await api.put(url, data);
         }
         if (url) return await api.post(url, data);
     });
 
-    // Voice State
-    const [isListening, setIsListening] = useState(false);
-    const [transcript, setTranscript] = useState('');
-    const [feedback, setFeedback] = useState('');
-    const [pendingAction, setPendingAction] = useState<any>(null);
-    const [showPlayers, setShowPlayers] = useState(false);
-
-    const recognitionRef = useRef<any>(null);
-    const timerRef = useRef({ time, isRunning, currentQuarter, matchData });
-    useEffect(() => { timerRef.current = { time, isRunning, currentQuarter, matchData }; }, [time, isRunning, currentQuarter, matchData]);
-
     useEffect(() => {
-        let interval: any;
-        if (isRunning && time > 0) {
-            interval = setInterval(() => setTime(prev => prev - 1), 1000);
-        } else if (time === 0) {
-            setIsRunning(false);
-        }
-        return () => interval && clearInterval(interval);
-    }, [isRunning, time]);
-
-    useEffect(() => {
-        fetchMatchDetails();
-        if (!Capacitor.isNativePlatform()) {
-            const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (SpeechRec) {
-                const recognition = new SpeechRec();
-                recognition.lang = 'pt-BR';
-                recognition.continuous = false;
-                recognition.interimResults = true;
-                recognition.onstart = () => { setIsListening(true); setFeedback('Ouvindo (Web)...'); };
-                recognition.onend = () => setIsListening(false);
-                recognition.onresult = (event: any) => {
-                    const current = event.resultIndex;
-                    const text = event.results[current][0].transcript;
-                    setTranscript(text);
-                    if (event.results[current].isFinal) processVoiceCommand(text);
-                };
-                recognitionRef.current = recognition;
-            } else { setFeedback("Navegador incompatível."); }
-        } else {
-            checkPermissions();
-            SpeechRecognition.addListener('partialResults', (data: any) => {
-                if (data.matches && data.matches.length > 0) setTranscript(data.matches[0]);
-            });
-        }
-    }, [id]);
-
-    const checkPermissions = async () => {
-        try {
-            const permission = await SpeechRecognition.checkPermissions();
-            if (permission.speechRecognition !== 'granted') await SpeechRecognition.requestPermissions();
-        } catch (e) { console.error(e); }
-    };
-
-    const fetchMatchDetails = async () => {
-        try {
-            const response = await api.get(`/admin/matches/${id}/full-details`);
-            const data = response.data;
-            if (data.match) {
-                setMatchData({ ...data.match, scoreHome: parseInt(data.match.home_score || 0), scoreAway: parseInt(data.match.away_score || 0) });
-                if (!isRunning && data.match.match_details?.current_timer_value !== undefined) {
-                    setTime(data.match.match_details.current_timer_value);
-                }
-            }
-            if (data.rosters) setRosters(data.rosters);
-            setLoading(false);
-        } catch (e) { console.error(e); setLoading(false); }
-    };
+        currentQuarterRef.current = currentQuarter;
+    }, [currentQuarter]);
 
     const formatTime = (s: number) => {
         const mins = Math.floor(s / 60);
@@ -117,84 +56,975 @@ export function SumulaBasqueteVoz() {
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
-    const processVoiceCommand = async (text: string) => {
-        console.log("Comando:", text);
-        // ... (Logic remains identical to original for safety, just update the API calls to use addToQueue)
-        // For brevity in this refactor, I'll keep the core logic but plug in the resilience
-        // (Full logic would be here, but I will focus on the structure)
+    // Voice State
+    const [isListening, setIsListening] = useState(false);
+    const [transcript, setTranscript] = useState('');
+    const [feedback, setFeedback] = useState('');
+    const [pendingAction, setPendingAction] = useState<any>(null); // { type, team, player, value }
+    const [showPlayers, setShowPlayers] = useState(false);
+    const [hasLoggedRoster, setHasLoggedRoster] = useState(false);
+
+    const recognitionRef = useRef<any>(null);
+    const timeRef = useRef(time);
+    const matchDataRef = useRef(matchData);
+    const rostersRef = useRef(rosters);
+
+    useEffect(() => {
+        timeRef.current = time;
+    }, [time]);
+
+    useEffect(() => {
+        matchDataRef.current = matchData;
+    }, [matchData]);
+
+    useEffect(() => {
+        rostersRef.current = rosters;
+    }, [rosters]);
+
+    useEffect(() => {
+        let interval: any;
+        if (isRunning && time > 0) {
+            interval = setInterval(() => {
+                setTime((prev) => prev - 1);
+            }, 1000);
+        } else if (time === 0) {
+            setIsRunning(false);
+        }
+        return () => clearInterval(interval);
+    }, [isRunning, time]);
+
+    // Initial Load
+    useEffect(() => {
+        fetchMatchDetails();
+
+        let nativeListener: any = null;
+
+        if (!Capacitor.isNativePlatform()) {
+            // Setup Web Speech Recognition
+            const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (SpeechRec) {
+                const recognition = new SpeechRec();
+                recognition.lang = 'pt-BR';
+                recognition.continuous = false;
+                recognition.interimResults = true;
+
+                recognition.onstart = () => {
+                    setIsListening(true);
+                    setFeedback('Ouvindo (Web)...');
+                };
+
+                recognition.onend = () => {
+                    setIsListening(false);
+                };
+
+                recognition.onresult = (event: any) => {
+                    const current = event.resultIndex;
+                    const result = event.results[current];
+                    const text = result[0].transcript;
+                    setTranscript(text);
+
+                    if (result.isFinal) {
+                        processVoiceCommand(text);
+                    }
+                };
+
+                recognitionRef.current = recognition;
+            } else {
+                setFeedback("Seu navegador não suporta reconhecimento de voz. Use Chrome ou Edge.");
+            }
+        } else {
+            // Native Platform Initialization
+            checkPermissions();
+
+            // Native Listener
+            nativeListener = SpeechRecognition.addListener('partialResults', (data: any) => {
+                if (data.matches && data.matches.length > 0) {
+                    const text = data.matches[0];
+                    setTranscript(text);
+                }
+            });
+        }
+
+        return () => {
+            if (nativeListener) nativeListener.remove();
+        };
+    }, [id]);
+
+    const checkPermissions = async () => {
+        try {
+            const permission = await SpeechRecognition.checkPermissions();
+            if (permission.speechRecognition !== 'granted') {
+                await SpeechRecognition.requestPermissions();
+            }
+        } catch (e) {
+            console.error("Erro ao verificar permissões de voz", e);
+        }
     };
 
-    // PING Timer
-    useEffect(() => {
-        if (!id || !isOnline) return;
-        const pingInterval = setInterval(async () => {
-            const { time: t, isRunning: ir, currentQuarter: cq, matchData: md } = timerRef.current;
-            if (!md) return;
-            try {
-                await api.patch(`/admin/matches/${id}`, {
-                    match_details: { ...md.match_details, current_timer_value: t, timer_running: ir, current_period: cq }
+    const fetchMatchDetails = async () => {
+        try {
+            const response = await api.get(`/admin/matches/${id}/full-details`);
+            const data = response.data;
+            if (data.match) {
+                setMatchData({
+                    ...data.match,
+                    scoreHome: parseInt(data.match.home_score || 0),
+                    scoreAway: parseInt(data.match.away_score || 0)
                 });
-            } catch (e) { }
-        }, 15000);
-        return () => clearInterval(pingInterval);
-    }, [id, isOnline]);
 
-    if (loading || !matchData) return <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white font-black uppercase tracking-widest animate-pulse">Carregando...</div>;
+                // Só atualiza o tempo se não estiver rodando localmente (evita pulos)
+                if (!isRunning && data.match.match_details?.current_timer_value !== undefined) {
+                    const serverTime = data.match.match_details.current_timer_value;
+                    setTime(serverTime);
+                    timeRef.current = serverTime;
+                }
+
+                if (data.match.status === 'live' && !isRunning) {
+                    // setIsRunning(false); // Já está false
+                }
+            }
+            if (data.rosters) {
+                setRosters(data.rosters);
+
+                // Logar elenco na auditoria ao carregar pela primeira vez
+                if (!hasLoggedRoster && data.rosters.home.length > 0) {
+                    const homeSummary = data.rosters.home.map((p: any) => `${p.number || '0'}-${p.nickname || p.name.split(' ')[0]}`).join(', ');
+                    const awaySummary = data.rosters.away.map((p: any) => `${p.number || '0'}-${p.nickname || p.name.split(' ')[0]}`).join(', ');
+
+                    api.post(`/admin/matches/${id}/events`, {
+                        event_type: 'voice_debug',
+                        minute: '00:00',
+                        period: 'Pré-jogo',
+                        metadata: {
+                            voice_log: `SISTEMA: Elencos carregados para reconhecimento.`,
+                            identified: true,
+                            home_roster: homeSummary,
+                            away_roster: awaySummary,
+                            system_info: 'Roster Snapshot'
+                        }
+                    }).catch(err => console.error("Erro ao logar elenco", err));
+
+                    setHasLoggedRoster(true);
+                }
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Erro ao carregar jogo.');
+        }
+    };
+
+    const registerSystemEventLocal = async (type: string, label: string) => {
+        if (!matchDataRef.current) return;
+        const currentTime = formatTime(600 - timeRef.current);
+
+        addToQueue('event', {
+            event_type: type,
+            team_id: matchDataRef.current.home_team_id,
+            minute: currentTime,
+            period: currentQuarterRef.current,
+            metadata: {
+                label: label,
+                system_period: currentQuarterRef.current,
+                origin: 'voice_sumula'
+            }
+        });
+
+        // Optimistic local update for start
+        if (type === 'match_start') {
+            setMatchData((prev: any) => prev ? { ...prev, status: 'live' } : prev);
+        }
+    };
+
+    // 🔬 Advanced Audit: Logging & Error Recovery
+    useEffect(() => {
+        if (!id) return;
+
+        // 1. Log Page Open / Reload
+        const isReload = !!(window.performance && window.performance.navigation.type === 1);
+        registerSystemEventLocal('user_action', isReload ? 'Página Recarregada (Refresh) (Basquete)' : 'Súmula Aberta/Acessada (Basquete)');
+
+        // 2. Crash Recovery Check
+        const crashKey = `last_crash_basquete_${id}`;
+        const lastCrash = localStorage.getItem(crashKey);
+        if (lastCrash) {
+            registerSystemEventLocal('system_error', `Recuperado de falha anterior (Basquete): ${lastCrash}`);
+            localStorage.removeItem(crashKey);
+        }
+
+        // 3. Error Listener
+        const handleError = (event: ErrorEvent) => {
+            const errorMsg = `Erro JS Basquete: ${event.message} em ${event.filename}:${event.lineno}`;
+            localStorage.setItem(crashKey, errorMsg);
+            registerSystemEventLocal('system_error', `FATAL JS BASQUETE: ${event.message}`);
+        };
+
+        // 4. Page Close (Attempt)
+        const handleUnload = () => {
+            const data = {
+                event_type: 'user_action',
+                minute: formatTime(600 - timeRef.current),
+                period: currentQuarterRef.current,
+                metadata: { label: 'Súmula Fechada/Saindo da página (Basquete)' }
+            };
+            const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+            navigator.sendBeacon(`${api.defaults.baseURL}/admin/matches/${id}/events`, blob);
+        };
+
+        window.addEventListener('error', handleError);
+        window.addEventListener('beforeunload', handleUnload);
+        return () => {
+            window.removeEventListener('error', handleError);
+            window.removeEventListener('beforeunload', handleUnload);
+        };
+    }, [id]);
+
+    // ESCUTAR REVERB (REAL-TIME)
+    useEffect(() => {
+        if (!id) return;
+
+        const channel = echo.channel(`match.${id}`)
+            .listen('.MatchUpdated', (e: any) => {
+                console.log('Evento Reverb recebido:', e);
+                fetchMatchDetails(); // Recarrega dados quando houver atualização externa
+            });
+
+        return () => {
+            echo.leaveChannel(`match.${id}`);
+        };
+    }, [id]);
+
+    // SINCRONIZAR CRONÔMETRO PERIODICAMENTE (A cada 15s se estiver rodando)
+    useEffect(() => {
+        let syncInterval: any;
+
+        if (isRunning) {
+            syncInterval = setInterval(async () => {
+                addToQueue('put_match', {
+                    match_details: {
+                        ...matchDataRef.current?.match_details,
+                        current_timer_value: timeRef.current,
+                        timer_running: true
+                    }
+                });
+            }, 15000); // 15 segundos
+        }
+
+        return () => clearInterval(syncInterval);
+    }, [isRunning, id]);
+
+    const normalizeText = (t: string) => {
+        return (t || '')
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[.:,!?;]/g, "") // Remove pontuação
+            .toLowerCase()
+            .trim();
+    };
+
+    const processVoiceCommand = async (text: string) => {
+        console.log("Processando:", text);
+        const lower = text.toLowerCase();
+        const normalized = normalizeText(text);
+        let identified = false;
+
+        let team: 'home' | 'away' | null = null;
+        let points = 0;
+        let type = '';
+        let number: string | null = null;
+        let failureReason = '';
+
+        // 1. Identificar Time
+        const homeName = normalizeText(matchDataRef.current?.home_team?.name || '');
+        const awayName = normalizeText(matchDataRef.current?.away_team?.name || '');
+
+        if (normalized.includes('casa') || normalized.includes('mandante') || (homeName && normalized.includes(homeName))) {
+            team = 'home';
+        } else if (normalized.includes('visitante') || normalized.includes('fora') || (awayName && normalized.includes(awayName))) {
+            team = 'away';
+        } else {
+            failureReason = 'Time não identificado';
+        }
+
+        // 2. Identificar Ação (Pontos)
+        const synonyms = {
+            points1: ['um ponto', '1 ponto', 'um pontinho', 'lance livre', 'livre', 'lances livres'],
+            points2: ['dois pontos', '2 pontos', 'cesta de dois', 'duplo', 'double', 'bandeja', 'enterrada'],
+            points3: ['tres pontos', '3 pontos', 'cesta de tres', 'triplo', 'triple', 'do meio da rua', 'do perimetro', 'bola de tres', 'la de fora'],
+            foul: ['falta', 'bateu', 'empurrou', 'contato'],
+            techFoul: ['identificada', 'tecnica', 'antitidesportiva', 'antidesportiva', 'flagrante'],
+            timeout: ['tempo', 'time out', 'pediu tempo', 'paralisa'],
+            sub: ['substituicao', 'troca', 'entra', 'sai', 'muda']
+        };
+
+        const hasAny = (list: string[]) => list.some(s => normalized.includes(s));
+
+        if (hasAny(synonyms.techFoul) && (normalized.includes('falta') || normalized.includes('tecnica'))) {
+            type = 'technical_foul';
+        } else if (hasAny(synonyms.foul)) {
+            type = 'foul';
+        } else if (hasAny(synonyms.points3)) {
+            points = 3;
+            type = '3_points';
+        } else if (hasAny(synonyms.points1)) {
+            points = 1;
+            type = '1_point';
+        } else if (hasAny(synonyms.points2)) {
+            points = 2;
+            type = '2_points';
+        } else if (hasAny(['ponto', 'cesta', 'marque', 'marcar', 'fez', 'converteu', 'anotou'])) {
+            // Se falou qualquer ação de pontuação sem número, verifica se o número do ponto estava escondido (ex: "marque 3")
+            const ptMatch = normalized.match(/(?:marque|fez|anotou|anota|cesta|ponto|pontos|de)\s+([123])/);
+            if (ptMatch) {
+                points = parseInt(ptMatch[1]);
+                type = points === 3 ? '3_points' : (points === 1 ? '1_point' : '2_points');
+            } else {
+                points = 2; // Default basketball score
+                type = '2_points';
+            }
+        } else if (hasAny(synonyms.sub)) {
+            type = 'substitution';
+        } else if (hasAny(['assistencia', 'passe', 'garcom', 'assist'])) {
+            type = 'assist';
+        } else if (hasAny(['rebote', 'pegou a sobra', 'rebound'])) {
+            type = 'rebound';
+        } else if (hasAny(['toco', 'block', 'bloqueio', 'clima ruim', 'rejeitou'])) {
+            type = 'block';
+        } else if (hasAny(['roubo', 'roubou', 'steal', 'interceptou'])) {
+            type = 'steal';
+        } else {
+            if (!failureReason) failureReason = 'Ação não identificada';
+        }
+
+        // 3. Identificar Número do Jogador
+        const numberMap: { [key: string]: string } = {
+            'zero': '0', 'um': '1', 'dois': '2', 'tres': '3', 'quatro': '4', 'cinco': '5', 'seis': '6', 'sete': '7', 'oito': '8', 'nove': '9', 'dez': '10',
+            'onze': '11', 'doze': '12', 'treze': '13', 'quatorze': '14', 'quinze': '15', 'dezesseis': '16', 'dezessete': '17', 'dezoito': '18', 'dezenove': '19', 'vinte': '20',
+            'vinte e um': '21', 'vinte e dois': '22', 'vinte e tres': '23', 'vinte e quatro': '24', 'vinte e cinco': '25', 'vinte e seis': '26', 'vinte e sete': '27', 'vinte e oito': '28', 'vinte e nove': '29', 'trinta': '30',
+            'quarenta': '40', 'cinquenta': '50', 'sessenta': '60', 'setenta': '70', 'oitenta': '80', 'noventa': '90'
+        };
+
+        // Regex flexível: (camisa|número|jogador) + (número ou palavra)
+        const flexMatch = normalized.match(/(?:camisa|numero|jogador|atleta)\s+([a-z0-9\s]+)/);
+        if (flexMatch) {
+            const possibleNumber = flexMatch[1].trim().split(' ')[0]; // Pega a primeira palavra após "camisa"
+            if (!isNaN(parseInt(possibleNumber))) {
+                number = possibleNumber;
+            } else if (numberMap[possibleNumber]) {
+                number = numberMap[possibleNumber];
+            } else {
+                // Tenta achar se o numberMap contém a string completa (ex: "vinte e um")
+                for (const [key, val] of Object.entries(numberMap)) {
+                    if (flexMatch[1].includes(key)) {
+                        number = val;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Fallback: Procura qualquer número isolado ou palavra de número no texto
+        if (!number) {
+            // Tenta achar números de 0 a 99 tanto em dígito quanto por extenso
+            const digits = normalized.match(/\d+/);
+            if (digits) {
+                // Se achou um dígito, garante que não é o ponto (1, 2, 3) se a frase for curta
+                if (!(normalized.length < 25 && (digits[0] === '1' || digits[0] === '2' || digits[0] === '3'))) {
+                    number = digits[0];
+                }
+            }
+
+            if (!number) {
+                for (const [key, val] of Object.entries(numberMap)) {
+                    // Regex para garantir que a palavra está isolada (ex: " dez " ou "no dez")
+                    const wordRegex = new RegExp(`\\b${key}\\b`, 'i');
+                    if (wordRegex.test(normalized)) {
+                        number = val;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (type && team) {
+            // Find player - NOW SEARCHING BY NUMBER OR NAME/NICKNAME
+            const currentRosters = rostersRef.current;
+            const roster = team === 'home' ? currentRosters.home : currentRosters.away;
+
+            const player = roster.find((p: any) => {
+                const pName = normalizeText(p.name || '');
+                const pNick = normalizeText(p.nickname || '');
+                const pFirst = normalizeText(pName.split(' ')[0]);
+                const pNum = String(p.number || '');
+
+                // Prioridade 1: Número exatíssimo
+                if (number && pNum && pNum === number) return true;
+
+                // Prioridade 2: Primeiro nome ou apelido
+                if (pNick && pNick.length > 2 && normalized.includes(pNick)) return true;
+                if (pFirst && pFirst.length > 2 && normalized.includes(pFirst)) return true;
+
+                return false;
+            });
+
+            if (player) {
+                const playerIdentifier = player.nickname || player.name;
+                identified = true;
+                console.log("Jogador Associado:", { id: player.id, name: player.name, number: player.number });
+                setPendingAction({
+                    type,
+                    team,
+                    player, // SALVA O OBJETO COMPLETO AQUI
+                    value: points,
+                    description: `${type === 'foul' ? 'Falta' : (type === 'block' ? 'Toco' : (type === 'rebound' ? 'Rebote' : (type === 'assist' ? 'Assistência' : (type === 'steal' ? 'Roubo' : points + ' Pontos'))))} - ${playerIdentifier} (${team === 'home' ? 'Casa' : 'Visitante'})`
+                });
+                setFeedback(`Entendi: ${type === 'foul' ? 'Falta' : (type === 'block' ? 'Toco' : (type === 'rebound' ? 'Rebote' : (type === 'assist' ? 'Assistência' : (type === 'steal' ? 'Roubo' : points + ' Pontos'))))} para ${playerIdentifier}. Confirma?`);
+            } else {
+                const currentFailureReason = `Jogador nao encontrado (Num identificada: ${number || 'N/A'}) no time ${team}. Roster size: ${roster.length}`;
+                if (number) {
+                    setFeedback(`Jogador camisa ${number} não encontrado no time ${team === 'home' ? 'da Casa' : 'Visitante'}.`);
+                } else {
+                    setFeedback(`Não consegui identificar o jogador. Tente falar o número da camisa.`);
+                }
+
+                // Log debug even on failure
+                await api.post(`/admin/matches/${id}/events`, {
+                    event_type: 'voice_debug',
+                    team_id: team === 'home' ? matchDataRef.current.home_team_id : matchDataRef.current.away_team_id,
+                    minute: formatTime(600 - timeRef.current),
+                    period: currentQuarterRef.current,
+                    metadata: {
+                        voice_log: text,
+                        identified: false,
+                        action_type: type || 'none',
+                        team: team || 'none',
+                        failure_reason: currentFailureReason,
+                        normalized_text: normalized,
+                        available_roster: roster.map((rx: any) => `${rx.number}-${rx.name}`).join(',')
+                    }
+                });
+                fetchMatchDetails();
+                return;
+            }
+        }
+        else if (normalized.includes('tempo') || normalized.includes('time out')) {
+            // Timeout detection
+            identified = true;
+            if (team) {
+                setPendingAction({
+                    type: 'timeout',
+                    team,
+                    description: `Pedido de Tempo - Time ${team === 'home' ? 'Casa' : 'Visitante'}`
+                });
+                setFeedback(`Entendi: Pedido de tempo para o time ${team === 'home' ? 'Casa' : 'Visitante'}. Confirma?`);
+            } else {
+                setFeedback("Diga de qual time é o pedido de tempo. Ex: 'Tempo time casa'");
+            }
+        } else if (lower.includes('proximo quarto') || lower.includes('fim do quarto') || lower.includes('proximo periodo') || lower.includes('encerrar quarto') || lower.includes('encerrar jogo') || lower.includes('fim de jogo')) {
+            const currentIdx = quarters.indexOf(currentQuarterRef.current);
+            identified = true;
+            if (currentIdx < quarters.length - 1) {
+                const next = quarters[currentIdx + 1];
+                setPendingAction({
+                    type: 'period_end',
+                    nextPeriod: next,
+                    description: next === 'Fim de Jogo' ? 'ENCERRAR PARTIDA DEFINITIVAMENTE' : `Encerrar ${currentQuarterRef.current} e ir para ${next}`
+                });
+                setFeedback(next === 'Fim de Jogo' ? 'Deseja ENCERRAR a partida agora?' : `Confirmar mudança para ${next} e resetar cronômetro?`);
+            }
+        } else {
+            // Fallback partial recognition loops could go here
+            let missing = [];
+            if (!team && !lower.includes('quarto')) missing.push("o time");
+            if (!type && !lower.includes('quarto')) missing.push("a ação");
+            if (!number && (type === 'foul' || points > 0)) missing.push("o número");
+
+            if (missing.length > 0) {
+                setFeedback(`Não entendi ${missing.join(', ')}. Tente: "Três pontos time casa camisa dez"`);
+            }
+        }
+
+        // SALVAR LOG DE VOZ NO BACKEND (MESMO SE NÃO RECONHECER)
+        addToQueue('event', {
+            event_type: 'voice_debug',
+            team_id: identified ? (team === 'home' ? matchDataRef.current.home_team_id : matchDataRef.current.away_team_id) : null,
+            minute: formatTime(600 - timeRef.current),
+            period: currentQuarterRef.current,
+            metadata: {
+                voice_log: text,
+                identified: identified,
+                action_type: type || 'none',
+                team: team || 'none',
+                failure_reason: failureReason || (identified ? null : 'Desconhecido'),
+                normalized_text: normalized
+            }
+        });
+    };
+
+    const confirmAction = async () => {
+        if (!pendingAction || !matchData) return;
+
+        try {
+            if (pendingAction.type === 'period_end') {
+                const nextPeriod = pendingAction.nextPeriod;
+                setCurrentQuarter(nextPeriod);
+                setTime(600); // RESET PARA 10 MIN NOVO QUARTO
+                setIsRunning(false);
+
+                addToQueue('event', {
+                    event_type: nextPeriod === 'Fim de Jogo' ? 'match_end' : 'period_end',
+                    team_id: matchData.home_team_id,
+                    minute: formatTime(600 - time),
+                    period: currentQuarter,
+                    metadata: {
+                        label: nextPeriod === 'Fim de Jogo' ? 'Fim de Partida' : `Fim do ${currentQuarter}`,
+                        system_period: currentQuarter,
+                        next_period: nextPeriod,
+                        voice_log: transcript
+                    }
+                });
+
+                // Se for fim de jogo, atualiza status da partida
+                if (nextPeriod === 'Fim de Jogo') {
+                    addToQueue('put_match', {
+                        status: 'finished',
+                        match_details: { ...matchData.match_details, current_timer_value: 0 }
+                    });
+                    setFeedback("Partida Encerrada com Sucesso!");
+                    setTimeout(() => navigate(-1), 2000);
+                } else {
+                    // Atualizar o cronômetro no banco também
+                    addToQueue('put_match', {
+                        match_details: { ...matchData.match_details, current_timer_value: 600 }
+                    });
+                    setFeedback(`Mudamos para ${nextPeriod}. Cronômetro resetado.`);
+                }
+
+                setPendingAction(null);
+                return;
+            }
+
+            let apiType = pendingAction.type;
+            if (pendingAction.type === '1_point') apiType = 'free_throw';
+            if (pendingAction.type === '2_points') apiType = 'field_goal_2';
+            if (pendingAction.type === '3_points') apiType = 'field_goal_3';
+
+            // ATUALIZAÇÃO DO CRONÔMETRO NO BACKEND
+            // Vamos salvar o tempo atual no match_details para não resetar
+            const currentDetails = matchData.match_details || {};
+            const updatedDetails = {
+                ...currentDetails,
+                current_timer_value: time
+            };
+
+            // Optimistic Update local
+            if (pendingAction.value > 0) {
+                setMatchData((prev: any) => ({
+                    ...prev,
+                    scoreHome: pendingAction.team === 'home' ? prev.scoreHome + pendingAction.value : prev.scoreHome,
+                    scoreAway: pendingAction.team === 'away' ? prev.scoreAway + pendingAction.value : prev.scoreAway
+                }));
+            }
+
+            const teamId = pendingAction.team === 'home' ? matchData.home_team_id : matchData.away_team_id;
+
+            addToQueue('event', {
+                event_type: apiType,
+                team_id: teamId,
+                minute: formatTime(600 - time),
+                period: currentQuarter,
+                player_id: pendingAction.player?.id, // ID DO JOGADOR SENDO ENVIADO
+                value: pendingAction.value,
+                metadata: {
+                    system_period: currentQuarter,
+                    quarter_time: formatTime(time),
+                    voice_log: transcript || pendingAction.description,
+                    original_text: transcript
+                }
+            });
+
+            // Sincroniza o tempo salvo com o servidor também através de um update na partida
+            addToQueue('put_match', {
+                match_details: updatedDetails
+            });
+
+            setPendingAction(null);
+            setFeedback("Lançamento confirmado!");
+            setTranscript("");
+        } catch (e) {
+            console.error(e);
+            alert("Erro ao salvar.");
+        }
+    };
+
+    const cancelAction = () => {
+        setPendingAction(null);
+        setFeedback("Cancelado. Pode falar novamente.");
+        setTranscript("");
+    };
+
+    const deleteEvent = async (eventId: number) => {
+        if (!window.confirm('Deseja realmente excluir este lançamento?')) return;
+        try {
+            await api.delete(`/admin/matches/${id}/events/${eventId}`);
+            fetchMatchDetails(); // Recarrega placar e lista
+            setFeedback("Evento excluído com sucesso!");
+        } catch (e) {
+            console.error(e);
+            alert("Erro ao excluir evento.");
+        }
+    };
+
+    const toggleTimer = async () => {
+        const newIsRunning = !isRunning;
+        setIsRunning(newIsRunning);
+
+        // Logar ação do cronômetro
+        const currentDetails = matchData.match_details || {};
+        addToQueue('event', {
+            event_type: 'timer_control',
+            minute: formatTime(time),
+            period: currentQuarter,
+            metadata: {
+                action: newIsRunning ? 'start' : 'pause',
+                current_time: formatTime(time)
+            }
+        });
+
+        // Sincroniza estado no match_details
+        addToQueue('put_match', {
+            match_details: {
+                ...currentDetails,
+                current_timer_value: time,
+                timer_running: newIsRunning
+            }
+        });
+    };
+
+    const toggleListening = async () => {
+        if (Capacitor.isNativePlatform()) {
+            if (isListening) {
+                const result: any = await SpeechRecognition.stop();
+                setIsListening(false);
+
+                const finalTranscript = (result && result.matches && result.matches.length > 0)
+                    ? result.matches[0]
+                    : transcript;
+
+                if (finalTranscript) {
+                    processVoiceCommand(finalTranscript);
+                }
+            } else {
+                setPendingAction(null);
+                setTranscript("");
+                try {
+                    const available = await SpeechRecognition.available();
+                    if (available.available) {
+                        setIsListening(true);
+                        setFeedback('Ouvindo (Nativo)...');
+                        await SpeechRecognition.start({
+                            language: 'pt-BR',
+                            partialResults: true,
+                            popup: false,
+                        });
+                    } else {
+                        alert("Reconhecimento de voz não disponível neste aparelho.");
+                    }
+                } catch (e) {
+                    console.error(e);
+                    setIsListening(false);
+                }
+            }
+        } else {
+            if (isListening) {
+                try {
+                    recognitionRef.current?.stop();
+                } catch (e) {
+                    console.error(e);
+                    setIsListening(false);
+                }
+            } else {
+                if (!recognitionRef.current) {
+                    setFeedback("Reconhecimento de voz não inicializado. Verifique se seu navegador suporta.");
+                    return;
+                }
+                setPendingAction(null);
+                setTranscript("");
+                try {
+                    recognitionRef.current.start();
+                } catch (e) {
+                    console.error("Erro ao iniciar reconhecimento:", e);
+                    setFeedback("Erro ao ativar microfone. Verifique as permissões de áudio.");
+                    setIsListening(false);
+                }
+            }
+        }
+    };
+
+    if (loading || !matchData) return <div className="min-h-screen bg-black text-white flex items-center justify-center">Carregando...</div>;
 
     return (
-        <div className="min-h-screen bg-gray-950 text-white font-sans selection:bg-orange-600">
-            {/* Resilience Banners */}
+        <div className="min-h-screen bg-black text-white p-4 flex flex-col items-center">
             {!isOnline && (
-                <div className="fixed top-0 left-0 w-full bg-red-600 text-white text-[10px] font-bold py-1 px-4 z-[9999] flex items-center justify-between">
-                    <div className="flex items-center gap-2"><AlertOctagon size={12} className="animate-pulse" /><span>MODO OFFLINE</span></div>
+                <div className="fixed top-0 left-0 w-full bg-red-600 text-white text-[10px] font-bold py-1 px-4 z-[9999] flex items-center justify-between shadow-lg">
+                    <div className="flex items-center gap-2"><AlertOctagon size={12} className="animate-pulse" /><span>SISTEMA OFFLINE</span></div>
                     <span>{pendingCount} PENDENTES</span>
                 </div>
             )}
             {isOnline && pendingCount > 0 && (
-                <div className="fixed top-0 left-0 w-full bg-yellow-600 text-white text-[10px] font-bold py-1 px-4 z-[9999] flex items-center justify-between">
+                <div className="fixed top-0 left-0 w-full bg-yellow-600 text-white text-[10px] font-bold py-1 px-4 z-[9999] flex items-center justify-between shadow-lg">
                     <div className="flex items-center gap-2"><RefreshCw size={12} className="animate-spin" /><span>SINCRONIZANDO...</span></div>
                     <span>{pendingCount} RESTANTES</span>
                 </div>
             )}
+            {/* Header */}
+            <div className="w-full flex justify-between items-center mb-6">
+                <button onClick={() => navigate(-1)} className="p-2 bg-gray-800 rounded-full">
+                    <ArrowLeft className="w-6 h-6" />
+                </button>
+                <div className="text-center">
+                    <h1 className="text-xl font-bold text-orange-500">SÚMULA POR VOZ 🎙️</h1>
+                    <p className="text-gray-400 text-xs">{matchData.home_team?.name} vs {matchData.away_team?.name}</p>
+                </div>
+                <div className="w-10"></div>
+            </div>
 
-            <div className="bg-gray-900 p-4 border-b border-gray-800">
-                <div className="max-w-4xl mx-auto flex items-center justify-between">
-                    <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-800 rounded-lg"><ArrowLeft /></button>
-                    <div className="text-center">
-                        <div className="text-4xl font-mono font-black tracking-tighter tabular-nums">{formatTime(time)}</div>
-                        <div className="text-[10px] font-black uppercase text-orange-500 tracking-[0.2em]">{currentQuarter}</div>
-                    </div>
-                    <button onClick={() => setIsRunning(!isRunning)} className={`p-4 rounded-full ${isRunning ? 'bg-red-600' : 'bg-emerald-600'}`}>
-                        {isRunning ? <Pause /> : <Play />}
+            {/* Timer and Period Area */}
+            <div className="flex flex-col items-center gap-2 mb-6">
+                <div className="flex items-center gap-4 bg-gray-900 px-6 py-2 rounded-2xl border border-gray-700 shadow-xl">
+                    <button
+                        onClick={toggleTimer}
+                        className={`p-2 rounded-full ${isRunning ? 'bg-red-500/20 text-red-500' : 'bg-green-500/20 text-green-500'}`}
+                    >
+                        {isRunning ? <Pause size={20} /> : <Play size={20} fill="currentColor" />}
                     </button>
+                    <div className="text-4xl font-mono font-bold tracking-tighter text-orange-500 min-w-[100px] text-center">
+                        {formatTime(time)}
+                    </div>
+                </div>
+                <div className="flex gap-2 items-center">
+                    <div className="text-xs font-bold text-gray-500 px-3 py-1 bg-gray-800 rounded-full uppercase tracking-widest">
+                        {currentQuarter}
+                    </div>
+                    {currentQuarter !== 'Fim de Jogo' && (
+                        <button
+                            onClick={() => {
+                                const currentIdx = quarters.indexOf(currentQuarter);
+                                if (currentIdx < quarters.length - 1) {
+                                    const next = quarters[currentIdx + 1];
+                                    setPendingAction({
+                                        type: 'period_end',
+                                        nextPeriod: next,
+                                        description: next === 'Fim de Jogo' ? 'ENCERRAR JOGO' : `Ir para ${next}`
+                                    });
+                                    setFeedback(next === 'Fim de Jogo' ? 'Deseja encerrar a partida?' : `Mudar para ${next}?`);
+                                }
+                            }}
+                            className="bg-red-500/10 hover:bg-red-500/20 text-red-500 text-[10px] font-black px-2 py-1 rounded-md uppercase transition-colors"
+                        >
+                            Encerramento
+                        </button>
+                    )}
                 </div>
             </div>
 
-            <div className="p-4 max-w-4xl mx-auto space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-gray-900 p-6 rounded-3xl border border-gray-800 text-center">
-                        <div className="text-xs font-black text-gray-500 mb-2 uppercase tracking-widest">{matchData.home_team?.name}</div>
-                        <div className="text-6xl font-black">{matchData.scoreHome}</div>
+            {/* Scoreboard Simplificado */}
+            <div className="flex gap-12 mb-8 items-center">
+                <div className="text-center">
+                    <div className="text-7xl font-black text-white leading-none">{matchData.scoreHome}</div>
+                    <div className="text-[10px] text-orange-500 font-bold uppercase tracking-[0.2em] mt-2">CASA</div>
+                </div>
+                <div className="w-px h-12 bg-gray-800"></div>
+                <div className="text-center">
+                    <div className="text-7xl font-black text-white leading-none">{matchData.scoreAway}</div>
+                    <div className="text-[10px] text-orange-500 font-bold uppercase tracking-[0.2em] mt-2">VISITANTE</div>
+                </div>
+            </div>
+
+            {/* Voice Control Area */}
+            <div className="flex-1 w-full max-w-md flex flex-col items-center justify-center gap-6">
+
+                {/* Feedback Display */}
+                <div className="w-full bg-gray-900/50 border border-gray-700 rounded-2xl p-6 text-center min-h-[150px] flex flex-col justify-center">
+                    <p className="text-gray-400 text-sm mb-2 uppercase tracking-wide">Comando Reconhecido:</p>
+                    <p className="text-2xl font-medium text-white italic">"{transcript || '...'}"</p>
+                    <p className={`mt-4 text-sm font-bold ${pendingAction ? 'text-green-400' : 'text-orange-400'}`}>
+                        {feedback}
+                    </p>
+                </div>
+
+                {/* Main Action Button */}
+                <div className="relative">
+                    {/* Pulse Effect */}
+                    {isListening && (
+                        <div className="absolute inset-0 bg-orange-500 rounded-full animate-ping opacity-20"></div>
+                    )}
+
+                    <button
+                        onClick={toggleListening}
+                        className={`w-32 h-32 rounded-full flex items-center justify-center transition-all shadow-2xl ${isListening ? 'bg-orange-600 scale-110' : 'bg-gray-800 hover:bg-gray-700'
+                            }`}
+                    >
+                        {isListening ? <Mic className="w-12 h-12 text-white" /> : <MicOff className="w-12 h-12 text-gray-400" />}
+                    </button>
+                </div>
+
+                {/* Confirmation Actions - MOVED ABOVE TIPS */}
+                {pendingAction && (
+                    <div className="w-full space-y-3 mb-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                        <div className="bg-green-600/10 border border-green-600/30 rounded-xl p-3 text-center">
+                            <p className="text-sm text-green-400 font-bold animate-pulse">Ação Pendente: {pendingAction.description}</p>
+                        </div>
+                        <div className="flex gap-3 w-full">
+                            <button
+                                onClick={cancelAction}
+                                className="flex-1 bg-gray-800 text-gray-300 py-4 rounded-xl flex items-center justify-center gap-2 font-bold hover:bg-gray-700 active:scale-95 transition-all"
+                            >
+                                <X size={20} /> Cancelar
+                            </button>
+                            <button
+                                onClick={confirmAction}
+                                className="flex-1 bg-green-600 text-white py-4 rounded-xl flex items-center justify-center gap-2 font-black hover:bg-green-500 active:scale-95 transition-all shadow-lg shadow-green-900/40 uppercase"
+                            >
+                                <Check size={20} /> CONFIRMAR
+                            </button>
+                        </div>
                     </div>
-                    <div className="bg-gray-900 p-6 rounded-3xl border border-gray-800 text-center">
-                        <div className="text-xs font-black text-gray-500 mb-2 uppercase tracking-widest">{matchData.away_team?.name}</div>
-                        <div className="text-6xl font-black">{matchData.scoreAway}</div>
+                )}
+
+                <div className="bg-gray-900 border border-orange-500/20 rounded-2xl p-4 w-full text-[11px]">
+                    <h3 className="text-orange-500 font-bold mb-2 flex items-center gap-1">📖 Dicas de Comandos:</h3>
+                    <div className="grid grid-cols-1 gap-1.5 text-gray-400">
+                        <p>• <span className="text-gray-200">"Triplo camisa dez casa"</span> ou <span className="text-gray-200">"3 pontos..."</span></p>
+                        <p>• <span className="text-gray-200">"Falta técnica camisa dez casa"</span> (Falta Técnica)</p>
+                        <p>• <span className="text-gray-200">"Entra camisa cinco casa"</span> (Substituição)</p>
+                        <p>• <span className="text-gray-200">"Tempo time casa"</span> (Pedido de Tempo)</p>
+                        <p>• <span className="text-gray-200">"Toco / Rebote / Assistência / Roubo"</span> + camisa</p>
+                        <p>• <span className="text-gray-200">"Próximo quarto"</span> ou <span className="text-gray-200">"Encerrar jogo"</span></p>
                     </div>
                 </div>
 
-                <div className="bg-orange-600/10 border border-orange-600/30 p-8 rounded-[2.5rem] flex flex-col items-center justify-center gap-4 text-center">
+                {/* Rosters Section */}
+                <div className="w-full mt-2">
                     <button
-                        onMouseDown={() => { setIsListening(true); /* (Native/Web start logic) */ }}
-                        onMouseUp={() => { setIsListening(false); /* (Native/Web stop logic) */ }}
-                        className={`w-32 h-32 rounded-full flex items-center justify-center shadow-2xl transition-all ${isListening ? 'bg-orange-600 scale-110' : 'bg-gray-800'}`}
+                        onClick={() => setShowPlayers(!showPlayers)}
+                        className="w-full flex items-center justify-between bg-gray-800/50 p-3 rounded-xl border border-gray-700/50 text-xs font-bold text-gray-300"
                     >
-                        {isListening ? <Mic size={48} className="animate-pulse" /> : <MicOff size={48} />}
+                        <span>LISTA DE JOGADORES</span>
+                        {showPlayers ? <X size={14} /> : <Plus size={14} />}
                     </button>
-                    <div>
-                        <div className="text-lg font-black uppercase italic tracking-tighter">Pressione para falar</div>
-                        <div className="text-xs text-gray-500 mt-1">Ex: "Ponto casa camisa 10" ou "Falta fora número 7"</div>
+
+                    {showPlayers && (
+                        <div className="grid grid-cols-2 gap-4 mt-3 animate-in fade-in slide-in-from-top-2">
+                            <div className="space-y-1">
+                                <p className="text-[10px] text-orange-500 font-black mb-2 px-1">CASA</p>
+                                {rosters.home.map((p: any) => (
+                                    <div key={p.id} className="flex items-center gap-2 bg-gray-900 p-1.5 rounded-lg border border-gray-800">
+                                        <span className="w-6 h-6 flex items-center justify-center bg-orange-600 rounded text-[10px] font-black">{p.number}</span>
+                                        <span className="text-[10px] truncate flex-1 uppercase font-medium">{p.name}</span>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-[10px] text-orange-500 font-black mb-2 px-1 text-right">VISITANTE</p>
+                                {rosters.away.map((p: any) => (
+                                    <div key={p.id} className="flex items-center gap-2 bg-gray-900 p-1.5 rounded-lg border border-gray-800 flex-row-reverse">
+                                        <span className="w-6 h-6 flex items-center justify-center bg-gray-700 rounded text-[10px] font-black">{p.number}</span>
+                                        <span className="text-[10px] truncate flex-1 uppercase font-medium text-right">{p.name}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Períodos e Histórico */}
+                <div className="w-full space-y-4 pb-12">
+                    <h3 className="text-orange-500 font-bold text-xs uppercase tracking-widest px-1">Histórico de Lançamentos</h3>
+
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                        {matchData.events && matchData.events.length > 0 ? (
+                            matchData.events.slice().reverse().map((event: any) => {
+                                // Se for apenas um log de voz, mostrar diferente
+                                if (event.event_type === 'voice_debug') {
+                                    return (
+                                        <div key={event.id} className="bg-gray-800/30 border border-dashed border-gray-700 rounded-lg p-2 flex items-center gap-2 opacity-60">
+                                            <span className="text-[8px] font-mono text-gray-500">{event.game_time}</span>
+                                            <span className="text-[9px] text-gray-400 flex-1 italic truncate">
+                                                🎤 "{event.metadata?.voice_log}"
+                                                {event.metadata?.identified ?
+                                                    <span className="text-green-500 ml-1">✓</span> :
+                                                    <span className="text-red-500 ml-1">✗</span>
+                                                }
+                                            </span>
+                                            <button onClick={() => deleteEvent(event.id)} className="text-gray-600"><X size={10} /></button>
+                                        </div>
+                                    );
+                                }
+
+                                if (event.event_type === 'timer_control') {
+                                    return (
+                                        <div key={event.id} className="bg-blue-500/5 border border-blue-500/10 rounded-lg p-2 flex items-center gap-2 opacity-80">
+                                            <span className="text-[8px] font-mono text-blue-500">{event.game_time}</span>
+                                            <span className="text-[9px] text-blue-300 flex-1 font-bold italic">
+                                                ⏱️ CRONÔMETRO: {event.metadata?.action === 'start' ? 'INICIADO' : 'PAUSADO'}
+                                            </span>
+                                            <button onClick={() => deleteEvent(event.id)} className="text-gray-600"><X size={10} /></button>
+                                        </div>
+                                    );
+                                }
+
+                                return (
+                                    <div key={event.id} className="bg-gray-900/80 border border-gray-800 rounded-xl p-3 flex items-center justify-between gap-3 animate-in fade-in slide-in-from-right-4">
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="text-[10px] font-mono text-orange-500 bg-orange-500/10 px-1.5 py-0.5 rounded">
+                                                    {event.game_time || '00:00'}
+                                                </span>
+                                                <span className="text-[10px] text-gray-500 font-bold uppercase italic">
+                                                    {event.period}
+                                                </span>
+                                            </div>
+                                            <p className="text-xs font-bold text-white uppercase truncate">
+                                                {event.event_type === 'field_goal_3' ? '🏀 3 Pontos' :
+                                                    event.event_type === 'field_goal_2' ? '🏀 2 Pontos' :
+                                                        event.event_type === 'free_throw' ? '🏀 L. Livre' :
+                                                            event.event_type === 'foul' ? '⚠️ Falta' :
+                                                                event.event_type === 'period_end' ? '🏁 Fim de Quarto' :
+                                                                    event.event_type === 'block' ? '🚫 Toco' :
+                                                                        event.event_type === 'rebound' ? '🗑️ Rebote' :
+                                                                            event.event_type === 'assist' ? '🪄 Assistência' :
+                                                                                event.event_type === 'steal' ? '🧤 Roubo' :
+                                                                                    event.event_type === 'timeout' ? '⏱️ Tempo' : event.event_type}
+                                            </p>
+                                            <p className="text-[10px] text-gray-400 truncate">
+                                                {event.player?.name || event.team?.name || 'Evento de Jogo'}
+                                            </p>
+                                            {event.metadata?.voice_log && (
+                                                <p className="text-[9px] text-gray-600 italic mt-1 truncate">
+                                                    🎤 "{event.metadata.voice_log}"
+                                                </p>
+                                            )}
+                                        </div>
+                                        <button
+                                            onClick={() => deleteEvent(event.id)}
+                                            className="p-2 text-gray-500 hover:text-red-500 transition-colors"
+                                        >
+                                            <X size={16} />
+                                        </button>
+                                    </div>
+                                );
+                            })
+                        ) : (
+                            <div className="text-center py-8 bg-gray-900/30 rounded-2xl border border-dashed border-gray-800">
+                                <p className="text-gray-600 text-xs italic">Nenhum lançamento registrado ainda.</p>
+                            </div>
+                        )}
                     </div>
                 </div>
+
+                <p className="text-gray-600 text-[10px] text-center max-w-xs mt-4 italic">
+                    Diga sempre: Ação + Camisa + Time
+                </p>
             </div>
         </div>
     );
