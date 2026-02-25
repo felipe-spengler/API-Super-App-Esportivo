@@ -9,6 +9,7 @@ use App\Models\GameMatch;
 use App\Models\Championship;
 use App\Models\Team;
 use App\Models\MatchEvent;
+use Illuminate\Support\Facades\DB;
 
 use App\Http\Requests\StoreMatchRequest;
 use App\Http\Controllers\Admin\BracketController;
@@ -515,41 +516,54 @@ class AdminMatchController extends Controller
     // Get match events
     public function events($id)
     {
-        $match = GameMatch::findOrFail($id);
-        $auditTypes = ['system_error', 'user_action', 'user_action_blocked', 'timer_control', 'voice_input'];
+        try {
+            $match = GameMatch::findOrFail($id);
+            // Mostrar logs do sistema para auditoria (mesários/admins precisam ver o que deu errado)
+            $historyTypes = ['system_error', 'user_action', 'user_action_blocked', 'timer_control', 'voice_input'];
 
-        $events = \App\Models\MatchEvent::where('game_match_id', $id)
-            ->whereNotIn('event_type', $auditTypes)
-            ->with(['player'])
-            ->orderBy('id', 'desc')
-            ->get();
+            $events = \App\Models\MatchEvent::where('game_match_id', $id)
+                ->with(['player'])
+                ->orderBy('id', 'desc')
+                ->get();
 
-        $formatted = $events->map(function ($e) use ($match) {
-            $player = $e->player;
-            $number = null;
-            if ($player) {
-                $number = DB::table('team_players')
-                    ->where('user_id', $player->id)
-                    ->where('team_id', $e->team_id ?? 0)
-                    ->where('championship_id', $match->championship_id)
-                    ->value('number');
-            }
+            // Otimização: Pegar todos os números de camisa do campeonato de uma vez
+            $playerNumbers = DB::table('team_players')
+                ->where('championship_id', $match->championship_id)
+                ->get()
+                ->groupBy('user_id');
 
-            return [
-                'id' => $e->id,
-                'team_id' => $e->team_id,
-                'player_id' => $e->player_id,
-                'event_type' => $e->event_type,
-                'game_time' => $e->game_time,
-                'period' => $e->period,
-                'metadata' => $e->metadata,
-                'player_name' => $player ? ($player->nickname ?: $player->name) : null,
-                'player_number' => $number,
-                'created_at' => $e->created_at,
-            ];
-        });
+            $formatted = $events->map(function ($e) use ($match, $playerNumbers) {
+                $player = $e->player;
 
-        return response()->json($formatted);
+                // Busca número indexado por user_id e filtrado por team_id
+                $number = null;
+                if ($player && isset($playerNumbers[$player->id])) {
+                    $teamNum = $playerNumbers[$player->id]->firstWhere('team_id', $e->team_id);
+                    $number = $teamNum ? $teamNum->number : null;
+                }
+
+                return [
+                    'id' => $e->id,
+                    'team_id' => $e->team_id,
+                    'player_id' => $e->player_id,
+                    'event_type' => $e->event_type,
+                    'game_time' => $e->game_time ?? '00:00',
+                    'period' => $e->period ?? '1º Set',
+                    'metadata' => $e->metadata,
+                    'player_name' => $player ? ($player->nickname ?: $player->name) : ($e->metadata['player_name'] ?? null),
+                    'player_number' => $number,
+                    'created_at' => $e->created_at->toIso8601String(),
+                ];
+            });
+
+            return response()->json($formatted);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Erro interno ao carregar eventos',
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ], 500);
+        }
     }
 
     // Delete match

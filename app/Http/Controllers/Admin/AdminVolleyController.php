@@ -130,6 +130,38 @@ class AdminVolleyController extends Controller
         return $this->getState($matchId);
     }
 
+    public function finishSet(Request $request, $matchId)
+    {
+        $match = GameMatch::findOrFail($matchId);
+        $details = $match->match_details ?? [];
+        $state = $details['volley_state'] ?? ['current_set' => 1];
+
+        DB::transaction(function () use (&$match, &$details, &$state) {
+            $setNum = (int) ($state['current_set'] ?? 1);
+
+            // Grava Auditoria
+            DB::table('match_events')->insert([
+                'game_match_id' => $match->id,
+                'event_type' => 'period_end',
+                'period' => "{$setNum}º Set",
+                'game_time' => '00:00',
+                'metadata' => json_encode(['label' => "Fim do {$setNum}º Set"]),
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            // Advance state
+            $state['current_set'] = $setNum + 1;
+            $state['serving_team_id'] = null;
+            $details['volley_state'] = $state;
+
+            $match->match_details = $details;
+            $match->save();
+        });
+
+        return $this->getState($matchId);
+    }
+
     public function registerPoint(Request $request, $matchId)
     {
         $teamId = $request->input('team_id');

@@ -441,29 +441,27 @@ export function SumulaVolei() {
         }
 
         try {
-            // Em vez de só abrir o modal, vamos registrar que o set acabou (se o servidor já não o fez)
-            // No vôlei, o servidor auto-finaliza o set no registerPoint se atingir o score.
-            // Aqui garantimos a troca de estado.
+            // Chamar API para encerrar set no servidor e avançar o número do set persistentemente
+            const response = await api.post(`/admin/matches/${id}/volley/set-finish`);
+            processStateResponse(response.data);
 
             // Inverter lados preventivamente para o próximo
             setInvertedSides(prev => !prev);
 
             // Zerar rodízio local para o próximo set (obriga o mesário a colocar ou copiar)
             setRotations({ home: Array(6).fill(null), away: Array(6).fill(null) });
-            setServingTeamId(null); // Resetar saque
+            setServingTeamId(null);
 
             // Registra auditoria
             registerSystemEvent('user_action', `Set ${currentSetNum} finalizado pelo mesário. Entrando em intervalo.`);
 
-            // Em vez de abrir o modal direto, vamos mostrar um botão de "Iniciar Próximo Set"
-            // No momento, vou apenas forçar o usuário a ver o placar final antes.
+            // Mostra o aviso e abre o modal de configuração do próximo set
             alert(`Set ${currentSetNum} finalizado! O próximo set será o ${currentSetNum + 1}º. Lados invertidos e rodízio zerado.`);
 
-            // Avança o número do set NO ESTADO para o modal abrir com o número correto
-            setVolleyState((prev: any) => ({ ...prev, current_set: currentSetNum + 1 }));
             setSetupModalOpen(true);
         } catch (e) {
             console.error(e);
+            alert("Erro ao encerrar set no servidor. Verifique a conexão.");
         }
     };
 
@@ -771,7 +769,7 @@ export function SumulaVolei() {
                     {events.length === 0 ? (
                         <div className="text-center py-4 bg-gray-800/20 rounded-xl border border-dashed border-gray-700 text-gray-600 text-[10px] font-bold uppercase">Nenhum evento registrado</div>
                     ) : (
-                        events.filter((ev: any) => ['point', 'ace', 'block', 'goal', 'erro', 'yellow_card', 'red_card', 'timeout', 'substitution'].includes(ev.event_type))
+                        events.filter((ev: any) => ['point', 'ace', 'block', 'goal', 'erro', 'yellow_card', 'red_card', 'timeout', 'substitution', 'system_error', 'user_action', 'timer_control'].includes(ev.event_type))
                             .map((ev: any) => {
                                 const isHome = ev.team_id == matchData.home_team_id;
                                 const teamLabel = isHome ? matchData.home_team?.code : matchData.away_team?.code;
@@ -789,9 +787,22 @@ export function SumulaVolei() {
                                         'timeout': 'Pedido de Tempo',
                                         'substitution': 'Substituição',
                                         'yellow_card': 'Cartão Amarelo',
-                                        'red_card': 'Cartão Vermelho'
+                                        'red_card': 'Cartão Vermelho',
+                                        'system_error': 'Erro de Sistema',
+                                        'user_action': 'Ação do Mesário',
+                                        'timer_control': 'Controle de Tempo'
                                     };
                                     return map[type] || type;
+                                };
+
+                                const getIcon = (type: string) => {
+                                    const map: any = {
+                                        'system_error': '🔧',
+                                        'user_action': '👤',
+                                        'timer_control': '⏱️',
+                                        'timeout': '⏱️'
+                                    };
+                                    return map[type] || '🏐';
                                 };
 
                                 // Get player info from event mapping or object
@@ -800,17 +811,21 @@ export function SumulaVolei() {
                                 const playerInfo = pName ? `${pName}${pNum ? ` (#${pNum})` : ''}` : '';
 
                                 return (
-                                    <div key={ev.id} className="bg-gray-800/60 border border-gray-700/50 rounded-lg p-2 flex items-center justify-between group transition-all hover:bg-gray-700/60">
+                                    <div key={ev.id} className={`bg-gray-800/60 border rounded-lg p-2 flex items-center justify-between group transition-all hover:bg-gray-700/60 ${ev.event_type === 'system_error' ? 'border-red-900/50' : 'border-gray-700/50'}`}>
                                         <div className="flex items-center gap-3">
-                                            <div className={`w-1 h-8 rounded-full ${isHome ? 'bg-blue-500' : 'bg-green-500'}`} />
-                                            <div>
+                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-lg ${ev.event_type === 'system_error' ? 'bg-red-900/20' : 'bg-gray-700/30'}`}>
+                                                {getIcon(ev.event_type)}
+                                            </div>
+                                            <div className="flex flex-col">
                                                 <div className="flex items-center gap-2">
-                                                    <span className={`text-[10px] font-black ${isHome ? 'text-blue-400' : 'text-green-400'}`}>{teamLabel}</span>
-                                                    <span className="text-[8px] text-gray-500 font-mono">{ev.period}</span>
+                                                    <span className={`text-[9px] font-black px-1 rounded ${!ev.team_id ? 'bg-gray-700 text-gray-400' : (isHome ? 'bg-blue-900/30 text-blue-400' : 'bg-green-900/30 text-green-400')}`}>
+                                                        {teamLabel || 'SYS'}
+                                                    </span>
+                                                    <span className="text-[8px] text-gray-500 font-mono">{ev.period || 'Pré-jogo'}</span>
                                                 </div>
                                                 <div className="text-[11px] font-bold flex items-center gap-1">
                                                     {isPoint && <span className="text-emerald-400 font-bold tracking-tighter w-4">+1</span>}
-                                                    <span className="text-gray-200">
+                                                    <span className={ev.event_type === 'system_error' ? 'text-red-400 text-[10px]' : 'text-gray-200'}>
                                                         {ev.metadata?.label || `${getFriendlyLabel(ev.event_type)}${playerInfo ? `: ${playerInfo}` : ''}`}
                                                     </span>
                                                 </div>

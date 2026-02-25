@@ -157,6 +157,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/matches/{id}/volley-state', [\App\Http\Controllers\Admin\AdminVolleyController::class, 'getState']);
         Route::post('/matches/{id}/volley/point', [\App\Http\Controllers\Admin\AdminVolleyController::class, 'registerPoint']);
         Route::post('/matches/{id}/volley/set-start', [\App\Http\Controllers\Admin\AdminVolleyController::class, 'startSet']);
+        Route::post('/matches/{id}/volley/set-finish', [\App\Http\Controllers\Admin\AdminVolleyController::class, 'finishSet']);
         Route::post('/matches/{id}/volley/rotation', [\App\Http\Controllers\Admin\AdminVolleyController::class, 'manualRotation']);
         Route::post('/matches/{id}/volley/substitution', [\App\Http\Controllers\Admin\AdminVolleyController::class, 'substitutePlayer']);
 
