@@ -209,17 +209,18 @@ export function SumulaVolei() {
                 registerSystemEvent('user_action', `Cancelou pedido de tempo do time ${teamSide}`);
                 return;
             }
-            registerSystemEvent('user_action', `Registrou pedido de tempo do time ${teamSide}`);
+            const teamName = teamId === matchData?.home_team_id ? matchData.home_team?.name : matchData.away_team?.name;
             await api.post(`/admin/matches/${id}/events`, {
                 event_type: 'timeout',
                 team_id: teamId,
                 minute: "00:00",
                 period: `${volleyState.current_set}º Set`,
                 metadata: {
-                    label: 'Tempo Técnico solicitado!',
+                    label: `Pedido de Tempo: ${teamName}`,
                     system_period: `${volleyState.current_set}º Set`
                 }
             });
+            registerSystemEvent('user_action', `Registrou pedido de tempo do time ${teamSide} (${teamName})`);
             alert("Tempo registrado!");
             fetchState();
         } catch (e: any) {
@@ -691,7 +692,30 @@ export function SumulaVolei() {
                             .map((ev: any) => {
                                 const isHome = ev.team_id == matchData.home_team_id;
                                 const teamLabel = isHome ? matchData.home_team?.code : matchData.away_team?.code;
-                                const isPoint = ['point', 'ace', 'block', 'goal'].includes(ev.event_type);
+                                const isPoint = ['point', 'ace', 'block', 'goal', 'erro'].includes(ev.event_type);
+
+                                const getFriendlyLabel = (type: string) => {
+                                    const map: any = {
+                                        'point': 'Ponto',
+                                        'ataque': 'Ataque',
+                                        'bloqueio': 'Bloqueio',
+                                        'ace': 'Saque (Ace)',
+                                        'saque': 'Saque (Ace)',
+                                        'goal': 'Ponto',
+                                        'erro': 'Erro Adv.',
+                                        'timeout': 'Pedido de Tempo',
+                                        'substitution': 'Substituição',
+                                        'yellow_card': 'Cartão Amarelo',
+                                        'red_card': 'Cartão Vermelho'
+                                    };
+                                    return map[type] || type;
+                                };
+
+                                // Get player info from event or metadata
+                                const playerInfo = ev.player ?
+                                    `${ev.player.nickname || ev.player.name} (#${ev.player.number})` :
+                                    (ev.metadata?.player_name ? ev.metadata.player_name : '');
+
                                 return (
                                     <div key={ev.id} className="bg-gray-800/60 border border-gray-700/50 rounded-lg p-2 flex items-center justify-between group transition-all hover:bg-gray-700/60">
                                         <div className="flex items-center gap-3">
@@ -703,11 +727,8 @@ export function SumulaVolei() {
                                                 </div>
                                                 <div className="text-[11px] font-bold flex items-center gap-1">
                                                     {isPoint && <span className="text-yellow-400">+1</span>}
-                                                    <span className="capitalize">{ev.event_type.replace('_', ' ')}:</span>
                                                     <span className="text-gray-300">
-                                                        {ev.metadata?.label ||
-                                                            (ev.player?.nickname ? `${ev.player.nickname} (#${ev.player.number})` : 'Equipe')
-                                                        }
+                                                        {ev.metadata?.label || `${getFriendlyLabel(ev.event_type)}: ${playerInfo || 'Equipe'}`}
                                                     </span>
                                                 </div>
                                             </div>

@@ -182,13 +182,6 @@ export function SumulaFutebol() {
             try {
                 setSyncStatus('syncing');
 
-                // 🔍 DEBUG LOG - O que está sendo enviado para o servidor
-                console.group(`📤 ENVIANDO TIMER FUTEBOL PARA SERVIDOR - ${new Date().toLocaleTimeString()}`);
-                console.log(`⏰ Timer Local:`, `${formatTime(t)} (${t}s)`);
-                console.log(`▶️ Estado:`, ir ? '🟢 RODANDO' : '🔴 PARADO');
-                console.log(`📍 Período:`, cp);
-                console.log(`🕐 Timestamp Envio:`, new Date().toLocaleTimeString());
-
                 await api.patch(`/admin/matches/${id}`, {
                     match_details: {
                         ...md.match_details,
@@ -201,28 +194,25 @@ export function SumulaFutebol() {
                 });
 
                 setSyncStatus('synced');
-                console.log(`✅ SYNC FUTEBOL COMPLETO`);
-                console.groupEnd();
             } catch (e: any) {
                 setSyncStatus('error');
                 console.error(`❌ ERRO NO SYNC FUTEBOL:`, e);
-                console.groupEnd();
-                // Registra erro de sincronização na auditoria (sem await para não bloquear)
-                api.post(`/admin/matches/${id}/events`, {
-                    event_type: 'system_error',
-                    team_id: null,
-                    minute: formatTime(timerRef.current.time),
-                    period: timerRef.current.currentPeriod,
-                    metadata: {
-                        label: `Erro de sincronização do cronômetro: ${e?.message || 'Falha de rede'}`,
-                        origin: 'timer_sync_ping'
-                    }
-                }).catch(() => { });
+                // Registra erro de sincronização na auditoria
+                registerSystemEvent('sync_error', `Falha ao sincronizar cronômetro: ${e?.message || 'Erro de rede'}`);
             }
         }, 3000);
 
         return () => clearInterval(pingInterval);
     }, [id]);
+
+    // 🔬 Global Audit: JS Crash Listener
+    useEffect(() => {
+        const handleError = (event: ErrorEvent) => {
+            registerSystemEvent('system_error', `FATAL JS: ${event.message} em ${event.filename}:${event.lineno}`);
+        };
+        window.addEventListener('error', handleError);
+        return () => window.removeEventListener('error', handleError);
+    }, [matchData, id, currentPeriod, time]);
 
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);

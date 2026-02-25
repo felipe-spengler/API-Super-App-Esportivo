@@ -407,6 +407,8 @@ class AdminMatchController extends Controller
         $scoreEvents = [
             'goal',
             'point',
+            'ace',
+            'block',
             '1_point',
             '2_points',
             '3_points',
@@ -427,22 +429,41 @@ class AdminMatchController extends Controller
         if (in_array($event->event_type, $scoreEvents)) {
             $value = $event->value ?: 1;
 
-            // Check if it's an own goal - if so, invert the team that receives the point
-            $isOwnGoal = isset($event->metadata['own_goal']) && $event->metadata['own_goal'] === true;
+            // SPECIAL LOGIC FOR VOLLEYBALL: points don't increment match scores (sets), they increment MatchSet
+            $match->load('championship.sport');
+            $isVolley = $match->championship && ($match->championship->sport->id == 4 || stripos($match->championship->sport->name, 'vôlei') !== false || stripos($match->championship->sport->name, 'volei') !== false);
 
-            if ($event->team_id == $match->home_team_id) {
-                // If home team scored, but it's own goal, increment away score
-                if ($isOwnGoal) {
-                    $match->increment('away_score', $value);
-                } else {
-                    $match->increment('home_score', $value);
-                }
-            } elseif ($event->team_id == $match->away_team_id) {
-                // If away team scored, but it's own goal, increment home score
-                if ($isOwnGoal) {
-                    $match->increment('home_score', $value);
-                } else {
-                    $match->increment('away_score', $value);
+            if ($isVolley) {
+                 // Try to find the set by period string (e.g. "1º Set")
+                 $setNumber = preg_replace('/[^0-9]/', '', $event->period);
+                 if ($setNumber) {
+                     $set = \App\Models\MatchSet::where('game_match_id', $match->id)->where('set_number', (string)$setNumber)->first();
+                     if ($set) {
+                         if ($event->team_id == $match->home_team_id) {
+                            $set->increment('home_score', $value);
+                         } else {
+                            $set->increment('away_score', $value);
+                         }
+                     }
+                 }
+            } else {
+                // Check if it's an own goal - if so, invert the team that receives the point
+                $isOwnGoal = isset($event->metadata['own_goal']) && $event->metadata['own_goal'] === true;
+
+                if ($event->team_id == $match->home_team_id) {
+                    // If home team scored, but it's own goal, increment away score
+                    if ($isOwnGoal) {
+                        $match->increment('away_score', $value);
+                    } else {
+                        $match->increment('home_score', $value);
+                    }
+                } elseif ($event->team_id == $match->away_team_id) {
+                    // If away team scored, but it's own goal, increment home score
+                    if ($isOwnGoal) {
+                        $match->increment('home_score', $value);
+                    } else {
+                        $match->increment('away_score', $value);
+                    }
                 }
             }
         }
@@ -521,6 +542,8 @@ class AdminMatchController extends Controller
         $scoreEvents = [
             'goal',
             'point',
+            'ace',
+            'block',
             '1_point',
             '2_points',
             '3_points',
@@ -534,22 +557,41 @@ class AdminMatchController extends Controller
         if (in_array($event->event_type, $scoreEvents)) {
             $value = $event->value ?: 1;
 
-            // Check if it's an own goal - if so, invert the team that loses the point
-            $isOwnGoal = isset($event->metadata['own_goal']) && $event->metadata['own_goal'] === true;
+            // SPECIAL LOGIC FOR VOLLEYBALL: points don't decrement match scores (sets), they decrement MatchSet
+            $match->load('championship.sport');
+            $isVolley = $match->championship && ($match->championship->sport->id == 4 || stripos($match->championship->sport->name, 'vôlei') !== false || stripos($match->championship->sport->name, 'volei') !== false);
 
-            if ($event->team_id == $match->home_team_id) {
-                // If home team scored, but it's own goal, decrement away score
-                if ($isOwnGoal) {
-                    $match->decrement('away_score', $value);
-                } else {
-                    $match->decrement('home_score', $value);
-                }
-            } elseif ($event->team_id == $match->away_team_id) {
-                // If away team scored, but it's own goal, decrement home score
-                if ($isOwnGoal) {
-                    $match->decrement('home_score', $value);
-                } else {
-                    $match->decrement('away_score', $value);
+            if ($isVolley) {
+                 // Try to find the set by period string (e.g. "1º Set")
+                 $setNumber = preg_replace('/[^0-9]/', '', $event->period);
+                 if ($setNumber) {
+                     $set = \App\Models\MatchSet::where('game_match_id', $match->id)->where('set_number', (string)$setNumber)->first();
+                     if ($set) {
+                         if ($event->team_id == $match->home_team_id) {
+                             $set->decrement('home_score', $value);
+                         } else {
+                             $set->decrement('away_score', $value);
+                         }
+                     }
+                 }
+            } else {
+                // Check if it's an own goal - if so, invert the team that loses the point
+                $isOwnGoal = isset($event->metadata['own_goal']) && $event->metadata['own_goal'] === true;
+
+                if ($event->team_id == $match->home_team_id) {
+                    // If home team scored, but it's own goal, decrement away score
+                    if ($isOwnGoal) {
+                        $match->decrement('away_score', $value);
+                    } else {
+                        $match->decrement('home_score', $value);
+                    }
+                } elseif ($event->team_id == $match->away_team_id) {
+                    // If away team scored, but it's own goal, decrement home score
+                    if ($isOwnGoal) {
+                        $match->decrement('home_score', $value);
+                    } else {
+                        $match->decrement('away_score', $value);
+                    }
                 }
             }
         }

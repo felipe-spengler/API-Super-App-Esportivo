@@ -1232,11 +1232,12 @@ export function AdminMatchManager() {
                                 <div className="p-4 space-y-3">
                                     {(selectedMatch as any).events && (selectedMatch as any).events.length > 0 ? (
                                         (selectedMatch as any).events.slice().reverse().map((event: any) => {
-                                            const isVoice = event.event_type === 'voice_debug';
-                                            const isTimer = event.event_type === 'timer_control';
-                                            const isError = event.event_type === 'system_error';
-                                            const isUserAction = event.event_type === 'user_action';
-                                            const isBlocked = event.event_type === 'user_action_blocked';
+                                            const etype = (event.event_type || '').toLowerCase().trim();
+                                            const isVoice = etype === 'voice_debug';
+                                            const isTimer = etype === 'timer_control';
+                                            const isError = etype === 'system_error' || etype === 'sync_error';
+                                            const isUserAction = etype === 'user_action';
+                                            const isBlocked = etype === 'user_action_blocked';
                                             const isRosterLog = event.metadata?.system_info === 'Roster Snapshot';
 
                                             const getFriendlyEvent = (type: string) => {
@@ -1265,17 +1266,23 @@ export function AdminMatchManager() {
                                                     'point': { label: 'Ponto', icon: '🏐' },
                                                     'set_end': { label: 'Fim de Set', icon: '🏆' },
                                                     'ace': { label: 'Ace', icon: '🎯' },
+                                                    'erro': { label: 'Erro Cometido', icon: '⚠️' },
                                                     // Tênis
                                                     'game': { label: 'Game', icon: '🎾' },
                                                     // Gerais
+                                                    'user_action': { label: 'Ação do Operador', icon: '👆' },
+                                                    'user_action_blocked': { label: 'Ação Bloqueada', icon: '🚫' },
+                                                    'system_error': { label: 'Erro de Sistema', icon: '🔴' },
+                                                    'sync_error': { label: 'Erro de Sincronia', icon: '📡' },
                                                     'substitution': { label: 'Substituição', icon: '🔄' },
                                                     'timeout': { label: 'Pedido de Tempo', icon: '⏱️' },
+                                                    'pedido de tempo': { label: 'Pedido de Tempo', icon: '⏱️' },
                                                     'match_start': { label: 'Início da Partida', icon: '🏁' },
                                                     'match_end': { label: 'Fim de Jogo', icon: '🛑' },
                                                     'period_start': { label: 'Início de Período/Set', icon: '▶️' },
                                                     'period_end': { label: 'Fim de Período/Set', icon: '⏸️' },
                                                 };
-                                                return map[t] || { label: type, icon: '📋' };
+                                                return map[t] || { label: type.replace(/_/g, ' '), icon: '📋' };
                                             };
 
                                             const display = getFriendlyEvent(event.event_type);
@@ -1314,7 +1321,7 @@ export function AdminMatchManager() {
                                                                         isUserAction ? '👆 Ação do Operador' :
                                                                             isVoice ? '🎙️ Entrada de Voz' :
                                                                                 isTimer ? '⏱️ Controle do Tempo' :
-                                                                                    `${display.icon} Evento: ${display.label}`}
+                                                                                    `${display.icon} ${display.label}`}
                                                         </h4>
                                                         {isVoice && !isRosterLog && (
                                                             <span className={`text-[10px] font-black px-2 py-0.5 rounded shadow-sm ${event.metadata?.identified ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
