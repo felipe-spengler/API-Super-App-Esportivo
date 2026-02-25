@@ -218,14 +218,60 @@ export function SumulaFutsal() {
                 setSyncStatus('synced');
                 console.log(`✅ SYNC FUTSAL COMPLETO`);
                 console.groupEnd();
-            } catch (e) {
+            } catch (e: any) {
                 setSyncStatus('error');
                 console.error(`❌ ERRO NO SYNC FUTSAL:`, e);
+                // Auditoria: falha de sync
+                registerSystemEvent('sync_error', `Falha ao sincronizar cronômetro Futsal: ${e?.message || 'Erro de rede'}`);
                 console.groupEnd();
             }
         }, 3000);
 
         return () => clearInterval(pingInterval);
+    }, [id]);
+
+    // 🔬 Advanced Audit: Logging & Error Recovery
+    useEffect(() => {
+        if (!id) return;
+
+        // 1. Log Page Open / Reload
+        const isReload = !!(window.performance && window.performance.navigation.type === 1);
+        registerSystemEvent('user_action', isReload ? 'Página Recarregada (Refresh) (Futsal)' : 'Súmula Aberta/Acessada (Futsal)');
+
+        // 2. Crash Recovery Check
+        const crashKey = `last_crash_futsal_${id}`;
+        const lastCrash = localStorage.getItem(crashKey);
+        if (lastCrash) {
+            registerSystemEvent('system_error', `Recuperado de falha anterior (Futsal): ${lastCrash}`);
+            localStorage.removeItem(crashKey);
+        }
+
+        // 3. Error Listener
+        const handleError = (event: ErrorEvent) => {
+            const errorMsg = `Erro JS Futsal: ${event.message} em ${event.filename}:${event.lineno}`;
+            localStorage.setItem(crashKey, errorMsg);
+            registerSystemEvent('system_error', `FATAL JS FUTSAL: ${event.message}`);
+        };
+
+        // 4. Page Close (Attempt)
+        const handleUnload = () => {
+            const { time: t, currentPeriod: cp } = timerRef.current;
+            const data = {
+                event_type: 'user_action',
+                minute: formatTime(t),
+                period: cp,
+                metadata: { label: 'Súmula Fechada/Saindo da página (Futsal)' }
+            };
+            const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+            navigator.sendBeacon(`${api.defaults.baseURL}/admin/matches/${id}/events`, blob);
+        };
+
+        window.addEventListener('error', handleError);
+        window.addEventListener('beforeunload', handleUnload);
+        return () => {
+            window.removeEventListener('error', handleError);
+            window.removeEventListener('beforeunload', handleUnload);
+        };
     }, [id]);
 
     const formatTime = (seconds: number) => {

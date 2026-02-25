@@ -220,14 +220,49 @@ export function SumulaFutebol7() {
         return () => clearInterval(pingInterval);
     }, [id]);
 
-    // 🔬 Global Audit: JS Crash Listener
+    // 🔬 Advanced Audit: Logging & Error Recovery
     useEffect(() => {
+        if (!id) return;
+
+        // 1. Log Page Open / Reload
+        const isReload = !!(window.performance && window.performance.navigation.type === 1);
+        registerSystemEvent('user_action', isReload ? 'Página Recarregada (Refresh) (F7)' : 'Súmula Aberta/Acessada (F7)');
+
+        // 2. Crash Recovery Check
+        const crashKey = `last_crash_f7_${id}`;
+        const lastCrash = localStorage.getItem(crashKey);
+        if (lastCrash) {
+            registerSystemEvent('system_error', `Recuperado de falha anterior (F7): ${lastCrash}`);
+            localStorage.removeItem(crashKey);
+        }
+
+        // 3. Error Listener
         const handleError = (event: ErrorEvent) => {
-            registerSystemEvent('system_error', `FATAL JS CRASH: ${event.message} em ${event.filename}:${event.lineno}`);
+            const errorMsg = `Erro JS F7: ${event.message} em ${event.filename}:${event.lineno}`;
+            localStorage.setItem(crashKey, errorMsg);
+            registerSystemEvent('system_error', `FATAL JS F7: ${event.message}`);
         };
+
+        // 4. Page Close (Attempt)
+        const handleUnload = () => {
+            const { time: t, currentPeriod: cp } = timerRef.current;
+            const data = {
+                event_type: 'user_action',
+                minute: formatTime(t),
+                period: cp,
+                metadata: { label: 'Súmula Fechada/Saindo da página (F7)' }
+            };
+            const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+            navigator.sendBeacon(`${api.defaults.baseURL}/admin/matches/${id}/events`, blob);
+        };
+
         window.addEventListener('error', handleError);
-        return () => window.removeEventListener('error', handleError);
-    }, [matchData, id, currentPeriod, time]);
+        window.addEventListener('beforeunload', handleUnload);
+        return () => {
+            window.removeEventListener('error', handleError);
+            window.removeEventListener('beforeunload', handleUnload);
+        };
+    }, [id]);
 
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);

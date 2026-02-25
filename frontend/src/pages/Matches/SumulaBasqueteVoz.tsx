@@ -194,12 +194,76 @@ export function SumulaBasqueteVoz() {
                     setHasLoggedRoster(true);
                 }
             }
-            setLoading(false);
         } catch (e) {
             console.error(e);
             alert('Erro ao carregar jogo.');
         }
     };
+
+    const registerSystemEvent = async (type: string, label: string) => {
+        if (!matchDataRef.current) return;
+        const currentTime = formatTime(600 - timeRef.current);
+
+        try {
+            await api.post(`/admin/matches/${id}/events`, {
+                event_type: type,
+                team_id: matchDataRef.current.home_team_id,
+                minute: currentTime,
+                period: currentQuarterRef.current,
+                metadata: {
+                    label: label,
+                    system_period: currentQuarterRef.current,
+                    origin: 'voice_sumula'
+                }
+            });
+            fetchMatchDetails();
+        } catch (e: any) {
+            console.error("Erro ao registrar evento de sistema", e);
+        }
+    };
+
+    // 🔬 Advanced Audit: Logging & Error Recovery
+    useEffect(() => {
+        if (!id) return;
+
+        // 1. Log Page Open / Reload
+        const isReload = !!(window.performance && window.performance.navigation.type === 1);
+        registerSystemEvent('user_action', isReload ? 'Página Recarregada (Refresh) (Basquete)' : 'Súmula Aberta/Acessada (Basquete)');
+
+        // 2. Crash Recovery Check
+        const crashKey = `last_crash_basquete_${id}`;
+        const lastCrash = localStorage.getItem(crashKey);
+        if (lastCrash) {
+            registerSystemEvent('system_error', `Recuperado de falha anterior (Basquete): ${lastCrash}`);
+            localStorage.removeItem(crashKey);
+        }
+
+        // 3. Error Listener
+        const handleError = (event: ErrorEvent) => {
+            const errorMsg = `Erro JS Basquete: ${event.message} em ${event.filename}:${event.lineno}`;
+            localStorage.setItem(crashKey, errorMsg);
+            registerSystemEvent('system_error', `FATAL JS BASQUETE: ${event.message}`);
+        };
+
+        // 4. Page Close (Attempt)
+        const handleUnload = () => {
+            const data = {
+                event_type: 'user_action',
+                minute: formatTime(600 - timeRef.current),
+                period: currentQuarterRef.current,
+                metadata: { label: 'Súmula Fechada/Saindo da página (Basquete)' }
+            };
+            const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+            navigator.sendBeacon(`${api.defaults.baseURL}/admin/matches/${id}/events`, blob);
+        };
+
+        window.addEventListener('error', handleError);
+        window.addEventListener('beforeunload', handleUnload);
+        return () => {
+            window.removeEventListener('error', handleError);
+            window.removeEventListener('beforeunload', handleUnload);
+        };
+    }, [id]);
 
     // ESCUTAR REVERB (REAL-TIME)
     useEffect(() => {

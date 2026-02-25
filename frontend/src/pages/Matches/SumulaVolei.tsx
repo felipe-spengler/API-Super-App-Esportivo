@@ -39,10 +39,53 @@ export function SumulaVolei() {
     // Helpers
     const [servingTeamId, setServingTeamId] = useState<number | null>(null);
 
+    // 🔬 Advanced Audit: Logging & Error Recovery
+    useEffect(() => {
+        if (!id) return;
+
+        // 1. Log Page Open / Reload
+        const isReload = !!(window.performance && window.performance.navigation.type === 1);
+        registerSystemEvent('user_action', isReload ? 'Página Recarregada (Refresh) (Vôlei)' : 'Súmula Aberta/Acessada (Vôlei)');
+
+        // 2. Crash Recovery Check
+        const crashKey = `last_crash_volei_${id}`;
+        const lastCrash = localStorage.getItem(crashKey);
+        if (lastCrash) {
+            registerSystemEvent('system_error', `Recuperado de falha anterior (Vôlei): ${lastCrash}`);
+            localStorage.removeItem(crashKey);
+        }
+
+        // 3. Error Listener
+        const handleError = (event: ErrorEvent) => {
+            const errorMsg = `Erro JS Vôlei: ${event.message} em ${event.filename}:${event.lineno}`;
+            localStorage.setItem(crashKey, errorMsg);
+            registerSystemEvent('system_error', `FATAL JS VÔLEI: ${event.message}`);
+        };
+
+        // 4. Page Close (Attempt)
+        const handleUnload = () => {
+            const data = {
+                event_type: 'user_action',
+                minute: '00:00',
+                period: volleyState?.current_set ? `${volleyState.current_set}º Set` : 'Arena',
+                metadata: { label: 'Súmula Fechada/Saindo da página (Vôlei)' }
+            };
+            const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+            navigator.sendBeacon(`${api.defaults.baseURL}/admin/matches/${id}/events`, blob);
+        };
+
+        window.addEventListener('error', handleError);
+        window.addEventListener('beforeunload', handleUnload);
+        return () => {
+            window.removeEventListener('error', handleError);
+            window.removeEventListener('beforeunload', handleUnload);
+        };
+    }, [id]);
+
     useEffect(() => {
         if (id) {
             fetchFullDetails();
-            // Sync Interval (Every 5s check for server updates to keep in sync)
+            // Sync Interval (Every 2s check for server updates to keep in sync)
             const syncInterval = setInterval(() => {
                 fetchState(true);
             }, 2000);
