@@ -26,7 +26,7 @@ class AuthController extends Controller
             'gender' => 'nullable|in:M,F,O',
             'document_number' => 'nullable|string',
             'photos' => 'nullable|array|max:3', // Allow up to 3 photos
-            'photos.*' => 'image|max:2048', // Validate each photo
+            'photos.*' => 'image|max:4096', // Max 4MB
             'document' => 'nullable|image|max:4096', // Validação da foto do documento
         ]);
 
@@ -133,7 +133,7 @@ class AuthController extends Controller
             'phone' => 'nullable|string',
             'cpf' => 'nullable|string',
             'device_token' => 'nullable|string',
-            'photo' => 'nullable|image|max:2048',
+            'photo' => 'nullable|image|max:4096', // Max 4MB
         ]);
 
         if ($request->hasFile('photo')) {

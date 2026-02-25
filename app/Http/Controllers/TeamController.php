@@ -69,7 +69,7 @@ class TeamController extends Controller
             'birth_date' => 'nullable|date',
             'number' => 'nullable|string',
             'document_file' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120', // Max 5MB
-            'photo_file' => 'nullable|image|max:2048', // Max 2MB
+            'photo_file' => 'nullable|image|max:4096', // Max 4MB
             'championship_id' => 'nullable|integer|exists:championships,id'
         ]);
 

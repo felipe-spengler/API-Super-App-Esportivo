@@ -45,7 +45,7 @@ class UploadController extends Controller
     public function uploadPlayerPhoto(Request $request)
     {
         $request->validate([
-            'image' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+            'image' => 'required|image|mimes:jpeg,png,jpg|max:4096', // Max 4MB
         ]);
 
         try {
@@ -165,7 +165,7 @@ class UploadController extends Controller
     public function uploadChampionshipImage(Request $request)
     {
         $request->validate([
-            'image' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+            'image' => 'required|image|mimes:jpeg,png,jpg|max:4096', // Max 4MB
         ]);
 
         try {

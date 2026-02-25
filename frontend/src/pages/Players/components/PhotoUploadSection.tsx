@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Camera, Loader2, X, Plus } from 'lucide-react';
 import api from '../../../services/api';
 import { useAuth } from '../../../context/AuthContext';
+import { prepareImageForUpload } from '../../../utils/imageCompressor';
 
 interface PhotoUploadSectionProps {
     playerId: string;
@@ -50,18 +51,15 @@ export function PhotoUploadSection({ playerId, currentPhotos }: PhotoUploadSecti
 
     async function handleUpload(file: File, index: number) {
         setLoadingIndex(index);
-        const formData = new FormData();
-        formData.append('photo', file);
-        formData.append('index', index.toString());
-        // Removing background is optional, let's auto-enable it for now or make it a checkbox per slot?
-        // Let's assume auto-remove or keep simple. User requested "follow same logic".
-        // In Step 120, there was a checkbox. Let's keep it simple here: auto remove bg? 
-        // Or adds a global checkbox? Let's add a global checkbox for "Remove BG on upload"
-        if (removeBg) {
-            formData.append('remove_bg', '1');
-        }
-
         try {
+            // Comprime automaticamente se necessário (limite: 4MB)
+            const ready = await prepareImageForUpload(file, 4 * 1024 * 1024);
+            const formData = new FormData();
+            formData.append('photo', ready);
+            formData.append('index', index.toString());
+            if (removeBg) {
+                formData.append('remove_bg', '1');
+            }
             const res = await api.post(`/admin/upload/player-photo/${playerId}`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
                 timeout: 120000

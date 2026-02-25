@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Save, Bell, Shield, Lock, CreditCard, Loader2, Trophy, MessageSquare, Type, Palette, Upload, Trash2, Eye, ChevronDown, ChevronRight, X } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { prepareImageForUpload } from '../../utils/imageCompressor';
 
 export function Settings() {
     const { user } = useAuth();
@@ -261,27 +262,15 @@ export function Settings() {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // Validate file size (2MB max)
-        if (file.size > 2 * 1024 * 1024) {
-            alert('A imagem deve ter no máximo 2MB');
-            return;
-        }
-
-        // Validate file type
-        if (!file.type.startsWith('image/')) {
-            alert('Apenas imagens são permitidas');
-            return;
-        }
-
         setUploadingLogo(true);
         try {
+            // Comprime automaticamente se necessário (limite: 4MB)
+            const ready = await prepareImageForUpload(file, 4 * 1024 * 1024);
             const formData = new FormData();
-            formData.append('logo', file);
+            formData.append('logo', ready);
 
             const response = await api.post('/admin/settings/logo', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
+                headers: { 'Content-Type': 'multipart/form-data' },
             });
 
             setSettings({ ...settings, logo_url: response.data.logo_url });
@@ -298,27 +287,15 @@ export function Settings() {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // Validate file size (3MB max for banner)
-        if (file.size > 3 * 1024 * 1024) {
-            alert('A imagem deve ter no máximo 3MB');
-            return;
-        }
-
-        // Validate file type
-        if (!file.type.startsWith('image/')) {
-            alert('Apenas imagens são permitidas');
-            return;
-        }
-
         setUploadingBanner(true);
         try {
+            // Comprime automaticamente se necessário (limite: 4MB)
+            const ready = await prepareImageForUpload(file, 4 * 1024 * 1024);
             const formData = new FormData();
-            formData.append('banner', file);
+            formData.append('banner', ready);
 
             const response = await api.post('/admin/settings/banner', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
+                headers: { 'Content-Type': 'multipart/form-data' },
             });
 
             setSettings({ ...settings, banner_url: response.data.banner_url });
@@ -335,15 +312,11 @@ export function Settings() {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // Limit 5MB
-        if (file.size > 5 * 1024 * 1024) {
-            alert('A imagem deve ter no máximo 5MB');
-            return;
-        }
-
         try {
+            // Comprime automaticamente se necessário (limite: 4MB)
+            const ready = await prepareImageForUpload(file, 4 * 1024 * 1024);
             const formData = new FormData();
-            formData.append('image', file);
+            formData.append('image', ready);
             formData.append('folder', 'backgrounds');
 
             const response = await api.post('/admin/upload/generic', formData, {
@@ -353,14 +326,10 @@ export function Settings() {
             const newSettings = { ...settings };
             if (!newSettings.art_settings) newSettings.art_settings = {};
             if (!newSettings.art_settings[sportKey]) newSettings.art_settings[sportKey] = {};
-
-            newSettings.art_settings[sportKey][posKey] = response.data.path; // Save relative path or full URL if preferred. Controller uses initImage which handles explicit paths. 
-            // Note: Controller initImage logic needs to be robust for path. The controller saves 'backgrounds/xxxx.jpg'.
-            // AdminSettingController expects art_settings.
+            newSettings.art_settings[sportKey][posKey] = response.data.path;
 
             setSettings(newSettings);
             alert('Imagem enviada com sucesso! Não esqueça de Salvar.');
-
         } catch (error) {
             console.error(error);
             alert('Erro no upload.');

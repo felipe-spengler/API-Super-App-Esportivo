@@ -125,7 +125,7 @@ class AdminProductController extends Controller
         \Illuminate\Support\Facades\Log::info('Product image upload start');
 
         $request->validate([
-            'image' => 'required|image|mimes:jpeg,png,jpg|max:2048'
+            'image' => 'required|image|mimes:jpeg,png,jpg|max:4096' // Max 4MB
         ]);
 
         if ($request->hasFile('image')) {

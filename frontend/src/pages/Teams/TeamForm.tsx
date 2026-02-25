@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Save, ArrowLeft, Shield, User, Camera, Search, Loader2 } from 'lucide-react';
 import api from '../../services/api';
+import { prepareImageForUpload } from '../../utils/imageCompressor';
 
 interface UserOption {
     id: number;
@@ -118,8 +119,10 @@ export function TeamForm() {
 
             // Upload Logo if selected
             if (selectedLogo && teamId) {
+                // Comprime automaticamente se necessário (limite: 4MB)
+                const ready = await prepareImageForUpload(selectedLogo, 4 * 1024 * 1024);
                 const formData = new FormData();
-                formData.append('logo', selectedLogo);
+                formData.append('logo', ready);
 
                 await api.post(`/admin/upload/team-logo/${teamId}`, formData, {
                     headers: { 'Content-Type': 'multipart/form-data' }

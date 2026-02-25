@@ -19,7 +19,7 @@ class ImageUploadController extends Controller
     {
         try {
             $request->validate([
-                'logo' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+                'logo' => 'required|image|mimes:jpeg,png,jpg|max:4096', // Max 4MB
             ]);
 
             $team = Team::findOrFail($teamId);
