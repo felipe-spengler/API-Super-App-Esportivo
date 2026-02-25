@@ -385,7 +385,7 @@ class AdminMatchController extends Controller
         $validated = $request->validate([
             'team_id' => 'nullable|exists:teams,id', // Allow system events without team
             'player_id' => 'nullable|integer',
-            'event_type' => 'required|in:goal,yellow_card,red_card,blue_card,assist,foul,mvp,substitution,point,ace,block,timeout,period_start,period_end,match_start,match_end,shootout_goal,shootout_miss,takedown,guard_pass,mount,back_control,knee_on_belly,sweep,advantage,penalty,game_won,technical_foul,unsportsmanlike_foul,disqualifying_foul,free_throw,field_goal_2,field_goal_3,voice_debug,timer_control',
+            'event_type' => 'required|in:goal,yellow_card,red_card,blue_card,assist,foul,mvp,substitution,point,ace,block,timeout,period_start,period_end,match_start,match_end,shootout_goal,shootout_miss,takedown,guard_pass,mount,back_control,knee_on_belly,sweep,advantage,penalty,game_won,technical_foul,unsportsmanlike_foul,disqualifying_foul,free_throw,field_goal_2,field_goal_3,voice_debug,timer_control,system_error,user_action,user_action_blocked',
             'minute' => 'nullable|string', // Change to string to support "00:00"
             'period' => 'nullable|string',
             'value' => 'nullable|integer',
@@ -459,6 +459,20 @@ class AdminMatchController extends Controller
         // Auto-update match status to live if it was scheduled
         if ($match->status === 'scheduled') {
             $match->update(['status' => 'live']);
+        }
+
+        // Auto-sync MVP: se o evento for 'mvp' e tiver player_id, atualiza a coluna dedicada
+        // Isso garante que o ranking de MVP, a arte e a aba pública de MVP funcionem corretamente
+        if ($event->event_type === 'mvp' && $event->player_id) {
+            $awards = $match->awards ?? [];
+            $awards['craque'] = [
+                'player_id' => $event->player_id,
+                'photo_id' => null,
+            ];
+            $match->update([
+                'mvp_player_id' => $event->player_id,
+                'awards' => $awards,
+            ]);
         }
 
         MatchUpdated::dispatch($match->id, ['event' => $event]);
