@@ -368,10 +368,25 @@ export function SumulaFutebol7() {
             if (type === 'match_start') {
                 setMatchData((prev: any) => ({ ...prev, status: 'live' }));
             }
-        } catch (e) {
+        } catch (e: any) {
             console.error(e);
+            if (type !== 'system_error') {
+                try {
+                    await api.post(`/admin/matches/${id}/events`, {
+                        event_type: 'system_error',
+                        team_id: null,
+                        minute: formatTime(time),
+                        period: currentPeriod,
+                        metadata: {
+                            label: `Erro ao registrar '${type}': ${e?.message || 'Falha de rede'}`,
+                            origin: 'registerSystemEvent',
+                            triggered_type: type
+                        }
+                    });
+                } catch (_) { }
+            }
             if (type === 'match_start') {
-                setIsRunning(false); // Stop timer if we couldn't start match!
+                setIsRunning(false);
                 alert("Erro de conexão ao iniciar partida. O cronômetro foi pausado. Tente novamente.");
             }
         }
@@ -379,9 +394,11 @@ export function SumulaFutebol7() {
 
     const openEventModal = (team: 'home' | 'away', type: 'goal' | 'yellow_card' | 'red_card' | 'blue_card' | 'assist' | 'foul' | 'mvp') => {
         if (!isRunning) {
+            registerSystemEvent('user_action_blocked', `Tentativa de lançar '${type}' para ${team === 'home' ? 'Mandante' : 'Visitante'} com cronômetro parado`);
             alert('Atenção: Inicie o cronômetro para poder lançar eventos!');
             return;
         }
+        registerSystemEvent('user_action', `Abriu modal de '${type}' para ${team === 'home' ? 'Mandante' : 'Visitante'}`);
         setSelectedTeam(team);
         setEventType(type);
         setShowEventModal(true);
@@ -487,8 +504,9 @@ export function SumulaFutebol7() {
             setShowEventModal(false);
             setSelectedPlayer(null);
             setIsSelectingOwnGoal(false);
-        } catch (e) {
+        } catch (e: any) {
             console.error(e);
+            registerSystemEvent('system_error', `Erro ao registrar evento '${eventType}': ${e?.message || 'Falha de rede'}`);
             alert('Erro ao registrar evento');
         }
     };
@@ -542,7 +560,11 @@ export function SumulaFutebol7() {
     };
 
     const handleDeleteEvent = async (eventId: number, type: string, team: 'home' | 'away') => {
-        if (!window.confirm('Excluir este evento?')) return;
+        if (!window.confirm('Excluir este evento?')) {
+            registerSystemEvent('user_action', `Cancelou exclusão de '${type}' (id: ${eventId})`);
+            return;
+        }
+        registerSystemEvent('user_action', `Excluiu evento '${type}' (id: ${eventId}) do time ${team === 'home' ? 'Mandante' : 'Visitante'}`);
 
         try {
             await api.delete(`/admin/matches/${id}/events/${eventId}`);
@@ -591,8 +613,9 @@ export function SumulaFutebol7() {
                     [team]: Math.max(0, prev[team] - 1)
                 }));
             }
-        } catch (e) {
+        } catch (e: any) {
             console.error(e);
+            registerSystemEvent('system_error', `Erro ao excluir '${type}' (id: ${eventId}): ${e?.message || 'Falha de rede'}`);
             alert('Erro ao excluir evento');
         }
     };
@@ -619,11 +642,12 @@ export function SumulaFutebol7() {
     const handleToggleTimer = () => {
         if (!isRunning) {
             // RESUMING GAME
-            deleteSystemEvents(['period_end'], true); // Remove period_end for THIS period
-            deleteSystemEvents(['match_end']); // Remove match_end (global)
-
+            deleteSystemEvents(['period_end'], true);
+            deleteSystemEvents(['match_end']);
+            registerSystemEvent('timer_control', `Cronômetro retomado manualmente em ${formatTime(time)} — ${currentPeriod}`);
             setIsRunning(true);
         } else {
+            registerSystemEvent('timer_control', `Cronômetro pausado manualmente em ${formatTime(time)} — ${currentPeriod}`);
             setIsRunning(false);
         }
     };

@@ -118,6 +118,9 @@ export function SumulaVolei() {
         const pid = playerId;
         setPointFlow(null);
 
+        const teamSide = teamId === matchData?.home_team_id ? 'Mandante' : 'Visitante';
+        registerSystemEvent('user_action', `Confirmou ponto '${type}' para ${teamSide}${pid ? '' : ' (jogador não identificado)'}`);
+
         try {
             await api.post(`/admin/matches/${id}/volley/point`, {
                 team_id: teamId,
@@ -125,7 +128,8 @@ export function SumulaVolei() {
                 player_id: pid
             });
             fetchState();
-        } catch (e) {
+        } catch (e: any) {
+            registerSystemEvent('system_error', `Erro ao registrar ponto '${type}': ${e?.message || 'Falha de rede'}`);
             alert('Erro ao registrar ponto');
         }
     };
@@ -147,8 +151,13 @@ export function SumulaVolei() {
 
         const receivingTeamId = committingTeamId === matchData.home_team_id ? matchData.away_team_id : matchData.home_team_id;
         const receivingTeamName = receivingTeamId === matchData.home_team_id ? matchData.home_team?.name : matchData.away_team?.name;
+        const committingTeamSide = committingTeamId === matchData.home_team_id ? 'Mandante' : 'Visitante';
 
-        if (!window.confirm(`Registrar ERRO COMETIDO por este time? \n(Ponto para ${receivingTeamName})`)) return;
+        if (!window.confirm(`Registrar ERRO COMETIDO por este time? \n(Ponto para ${receivingTeamName})`)) {
+            registerSystemEvent('user_action', `Cancelou registro de erro do time ${committingTeamSide}`);
+            return;
+        }
+        registerSystemEvent('user_action', `Registrou erro do time ${committingTeamSide} — ponto para ${receivingTeamName}`);
 
         try {
             await api.post(`/admin/matches/${id}/volley/point`, {
@@ -157,14 +166,20 @@ export function SumulaVolei() {
                 player_id: null
             });
             fetchState();
-        } catch (e) {
+        } catch (e: any) {
+            registerSystemEvent('system_error', `Erro ao registrar ponto por erro: ${e?.message || 'Falha de rede'}`);
             alert('Erro ao registrar ponto');
         }
     };
 
     const handleTimeout = async (teamId: number) => {
+        const teamSide = teamId === matchData?.home_team_id ? 'Mandante' : 'Visitante';
         try {
-            if (!window.confirm("Registrar Pedido de Tempo?")) return;
+            if (!window.confirm("Registrar Pedido de Tempo?")) {
+                registerSystemEvent('user_action', `Cancelou pedido de tempo do time ${teamSide}`);
+                return;
+            }
+            registerSystemEvent('user_action', `Registrou pedido de tempo do time ${teamSide}`);
             await api.post(`/admin/matches/${id}/events`, {
                 event_type: 'timeout',
                 team_id: teamId,
@@ -177,7 +192,8 @@ export function SumulaVolei() {
             });
             alert("Tempo registrado!");
             fetchState();
-        } catch (e) {
+        } catch (e: any) {
+            registerSystemEvent('system_error', `Erro ao registrar tempo técnico: ${e?.message || 'Falha de rede'}`);
             console.error(e);
         }
     };
@@ -196,12 +212,26 @@ export function SumulaVolei() {
                 }
             });
 
-            // If we successfully started the match, update status locally
             if (type === 'match_start') {
                 setMatchData((prev: any) => ({ ...prev, status: 'live' }));
             }
-        } catch (e) {
+        } catch (e: any) {
             console.error("Erro ao registrar evento de sistema", e);
+            if (type !== 'system_error') {
+                try {
+                    await api.post(`/admin/matches/${id}/events`, {
+                        event_type: 'system_error',
+                        team_id: null,
+                        minute: 0,
+                        period: volleyState ? `${volleyState.current_set}º Set` : 'Pré-jogo',
+                        metadata: {
+                            label: `Erro ao registrar '${type}': ${e?.message || 'Falha de rede'}`,
+                            origin: 'registerSystemEvent',
+                            triggered_type: type
+                        }
+                    });
+                } catch (_) { }
+            }
             if (type === 'match_start') {
                 alert("Erro de conexão ao iniciar partida no servidor.");
             }

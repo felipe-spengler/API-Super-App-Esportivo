@@ -516,20 +516,43 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                                                     </div>
                                                                     <div className="flex flex-col">
                                                                         <span className="text-gray-800 leading-tight">
-                                                                            {event.type === 'goal' ? (event.metadata?.own_goal ? 'Gol Contra!' : 'Gol!') :
-                                                                                event.type === 'foul' ? 'Falta' :
-                                                                                    event.type === 'technical_foul' ? 'Falta Técnica' :
-                                                                                        event.type === 'unsportsmanlike_foul' ? 'Falta Antidesportiva' :
-                                                                                            event.type === 'disqualifying_foul' ? 'Falta Desqualificante' :
-                                                                                                event.type === 'field_goal_3' || event.type === '3_points' ? 'Cesta de 3 Pts' :
-                                                                                                    event.type === 'field_goal_2' || event.type === '2_points' ? 'Cesta de 2 Pts' :
-                                                                                                        event.type === 'free_throw' || event.type === '1_point' ? 'Lance Livre' :
-                                                                                                            event.type === 'game_won' ? 'Game Vencido' :
-                                                                                                                event.type === 'assist' ? 'Assistência' :
-                                                                                                                    event.type === 'substitution' ? 'Substituição' :
-                                                                                                                        event.type === 'suspension_2min' ? 'Suspensão 2min' :
-                                                                                                                            event.type === 'shootout_goal' ? 'Pênalti Convertido' :
-                                                                                                                                event.type === 'shootout_miss' ? 'Pênalti Perdido' : event.type}
+                                                                            {(() => {
+                                                                                // Prefere label enviado pelo backend; fallback para mapa local
+                                                                                if (event.label) return event.label + (event.type === 'goal' && event.metadata?.own_goal ? ' Contra' : '');
+                                                                                const friendlyMap: Record<string, string> = {
+                                                                                    goal: event.metadata?.own_goal ? 'Gol Contra!' : 'Gol!',
+                                                                                    yellow_card: 'Cartão Amarelo',
+                                                                                    red_card: 'Cartão Vermelho',
+                                                                                    blue_card: 'Cartão Azul',
+                                                                                    foul: 'Falta',
+                                                                                    technical_foul: 'Falta Técnica',
+                                                                                    unsportsmanlike_foul: 'Falta Antidesportiva',
+                                                                                    disqualifying_foul: 'Falta Desqualificante',
+                                                                                    field_goal_3: 'Cesta de 3 Pts',
+                                                                                    '3_points': 'Cesta de 3 Pts',
+                                                                                    field_goal_2: 'Cesta de 2 Pts',
+                                                                                    '2_points': 'Cesta de 2 Pts',
+                                                                                    free_throw: 'Lance Livre',
+                                                                                    '1_point': 'Lance Livre',
+                                                                                    game_won: 'Game Vencido',
+                                                                                    assist: 'Assistência',
+                                                                                    mvp: 'Craque do Jogo',
+                                                                                    timeout: 'Tempo Técnico',
+                                                                                    substitution: 'Substituição',
+                                                                                    suspension_2min: 'Suspensão 2min',
+                                                                                    shootout_goal: 'Pênalti Convertido',
+                                                                                    shootout_miss: 'Pênalti Perdido',
+                                                                                    penalty_goal: 'Pênalti (Gol)',
+                                                                                    ataque: 'Ataque',
+                                                                                    bloqueio: 'Bloqueio',
+                                                                                    saque: 'Ace (Saque)',
+                                                                                    erro: 'Erro',
+                                                                                    game: 'Game',
+                                                                                    set: 'Set',
+                                                                                    point: 'Ponto',
+                                                                                };
+                                                                                return friendlyMap[event.type] ?? event.type.replace(/_/g, ' ');
+                                                                            })()}
                                                                             {event.player_name && <span className="text-gray-900 font-black"> - {event.player_name}</span>}
                                                                         </span>
                                                                         {/* Team name — desktop only */}

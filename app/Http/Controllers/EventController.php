@@ -650,10 +650,10 @@ class EventController extends Controller
         $champId = $match->championship_id;
         $match->load([
             'homeTeam.players' => function ($q) use ($champId) {
-                $q->wherePivot('championship_id', $champId);
+                $q->where('team_players.championship_id', $champId);
             },
             'awayTeam.players' => function ($q) use ($champId) {
-                $q->wherePivot('championship_id', $champId);
+                $q->where('team_players.championship_id', $champId);
             }
         ]);
 
@@ -664,19 +664,54 @@ class EventController extends Controller
         }
 
         // Se houver eventos na tabela MatchEvent, eles são a fonte de verdade
+        // Tipos internos de auditoria nunca devem aparecer na página pública
+        $auditTypes = ['system_error', 'user_action', 'user_action_blocked', 'timer_control', 'voice_input'];
+
+        $eventLabels = [
+            'goal' => ['label' => 'Gol', 'icon' => '⚽'],
+            'yellow_card' => ['label' => 'Cartão Amarelo', 'icon' => '🟨'],
+            'red_card' => ['label' => 'Cartão Vermelho', 'icon' => '🟥'],
+            'blue_card' => ['label' => 'Cartão Azul', 'icon' => '🟦'],
+            'foul' => ['label' => 'Falta', 'icon' => '🚩'],
+            'assist' => ['label' => 'Assistência', 'icon' => '👟'],
+            'mvp' => ['label' => 'Craque do Jogo', 'icon' => '⭐'],
+            'timeout' => ['label' => 'Tempo Técnico', 'icon' => '⏱️'],
+            'shootout_goal' => ['label' => 'Pênalti (Gol)', 'icon' => '⚽'],
+            'shootout_miss' => ['label' => 'Pênalti (Erro)', 'icon' => '❌'],
+            'penalty_goal' => ['label' => 'Pênalti (Gol)', 'icon' => '⚽'],
+            'match_start' => ['label' => 'Início da Partida', 'icon' => '🏁'],
+            'match_end' => ['label' => 'Fim de Jogo', 'icon' => '🛑'],
+            'period_start' => ['label' => 'Início de Período', 'icon' => '▶️'],
+            'period_end' => ['label' => 'Fim de Período', 'icon' => '⏸️'],
+            // Vôlei / Beach Tennis
+            'ataque' => ['label' => 'Ataque', 'icon' => '💥'],
+            'bloqueio' => ['label' => 'Bloqueio', 'icon' => '🤚'],
+            'saque' => ['label' => 'Ace (Saque)', 'icon' => '🏐'],
+            'erro' => ['label' => 'Erro', 'icon' => '❌'],
+            // Tênis
+            'game' => ['label' => 'Game', 'icon' => '🎾'],
+            'set' => ['label' => 'Set', 'icon' => '🏆'],
+            'point' => ['label' => 'Ponto', 'icon' => '🎾'],
+        ];
+
         if ($match->events->count() > 0) {
-            $tableEvents = $match->events->map(function ($e) {
-                return [
-                    'id' => $e->id,
-                    'type' => $e->event_type,
-                    'team_id' => $e->team_id,
-                    'player_id' => $e->player_id,
-                    'player_name' => $e->player?->name ?? '?',
-                    'minute' => $e->game_time ?? '00:00',
-                    'period' => $e->metadata['period'] ?? ($e->metadata['label'] ?? '1º Tempo'),
-                    'value' => $e->value
-                ];
-            });
+            $tableEvents = $match->events
+                ->filter(fn($e) => !in_array($e->event_type, $auditTypes))
+                ->map(function ($e) use ($eventLabels) {
+                    $info = $eventLabels[$e->event_type] ?? ['label' => ucfirst(str_replace('_', ' ', $e->event_type)), 'icon' => '📋'];
+                    return [
+                        'id' => $e->id,
+                        'type' => $e->event_type,
+                        'label' => $info['label'],
+                        'icon' => $info['icon'],
+                        'team_id' => $e->team_id,
+                        'player_id' => $e->player_id,
+                        'player_name' => $e->player?->name ?? '?',
+                        'minute' => $e->game_time ?? '00:00',
+                        'period' => $e->period ?? '1º Tempo',
+                        'value' => $e->value,
+                    ];
+                })->values();
             $details['events'] = $tableEvents;
         }
 

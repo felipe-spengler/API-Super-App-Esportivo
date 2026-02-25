@@ -1122,16 +1122,14 @@ export function AdminMatchManager() {
                                     <ImageIcon className="w-4 h-4" /> Arte
                                 </span>
                             </button>
-                            {championship?.sport?.name?.toLowerCase().includes('basquete') && (
-                                <button
-                                    onClick={() => setActiveTab('audit')}
-                                    className={`flex-1 py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'audit' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-                                >
-                                    <span className="flex items-center justify-center gap-2">
-                                        <ShieldCheck className="w-4 h-4" /> Auditoria
-                                    </span>
-                                </button>
-                            )}
+                            <button
+                                onClick={() => setActiveTab('audit')}
+                                className={`flex-1 py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'audit' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                            >
+                                <span className="flex items-center justify-center gap-2">
+                                    <ShieldCheck className="w-4 h-4" /> Auditoria
+                                </span>
+                            </button>
                         </div>
 
                         {activeTab === 'summary' && (
@@ -1247,33 +1245,59 @@ export function AdminMatchManager() {
                                         (selectedMatch as any).events.slice().reverse().map((event: any) => {
                                             const isVoice = event.event_type === 'voice_debug';
                                             const isTimer = event.event_type === 'timer_control';
+                                            const isError = event.event_type === 'system_error';
+                                            const isUserAction = event.event_type === 'user_action';
+                                            const isBlocked = event.event_type === 'user_action_blocked';
                                             const isRosterLog = event.metadata?.system_info === 'Roster Snapshot';
 
                                             const getFriendlyEvent = (type: string) => {
                                                 const t = (type || '').toLowerCase().trim();
                                                 const map: any = {
+                                                    // Basquete
                                                     'field_goal_2': { label: 'Cesta de 2 Pontos', icon: '🏀' },
                                                     'field_goal_3': { label: 'Cesta de 3 Pontos', icon: '🎯' },
                                                     'free_throw': { label: 'Lance Livre', icon: '🗑️' },
-                                                    'foul': { label: 'Falta Comum', icon: '⚠️' },
                                                     'technical_foul': { label: 'Falta Técnica', icon: '🟨' },
                                                     'unsportsmanlike_foul': { label: 'Falta Antidesportiva', icon: '🟧' },
                                                     'disqualifying_foul': { label: 'Falta Desqualificante', icon: '🟥' },
-                                                    'timeout': { label: 'Pedido de Tempo', icon: '⏱️' },
+                                                    'block': { label: 'Toco', icon: '✋' },
+                                                    'rebound': { label: 'Rebote', icon: '🔁' },
+                                                    'steal': { label: 'Roubo de Bola', icon: '💨' },
+                                                    'assist': { label: 'Assistência', icon: '👟' },
+                                                    // Futebol / Futsal / Futebol7
+                                                    'goal': { label: 'Gol', icon: '⚽' },
+                                                    'yellow_card': { label: 'Cartão Amarelo', icon: '🟨' },
+                                                    'red_card': { label: 'Cartão Vermelho', icon: '🟥' },
+                                                    'blue_card': { label: 'Cartão Azul', icon: '🟦' },
+                                                    'foul': { label: 'Falta', icon: '⚠️' },
+                                                    'shootout_goal': { label: 'Pênalti Convertido', icon: '🥅' },
+                                                    'shootout_miss': { label: 'Pênalti Perdido', icon: '❌' },
+                                                    // Vôlei / Beach Tênis
+                                                    'point': { label: 'Ponto', icon: '🏐' },
+                                                    'set_end': { label: 'Fim de Set', icon: '🏆' },
+                                                    'ace': { label: 'Ace', icon: '🎯' },
+                                                    // Tênis
+                                                    'game': { label: 'Game', icon: '🎾' },
+                                                    // Gerais
                                                     'substitution': { label: 'Substituição', icon: '🔄' },
+                                                    'timeout': { label: 'Pedido de Tempo', icon: '⏱️' },
                                                     'match_start': { label: 'Início da Partida', icon: '🏁' },
                                                     'match_end': { label: 'Fim de Jogo', icon: '🛑' },
-                                                    'period_start': { label: 'Início de Período', icon: '▶️' },
-                                                    'period_end': { label: 'Fim de Período', icon: '⏸️' },
+                                                    'period_start': { label: 'Início de Período/Set', icon: '▶️' },
+                                                    'period_end': { label: 'Fim de Período/Set', icon: '⏸️' },
                                                 };
-                                                return map[t] || { label: type, icon: '⚽' };
+                                                return map[t] || { label: type, icon: '📋' };
                                             };
 
                                             const display = getFriendlyEvent(event.event_type);
 
                                             return (
-                                                <div key={event.id} className={`p-4 rounded-xl border flex flex-col gap-2 ${isVoice ? 'bg-white border-gray-100' :
-                                                    isTimer ? 'bg-indigo-50 border-indigo-100' : 'bg-white border-gray-200 shadow-sm'
+                                                <div key={event.id} className={`p-4 rounded-xl border flex flex-col gap-2 ${isError ? 'bg-red-50 border-red-200' :
+                                                        isBlocked ? 'bg-orange-50 border-orange-200' :
+                                                            isUserAction ? 'bg-green-50 border-green-200' :
+                                                                isVoice ? 'bg-white border-gray-100' :
+                                                                    isTimer ? 'bg-indigo-50 border-indigo-100' :
+                                                                        'bg-white border-gray-200 shadow-sm'
                                                     }`}>
                                                     <div className="flex items-center justify-between">
                                                         <div className="flex items-center gap-3">
@@ -1287,21 +1311,39 @@ export function AdminMatchManager() {
                                                         <span className="text-[10px] font-bold text-gray-300">#{event.id} • {new Date(event.created_at).toLocaleTimeString('pt-BR')}</span>
                                                     </div>
 
-                                                    <div className="flex items-center gap-2">
-                                                        <h4 className={`text-sm font-black uppercase ${isVoice ? 'text-gray-400' : isTimer ? 'text-indigo-600' : 'text-gray-900'
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <h4 className={`text-sm font-black uppercase ${isError ? 'text-red-600' :
+                                                                isBlocked ? 'text-orange-600' :
+                                                                    isUserAction ? 'text-green-700' :
+                                                                        isVoice ? 'text-gray-400' :
+                                                                            isTimer ? 'text-indigo-600' :
+                                                                                'text-gray-900'
                                                             }`}>
                                                             {isRosterLog ? '📋 Registro do Sistema' :
-                                                                isVoice ? '🎙️ Entrada de Voz' :
-                                                                    isTimer ? '⏱️ Controle do Tempo' :
-                                                                        `${display.icon} Evento: ${display.label}`}
+                                                                isError ? '🔴 Erro de Sistema' :
+                                                                    isBlocked ? '🚫 Ação Bloqueada' :
+                                                                        isUserAction ? '👆 Ação do Operador' :
+                                                                            isVoice ? '🎙️ Entrada de Voz' :
+                                                                                isTimer ? '⏱️ Controle do Tempo' :
+                                                                                    `${display.icon} Evento: ${display.label}`}
                                                         </h4>
                                                         {isVoice && !isRosterLog && (
-                                                            <span className={`text-[10px] font-black px-2 py-0.5 rounded shadow-sm ${event.metadata?.identified ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
-                                                                }`}>
+                                                            <span className={`text-[10px] font-black px-2 py-0.5 rounded shadow-sm ${event.metadata?.identified ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
                                                                 {event.metadata?.identified ? 'SUCESSO' : 'FALHA'}
                                                             </span>
                                                         )}
                                                     </div>
+
+                                                    {/* Label / Descrição do evento */}
+                                                    {event.metadata?.label && (
+                                                        <div className={`text-xs font-medium p-2 rounded-lg border ${isError ? 'bg-red-100/50 border-red-200 text-red-800' :
+                                                                isBlocked ? 'bg-orange-100/50 border-orange-200 text-orange-800' :
+                                                                    isUserAction ? 'bg-green-100/50 border-green-200 text-green-800' :
+                                                                        'bg-gray-100/50 border-gray-200/50 text-gray-600'
+                                                            }`}>
+                                                            {event.metadata.label}
+                                                        </div>
+                                                    )}
 
                                                     {event.metadata?.voice_log && (
                                                         <div className="text-sm font-medium italic text-gray-600 bg-gray-100/50 p-3 rounded-lg border border-gray-200/50">

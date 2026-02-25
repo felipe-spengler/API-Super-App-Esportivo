@@ -203,10 +203,21 @@ export function SumulaFutebol() {
                 setSyncStatus('synced');
                 console.log(`✅ SYNC FUTEBOL COMPLETO`);
                 console.groupEnd();
-            } catch (e) {
+            } catch (e: any) {
                 setSyncStatus('error');
                 console.error(`❌ ERRO NO SYNC FUTEBOL:`, e);
                 console.groupEnd();
+                // Registra erro de sincronização na auditoria (sem await para não bloquear)
+                api.post(`/admin/matches/${id}/events`, {
+                    event_type: 'system_error',
+                    team_id: null,
+                    minute: formatTime(timerRef.current.time),
+                    period: timerRef.current.currentPeriod,
+                    metadata: {
+                        label: `Erro de sincronização do cronômetro: ${e?.message || 'Falha de rede'}`,
+                        origin: 'timer_sync_ping'
+                    }
+                }).catch(() => { });
             }
         }, 3000);
 
@@ -333,10 +344,26 @@ export function SumulaFutebol() {
                 setMatchData((prev: any) => ({ ...prev, status: 'live' }));
             }
 
-        } catch (e) {
+        } catch (e: any) {
             console.error("Erro ao registrar evento de sistema", e);
+            // Registra o próprio erro como evento de auditoria (sem recursão para match_start)
+            if (type !== 'system_error') {
+                try {
+                    await api.post(`/admin/matches/${id}/events`, {
+                        event_type: 'system_error',
+                        team_id: null,
+                        minute: formatTime(time),
+                        period: currentPeriod,
+                        metadata: {
+                            label: `Erro ao registrar '${type}': ${e?.message || 'Falha de rede'}`,
+                            origin: 'registerSystemEvent',
+                            triggered_type: type
+                        }
+                    });
+                } catch (_) { /* silencia erro no log de erro */ }
+            }
             if (type === 'match_start') {
-                setIsRunning(false); // Stop timer if we couldn't start match!
+                setIsRunning(false);
                 alert("Erro de conexão ao iniciar partida. O cronômetro foi pausado. Tente novamente.");
             }
         }
@@ -344,9 +371,13 @@ export function SumulaFutebol() {
 
     const openEventModal = (team: 'home' | 'away', type: 'goal' | 'yellow_card' | 'red_card' | 'blue_card' | 'assist' | 'foul' | 'mvp') => {
         if (!isRunning) {
+            // Auditoria: usuário tentou lançar evento com cronômetro parado
+            registerSystemEvent('user_action_blocked', `Tentativa de lançar '${type}' para o time ${team === 'home' ? 'Mandante' : 'Visitante'} com cronômetro parado`);
             alert('Atenção: Inicie o cronômetro para poder lançar eventos!');
             return;
         }
+        // Auditoria: usuário abriu modal de evento
+        registerSystemEvent('user_action', `Abriu modal de '${type}' para o time ${team === 'home' ? 'Mandante' : 'Visitante'}`);
         setSelectedTeam(team);
         setEventType(type);
         setShowEventModal(true);
@@ -454,8 +485,9 @@ export function SumulaFutebol() {
             setShowEventModal(false);
             setSelectedPlayer(null);
             setIsSelectingOwnGoal(false);
-        } catch (e) {
+        } catch (e: any) {
             console.error(e);
+            registerSystemEvent('system_error', `Erro ao registrar evento '${eventType}': ${e?.message || 'Falha de rede'}`);
             alert('Erro ao registrar evento. Verifique sua conexão.');
         }
     };
@@ -510,7 +542,14 @@ export function SumulaFutebol() {
     };
 
     const handleDeleteEvent = async (eventId: number, type: string, team: 'home' | 'away') => {
-        if (!window.confirm('Excluir este evento?')) return;
+        if (!window.confirm('Excluir este evento?')) {
+            // Auditoria: usuário cancelou exclusão de evento
+            registerSystemEvent('user_action', `Cancelou exclusão do evento '${type}' (id: ${eventId}) do time ${team === 'home' ? 'Mandante' : 'Visitante'}`);
+            return;
+        }
+
+        // Auditoria: usuário confirmou exclusão
+        registerSystemEvent('user_action', `Excluiu evento '${type}' (id: ${eventId}) do time ${team === 'home' ? 'Mandante' : 'Visitante'}`);
 
         try {
             await api.delete(`/admin/matches/${id}/events/${eventId}`);
@@ -532,8 +571,9 @@ export function SumulaFutebol() {
                     [team]: Math.max(0, prev[team] - 1)
                 }));
             }
-        } catch (e) {
+        } catch (e: any) {
             console.error(e);
+            registerSystemEvent('system_error', `Erro ao excluir evento '${type}' (id: ${eventId}): ${e?.message || 'Falha de rede'}`);
             alert('Erro ao excluir evento');
         }
     };
@@ -560,13 +600,12 @@ export function SumulaFutebol() {
     const handleToggleTimer = () => {
         if (!isRunning) {
             // RESUMING GAME
-            // If we are starting the timer, we should remove any "End of Period" or "Match End" markers
-            // for the current period, because evidently it didn't end properly.
-            deleteSystemEvents(['period_end'], true); // Remove period_end for THIS period
-            deleteSystemEvents(['match_end']); // Remove match_end (global)
-
+            deleteSystemEvents(['period_end'], true);
+            deleteSystemEvents(['match_end']);
+            registerSystemEvent('timer_control', `Cronômetro retomado manualmente em ${formatTime(time)} — ${currentPeriod}`);
             setIsRunning(true);
         } else {
+            registerSystemEvent('timer_control', `Cronômetro pausado manualmente em ${formatTime(time)} — ${currentPeriod}`);
             setIsRunning(false);
         }
     };
