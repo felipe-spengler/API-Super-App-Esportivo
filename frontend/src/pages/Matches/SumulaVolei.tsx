@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, RefreshCw, PlusCircle, History, Trophy, X, Repeat, ArrowRightLeft, UserPlus, AlertOctagon, XCircle, Trash2 } from 'lucide-react';
 import api from '../../services/api';
@@ -27,6 +27,11 @@ export function SumulaVolei() {
     const [cardFlow, setCardFlow] = useState<{ teamId: number } | null>(null);
 
     const [setupModalOpen, setSetupModalOpen] = useState(false);
+    const setupModalOpenRef = useRef(setupModalOpen);
+
+    useEffect(() => {
+        setupModalOpenRef.current = setupModalOpen;
+    }, [setupModalOpen]);
 
     // Visual State
     const [invertedSides, setInvertedSides] = useState(false);
@@ -181,11 +186,11 @@ export function SumulaVolei() {
         setSets(data.sets);
         setRotations((prev: any) => {
             // Se estamos no modal de setup, não sobrescrevemos o rodízio local com vazio do servidor
-            if (setupModalOpen) return prev;
+            if (setupModalOpenRef.current) return prev;
             return data.current_rotations;
         });
         setServingTeamId((prev: any) => {
-            if (setupModalOpen) return prev; // Se está no modal de setup, respeita a escolha local
+            if (setupModalOpenRef.current) return prev; // Se está no modal de setup, respeita a escolha local
             if (data.state.serving_team_id !== null && data.state.serving_team_id !== undefined) {
                 return data.state.serving_team_id;
             }
