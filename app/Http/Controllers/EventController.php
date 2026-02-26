@@ -382,24 +382,48 @@ class EventController extends Controller
         $type = $request->query('type', 'goals');
 
         // Map request type to DB event_type
-        // Map request type to DB event_types
         $dbTypes = [];
         if ($type === 'goals')
-            $dbTypes = ['goal'];
+            $dbTypes = ['goal', 'shootout_goal', 'penalty_goal'];
         elseif ($type === 'yellow_cards')
             $dbTypes = ['yellow_card'];
         elseif ($type === 'red_cards')
             $dbTypes = ['red_card'];
         elseif ($type === 'points')
-            $dbTypes = ['point', 'block', 'ace']; // Volleyball Total Points
+            $dbTypes = [
+                'point',
+                'block',
+                'ace',
+                'ataque',
+                'bloqueio',
+                'saque', // Volei/Outros
+                '1_point',
+                '2_points',
+                '3_points',
+                'free_throw',
+                'field_goal_2',
+                'field_goal_3', // Basquete
+                'jiu_jitsu_2',
+                'jiu_jitsu_3',
+                'jiu_jitsu_4',
+                'takedown',
+                'guard_pass',
+                'mount',
+                'back_control',
+                'knee_on_belly',
+                'sweep',
+                'advantage',
+                'penalty', // Lutas
+                'game_won' // Jogos puros
+            ];
         elseif ($type === 'blocks')
-            $dbTypes = ['block']; // Volleyball block only
+            $dbTypes = ['block', 'bloqueio'];
         elseif ($type === 'aces')
-            $dbTypes = ['ace']; // Volleyball ace only
+            $dbTypes = ['ace', 'saque'];
         elseif ($type === 'assists')
-            $dbTypes = ['assist']; // Assists
+            $dbTypes = ['assist'];
         elseif ($type === 'rebounds')
-            $dbTypes = ['rebound']; // Basketball rebounds
+            $dbTypes = ['rebound'];
         elseif ($type === 'blue_cards')
             $dbTypes = ['blue_card'];
 
@@ -424,15 +448,16 @@ class EventController extends Controller
 
         // 1. Processar Eventos do Banco (da tabela match_events)
         foreach ($events as $event) {
-            $metadata = json_decode($event->metadata ?? '{}', true);
+            $metadata = is_string($event->metadata) ? json_decode($event->metadata, true) : (array) ($event->metadata ?? []);
+
             // Prefer player relation name, fallback to metadata name, fallback to Desconhecido
             // Since ImportOldData put 'player_id' as null often but 'original_player_name' in metadata
-            $pName = $metadata['original_player_name'] ?? 'Desconhecido';
+            $pName = $metadata['original_player_name'] ?? ($metadata['player_name'] ?? 'Desconhecido');
             $pPhoto = null;
 
             if ($event->player) {
-                $pName = $event->player->name;
-                // Try to get photo if available (assuming accessor or column)
+                $pName = $event->player->nickname ?: $event->player->name;
+                // Try to get photo if available
                 $pPhoto = $event->player->photo_url ?? $event->player->photo ?? null;
             }
 
