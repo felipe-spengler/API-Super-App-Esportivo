@@ -26,6 +26,9 @@ export function SumulaVolei() {
     // Card Flow State
     const [cardFlow, setCardFlow] = useState<{ teamId: number } | null>(null);
 
+    // MVP Flow State
+    const [mvpFlow, setMvpFlow] = useState<{ step: 'team' | 'player', teamId?: number } | null>(null);
+
     const [setupModalOpen, setSetupModalOpen] = useState(false);
     const setupModalOpenRef = useRef(setupModalOpen);
 
@@ -419,6 +422,29 @@ export function SumulaVolei() {
         }
     }
 
+    const confirmMvp = async (playerId: number) => {
+        if (!mvpFlow || !mvpFlow.teamId) return;
+        const { teamId } = mvpFlow;
+        setMvpFlow(null);
+        try {
+            await api.post(`/admin/matches/${id}/events`, {
+                event_type: 'mvp',
+                team_id: teamId,
+                player_id: playerId,
+                minute: "Fim",
+                period: "Pós-jogo",
+                metadata: {
+                    label: "Craque do Jogo"
+                }
+            });
+            // Also save mvp on match details endpoint
+            await api.put(`/admin/matches/${id}`, { mvp_player_id: playerId });
+            alert("Craque registrado com sucesso!");
+        } catch (e) {
+            alert("Erro ao registrar craque");
+        }
+    };
+
     // --- Substitutions ---
     const openSubModal = (teamId: number, posIndex: number, currentId: number) => {
         setSubData({ teamId, position: posIndex + 1, currentPlayerId: currentId }); // position 1-6
@@ -713,32 +739,32 @@ export function SumulaVolei() {
             <div className="px-3 py-4 bg-gradient-to-b from-gray-800 to-gray-900 border-b border-gray-700/50">
                 <div className="flex items-center justify-between gap-4 max-w-5xl mx-auto">
                     {/* Home Score */}
-                    <div className={`flex items-center gap-3 flex-1 ${invertedSides ? 'flex-row-reverse text-right' : 'text-left'}`}>
+                    <div className={`flex items-center gap-3 flex-1 ${invertedSides ? 'order-3 flex-row-reverse text-right' : 'order-1 text-left'}`}>
                         <div className="text-4xl font-black text-white tabular-nums">{currentSetObj.home_score}</div>
                         <div className="min-w-0">
                             <div className="text-[10px] font-bold text-blue-400 uppercase tracking-wider truncate">{matchData.home_team?.name}</div>
-                            <div className="text-[10px] text-gray-500 font-medium">Sets: {matchData.home_score}</div>
+                            <div className="text-[13px] font-black text-blue-500 tracking-tight">Sets: {matchData.home_score}</div>
                         </div>
                     </div>
 
                     {/* Divider/VS */}
-                    <div className="flex flex-col items-center">
+                    <div className="flex flex-col items-center order-2">
                         <div className="text-[8px] font-black text-gray-600 uppercase tracking-tighter">VS</div>
                         <div className="h-4 w-[1px] bg-gray-700 my-1"></div>
                     </div>
 
                     {/* Away Score */}
-                    <div className={`flex items-center gap-3 flex-1 ${invertedSides ? 'text-left' : 'flex-row-reverse text-right'}`}>
+                    <div className={`flex items-center gap-3 flex-1 ${invertedSides ? 'order-1 text-left' : 'order-3 flex-row-reverse text-right'}`}>
                         <div className="text-4xl font-black text-white tabular-nums">{currentSetObj.away_score}</div>
                         <div className="min-w-0">
                             <div className="text-[10px] font-bold text-green-400 uppercase tracking-wider truncate">{matchData.away_team?.name}</div>
-                            <div className="text-[10px] text-gray-500 font-medium">Sets: {matchData.away_score}</div>
+                            <div className="text-[13px] font-black text-green-500 tracking-tight">Sets: {matchData.away_score}</div>
                         </div>
                     </div>
                 </div>
 
                 {/* BOTÃO DE CONTROLE DE SET - Logo abaixo do placar */}
-                <div className="mt-4 max-w-sm mx-auto">
+                <div className="mt-4 max-w-sm mx-auto space-y-2">
                     {(() => {
                         const currentSet = sets.find(s => s.set_number == volleyState?.current_set);
                         const hasStarted = !!currentSet?.start_time;
@@ -763,10 +789,32 @@ export function SumulaVolei() {
                                 className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-900/40 rounded-xl flex items-center justify-center gap-2 font-black text-[11px] uppercase tracking-widest transition-all active:scale-95 border-b-4 border-indigo-800 active:border-b-0"
                             >
                                 <Trophy size={14} />
-                                {matchData.home_score >= 3 || matchData.away_score >= 3 ? 'FINALIZAR PARTIDA' : 'ENCERRAR SET / PRÓXIMO'}
+                                ENCERRAR SET / PRÓXIMO
                             </button>
                         );
                     })()}
+
+                    {/* Botões Extras: Craque e Encerrar Súmula */}
+                    {matchData.status !== 'scheduled' && matchData.status !== 'finished' && (
+                        <div className="grid grid-cols-2 gap-2 mt-2">
+                            <button
+                                onClick={() => setMvpFlow({ step: 'team' })}
+                                className="w-full py-2 bg-amber-600 hover:bg-amber-500 font-black tracking-widest text-[9px] uppercase border-b-4 border-amber-800 active:border-b-0 active:translate-y-[4px] transition-all rounded-lg flex items-center justify-center gap-1"
+                            >
+                                ⭐ Craque
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    if (!window.confirm('Deseja encerrar a partida? Você não conseguirá mais lançar eventos.')) return;
+                                    await registerSystemEvent('match_end', 'Partida Finalizada. Grande jogo!');
+                                    navigate(-1);
+                                }}
+                                className="w-full py-2 bg-red-600 hover:bg-red-500 font-black tracking-widest text-[9px] uppercase border-b-4 border-red-800 active:border-b-0 active:translate-y-[4px] transition-all rounded-lg flex items-center justify-center gap-1"
+                            >
+                                <AlertOctagon size={12} /> Encerrar Jogo
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -942,21 +990,7 @@ export function SumulaVolei() {
                 </div>
             </div>
 
-            {/* Finalize Button */}
-            {(matchData.home_score >= 3 || matchData.away_score >= 3) && (
-                <div className="px-4 pb-10 max-w-5xl mx-auto">
-                    <button
-                        onClick={async () => {
-                            if (!window.confirm('Encerrar partida e voltar?')) return;
-                            await registerSystemEvent('match_end', 'Partida Finalizada. Grande jogo!');
-                            navigate(-1);
-                        }}
-                        className="w-full py-4 bg-red-600 hover:bg-red-500 rounded-xl font-bold text-xl shadow-lg uppercase"
-                    >
-                        Encerrar Súmula
-                    </button>
-                </div>
-            )}
+
 
             {/* Rotation Modal */}
             {rotationViewOpen && (
@@ -1073,6 +1107,42 @@ export function SumulaVolei() {
                             ))}
                         </div>
                         <button onClick={() => setCardFlow(null)} className="mt-4 w-full py-4 text-gray-400 font-bold">Cancelar</button>
+                    </div>
+                </div>
+            )}
+
+            {/* MVP Flow Modal */}
+            {mvpFlow && (
+                <div className="fixed inset-0 bg-black/80 z-50 flex items-end sm:items-center justify-center p-4">
+                    <div className="bg-gray-800 w-full sm:max-w-md rounded-xl sm:rounded-2xl p-6 shadow-2xl border border-gray-700">
+                        {mvpFlow.step === 'team' ? (
+                            <>
+                                <h3 className="text-center font-bold text-xl mb-6 text-yellow-400">⭐ O Craque do Jogo</h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <button onClick={() => setMvpFlow({ step: 'player', teamId: matchData.home_team_id })} className="p-6 border-b-4 border-blue-900 bg-blue-600 hover:bg-blue-500 rounded-xl font-bold flex flex-col items-center justify-center gap-2 active:scale-95 transition-all">
+                                        <div className="text-3xl text-white">💙</div>
+                                        <span className="text-xs uppercase tracking-widest text-blue-100 mt-2 truncate max-w-full block">{matchData.home_team?.code}</span>
+                                    </button>
+                                    <button onClick={() => setMvpFlow({ step: 'player', teamId: matchData.away_team_id })} className="p-6 border-b-4 border-green-900 bg-green-600 hover:bg-green-500 rounded-xl font-bold flex flex-col items-center justify-center gap-2 active:scale-95 transition-all">
+                                        <div className="text-3xl text-white">💚</div>
+                                        <span className="text-xs uppercase tracking-widest text-green-100 mt-2 truncate max-w-full block">{matchData.away_team?.code}</span>
+                                    </button>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <h3 className="text-center font-bold text-xl mb-4 text-yellow-400">Quem foi o Craque?</h3>
+                                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-60 overflow-y-auto mb-4">
+                                    {(mvpFlow.teamId === matchData.home_team_id ? teamPlayers.home : teamPlayers.away).map((p: any) => (
+                                        <button key={p.id} onClick={() => confirmMvp(p.id)} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-xl flex flex-col items-center gap-1 border border-gray-600 active:scale-95 transition-all">
+                                            <span className="font-black text-lg text-yellow-500 leading-none mt-1">{p.number || '#'}</span>
+                                            <span className="text-[10px] truncate w-full text-center text-gray-300 font-bold">{p.nickname || p.name.split(' ')[0]}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </>
+                        )}
+                        <button onClick={() => setMvpFlow(null)} className="mt-4 w-full py-4 text-gray-400 font-bold hover:text-white transition-colors">Cancelar</button>
                     </div>
                 </div>
             )}
