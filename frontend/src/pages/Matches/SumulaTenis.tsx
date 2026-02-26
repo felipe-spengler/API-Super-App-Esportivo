@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Minus, RotateCcw, Trophy, Activity, X } from 'lucide-react';
+import { ArrowLeft, Plus, Minus, RotateCcw, Trophy, Activity, X, Wifi, WifiOff } from 'lucide-react';
 import api from '../../services/api';
+import { useOfflineResilience } from '../../hooks/useOfflineResilience';
+import { useCallback } from 'react';
 
 export function SumulaTenis() {
     const { id } = useParams();
@@ -20,6 +22,38 @@ export function SumulaTenis() {
     const [matchFinished, setMatchFinished] = useState(false);
     const [isQuickMode, setIsQuickMode] = useState(false); // Alterna entre marcar pontos ou games direto
     const [events, setEvents] = useState<any[]>([]);
+
+    // 🛡️ Offline Resilience
+    const { isOnline, addToQueue, pendingCount } = useOfflineResilience(id, 'Tenis', async (action, data) => {
+        let url = '';
+        switch (action) {
+            case 'event': url = `/admin/matches/${id}/events`; break;
+            case 'sets': url = `/admin/matches/${id}/sets`; break;
+            case 'finish': url = `/admin/matches/${id}/finish`; break;
+            case 'patch_match': return await api.patch(`/admin/matches/${id}`, data);
+        }
+        if (url) return await api.post(url, data);
+    });
+
+    // Helper: tenta chamada direta; se falhar offline, enfileira
+    const apiPost = useCallback(async (action: 'event' | 'sets' | 'finish' | 'patch_match', data: any) => {
+        if (isOnline) {
+            try {
+                const url = action === 'event' ? `/admin/matches/${id}/events`
+                    : action === 'sets' ? `/admin/matches/${id}/sets`
+                        : action === 'finish' ? `/admin/matches/${id}/finish` : '';
+
+                if (action === 'patch_match') return await api.patch(`/admin/matches/${id}`, data);
+                return await api.post(url, data);
+            } catch (e: any) {
+                if (!e.response) { addToQueue(action, data); return null; }
+                throw e;
+            }
+        } else {
+            addToQueue(action, data);
+            return null;
+        }
+    }, [isOnline, id, addToQueue]);
 
     const fetchMatchDetails = async (silent = false) => {
         try {
@@ -109,7 +143,7 @@ export function SumulaTenis() {
 
         const pingInterval = setInterval(async () => {
             try {
-                await api.patch(`/admin/matches/${id}`, {
+                await apiPost('patch_match', {
                     match_details: {
                         ...matchData.match_details,
                         sync_state: {
@@ -149,9 +183,10 @@ export function SumulaTenis() {
 
         // Save game event
         try {
-            const resp = await api.post(`/admin/matches/${id}/events`, {
+            const resp = await apiPost('event', {
                 event_type: 'game_won',
                 team_id: team === 'home' ? matchData.home_team_id : matchData.away_team_id,
+                minute: '00:00',
                 period: `Set ${currentSet}`,
                 metadata: {
                     result: `${newGames.home}-${newGames.away}`,
@@ -234,16 +269,28 @@ export function SumulaTenis() {
 
         // Save point event
         try {
-            const resp = await api.post(`/admin/matches/${id}/events`, {
+            const resp = await apiPost('event', {
                 event_type: 'point',
                 team_id: team === 'home' ? matchData.home_team_id : matchData.away_team_id,
+                minute: '00:00',
                 period: `Set ${currentSet}`,
                 metadata: {
                     game_score: `${newScore.home}-${newScore.away}`,
                     system_period: `Set ${currentSet}`
                 }
             });
-            setEvents(prev => [resp.data.event, ...prev]);
+            if (resp && resp.data) {
+                setEvents(prev => [resp.data.event, ...prev]);
+            } else {
+                setEvents(prev => [{
+                    id: Date.now(),
+                    type: 'point',
+                    team_id: team === 'home' ? matchData.home_team_id : matchData.away_team_id,
+                    period: `Set ${currentSet}`,
+                    minute: '00:00',
+                    metadata: { game_score: `${newScore.home}-${newScore.away}` }
+                }, ...prev]);
+            }
         } catch (e) {
             console.error(e);
         }
@@ -271,7 +318,7 @@ export function SumulaTenis() {
 
         // Save set to backend
         try {
-            await api.post(`/admin/matches/${id}/sets`, {
+            await apiPost('sets', {
                 set_number: currentSet,
                 home_score: finalGames.home,
                 away_score: finalGames.away
@@ -299,7 +346,7 @@ export function SumulaTenis() {
         try {
             await registerSystemEvent('match_end', 'Partida Finalizada. Que jogo!');
 
-            await api.post(`/admin/matches/${id}/finish`, {
+            await apiPost('finish', {
                 home_score: matchData.scoreHome,
                 away_score: matchData.scoreAway
             });
@@ -349,10 +396,10 @@ export function SumulaTenis() {
     const registerSystemEvent = async (type: string, label: string) => {
         if (!matchData) return;
         try {
-            await api.post(`/admin/matches/${id}/events`, {
+            await apiPost('event', {
                 event_type: type,
                 team_id: matchData.home_team_id || matchData.away_team_id,
-                minute: 0,
+                minute: '00:00',
                 period: `Set ${currentSet}`,
                 metadata: {
                     label,
@@ -384,7 +431,7 @@ export function SumulaTenis() {
         <div className="min-h-screen bg-gradient-to-br from-green-800 via-emerald-700 to-lime-600 text-white font-sans pb-20">
             {/* Header */}
             <div className="bg-black/20 pb-3 pt-4 sticky top-0 z-10 border-b border-white/10 backdrop-blur-md shadow-2xl">
-                <div className="px-4 flex items-center justify-between mb-4">
+                <div className="px-4 flex items-center justify-between mb-2">
                     <button onClick={() => navigate(-1)} className="p-2 bg-white/10 rounded-full backdrop-blur">
                         <ArrowLeft className="w-5 h-5" />
                     </button>
@@ -399,6 +446,15 @@ export function SumulaTenis() {
                         <RotateCcw className="w-5 h-5" />
                     </button>
                 </div>
+
+                {/* ── OFFLINE BANNER ── */}
+                {(!isOnline || pendingCount > 0) && (
+                    <div className={`mx-4 mb-3 px-3 py-1.5 rounded-xl flex items-center gap-2 text-[10px] font-bold border ${!isOnline ? 'bg-orange-950/80 border-orange-500/50 text-orange-200' : 'bg-blue-950/80 border-blue-500/50 text-blue-200'
+                        }`}>
+                        {!isOnline ? <WifiOff size={12} /> : <Wifi size={12} />}
+                        {!isOnline ? `Offline — ${pendingCount} evento(s) aguardando` : `Sincronizando ${pendingCount} evento(s)...`}
+                    </div>
+                )}
 
                 {/* Scoreboard */}
                 <div className="px-4 space-y-3">
