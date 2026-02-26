@@ -179,12 +179,18 @@ export function SumulaVolei() {
         setMatchData(data.match);
         setVolleyState(data.state);
         setSets(data.sets);
-        setRotations(data.current_rotations);
-        if (data.state.serving_team_id !== null) {
-            setServingTeamId(data.state.serving_team_id);
-        } else if (!setupModalOpen) {
-            setServingTeamId(null);
-        }
+        setRotations((prev: any) => {
+            // Se estamos no modal de setup, não sobrescrevemos o rodízio local com vazio do servidor
+            if (setupModalOpen) return prev;
+            return data.current_rotations;
+        });
+        setServingTeamId((prev: any) => {
+            if (setupModalOpen) return prev; // Se está no modal de setup, respeita a escolha local
+            if (data.state.serving_team_id !== null && data.state.serving_team_id !== undefined) {
+                return data.state.serving_team_id;
+            }
+            return null;
+        });
 
         // Se o set atual no banco está finalizado (tem end_time), 
         // mas o volleyState local ainda não avançou, podemos detectar que estamos em "Intervalo"
