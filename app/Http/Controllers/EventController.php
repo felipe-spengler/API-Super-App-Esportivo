@@ -384,7 +384,7 @@ class EventController extends Controller
         // Map request type to DB event_type
         $dbTypes = [];
         if ($type === 'goals')
-            $dbTypes = ['goal', 'shootout_goal', 'penalty_goal'];
+            $dbTypes = ['goal'];
         elseif ($type === 'yellow_cards')
             $dbTypes = ['yellow_card'];
         elseif ($type === 'red_cards')
@@ -475,7 +475,7 @@ class EventController extends Controller
             }
 
             // Skip own goals for scorer stats
-            if ($type === 'goals' && isset($metadata['own_goal']) && $metadata['own_goal'] === true) {
+            if ($type === 'goals' && isset($metadata['own_goal']) && filter_var($metadata['own_goal'], FILTER_VALIDATE_BOOLEAN)) {
                 continue;
             }
 
@@ -571,7 +571,7 @@ class EventController extends Controller
                     ];
                 }
 
-                if ($type === 'goals' && isset($jsonEvent['metadata']['own_goal']) && $jsonEvent['metadata']['own_goal'] === true) {
+                if ($type === 'goals' && isset($jsonEvent['metadata']['own_goal']) && filter_var($jsonEvent['metadata']['own_goal'], FILTER_VALIDATE_BOOLEAN)) {
                     continue;
                 }
 
