@@ -705,10 +705,12 @@ class EventController extends Controller
                 ->filter(fn($e) => !in_array($e->event_type, $auditTypes))
                 ->map(function ($e) use ($eventLabels) {
                     $info = $eventLabels[$e->event_type] ?? ['label' => ucfirst(str_replace('_', ' ', $e->event_type)), 'icon' => '📋'];
+                    $metadata = is_string($e->metadata) ? json_decode($e->metadata, true) : (array) $e->metadata;
+
                     return [
                         'id' => $e->id,
                         'type' => $e->event_type,
-                        'label' => $info['label'],
+                        'label' => $metadata['label'] ?? $info['label'],
                         'icon' => $info['icon'],
                         'team_id' => $e->team_id,
                         'player_id' => $e->player_id,
@@ -716,6 +718,7 @@ class EventController extends Controller
                         'minute' => $e->game_time ?? '00:00',
                         'period' => $e->period ?? '1º Tempo',
                         'value' => $e->value,
+                        'metadata' => $metadata,
                     ];
                 })->values();
             $details['events'] = $tableEvents;

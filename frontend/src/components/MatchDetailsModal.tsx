@@ -158,8 +158,17 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
     const getSortedEvents = () => {
         if (!details?.events) return [];
 
+        const sport = match?.championship?.sport?.slug || 'futebol';
+        const isVolei = sport.includes('volei') || sport.includes('vôlei');
+        const isBasquete = sport.includes('basquete');
+
         // 1. Sort events by time (descending)
         const sorted = [...details.events].sort((a, b) => {
+            if (isVolei || isBasquete) {
+                // Return by ID descending representing true chronological insertion order
+                return (b.id || 0) - (a.id || 0);
+            }
+
             const timeA = parseInt(String(a.minute).replace(/\D/g, '')) || 0;
             const timeB = parseInt(String(b.minute).replace(/\D/g, '')) || 0;
             if (timeA !== timeB) return timeB - timeA;
@@ -509,7 +518,16 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                                                 <div className={`text-xs sm:text-sm font-bold flex items-center gap-2 ${isHome ? 'sm:justify-end' : ''}`}>
                                                                     <div className="shrink-0 flex items-center justify-center h-4 w-4">
                                                                         {event.type === 'goal' && '⚽'}
-                                                                        {['point', '1_point', '2_points', '3_points', 'free_throw', 'field_goal_2', 'field_goal_3', 'game_won', 'ataque', 'bloqueio', 'saque', 'ace', 'erro', 'block'].includes(event.type) && (isVolei ? '🏐' : '🏀')}
+                                                                        {['point', '1_point', '2_points', '3_points', 'free_throw', 'field_goal_2', 'field_goal_3', 'game_won', 'ataque', 'bloqueio', 'saque', 'ace', 'erro', 'block'].includes(event.type) && (() => {
+                                                                            if (isVolei) {
+                                                                                const vt = event.metadata?.volley_type || event.type;
+                                                                                if (vt === 'bloqueio' || vt === 'block') return '🧱';
+                                                                                if (vt === 'saque' || vt === 'ace') return '🚀';
+                                                                                if (vt === 'erro') return '❌';
+                                                                                return '🏐';
+                                                                            }
+                                                                            return '🏀';
+                                                                        })()}
                                                                         {['takedown', 'jiu_jitsu_2', 'jiu_jitsu_3', 'jiu_jitsu_4'].includes(event.type) && '🥋'}
                                                                         {(event.type === 'yellow_card' || event.type === 'yellow') && (
                                                                             <div className="w-3 h-4 rounded-[2px] border border-yellow-600 shadow-sm" style={{ backgroundColor: '#facc15', minWidth: '12px', minHeight: '16px' }} />
