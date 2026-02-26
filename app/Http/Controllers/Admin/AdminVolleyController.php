@@ -80,6 +80,14 @@ class AdminVolleyController extends Controller
         $awayRotation = $request->input('away_rotation');
         $servingTeamId = $request->input('serving_team_id');
 
+        // Validação: 6 jogadores por time
+        $homeCount = count(array_filter($homeRotation ?? [], fn($x) => !is_null($x)));
+        $awayCount = count(array_filter($awayRotation ?? [], fn($x) => !is_null($x)));
+
+        if ($homeCount < 6 || $awayCount < 6) {
+            return response()->json(['error' => 'É necessário escalar 6 jogadores em cada time para iniciar o set.'], 422);
+        }
+
         DB::transaction(function () use ($match, $setNumber, $homeRotation, $awayRotation, $servingTeamId) {
             // 1. Create/Reset Set row
             $set = MatchSet::updateOrCreate(
@@ -139,7 +147,7 @@ class AdminVolleyController extends Controller
         DB::transaction(function () use (&$match, &$details, &$state) {
             $setNum = (int) ($state['current_set'] ?? 1);
 
-            // Grava Auditoria
+            // Grava auditoria de fim de set
             DB::table('match_events')->insert([
                 'game_match_id' => $match->id,
                 'event_type' => 'period_end',
@@ -150,9 +158,20 @@ class AdminVolleyController extends Controller
                 'updated_at' => now()
             ]);
 
+            // Finaliza o set na tabela match_sets se existir
+            $currentSet = MatchSet::where('game_match_id', $match->id)->where('set_number', (string) $setNum)->first();
+            if ($currentSet) {
+                $currentSet->end_time = now();
+                if ($currentSet->start_time) {
+                    $currentSet->duration_minutes = now()->diffInMinutes($currentSet->start_time);
+                }
+                $currentSet->save();
+            }
+
             // Advance state
             $state['current_set'] = $setNum + 1;
             $state['serving_team_id'] = null;
+            $state['last_point_sideout'] = false;
             $details['volley_state'] = $state;
 
             $match->match_details = $details;
@@ -165,121 +184,126 @@ class AdminVolleyController extends Controller
     public function registerPoint(Request $request, $matchId)
     {
         $teamId = $request->input('team_id');
-        $playerId = $request->input('player_id'); // Optional: who made the point
+        $playerId = $request->input('player_id');
         $pointType = $request->input('point_type', 'ataque');
 
         $match = GameMatch::findOrFail($matchId);
 
-        DB::transaction(function () use ($match, $teamId, $playerId, $pointType) {
-            $details = $match->match_details ?? [];
-            $state = $details['volley_state'] ?? ['current_set' => 1, 'serving_team_id' => null, 'history' => []];
+        try {
+            DB::transaction(function () use ($match, $teamId, $playerId, $pointType) {
+                $details = $match->match_details ?? [];
+                $state = $details['volley_state'] ?? ['current_set' => 1, 'serving_team_id' => null, 'history' => []];
 
-            $setNum = $state['current_set'];
-            $set = MatchSet::where('game_match_id', $match->id)->where('set_number', (string) $setNum)->first();
+                $setNum = $state['current_set'];
+                $set = MatchSet::where('game_match_id', $match->id)->where('set_number', (string) $setNum)->first();
 
-            if (!$set)
-                throw new \Exception("Set não iniciado");
-
-            $isHome = ($teamId == $match->home_team_id);
-
-            // 1. Increment Score
-            if ($isHome)
-                $set->increment('home_score');
-            else
-                $set->increment('away_score');
-
-            // Reload set to get fresh scores
-            $set->refresh();
-
-            // Store Point History
-            $historyItem = [
-                'set' => $setNum,
-                'team_id' => $teamId,
-                'player_id' => $playerId,
-                'home_score' => $set->home_score,
-                'away_score' => $set->away_score,
-                'type' => $pointType,
-                'timestamp' => now()->toIso8601String()
-            ];
-
-            if (!isset($state['history']))
-                $state['history'] = [];
-            $state['history'][] = $historyItem;
-
-            // 2. Check SideOutLogic
-            if ($state['serving_team_id'] != $teamId) {
-                // SideOut -> Rotate winning team -> They serve
-                $this->rotateTeamDB($match->id, $teamId, $setNum);
-                $state['serving_team_id'] = $teamId;
-                $state['last_point_sideout'] = true;
-            } else {
-                $state['last_point_sideout'] = false;
-            }
-
-            $details['volley_state'] = $state;
-            $match->match_details = $details;
-            $match->save();
-
-            // 3. Record Match Event for Timeline
-            $categoryMap = [
-                'ataque' => 'point',
-                'bloqueio' => 'block',
-                'saque' => 'ace',
-                'erro' => 'point'
-            ];
-
-            $player = $playerId ? \App\Models\User::find($playerId) : null;
-            $number = null;
-            if ($player) {
-                $number = DB::table('team_players')
-                    ->where('user_id', $playerId)
-                    ->where('team_id', $teamId)
-                    ->where('championship_id', $match->championship_id)
-                    ->value('number');
-            }
-
-            $playerName = $player ? ($player->nickname ?: $player->name) : "";
-            $playerLabel = $playerName ? " (" . $playerName . ($number ? " #{$number}" : "") . ")" : "";
-
-            DB::table('match_events')->insert([
-                'game_match_id' => $match->id,
-                'team_id' => $teamId,
-                'player_id' => $playerId,
-                'event_type' => $categoryMap[$pointType] ?? 'point',
-                'period' => "{$setNum}º Set",
-                'game_time' => '00:00',
-                'metadata' => json_encode([
-                    'label' => "Ponto de " . ucfirst($pointType) . $playerLabel,
-                    'volley_type' => $pointType,
-                    'player_name' => $player ? ($player->nickname ?: $player->name) : null,
-                    'system_period' => "{$setNum}º Set"
-                ]),
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
-
-            // 4. Update Match Score (Sets Won)
-            $finished = $this->updateMatchSetsScore($match, $set);
-
-            // 4. If set finished, record end_time
-            if ($finished) {
-                $set->end_time = now();
-                if ($set->start_time) {
-                    $set->duration_minutes = now()->diffInMinutes($set->start_time);
+                if (!$set) {
+                    throw new \Exception("V-START-NEEDED"); // Identificador para o frontend saber que o set não iniciou
                 }
-                $set->save();
+
+                $isHome = ($teamId == $match->home_team_id);
+
+                // 1. Increment Score
+                if ($isHome)
+                    $set->increment('home_score');
+                else
+                    $set->increment('away_score');
+
+                $set->refresh();
+
+                // Store Point History
+                $historyItem = [
+                    'set' => $setNum,
+                    'team_id' => $teamId,
+                    'player_id' => $playerId,
+                    'home_score' => $set->home_score,
+                    'away_score' => $set->away_score,
+                    'type' => $pointType,
+                    'timestamp' => now()->toIso8601String()
+                ];
+
+                $state['history'] = $state['history'] ?? [];
+                $state['history'][] = $historyItem;
+
+                // 2. Check SideOutLogic
+                if ($state['serving_team_id'] != $teamId) {
+                    // SideOut -> Rotate winning team -> They serve
+                    $this->rotateTeamDB($match->id, $teamId, $setNum);
+                    $state['serving_team_id'] = $teamId;
+                    $state['last_point_sideout'] = true;
+                } else {
+                    $state['last_point_sideout'] = false;
+                }
+
+                $details['volley_state'] = $state;
+                $match->match_details = $details;
+                $match->save();
+
+                // 3. Record Match Event for Timeline
+                $categoryMap = [
+                    'ataque' => 'point',
+                    'bloqueio' => 'block',
+                    'saque' => 'ace',
+                    'erro' => 'point'
+                ];
+
+                $player = $playerId ? \App\Models\User::find($playerId) : null;
+                $number = null;
+                if ($player) {
+                    $number = DB::table('team_players')
+                        ->where('user_id', $playerId)
+                        ->where('team_id', $teamId)
+                        ->where('championship_id', $match->championship_id)
+                        ->value('number');
+                }
+
+                $playerName = $player ? ($player->nickname ?: $player->name) : "";
+                $playerLabel = $playerName ? " (" . $playerName . ($number ? " #{$number}" : "") . ")" : "";
 
                 DB::table('match_events')->insert([
                     'game_match_id' => $match->id,
-                    'event_type' => $match->status === 'finished' ? 'match_end' : 'period_end',
+                    'team_id' => $teamId,
+                    'player_id' => $playerId,
+                    'event_type' => $categoryMap[$pointType] ?? 'point',
                     'period' => "{$setNum}º Set",
-                    'game_time' => sprintf('%02d:00', $set->duration_minutes ?? 0),
-                    'metadata' => json_encode(['label' => $match->status === 'finished' ? 'Fim da Partida' : "Fim do {$setNum}º Set"]),
+                    'game_time' => '00:00',
+                    'metadata' => json_encode([
+                        'label' => "Ponto de " . ucfirst($pointType) . $playerLabel,
+                        'volley_type' => $pointType,
+                        'player_name' => $player ? ($player->nickname ?: $player->name) : null,
+                        'system_period' => "{$setNum}º Set"
+                    ]),
                     'created_at' => now(),
                     'updated_at' => now()
                 ]);
+
+                // 4. Update Match Score (Sets Won)
+                $finished = $this->updateMatchSetsScore($match, $set);
+
+                if ($finished) {
+                    $set->end_time = now();
+                    if ($set->start_time) {
+                        $set->duration_minutes = now()->diffInMinutes($set->start_time);
+                    }
+                    $set->save();
+
+                    DB::table('match_events')->insert([
+                        'game_match_id' => $match->id,
+                        'event_type' => $match->status === 'finished' ? 'match_end' : 'period_end',
+                        'period' => "{$setNum}º Set",
+                        'game_time' => sprintf('%02d:00', $set->duration_minutes ?? 0),
+                        'metadata' => json_encode(['label' => $match->status === 'finished' ? 'Fim da Partida' : "Fim do {$setNum}º Set"]),
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                }
+            });
+        } catch (\Exception $e) {
+            if ($e->getMessage() === "V-START-NEEDED") {
+                return response()->json(['error' => 'O set atual ainda não foi iniciado. Clique em "Iniciar Próximo Set" antes de marcar pontos.'], 400);
             }
-        });
+            throw $e;
+        }
 
         return $this->getState($matchId);
     }
@@ -293,7 +317,6 @@ class AdminVolleyController extends Controller
 
         foreach ($sets as $s) {
             $limit = ($s->set_number == 5) ? 15 : 25;
-            // Basic Logic: must reach limit AND be ahead by 2
             $isFinished = ($s->home_score >= $limit && $s->home_score >= ($s->away_score + 2)) ||
                 ($s->away_score >= $limit && $s->away_score >= ($s->home_score + 2));
 
@@ -349,13 +372,16 @@ class AdminVolleyController extends Controller
         $position = $request->input('position');
         $playerIn = $request->input('player_in');
 
-        DB::transaction(function () use ($matchId, $teamId, $position, $playerIn) {
-            // Perform swap
+        $match = GameMatch::findOrFail($matchId);
+        $setNum = $match->match_details['volley_state']['current_set'] ?? 1;
+
+        DB::transaction(function () use ($matchId, $teamId, $position, $playerIn, $setNum) {
             DB::table('match_positions')->updateOrInsert(
                 [
                     'game_match_id' => $matchId,
                     'team_id' => $teamId,
-                    'position' => $position
+                    'position' => $position,
+                    'set_number' => (string) $setNum
                 ],
                 [
                     'player_id' => $playerIn,
@@ -367,11 +393,8 @@ class AdminVolleyController extends Controller
         return $this->getState($matchId);
     }
 
-    // === DB Helpers ===
-
     private function saveRotationDB($matchId, $teamId, $setNum, $playerIds)
     {
-        // Clear existing for this set/team
         DB::table('match_positions')
             ->where('game_match_id', $matchId)
             ->where('team_id', $teamId)
@@ -384,8 +407,8 @@ class AdminVolleyController extends Controller
                 $data[] = [
                     'game_match_id' => $matchId,
                     'team_id' => $teamId,
-                    'set_number' => $setNum,
-                    'position' => $index + 1, // 1 to 6
+                    'set_number' => (string) $setNum,
+                    'position' => $index + 1,
                     'player_id' => $pid,
                     'created_at' => now(),
                     'updated_at' => now()
@@ -401,9 +424,12 @@ class AdminVolleyController extends Controller
         $positions = DB::table('match_positions')
             ->where('game_match_id', $matchId)
             ->where('team_id', $teamId)
-            // ->where('set_number', $setNum)
+            ->where('set_number', (string) $setNum)
             ->orderBy('position')
             ->get();
+
+        if ($positions->isEmpty())
+            return;
 
         $playersByPos = [];
         foreach ($positions as $p)
@@ -412,17 +438,13 @@ class AdminVolleyController extends Controller
         $newPlayersByPos = [];
 
         if (!$reverse) {
-            // Standard Volei Rotation:
-            // Players move from Pos 1 -> Pos 6 -> Pos 5 -> Pos 4 -> Pos 3 -> Pos 2 -> Pos 1
             $newPlayersByPos[6] = $playersByPos[1] ?? null;
             $newPlayersByPos[5] = $playersByPos[6] ?? null;
             $newPlayersByPos[4] = $playersByPos[5] ?? null;
             $newPlayersByPos[3] = $playersByPos[4] ?? null;
             $newPlayersByPos[2] = $playersByPos[3] ?? null;
             $newPlayersByPos[1] = $playersByPos[2] ?? null;
-
         } else {
-            // Backward
             $newPlayersByPos[1] = $playersByPos[6] ?? null;
             $newPlayersByPos[2] = $playersByPos[1] ?? null;
             $newPlayersByPos[3] = $playersByPos[2] ?? null;
@@ -435,6 +457,7 @@ class AdminVolleyController extends Controller
             DB::table('match_positions')
                 ->where('game_match_id', $matchId)
                 ->where('team_id', $teamId)
+                ->where('set_number', (string) $setNum)
                 ->where('position', $pos)
                 ->update(['player_id' => $pid]);
         }

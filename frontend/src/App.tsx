@@ -72,6 +72,8 @@ import { SumulaTenisMesa } from './pages/Matches/SumulaTenisMesa';
 import { SumulaJiuJitsu } from './pages/Matches/SumulaJiuJitsu';
 import { MatchPrintView } from './pages/Matches/MatchPrintView';
 import { TestUpload } from './pages/Public/TestUpload';
+import { ForgotPassword } from './pages/ForgotPassword';
+import { ResetPassword } from './pages/ResetPassword';
 
 import { Toaster } from 'react-hot-toast';
 import { ScrollToTop } from './components/ScrollToTop';
@@ -119,6 +121,8 @@ function App() {
           </Route>
 
           <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
           {/* ÁREA ADMINISTRATIVA (Protegida) */}
           <Route path="/admin" element={<PrivateRoute />}>

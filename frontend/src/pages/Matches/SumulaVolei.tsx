@@ -36,8 +36,44 @@ export function SumulaVolei() {
     // Setup State
     const [setupRotation, setSetupRotation] = useState<{ home: any[], away: any[] }>({ home: Array(6).fill(null), away: Array(6).fill(null) });
 
-    // Helpers
+    // Serving Info
     const [servingTeamId, setServingTeamId] = useState<number | null>(null);
+
+    // Cronômetro em tempo real
+    const [elapsedTime, setElapsedTime] = useState('00:00');
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            const currentSet = sets.find(s => s.set_number == volleyState?.current_set);
+            if (!currentSet?.start_time) {
+                setElapsedTime('00:00');
+                return;
+            }
+
+            try {
+                // Parse date correctly (handles different formats)
+                const startTime = new Date(currentSet.start_time.replace(' ', 'T')).getTime();
+                if (isNaN(startTime)) {
+                    setElapsedTime('00:00');
+                    return;
+                }
+
+                const now = new Date().getTime();
+                const diff = Math.max(0, now - startTime);
+
+                const minutes = Math.floor(diff / 60000);
+                const seconds = Math.floor((diff % 60000) / 1000);
+
+                setElapsedTime(
+                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+                );
+            } catch (e) {
+                setElapsedTime('00:00');
+            }
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [sets, volleyState?.current_set]);
 
     // 🔬 Advanced Audit: Logging & Error Recovery
     useEffect(() => {
@@ -162,6 +198,12 @@ export function SumulaVolei() {
     }
 
     const handlePointClick = (teamId: number) => {
+        const currentSet = sets.find(s => s.set_number == volleyState?.current_set);
+        if (!currentSet?.start_time) {
+            alert("O set atual ainda não foi iniciado. Toque em 'Configurar e Iniciar' primeiro.");
+            setSetupModalOpen(true);
+            return;
+        }
         setPointFlow({ step: 'type', teamId });
     }
 
@@ -298,6 +340,11 @@ export function SumulaVolei() {
             }
         } catch (e: any) {
             console.error(`Erro ao registrar evento '${type}':`, e.response?.data || e.message);
+
+            if (type === 'match_start' && e.response?.status === 422) {
+                alert(e.response.data.error || "Erro de validação ao iniciar partida.");
+                return;
+            }
 
             // If it's a validation error (422), the server is telling us what's wrong
             if (e.response?.status === 422) {
@@ -671,15 +718,34 @@ export function SumulaVolei() {
 
                 {/* BOTÃO DE CONTROLE DE SET - Logo abaixo do placar */}
                 <div className="mt-4 max-w-sm mx-auto">
-                    {matchData.status === 'live' && (
-                        <button
-                            onClick={handleNextSet}
-                            className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-900/40 rounded-xl flex items-center justify-center gap-2 font-black text-[11px] uppercase tracking-widest transition-all active:scale-95 border-b-4 border-indigo-800 active:border-b-0"
-                        >
-                            <Trophy size={14} />
-                            {matchData.home_score >= 3 || matchData.away_score >= 3 ? 'FINALIZAR PARTIDA' : 'ENCERRAR SET / PRÓXIMO'}
-                        </button>
-                    )}
+                    {(() => {
+                        const currentSet = sets.find(s => s.set_number == volleyState?.current_set);
+                        const hasStarted = !!currentSet?.start_time;
+
+                        if (matchData.status === 'finished') return null;
+
+                        if (!hasStarted) {
+                            return (
+                                <button
+                                    onClick={() => setSetupModalOpen(true)}
+                                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 shadow-lg shadow-emerald-900/40 rounded-xl flex items-center justify-center gap-2 font-black text-[11px] uppercase tracking-widest transition-all active:scale-95 border-b-4 border-emerald-800 active:border-b-0"
+                                >
+                                    <PlusCircle size={14} />
+                                    Configurar e Iniciar {volleyState.current_set}º Set
+                                </button>
+                            );
+                        }
+
+                        return (
+                            <button
+                                onClick={handleNextSet}
+                                className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-900/40 rounded-xl flex items-center justify-center gap-2 font-black text-[11px] uppercase tracking-widest transition-all active:scale-95 border-b-4 border-indigo-800 active:border-b-0"
+                            >
+                                <Trophy size={14} />
+                                {matchData.home_score >= 3 || matchData.away_score >= 3 ? 'FINALIZAR PARTIDA' : 'ENCERRAR SET / PRÓXIMO'}
+                            </button>
+                        );
+                    })()}
                 </div>
             </div>
 
@@ -739,16 +805,7 @@ export function SumulaVolei() {
                         <div className="flex flex-col items-center">
                             <span className="text-[9px] text-gray-500 font-bold uppercase tracking-tighter">Set Timer</span>
                             <span className="text-xs font-mono text-indigo-400">
-                                {(() => {
-                                    const currentSet = sets.find(s => s.set_number == volleyState.current_set);
-                                    if (!currentSet?.start_time) return '00:00';
-                                    try {
-                                        const diff = new Date().getTime() - new Date(currentSet.start_time).getTime();
-                                        return new Date(diff).toISOString().substr(14, 5);
-                                    } catch (e) {
-                                        return '00:00';
-                                    }
-                                })()}
+                                {elapsedTime}
                             </span>
                         </div>
 

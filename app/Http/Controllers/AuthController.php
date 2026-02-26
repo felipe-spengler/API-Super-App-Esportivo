@@ -149,4 +149,84 @@ class AuthController extends Controller
             'user' => new UserResource($user)
         ]);
     }
+
+    // 6. Esqueci Minha Senha (Solicitar Link)
+    public function forgotPassword(Request $request)
+    {
+        $request->validate(['email' => 'required|email']);
+
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user) {
+            return response()->json(['message' => 'Se este e-mail estiver cadastrado, você receberá instruções para resetar sua senha.'], 200);
+        }
+
+        // Gera um token de 6 dígitos (mais amigável para mobile/app)
+        $token = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        // Salva na tabela password_reset_tokens (padrão do Laravel)
+        DB::table('password_reset_tokens')->updateOrInsert(
+            ['email' => $user->email],
+            [
+                'token' => Hash::make($token),
+                'created_at' => now()
+            ]
+        );
+
+        // Envia o e-mail
+        try {
+            \Illuminate\Support\Facades\Mail::send([], [], function ($message) use ($user, $token) {
+                $message->to($user->email)
+                    ->subject('Recuperação de Senha - Esportivo')
+                    ->html("
+                        <div style='font-family: sans-serif; max-width: 600px; margin: 0 auto;'>
+                            <h2 style='color: #4f46e5;'>Recuperação de Senha</h2>
+                            <p>Olá, <strong>{$user->name}</strong>!</p>
+                            <p>Você solicitou a recuperação da sua senha no app Esportivo.</p>
+                            <p>Use o código abaixo para redefinir sua senha:</p>
+                            <div style='background: #f3f4f6; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #1f2937; border-radius: 8px;'>
+                                {$token}
+                            </div>
+                            <p style='margin-top: 20px; color: #6b7280; font-size: 14px;'>Este código expira em 60 minutos.</p>
+                            <p style='color: #6b7280; font-size: 14px;'>Se você não solicitou isso, ignore este e-mail.</p>
+                        </div>
+                    ");
+            });
+        } catch (\Exception $e) {
+            \Log::error("Email Error: " . $e->getMessage());
+            return response()->json(['message' => 'Erro ao enviar e-mail. Tente novamente mais tarde.'], 500);
+        }
+
+        return response()->json(['message' => 'Código de recuperação enviado para seu e-mail.']);
+    }
+
+    // 7. Resetar Senha com o Código
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'token' => 'required|string|size:6',
+            'password' => 'required|string|min:6|confirmed',
+        ]);
+
+        $reset = DB::table('password_reset_tokens')->where('email', $request->email)->first();
+
+        if (!$reset || !Hash::check($request->token, $reset->token)) {
+            return response()->json(['message' => 'Código inválido ou expirado.'], 422);
+        }
+
+        // Verifica expiração (60 min)
+        if (\Carbon\Carbon::parse($reset->created_at)->addMinutes(60)->isPast()) {
+            return response()->json(['message' => 'Este código já expirou.'], 422);
+        }
+
+        $user = User::where('email', $request->email)->firstOrFail();
+        $user->password = $request->password; // O model já tem cast 'hashed'
+        $user->save();
+
+        // Remove o token usado
+        DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+
+        return response()->json(['message' => 'Senha alterada com sucesso! Agora você pode fazer login.']);
+    }
 }

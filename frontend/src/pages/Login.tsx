@@ -102,7 +102,7 @@ export function Login() {
                             <label className="text-sm font-bold text-gray-700 block">Senha</label>
                             <button
                                 type="button"
-                                onClick={() => alert('Funcionalidade de recuperação de senha em desenvolvimento. Por favor, entre em contato com o suporte.')}
+                                onClick={() => navigate('/forgot-password')}
                                 className="text-xs text-indigo-600 font-bold hover:underline bg-transparent border-none p-0"
                             >
                                 Esqueceu a senha?

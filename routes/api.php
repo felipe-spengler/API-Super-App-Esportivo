@@ -47,6 +47,8 @@ Route::get('/assets-fonts/{filename}', function ($filename) {
 // Rotas Públicas (Core do App)
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 Route::post('/ocr/analyze', [App\Http\Controllers\DocumentOCRController::class, 'analyze']);
 
 // 🧪 ROTA DE TESTE - Remover em produção ou proteger
