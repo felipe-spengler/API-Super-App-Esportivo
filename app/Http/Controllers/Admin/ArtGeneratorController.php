@@ -1719,11 +1719,16 @@ class ArtGeneratorController extends Controller
 
                 $isTeamName = isset($el['id']) && in_array($el['id'], ['team_name_a', 'team_name_b', 'team_name', 'score_home', 'score_away']);
                 // Use a generic heuristic: if it's a team name or any long text configured to wrap
-                if ($isTeamName && mb_strlen($text, 'UTF-8') > 25 && str_contains($text, ' ')) {
-                    // Try to break at a good center point
-                    $text = wordwrap($text, ceil(mb_strlen($text, 'UTF-8') / 2), "\n", false);
-                    if (substr_count($text, "\n") > 1) { // Fallback if wordwrap splits into too many lines
-                        $text = wordwrap(str_replace("\n", " ", $text), 25, "\n", false);
+                if ($isTeamName && mb_strlen($text, 'UTF-8') > 15) {
+                    if (str_contains($text, '/')) {
+                        $parts = explode('/', $text, 2);
+                        $text = trim($parts[0]) . "/\n" . trim($parts[1]);
+                    } elseif (str_contains($text, ' ')) {
+                        // Try to break at a good center point
+                        $text = wordwrap($text, ceil(mb_strlen($text, 'UTF-8') / 2), "\n", false);
+                        if (substr_count($text, "\n") > 1) { // Fallback if wordwrap splits into too many lines
+                            $text = wordwrap(str_replace("\n", " ", $text), 15, "\n", false);
+                        }
                     }
                     $fontSize = $fontSize * 0.9; // Reduce font slightly to fit
                 }
@@ -1747,7 +1752,7 @@ class ArtGeneratorController extends Controller
                 $align = $el['align'] ?? 'left';
 
                 $lines = explode("\n", $text);
-                $lineHeight = $fontSize * 1.2;
+                $lineHeight = $fontSize * 1.5;
                 $startY = $y;
 
                 if (count($lines) > 1) {
