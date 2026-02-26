@@ -129,8 +129,9 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
 
     const formatMatchTime = (seconds: number | null) => {
         if (seconds === null) return '--:--';
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
+        const safeSeconds = Math.max(0, Math.floor(seconds)); // Garante numero positivo e inteiro
+        const mins = Math.floor(safeSeconds / 60);
+        const secs = safeSeconds % 60;
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
@@ -497,7 +498,7 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                                         {/* Minute circle (desktop center line) */}
                                                         <div className="flex flex-col items-center z-10 shrink-0 ml-4 lg:ml-0">
                                                             <div className="w-8 h-8 rounded-full bg-white border-2 border-indigo-100 flex items-center justify-center text-[10px] font-black text-gray-700 shadow-sm mb-0.5">
-                                                                {isVolei ? '🏐' : `${event.minute}'`}
+                                                                {event.minute ? (event.minute.toString().includes(':') || event.minute.toString() === 'Fim' ? event.minute : `${event.minute}'`) : '--'}
                                                             </div>
                                                             <span className="text-[7px] font-black text-indigo-500 uppercase tracking-tighter bg-indigo-50 px-1 rounded border border-indigo-100/50">
                                                                 {event.period?.replace('Quarto', 'Q') || '1T'}
