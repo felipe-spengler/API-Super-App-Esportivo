@@ -497,7 +497,7 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                                         {/* Minute circle (desktop center line) */}
                                                         <div className="flex flex-col items-center z-10 shrink-0 ml-4 lg:ml-0">
                                                             <div className="w-8 h-8 rounded-full bg-white border-2 border-indigo-100 flex items-center justify-center text-[10px] font-black text-gray-700 shadow-sm mb-0.5">
-                                                                {event.minute}'
+                                                                {isVolei ? '🏐' : `${event.minute}'`}
                                                             </div>
                                                             <span className="text-[7px] font-black text-indigo-500 uppercase tracking-tighter bg-indigo-50 px-1 rounded border border-indigo-100/50">
                                                                 {event.period?.replace('Quarto', 'Q') || '1T'}
@@ -521,7 +521,7 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                                                         {['point', '1_point', '2_points', '3_points', 'free_throw', 'field_goal_2', 'field_goal_3', 'game_won', 'ataque', 'bloqueio', 'saque', 'ace', 'erro', 'block'].includes(event.type) && (() => {
                                                                             if (isVolei) {
                                                                                 const vt = event.metadata?.volley_type || event.type;
-                                                                                if (vt === 'bloqueio' || vt === 'block') return '🧱';
+                                                                                if (vt === 'bloqueio' || vt === 'block') return '🛡️';
                                                                                 if (vt === 'saque' || vt === 'ace') return '🚀';
                                                                                 if (vt === 'erro') return '❌';
                                                                                 return '🏐';

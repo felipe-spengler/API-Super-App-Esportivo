@@ -1227,6 +1227,22 @@ export function AdminMatchManager() {
                             </div>
                         )}
 
+                        {activeTab === 'art' && (
+                            <div className="p-8 pb-12 flex flex-col items-center justify-center bg-gray-50 min-h-[300px]">
+                                <div className="bg-orange-100 p-4 rounded-full mb-4">
+                                    <ImageIcon className="w-8 h-8 text-orange-600" />
+                                </div>
+                                <h4 className="font-bold text-gray-900 mb-2 text-center">Arte de Resultado da Partida</h4>
+                                <p className="text-sm text-gray-500 text-center mb-6 max-w-sm">Você pode gerar a arte e enviar diretamente para o WhatsApp ou salvar a imagem.</p>
+                                <button
+                                    onClick={() => window.open(`${api.defaults.baseURL}/art/match/${selectedMatch.id}/finished`, '_blank')}
+                                    className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition-all flex items-center gap-2 active:scale-95"
+                                >
+                                    <ImageIcon className="w-5 h-5" /> Abrir Arte Oficial
+                                </button>
+                            </div>
+                        )}
+
                         {activeTab === 'audit' && (
                             <div className="p-0 flex-1 overflow-y-auto max-h-[500px] bg-gray-50">
                                 <div className="p-4 space-y-3">
@@ -1250,7 +1266,7 @@ export function AdminMatchManager() {
                                                     'technical_foul': { label: 'Falta Técnica', icon: '🟨' },
                                                     'unsportsmanlike_foul': { label: 'Falta Antidesportiva', icon: '🟧' },
                                                     'disqualifying_foul': { label: 'Falta Desqualificante', icon: '🟥' },
-                                                    'block': { label: 'Toco', icon: '✋' },
+                                                    'block': { label: championship?.sport?.slug === 'volei' ? 'Bloqueio' : 'Toco', icon: championship?.sport?.slug === 'volei' ? '🛡️' : '✋' },
                                                     'rebound': { label: 'Rebote', icon: '🔁' },
                                                     'steal': { label: 'Roubo de Bola', icon: '💨' },
                                                     'assist': { label: 'Assistência', icon: '👟' },
