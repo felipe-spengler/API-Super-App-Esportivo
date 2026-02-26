@@ -490,7 +490,9 @@ class AdminMatchController extends Controller
         }
 
         // Auto-update match status to live if it was scheduled
-        if ($match->status === 'scheduled') {
+        // Only for "real" game events, not for audit/system logs
+        $auditTypes = ['system_error', 'user_action', 'user_action_blocked', 'timer_control', 'voice_debug', 'voice_input'];
+        if ($match->status === 'scheduled' && !in_array($event->event_type, $auditTypes)) {
             $match->update(['status' => 'live']);
         }
 
