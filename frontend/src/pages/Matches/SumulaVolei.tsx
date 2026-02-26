@@ -35,6 +35,7 @@ export function SumulaVolei() {
 
     // Setup State
     const [setupRotation, setSetupRotation] = useState<{ home: any[], away: any[] }>({ home: Array(6).fill(null), away: Array(6).fill(null) });
+    const [previousRotations, setPreviousRotations] = useState<any>(null);
 
     // Serving Info
     const [servingTeamId, setServingTeamId] = useState<number | null>(null);
@@ -179,7 +180,11 @@ export function SumulaVolei() {
         setVolleyState(data.state);
         setSets(data.sets);
         setRotations(data.current_rotations);
-        setServingTeamId(data.state.serving_team_id);
+        if (data.state.serving_team_id !== null) {
+            setServingTeamId(data.state.serving_team_id);
+        } else if (!setupModalOpen) {
+            setServingTeamId(null);
+        }
 
         // Se o set atual no banco está finalizado (tem end_time), 
         // mas o volleyState local ainda não avançou, podemos detectar que estamos em "Intervalo"
@@ -227,7 +232,8 @@ export function SumulaVolei() {
             await api.post(`/admin/matches/${id}/volley/point`, {
                 team_id: teamId,
                 point_type: type,
-                player_id: pid
+                player_id: pid,
+                game_time: elapsedTime
             });
             fetchState();
         } catch (e: any) {
@@ -269,7 +275,8 @@ export function SumulaVolei() {
             await api.post(`/admin/matches/${id}/volley/point`, {
                 team_id: receivingTeamId,
                 point_type: 'erro',
-                player_id: null
+                player_id: null,
+                game_time: elapsedTime
             });
             fetchState();
         } catch (e: any) {
@@ -304,7 +311,7 @@ export function SumulaVolei() {
             await api.post(`/admin/matches/${id}/events`, {
                 event_type: 'timeout',
                 team_id: teamId,
-                minute: "00:00",
+                minute: elapsedTime,
                 period: `${volleyState.current_set}º Set`,
                 metadata: {
                     label: `Pedido de Tempo: ${teamName}`,
@@ -389,7 +396,7 @@ export function SumulaVolei() {
                 event_type: cardType === 'yellow' ? 'yellow_card' : 'red_card',
                 team_id: teamId,
                 player_id: playerId,
-                minute: "00:00",
+                minute: elapsedTime,
                 period: `${volleyState.current_set}º Set`,
                 metadata: {
                     system_period: `${volleyState.current_set}º Set`
@@ -484,7 +491,7 @@ export function SumulaVolei() {
         const isSetFinished = currentSet && ((currentSet.home_score >= limit && currentSet.home_score >= currentSet.away_score + 2) || (currentSet.away_score >= limit && currentSet.away_score >= currentSet.home_score + 2));
 
         if (!isSetFinished) {
-            if (!window.confirm("O set atual ainda não atingiu a pontuação final. Deseja realmente ENCERRAR este set e ir para o intervalo?")) return;
+            if (!window.confirm("A pontuação do set não chegou ao limite! Deseja encerrar mesmo assim e registrar a vitória para a equipe com mais pontos?")) return;
         } else {
             if (!window.confirm("Deseja FINALIZAR este set e iniciar o intervalo?")) return;
         }
@@ -498,6 +505,7 @@ export function SumulaVolei() {
             setInvertedSides(prev => !prev);
 
             // Zerar rodízio local para o próximo set (obriga o mesário a colocar ou copiar)
+            setPreviousRotations(rotations);
             setRotations({ home: Array(6).fill(null), away: Array(6).fill(null) });
             setServingTeamId(null);
 
@@ -515,10 +523,10 @@ export function SumulaVolei() {
     };
 
     const copyLastRotation = (team: 'home' | 'away') => {
-        if (!rotations || !rotations[team]) return;
-        setSetupRotation(prev => ({
+        if (!previousRotations || !previousRotations[team]) return;
+        setRotations((prev: any) => ({
             ...prev,
-            [team]: [...rotations[team]]
+            [team]: [...previousRotations[team]]
         }));
     };
 
@@ -1083,14 +1091,12 @@ export function SumulaVolei() {
                                             </div>
 
                                             {/* Botão de Atalho para copiar último rodízio */}
-                                            {volleyState.current_set > 1 && !full && (
+                                            {volleyState.current_set > 1 && !full && previousRotations && previousRotations[color === 'blue' ? 'home' : 'away'] && (
                                                 <button
-                                                    onClick={() => {
-                                                        alert("Toque nas células da quadra (ao fechar este modal) para preencher os jogadores.");
-                                                    }}
-                                                    className="mt-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-[8px] font-bold text-gray-300 uppercase"
+                                                    onClick={() => copyLastRotation(color === 'blue' ? 'home' : 'away')}
+                                                    className="mt-2 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-[9px] font-bold text-gray-300 uppercase flex items-center justify-center gap-1"
                                                 >
-                                                    Rodízio Manual
+                                                    <Repeat size={10} /> Copiar Set Anterior
                                                 </button>
                                             )}
                                         </div>

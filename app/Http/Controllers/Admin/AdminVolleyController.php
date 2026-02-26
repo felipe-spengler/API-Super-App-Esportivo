@@ -166,6 +166,9 @@ class AdminVolleyController extends Controller
                     $currentSet->duration_minutes = now()->diffInMinutes($currentSet->start_time);
                 }
                 $currentSet->save();
+
+                // Recalculate match sets score since this set is now forcibly finished
+                $this->updateMatchSetsScore($match, $currentSet);
             }
 
             // Advance state
@@ -186,11 +189,12 @@ class AdminVolleyController extends Controller
         $teamId = $request->input('team_id');
         $playerId = $request->input('player_id');
         $pointType = $request->input('point_type', 'ataque');
+        $gameTime = $request->input('game_time', '00:00');
 
         $match = GameMatch::findOrFail($matchId);
 
         try {
-            DB::transaction(function () use ($match, $teamId, $playerId, $pointType) {
+            DB::transaction(function () use ($match, $teamId, $playerId, $pointType, $gameTime) {
                 $details = $match->match_details ?? [];
                 $state = $details['volley_state'] ?? ['current_set' => 1, 'serving_team_id' => null, 'history' => []];
 
@@ -266,7 +270,7 @@ class AdminVolleyController extends Controller
                     'player_id' => $playerId,
                     'event_type' => $categoryMap[$pointType] ?? 'point',
                     'period' => "{$setNum}º Set",
-                    'game_time' => '00:00',
+                    'game_time' => $gameTime,
                     'metadata' => json_encode([
                         'label' => "Ponto de " . ucfirst($pointType) . $playerLabel,
                         'volley_type' => $pointType,
@@ -318,11 +322,16 @@ class AdminVolleyController extends Controller
         foreach ($sets as $s) {
             $limit = ($s->set_number == 5) ? 15 : 25;
             $isFinished = ($s->home_score >= $limit && $s->home_score >= ($s->away_score + 2)) ||
-                ($s->away_score >= $limit && $s->away_score >= ($s->home_score + 2));
+                ($s->away_score >= $limit && $s->away_score >= ($s->home_score + 2)) ||
+                ($s->end_time !== null && $s->home_score !== $s->away_score);
 
             if ($s->home_score >= $limit && $s->home_score >= ($s->away_score + 2)) {
                 $homeSets++;
             } elseif ($s->away_score >= $limit && $s->away_score >= ($s->home_score + 2)) {
+                $awaySets++;
+            } elseif ($s->end_time !== null && $s->home_score > $s->away_score) {
+                $homeSets++;
+            } elseif ($s->end_time !== null && $s->away_score > $s->home_score) {
                 $awaySets++;
             }
 

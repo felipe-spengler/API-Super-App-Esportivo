@@ -61,6 +61,19 @@ class MatchOperationController extends Controller
                     $icon = $info['icon'];
                     if ($isVolley && in_array($e->event_type, ['point', 'ace', 'ataque', 'saque', 'block', 'bloqueio'])) {
                         $icon = '🏐';
+                        $metadata = is_string($e->metadata) ? json_decode($e->metadata, true) : $e->metadata;
+                        if (isset($metadata['volley_type'])) {
+                            $vType = $metadata['volley_type'];
+                            if ($vType === 'ataque') {
+                                $info['label'] = 'Ponto de Ataque';
+                            } elseif ($vType === 'bloqueio') {
+                                $info['label'] = 'Ponto de Bloqueio';
+                            } elseif ($vType === 'saque') {
+                                $info['label'] = 'Ponto de Saque (Ace)';
+                            } elseif ($vType === 'erro') {
+                                $info['label'] = 'Erro Adversário';
+                            }
+                        }
                     }
 
                     $player = $e->player;
