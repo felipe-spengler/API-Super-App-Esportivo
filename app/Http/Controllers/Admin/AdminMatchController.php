@@ -404,6 +404,31 @@ class AdminMatchController extends Controller
             'metadata' => 'nullable|array',
         ]);
 
+        $auditTypesToStorage = ['system_error', 'user_action', 'user_action_blocked', 'voice_debug', 'voice_input'];
+
+        if (in_array($validated['event_type'], $auditTypesToStorage)) {
+            \App\Services\AuditLogger::log($validated['event_type'], $match->id, [
+                'team_id' => $validated['team_id'] ?? null,
+                'player_id' => $validated['player_id'] ?? null,
+                'game_time' => $validated['minute'] ?? null,
+                'period' => $validated['period'] ?? null,
+                'value' => $validated['value'] ?? null,
+                'metadata' => $validated['metadata'] ?? null,
+            ]);
+
+            // Broadcast so real-time clients ignore or log as needed
+            // Provide a dummy ID so it looks like an event without being saved to the database
+            $eventArray = [
+                'id' => time() . rand(100, 999),
+                'game_match_id' => $match->id,
+                'event_type' => $validated['event_type'],
+                'metadata' => $validated['metadata'] ?? null,
+            ];
+            \App\Events\MatchUpdated::dispatch($match->id, ['event' => $eventArray]);
+
+            return response()->json($eventArray, 201);
+        }
+
         $event = MatchEvent::create([
             'game_match_id' => $match->id,
             'team_id' => $validated['team_id'] ?? null,
@@ -558,7 +583,48 @@ class AdminMatchController extends Controller
                 ];
             });
 
-            return response()->json($formatted);
+            // LER LOGS DO ARQUIVO DE AUDITORIA
+            $fileEvents = [];
+            $logFiles = glob(storage_path('logs/audit*.log'));
+            foreach ($logFiles as $file) {
+                $contents = file_get_contents($file);
+                // match example: [2026-02-26 23:44:00] audit.INFO: voice_input {"match_id":3103,"metadata":{...},"timestamp":"2026-02-26T23:44:00+00:00"}
+                // We'll read lines and parse JSON where available. Since monolog logs the context as json, we can extract it.
+                $lines = explode(PHP_EOL, $contents);
+                foreach ($lines as $line) {
+                    if (empty(trim($line)))
+                        continue;
+
+                    // Regex para pegar a data do log e o JSON do contexto
+                    // Formato Monolog default: [YYYY-MM-DD HH:MM:SS] channel.LEVEL: Message {"context":json} []
+                    if (preg_match('/^\[(.*?)\] .*?\.INFO: (.*?) ({.*})/', $line, $matches)) {
+                        $logDate = $matches[1];
+                        $eventType = $matches[2];
+                        $context = json_decode($matches[3], true);
+
+                        if (isset($context['match_id']) && $context['match_id'] == $id) {
+                            $metadata = $context['metadata'] ?? [];
+                            $fileEvents[] = [
+                                'id' => 'log_' . md5($line), // Unique ID fake
+                                'team_id' => $metadata['team_id'] ?? null,
+                                'player_id' => $metadata['player_id'] ?? null,
+                                'event_type' => $eventType,
+                                'game_time' => $metadata['game_time'] ?? '00:00',
+                                'period' => $metadata['period'] ?? null,
+                                'metadata' => $metadata,
+                                'player_name' => $metadata['player_name'] ?? null,
+                                'player_number' => null, // Player number is hard to fetch offline but usually not needed for these logs
+                                'created_at' => \Carbon\Carbon::parse($logDate)->toIso8601String(),
+                            ];
+                        }
+                    }
+                }
+            }
+
+            // JOIN and SORT them
+            $allEvents = collect($formatted)->concat($fileEvents)->sortByDesc('created_at')->values();
+
+            return response()->json($allEvents);
         } catch (\Exception $e) {
             return response()->json([
                 'error' => 'Erro interno ao carregar eventos',

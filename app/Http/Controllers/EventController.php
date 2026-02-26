@@ -422,6 +422,7 @@ class EventController extends Controller
 
         $playerStats = [];
 
+        // 1. Processar Eventos do Banco (da tabela match_events)
         foreach ($events as $event) {
             $metadata = json_decode($event->metadata ?? '{}', true);
             // Prefer player relation name, fallback to metadata name, fallback to Desconhecido
@@ -467,6 +468,100 @@ class EventController extends Controller
                     'match_date' => $event->gameMatch->start_time,
                     'round' => $event->gameMatch->round_name ?? $event->gameMatch->round_number ?? null,
                     'phase' => $event->gameMatch->phase ?? null,
+                ];
+            }
+        }
+
+        // 2. Processar Eventos da Súmula (salvos em JSON no game_matches.match_details['events'])
+        $matchesWithJson = \App\Models\GameMatch::where('championship_id', $championshipId)
+            ->whereIn('status', ['finished', 'live', 'ongoing'])
+            ->with(['homeTeam', 'awayTeam']);
+
+        if ($request->filled('category_id') && $request->category_id != 'null') {
+            $matchesWithJson->where('category_id', $request->category_id);
+        }
+
+        $matches = $matchesWithJson->get();
+
+        foreach ($matches as $match) {
+            $details = $match->match_details ?? [];
+            if (!isset($details['events']) || !is_array($details['events'])) {
+                continue;
+            }
+
+            foreach ($details['events'] as $jsonEvent) {
+                $eventType = $jsonEvent['type'] ?? 'unknown';
+
+                // Normaliza tipos de vôlei do JSON para bater com os tipos procurados no banco
+                if ($eventType === 'ataque')
+                    $eventType = 'point';
+                if ($eventType === 'bloqueio')
+                    $eventType = 'block';
+                if ($eventType === 'saque')
+                    $eventType = 'ace';
+
+                if (!in_array($eventType, $dbTypes)) {
+                    continue;
+                }
+
+                // O valor em JSON pra basquete por exemplo vem como 'points', default 1
+                $value = isset($jsonEvent['points']) ? (int) $jsonEvent['points'] : (isset($jsonEvent['value']) ? (int) $jsonEvent['value'] : 1);
+
+                $pName = $jsonEvent['player_name'] ?? 'Desconhecido';
+                $pPhoto = null;
+                $teamId = $jsonEvent['team_id'] ?? null;
+
+                if (isset($jsonEvent['player_id']) && $jsonEvent['player_id']) {
+                    $player = \App\Models\User::find($jsonEvent['player_id']);
+                    if ($player) {
+                        $pName = $player->name;
+                        $pPhoto = $player->photo_url ?? $player->photo ?? null;
+                    }
+                }
+
+                $teamName = 'Time Desconhecido';
+                $teamLogo = null;
+                if ($teamId == $match->home_team_id) {
+                    $teamName = $match->homeTeam->name ?? 'Time Desconhecido';
+                    $teamLogo = $match->homeTeam->logo_url ?? null;
+                } elseif ($teamId == $match->away_team_id) {
+                    $teamName = $match->awayTeam->name ?? 'Time Desconhecido';
+                    $teamLogo = $match->awayTeam->logo_url ?? null;
+                } else if ($teamId) {
+                    $team = \App\Models\Team::find($teamId);
+                    if ($team) {
+                        $teamName = $team->name;
+                        $teamLogo = $team->logo_url ?? null;
+                    }
+                }
+
+                if (!isset($playerStats[$pName])) {
+                    $playerStats[$pName] = [
+                        'player_name' => $pName,
+                        'team_name' => $teamName,
+                        'team_logo' => $teamLogo,
+                        'value' => 0,
+                        'photo_url' => $pPhoto,
+                        'details' => []
+                    ];
+                }
+
+                if ($type === 'goals' && isset($jsonEvent['metadata']['own_goal']) && $jsonEvent['metadata']['own_goal'] === true) {
+                    continue;
+                }
+
+                $playerStats[$pName]['value'] += $value;
+
+                $home = $match->homeTeam->name ?? 'TBA';
+                $away = $match->awayTeam->name ?? 'TBA';
+                $playerStats[$pName]['details'][] = [
+                    'match_id' => $match->id,
+                    'match_label' => "$home vs $away",
+                    'game_time' => $jsonEvent['minute'] ?? ($jsonEvent['game_time'] ?? '00:00'),
+                    'period' => $jsonEvent['period'] ?? null,
+                    'match_date' => $match->start_time,
+                    'round' => $match->round_name ?? $match->round_number ?? null,
+                    'phase' => $match->phase ?? null,
                 ];
             }
         }
