@@ -1716,6 +1716,18 @@ class ArtGeneratorController extends Controller
                 }
 
                 $fontSize = $el['fontSize'] ?? 40;
+
+                $isTeamName = isset($el['id']) && in_array($el['id'], ['team_name_a', 'team_name_b', 'team_name', 'score_home', 'score_away']);
+                // Use a generic heuristic: if it's a team name or any long text configured to wrap
+                if ($isTeamName && mb_strlen($text, 'UTF-8') > 25 && str_contains($text, ' ')) {
+                    // Try to break at a good center point
+                    $text = wordwrap($text, ceil(mb_strlen($text, 'UTF-8') / 2), "\n", false);
+                    if (substr_count($text, "\n") > 1) { // Fallback if wordwrap splits into too many lines
+                        $text = wordwrap(str_replace("\n", " ", $text), 25, "\n", false);
+                    }
+                    $fontSize = $fontSize * 0.9; // Reduce font slightly to fit
+                }
+
                 $rgb = $this->hexToRgb($el['color'] ?? '#FFFFFF');
                 $color = imagecolorallocate($img, $rgb['r'], $rgb['g'], $rgb['b']);
                 $fontName = $el['fontFamily'] ?? 'Roboto';
@@ -1733,22 +1745,31 @@ class ArtGeneratorController extends Controller
                 }
 
                 $align = $el['align'] ?? 'left';
-                $box = imagettfbbox($fontSize, 0, $fontPath, $text);
-                $textWidth = abs($box[2] - $box[0]);
-                $textHeight = abs($box[5] - $box[1]);
 
-                $drawX = $x;
-                if ($align === 'center') {
-                    $drawX = $x - ($textWidth / 2);
-                } elseif ($align === 'right') {
-                    $drawX = $x - $textWidth;
+                $lines = explode("\n", $text);
+                $lineHeight = $fontSize * 1.2;
+                $startY = $y;
+
+                if (count($lines) > 1) {
+                    $startY = $y - ((count($lines) - 1) * $lineHeight / 2);
                 }
 
-                // Adjust Y (Frontend center -> PHP baseline)
-                // Approximate baseline offset
-                $drawY = $y + ($textHeight / 2.5);
+                foreach ($lines as $i => $line) {
+                    $box = imagettfbbox($fontSize, 0, $fontPath, $line);
+                    $textWidth = abs($box[2] - $box[0]);
+                    $textHeight = abs($box[5] - $box[1]);
 
-                imagettftext($img, $fontSize, 0, $drawX, $drawY, $color, $fontPath, $text);
+                    $drawX = $x;
+                    if ($align === 'center') {
+                        $drawX = $x - ($textWidth / 2);
+                    } elseif ($align === 'right') {
+                        $drawX = $x - $textWidth;
+                    }
+
+                    $drawY = $startY + ($i * $lineHeight) + ($textHeight / 2.5);
+
+                    imagettftext($img, $fontSize, 0, $drawX, $drawY, $color, $fontPath, $line);
+                }
 
             } elseif ($el['type'] === 'image') {
                 $contentKey = $el['content'];
