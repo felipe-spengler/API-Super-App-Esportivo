@@ -795,7 +795,7 @@ export function SumulaVolei() {
                     })()}
 
                     {/* Botões Extras: Craque e Encerrar Súmula */}
-                    {matchData.status !== 'scheduled' && matchData.status !== 'finished' && !sets.find(s => s.set_number == volleyState?.current_set)?.start_time && (
+                    {matchData.status !== 'scheduled' && matchData.status !== 'finished' && (
                         <div className="grid grid-cols-2 gap-2 mt-2">
                             <button
                                 onClick={() => setMvpFlow({ step: 'team' })}
