@@ -51,6 +51,7 @@ export function EventStats() {
             case 'red_cards': return <AlertOctagon className="w-5 h-5 text-red-600" />;
             case 'blue_cards': return <Shield className="w-5 h-5 text-blue-600" />;
             case 'assists': return <Hand className="w-5 h-5 text-blue-500" />;
+            case 'rebounds': return <Hand className="w-5 h-5 text-green-500" />;
             case 'blocks': return <Shield className="w-5 h-5 text-cyan-500" />;
             case 'aces': return <Star className="w-5 h-5 text-yellow-500" />;
             case 'points': return <Trophy className="w-5 h-5 text-orange-500" />;
@@ -66,6 +67,7 @@ export function EventStats() {
             case 'red_cards': return 'Vermelhos';
             case 'blue_cards': return 'Azuis';
             case 'assists': return 'Assis.';
+            case 'rebounds': return 'Rebotes';
             case 'blocks': return 'Bloq.';
             case 'aces': return 'Aces';
             case 'points': return 'Pts';

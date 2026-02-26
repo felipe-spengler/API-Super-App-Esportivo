@@ -97,7 +97,7 @@ class EventController extends Controller
                 ->with(['homeTeam', 'awayTeam'])
                 ->where('status', 'finished');
 
-            if ($request->has('category_id') && $request->category_id != 'null') {
+            if ($request->filled('category_id') && $request->category_id != 'null') {
                 $query->where('category_id', $request->category_id);
             }
 
@@ -396,6 +396,10 @@ class EventController extends Controller
             $dbTypes = ['block']; // Volleyball block only
         elseif ($type === 'aces')
             $dbTypes = ['ace']; // Volleyball ace only
+        elseif ($type === 'assists')
+            $dbTypes = ['assist']; // Assists
+        elseif ($type === 'rebounds')
+            $dbTypes = ['rebound']; // Basketball rebounds
         elseif ($type === 'blue_cards')
             $dbTypes = ['blue_card'];
 
@@ -409,7 +413,7 @@ class EventController extends Controller
                 $q->where('championship_id', $championshipId)
                     ->whereIn('status', ['finished', 'live', 'ongoing']);
 
-                if ($request->has('category_id') && $request->category_id != 'null') {
+                if ($request->filled('category_id') && $request->category_id != 'null') {
                     $q->where('category_id', $request->category_id);
                 }
             })
