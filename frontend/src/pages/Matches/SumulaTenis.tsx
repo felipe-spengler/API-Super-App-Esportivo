@@ -193,7 +193,14 @@ export function SumulaTenis() {
                     system_period: `Set ${currentSet}`
                 }
             });
-            setEvents(prev => [resp.data.event, ...prev]);
+            setEvents(prev => [{
+                id: resp?.data?.event?.id || resp?.data?.id || Date.now(),
+                type: 'game_won',
+                team_id: team === 'home' ? matchData.home_team_id : matchData.away_team_id,
+                period: `Set ${currentSet}`,
+                minute: '00:00',
+                metadata: { result: `${newGames.home}-${newGames.away}` }
+            }, ...prev]);
         } catch (e) {
             console.error(e);
         }
@@ -279,18 +286,15 @@ export function SumulaTenis() {
                     system_period: `Set ${currentSet}`
                 }
             });
-            if (resp && resp.data) {
-                setEvents(prev => [resp.data.event, ...prev]);
-            } else {
-                setEvents(prev => [{
-                    id: Date.now(),
-                    type: 'point',
-                    team_id: team === 'home' ? matchData.home_team_id : matchData.away_team_id,
-                    period: `Set ${currentSet}`,
-                    minute: '00:00',
-                    metadata: { game_score: `${newScore.home}-${newScore.away}` }
-                }, ...prev]);
-            }
+
+            setEvents(prev => [{
+                id: resp?.data?.event?.id || resp?.data?.id || Date.now(),
+                type: 'point',
+                team_id: team === 'home' ? matchData.home_team_id : matchData.away_team_id,
+                period: `Set ${currentSet}`,
+                minute: '00:00',
+                metadata: { game_score: `${newScore.home}-${newScore.away}` }
+            }, ...prev]);
         } catch (e) {
             console.error(e);
         }
