@@ -119,6 +119,12 @@ class AdminVolleyController extends Controller
                 'last_point_sideout' => false,
                 'history' => $existingHistory
             ];
+            $details['sync_timer'] = [
+                'time' => 0,
+                'isRunning' => true,
+                'currentPeriod' => "{$setNumber}º Set",
+                'updated_at' => round(microtime(true) * 1000)
+            ];
             $match->match_details = $details;
             $match->status = 'live';
             $match->save();
@@ -176,6 +182,17 @@ class AdminVolleyController extends Controller
             $state['serving_team_id'] = null;
             $state['last_point_sideout'] = false;
             $details['volley_state'] = $state;
+
+            $durationSecs = 0;
+            if ($currentSet && $currentSet->start_time) {
+                $durationSecs = now()->diffInSeconds($currentSet->start_time);
+            }
+            $details['sync_timer'] = [
+                'time' => $durationSecs,
+                'isRunning' => false,
+                'currentPeriod' => "{$setNum}º Set",
+                'updated_at' => round(microtime(true) * 1000)
+            ];
 
             $match->match_details = $details;
             $match->save();
@@ -238,6 +255,14 @@ class AdminVolleyController extends Controller
                 } else {
                     $state['last_point_sideout'] = false;
                 }
+
+                $secondsPassed = $set->start_time ? now()->diffInSeconds($set->start_time) : 0;
+                $details['sync_timer'] = [
+                    'time' => $secondsPassed,
+                    'isRunning' => true,
+                    'currentPeriod' => "{$setNum}º Set",
+                    'updated_at' => round(microtime(true) * 1000)
+                ];
 
                 $details['volley_state'] = $state;
                 $match->match_details = $details;

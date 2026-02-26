@@ -396,20 +396,32 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                                         if (event.type === 'match_end') return 'Fim de Jogo';
                                                         if (event.type === 'timeout') return 'Pedido de Tempo';
                                                         const p = String(event.period || '').toLowerCase();
+                                                        const isSet = p.includes('set');
+
                                                         if (event.type === 'period_start') {
                                                             if (p.includes('pênalt') || p.includes('penalt')) return 'Início dos Pênaltis';
                                                             if (p.includes('prorrog')) return 'Início da Prorrogação';
-                                                            if (p.includes('2º') || p.includes('2o')) return 'Início do 2º Tempo';
-                                                            if (p.includes('1º') || p.includes('1o')) return 'Início do 1º Tempo';
                                                             if (p.includes('quarto')) return `Início do ${event.period}`;
+
+                                                            // Se tem número ordinal 1º, 2º...
+                                                            if (p.match(/[1-9](º|o)/)) {
+                                                                const num = p.match(/[1-9]/)?.[0] || '1';
+                                                                return isSet ? `Início do ${num}º Set` : `Início do ${num}º Tempo`;
+                                                            }
                                                             return event.period ? `Início de ${event.period}` : 'Novo Período';
                                                         }
                                                         if (event.type === 'period_end') {
                                                             if (p.includes('pênalt') || p.includes('penalt')) return 'Fim dos Pênaltis';
                                                             if (p.includes('prorrog')) return 'Fim da Prorrogação';
-                                                            if (p.includes('2º') || p.includes('2o') || p.includes('normal')) return 'Fim do Tempo Normal';
-                                                            if (p.includes('1º') || p.includes('1o') || p.includes('intervalo')) return 'Fim do 1º Tempo';
                                                             if (p.includes('quarto')) return `Fim do ${event.period}`;
+
+                                                            if (p.includes('normal')) return 'Fim do Tempo Normal';
+                                                            if (p.includes('intervalo')) return 'Fim do 1º Tempo';
+
+                                                            if (p.match(/[1-9](º|o)/)) {
+                                                                const num = p.match(/[1-9]/)?.[0] || '1';
+                                                                return isSet ? `Fim do ${num}º Set` : `Fim do ${num}º Tempo`;
+                                                            }
                                                             return event.period ? `Fim de ${event.period}` : 'Fim do Período';
                                                         }
                                                         return '';
@@ -460,6 +472,9 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                                 let isHome = event.team_id === match?.home_team_id;
                                                 if (isOwnGoal) isHome = !isHome;
 
+                                                const sport = match?.championship?.sport?.slug || 'futebol';
+                                                const isVolei = sport.includes('volei') || sport.includes('vôlei');
+
                                                 const teamName = isHome ? match?.home_team?.name : match?.away_team?.name;
                                                 const teamInitial = teamName?.substring(0, 3)?.toUpperCase() || '?';
                                                 const teamColor = isHome ? 'bg-blue-600' : 'bg-green-600';
@@ -494,7 +509,7 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                                                 <div className={`text-xs sm:text-sm font-bold flex items-center gap-2 ${isHome ? 'sm:justify-end' : ''}`}>
                                                                     <div className="shrink-0 flex items-center justify-center h-4 w-4">
                                                                         {event.type === 'goal' && '⚽'}
-                                                                        {['point', '1_point', '2_points', '3_points', 'free_throw', 'field_goal_2', 'field_goal_3', 'game_won'].includes(event.type) && '🏀'}
+                                                                        {['point', '1_point', '2_points', '3_points', 'free_throw', 'field_goal_2', 'field_goal_3', 'game_won', 'ataque', 'bloqueio', 'saque', 'ace', 'erro', 'block'].includes(event.type) && (isVolei ? '🏐' : '🏀')}
                                                                         {['takedown', 'jiu_jitsu_2', 'jiu_jitsu_3', 'jiu_jitsu_4'].includes(event.type) && '🥋'}
                                                                         {(event.type === 'yellow_card' || event.type === 'yellow') && (
                                                                             <div className="w-3 h-4 rounded-[2px] border border-yellow-600 shadow-sm" style={{ backgroundColor: '#facc15', minWidth: '12px', minHeight: '16px' }} />
@@ -549,7 +564,9 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                                                                     penalty_goal: 'Pênalti (Gol)',
                                                                                     ataque: 'Ataque',
                                                                                     bloqueio: 'Bloqueio',
+                                                                                    block: 'Bloqueio',
                                                                                     saque: 'Ace (Saque)',
+                                                                                    ace: 'Ace',
                                                                                     erro: 'Erro',
                                                                                     game: 'Game',
                                                                                     set: 'Set',
