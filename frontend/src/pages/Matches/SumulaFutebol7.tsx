@@ -75,7 +75,7 @@ export function SumulaFutebol7() {
     const [showMvpTeamModal, setShowMvpTeamModal] = useState(false);
 
     // 🛡️ Offline Resilience
-    const { isOnline, addToQueue, pendingCount , getPendingCount } = useOfflineResilience(id, 'Futebol 7', async (action, data) => {
+    const { isOnline, addToQueue, pendingCount, getPendingCount } = useOfflineResilience(id, 'Futebol 7', async (action, data) => {
         let url = '';
         switch (action) {
             case 'event': url = `/admin/matches/${id}/events`; break;
@@ -288,7 +288,8 @@ export function SumulaFutebol7() {
             newPeriod = '2º Tempo';
             setIsRunning(true);
             // Atualiza timerRef antes do registerSystemEvent para gravar o período correto
-            timerRef.current = { ...timerRef.current, currentPeriod: newPeriod, isRunning: true };
+            setTime(0);
+            timerRef.current = { ...timerRef.current, currentPeriod: newPeriod, isRunning: true, time: 0 };
             registerSystemEvent('period_start', 'Começa o 2º Tempo! Decisão!');
         } else if (currentPeriod === '2º Tempo') {
             if (!window.confirm('Encerrar Tempo Normal?')) return;
@@ -300,11 +301,13 @@ export function SumulaFutebol7() {
             if (choice) {
                 if (window.confirm('Deseja iniciar a PRORROGAÇÃO?')) {
                     newPeriod = 'Prorrogação'; setIsRunning(true);
-                    timerRef.current = { ...timerRef.current, currentPeriod: newPeriod, isRunning: true };
+                    setTime(0);
+                    timerRef.current = { ...timerRef.current, currentPeriod: newPeriod, isRunning: true, time: 0 };
                     registerSystemEvent('period_start', 'Início da Prorrogação. Aguenta coração!');
                 } else if (window.confirm('Deseja ir DIRETO para os PÊNALTIS?')) {
                     newPeriod = 'Pênaltis';
-                    timerRef.current = { ...timerRef.current, currentPeriod: newPeriod };
+                    setTime(0);
+                    timerRef.current = { ...timerRef.current, currentPeriod: newPeriod, time: 0 };
                     registerSystemEvent('period_start', 'Início dos Shoot-outs. É agora ou nunca!');
                 }
                 // else mantém 'Fim de Tempo Normal' já setado
@@ -312,11 +315,13 @@ export function SumulaFutebol7() {
         } else if (currentPeriod === 'Fim de Tempo Normal') {
             if (window.confirm('Iniciar Prorrogação?')) {
                 newPeriod = 'Prorrogação'; setIsRunning(true);
-                timerRef.current = { ...timerRef.current, currentPeriod: newPeriod, isRunning: true };
+                setTime(0);
+                timerRef.current = { ...timerRef.current, currentPeriod: newPeriod, isRunning: true, time: 0 };
                 registerSystemEvent('period_start', 'Início da Prorrogação. Aguenta coração!');
             } else if (window.confirm('Ir para Pênaltis?')) {
                 newPeriod = 'Pênaltis';
-                timerRef.current = { ...timerRef.current, currentPeriod: newPeriod };
+                setTime(0);
+                timerRef.current = { ...timerRef.current, currentPeriod: newPeriod, time: 0 };
                 registerSystemEvent('period_start', 'Início dos Shoot-outs. É agora ou nunca!');
             } else { handleFinish(); return; }
         } else if (currentPeriod === 'Prorrogação') {
@@ -327,7 +332,8 @@ export function SumulaFutebol7() {
             registerSystemEvent('period_end', 'Fim da Prorrogação.');
             if (window.confirm('Ir para Pênaltis?')) {
                 newPeriod = 'Pênaltis';
-                timerRef.current = { ...timerRef.current, currentPeriod: newPeriod };
+                setTime(0);
+                timerRef.current = { ...timerRef.current, currentPeriod: newPeriod, time: 0 };
                 registerSystemEvent('period_start', 'Início dos Pênaltis');
             } else { handleFinish(); return; }
         } else if (currentPeriod === 'Pênaltis') {
