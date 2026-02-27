@@ -84,23 +84,31 @@ export function PlayerForm() {
                     formData.append('remove_bg', '1');
                 }
 
-                await api.post('/admin/upload-image', formData, {
-                    headers: {
-                        'Content-Type': 'multipart/form-data'
-                    }
+                console.log(`[PlayerForm] Enviando foto para o novo jogador ${playerId}...`);
+                const uploadRes = await api.post('/admin/upload-image', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
                 });
+                console.log('[PlayerForm] Resposta do upload:', uploadRes.data);
+
+                if (removeBg && uploadRes.data.ai_error) {
+                    console.warn('[PlayerForm] IA falhou no upload:', uploadRes.data.ai_error);
+                    alert(`Jogador criado, mas a remoção de fundo da foto falhou: ${uploadRes.data.ai_error}`);
+                }
             }
             navigate('/admin/players');
         } catch (error: any) {
-            console.error(error);
+            console.error('[PlayerForm] Erro:', error);
             if (error.response?.data?.errors) {
                 const errors = error.response.data.errors;
                 const errorMessages = Object.values(errors).flat().join('\n');
                 alert(`Erro de validação:\n${errorMessages}`);
+            } else if (error.response?.data?.message) {
+                alert(`Erro: ${error.response.data.message}`);
             } else {
-                alert(error.response?.data?.message || 'Erro ao salvar jogador');
+                alert('Erro ao salvar jogador. Verifique os dados e tente novamente.');
             }
-        } finally {
+        }
+        finally {
             setLoading(false);
         }
     }
