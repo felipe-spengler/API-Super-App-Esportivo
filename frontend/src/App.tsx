@@ -95,6 +95,7 @@ function App() {
             <Route path="/club-home/:slug/championships" element={<ClubExplore />} />
             <Route path="/wallet" element={<Wallet />} />
             <Route path="/agenda" element={<Agenda />} />
+            <Route path="/club-home/:slug/agenda" element={<Agenda />} />
             <Route path="/shop" element={<Shop />} />
             <Route path="/events/:id" element={<EventDetails />} />
             <Route path="/events/:id/matches" element={<EventMatches />} />

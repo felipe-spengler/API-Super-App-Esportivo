@@ -184,7 +184,7 @@ export function ClubHome() {
 
                         <button
                             className="bg-white rounded-[2rem] p-5 flex flex-col items-center gap-3 shadow-xl shadow-slate-100 border border-slate-50 hover:shadow-2xl hover:border-indigo-100 transition-all active:scale-95 group"
-                            onClick={() => navigate('/agenda')}
+                            onClick={() => navigate(`/club-home/${clubSlug}/agenda`)}
                         >
                             <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
                                 <Icon icon="fluent-emoji:calendar" className="w-10 h-10" />

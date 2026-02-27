@@ -1,10 +1,16 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ChevronRight, Clock, MapPin, ArrowLeft, Filter, Calendar as CalendarIcon } from 'lucide-react';
 import api from '../../services/api';
 
 export function Agenda() {
     const navigate = useNavigate();
+    const { slug } = useParams();
+    const [searchParams] = useSearchParams();
+
+    // Prefer clubId from search params, then from URL slug (if we implemented it), then fallback to 1
+    const [clubId, setClubId] = useState<number | string>(searchParams.get('clubId') || 1);
+    const [clubName, setClubName] = useState<string>('');
 
     const [events, setEvents] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -15,19 +21,44 @@ export function Agenda() {
     const [endDate, setEndDate] = useState('');
 
     useEffect(() => {
-        loadEvents();
-    }, [status, startDate, endDate]);
+        if (slug) {
+            loadClubBySlug(slug);
+        } else {
+            loadEvents();
+        }
+    }, [slug, status, startDate, endDate]);
+
+    // Separate effect for when clubId is updated
+    useEffect(() => {
+        if (clubId) {
+            loadEvents();
+        }
+    }, [clubId]);
+
+    async function loadClubBySlug(clubSlug: string) {
+        try {
+            console.log(`[Agenda] Buscando ID para o slug: ${clubSlug}`);
+            const res = await api.get(`/clubs/${clubSlug}`);
+            if (res.data && res.data.id) {
+                setClubId(res.data.id);
+                setClubName(res.data.name);
+            }
+        } catch (error) {
+            console.error('Erro ao carregar clube pelo slug:', error);
+        }
+    }
 
     async function loadEvents() {
+        if (!clubId) return;
+
         setLoading(true);
         try {
-            // Using Club ID 1 as default for the main context
-            const clubId = 1;
             const params: any = { status };
 
             if (startDate) params.start_date = startDate;
             if (endDate) params.end_date = endDate;
 
+            console.log(`[Agenda] Carregando jogos para o clube ${clubId}...`);
             const response = await api.get(`/clubs/${clubId}/agenda`, { params });
             setEvents(response.data);
         } catch (error) {
@@ -53,7 +84,9 @@ export function Agenda() {
                     <button onClick={() => navigate(-1)} className="p-2 mr-2 rounded-full hover:bg-gray-100 transition-colors">
                         <ArrowLeft className="w-5 h-5 text-gray-600" />
                     </button>
-                    <h1 className="text-xl font-bold text-gray-800">Agenda do Clube</h1>
+                    <h1 className="text-xl font-bold text-gray-800">
+                        {clubName ? `Agenda - ${clubName}` : 'Agenda do Clube'}
+                    </h1>
                 </div>
 
                 {/* Filters */}
