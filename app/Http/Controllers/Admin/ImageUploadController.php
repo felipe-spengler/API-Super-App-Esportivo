@@ -180,16 +180,35 @@ class ImageUploadController extends Controller
                     if ($returnVar === 0 && file_exists($outputAbsPath)) {
                         @chmod($outputAbsPath, 0664);
 
-                        $path = 'players/' . $filenameNobg;
+                        $nobgStoragePath = 'players/' . $filenameNobg;
 
                         // USAR ROTA API (PROXY) COMO PRINCIPAL
                         // Isso garante visualização mesmo com erro de configuração no Nginx/Storage link
-                        $responseData['photo_nobg_url'] = url('api/storage/' . $path);
-                        $responseData['photo_nobg_path'] = $path;
+                        $responseData['photo_nobg_url'] = url('api/storage/' . $nobgStoragePath);
+                        $responseData['photo_nobg_path'] = $nobgStoragePath;
                         $responseData['ai_processed'] = true;
+
+                        // Also update $path so the DB stores the nobg version
+                        $path = $nobgStoragePath;
                     } else {
-                        \Log::error("Lab AI - Failed. Code: {$returnVar}. Output: " . json_encode($output));
-                        $responseData['ai_error'] = 'Falha no processamento de IA.';
+                        $outputLines = implode(' | ', $output);
+                        \Log::error("Lab AI - Failed. Code: {$returnVar}. Output: " . $outputLines);
+
+                        // Build a meaningful error to show to user
+                        $aiErrorMsg = 'Falha ao remover fundo.';
+                        if ($returnVar === 127) {
+                            $aiErrorMsg = 'python3 não encontrado no servidor.';
+                        } elseif (!empty($output)) {
+                            $firstLine = trim($output[0] ?? '');
+                            if (str_contains($firstLine, 'No module named')) {
+                                $aiErrorMsg = 'Biblioteca rembg não instalada no servidor.';
+                            } elseif ($firstLine) {
+                                $aiErrorMsg = 'Erro IA: ' . $firstLine;
+                            }
+                        }
+
+                        $responseData['ai_error'] = $aiErrorMsg;
+                        $responseData['ai_output'] = $output; // Raw for debug
                     }
                 } catch (\Exception $e) {
                     \Log::error("Lab AI - Exception: " . $e->getMessage());

@@ -66,6 +66,7 @@ export function PhotoUploadSection({ playerId, currentPhotos }: PhotoUploadSecti
                 timeout: 120000
             });
 
+            // Use the no-bg version if AI processed it, otherwise original
             const newUrl = res.data.photo_nobg_url || res.data.photo_url;
             const absoluteUrl = getImageUrl(newUrl);
 
@@ -94,6 +95,15 @@ export function PhotoUploadSection({ playerId, currentPhotos }: PhotoUploadSecti
                 };
                 updateUser(updatedUser as any);
                 console.log('[PhotoUpload] User context updated:', updatedUser);
+            }
+
+            // Warn if AI background removal was requested but failed
+            if (removeBg && res.data.ai_error) {
+                const aiErr = res.data.ai_error;
+                console.warn('[PhotoUpload] AI remove_bg failed:', aiErr, res.data.ai_output);
+                setUploadError(`Foto salva, mas remoção de fundo falhou: ${aiErr}`);
+            } else {
+                setUploadError(null);
             }
         } catch (error: any) {
             console.error('[PhotoUpload] Error:', error);
