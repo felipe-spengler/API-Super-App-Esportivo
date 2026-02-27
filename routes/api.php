@@ -196,6 +196,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/upload-image', [\App\Http\Controllers\Admin\ImageUploadController::class, 'uploadImage']); // Unified upload
         Route::get('/upload/list', [\App\Http\Controllers\Admin\ImageUploadController::class, 'listImages']);
         Route::delete('/upload/delete', [\App\Http\Controllers\Admin\ImageUploadController::class, 'deleteImage']);
+        Route::get('/test-ai-env', [\App\Http\Controllers\Admin\ImageUploadController::class, 'testAiEnv']); // Diagnóstico IA
+
 
         // Gestão de Categorias (NEW)
         Route::get('/championships/{championshipId}/categories-list', [\App\Http\Controllers\Admin\CategoryController::class, 'index']);

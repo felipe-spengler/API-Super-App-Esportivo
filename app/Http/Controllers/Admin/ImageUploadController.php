@@ -149,6 +149,11 @@ class ImageUploadController extends Controller
             if ($request->boolean('remove_bg')) {
                 $startAi = microtime(true);
                 try {
+                    // Check if exec() is available
+                    if (!function_exists('exec')) {
+                        throw new \RuntimeException('exec() esta desabilitado no servidor (disable_functions).');
+                    }
+
                     $inputAbsPath = storage_path('app/public/' . $path);
                     $filenameNobg = str_replace('.', '_nobg.', $filename);
                     $filenameNobg = preg_replace('/\.(jpg|jpeg)$/i', '.png', $filenameNobg);
@@ -161,11 +166,27 @@ class ImageUploadController extends Controller
                         @mkdir($cacheDir, 0775, true);
                     }
 
+                    // Determinar qual binário Python está disponível
+                    $pythonBin = null;
+                    foreach (['python3', 'python', '/usr/bin/python3', '/usr/local/bin/python3'] as $candidate) {
+                        $testOut = [];
+                        $testRet = -1;
+                        @exec("{$candidate} --version 2>&1", $testOut, $testRet);
+                        if ($testRet === 0) {
+                            $pythonBin = $candidate;
+                            break;
+                        }
+                    }
+
+                    if (!$pythonBin) {
+                        throw new \RuntimeException('Python nao encontrado no servidor. Tentados: python3, python.');
+                    }
+
                     // Comando com variáveis de ambiente para definir home/cache
                     // Redireciona stderr para stdout (2>&1) para capturar erros do Python
-                    $command = "export U2NET_HOME={$cacheDir} && export NUMBA_CACHE_DIR={$cacheDir} && python3 \"{$scriptPath}\" \"{$inputAbsPath}\" \"{$outputAbsPath}\" 2>&1";
+                    $command = "export U2NET_HOME={$cacheDir} && export NUMBA_CACHE_DIR={$cacheDir} && {$pythonBin} \"{$scriptPath}\" \"{$inputAbsPath}\" \"{$outputAbsPath}\" 2>&1";
 
-                    \Log::info("Lab AI - Command: " . $command);
+                    \Log::info("Lab AI - Python bin: {$pythonBin} | Command: " . $command);
 
                     $output = [];
                     $returnVar = 0;
@@ -176,6 +197,7 @@ class ImageUploadController extends Controller
 
                     // Telemetria básica
                     $responseData['ai_time'] = $aiDuration . 's';
+                    $responseData['ai_python'] = $pythonBin;
 
                     if ($returnVar === 0 && file_exists($outputAbsPath)) {
                         @chmod($outputAbsPath, 0664);
@@ -195,24 +217,24 @@ class ImageUploadController extends Controller
                         \Log::error("Lab AI - Failed. Code: {$returnVar}. Output: " . $outputLines);
 
                         // Build a meaningful error to show to user
-                        $aiErrorMsg = 'Falha ao remover fundo.';
-                        if ($returnVar === 127) {
-                            $aiErrorMsg = 'python3 não encontrado no servidor.';
-                        } elseif (!empty($output)) {
+                        $aiErrorMsg = 'Falha ao remover fundo (codigo ' . $returnVar . ').';
+                        if (!empty($output)) {
                             $firstLine = trim($output[0] ?? '');
                             if (str_contains($firstLine, 'No module named')) {
-                                $aiErrorMsg = 'Biblioteca rembg não instalada no servidor.';
+                                $aiErrorMsg = 'Biblioteca rembg nao instalada no servidor.';
+                            } elseif (str_contains($firstLine, 'ModuleNotFoundError')) {
+                                $aiErrorMsg = 'rembg nao instalado. Execute: pip install rembg';
                             } elseif ($firstLine) {
-                                $aiErrorMsg = 'Erro IA: ' . $firstLine;
+                                $aiErrorMsg = 'Erro IA: ' . mb_substr($firstLine, 0, 200);
                             }
                         }
 
                         $responseData['ai_error'] = $aiErrorMsg;
-                        $responseData['ai_output'] = $output; // Raw for debug
+                        $responseData['ai_output'] = array_slice($output, 0, 5); // primeiras 5 linhas
                     }
-                } catch (\Exception $e) {
+                } catch (\Throwable $e) {
                     \Log::error("Lab AI - Exception: " . $e->getMessage());
-                    $responseData['ai_error'] = 'Erro interno na IA: ' . $e->getMessage();
+                    $responseData['ai_error'] = 'Erro ao remover fundo: ' . $e->getMessage();
                 }
             }
 
@@ -576,5 +598,71 @@ class ImageUploadController extends Controller
             \Log::error("Upload Image Error: " . $e->getMessage());
             return response()->json(['message' => 'Erro ao fazer upload: ' . $e->getMessage()], 500);
         }
+    }
+    /**
+     * Diagnóstico do ambiente de IA (exec, python, rembg)
+     * Acessível em GET /admin/test-ai-env
+     */
+    public function testAiEnv()
+    {
+        $result = [];
+
+        // 1. exec() disponível?
+        $result['exec_available'] = function_exists('exec');
+
+        // 2. PHP disable_functions
+        $result['php_disable_functions'] = ini_get('disable_functions') ?: '(nenhuma)';
+
+        // 3. Script path
+        $scriptPath = base_path('scripts/remove_bg.py');
+        $result['script_path'] = $scriptPath;
+        $result['script_exists'] = file_exists($scriptPath);
+
+        // 4. Storage writable?
+        $storageDir = storage_path('app/public/players');
+        $result['storage_dir'] = $storageDir;
+        $result['storage_writable'] = is_writable(storage_path('app/public'));
+
+        if (!function_exists('exec')) {
+            $result['python_found'] = false;
+            $result['python_error'] = 'exec() está desabilitado — impossível rodar Python.';
+            return response()->json($result);
+        }
+
+        // 5. Qual Python está disponível?
+        $pythonBin = null;
+        foreach (['python3', 'python', '/usr/bin/python3', '/usr/local/bin/python3'] as $candidate) {
+            $out = [];
+            $ret = -1;
+            @exec("{$candidate} --version 2>&1", $out, $ret);
+            $result['python_test'][$candidate] = [
+                'exit_code' => $ret,
+                'output' => implode(' ', $out),
+            ];
+            if ($ret === 0 && !$pythonBin) {
+                $pythonBin = $candidate;
+            }
+        }
+
+        $result['python_bin'] = $pythonBin;
+        $result['python_found'] = !!$pythonBin;
+
+        if ($pythonBin) {
+            // 6. rembg instalado?
+            $out = [];
+            $ret = -1;
+            @exec("{$pythonBin} -c \"import rembg; print('rembg ok')\" 2>&1", $out, $ret);
+            $result['rembg_installed'] = ($ret === 0);
+            $result['rembg_check_output'] = implode(' ', $out);
+
+            // 7. PIL instalado?
+            $out2 = [];
+            $ret2 = -1;
+            @exec("{$pythonBin} -c \"from PIL import Image; print('PIL ok')\" 2>&1", $out2, $ret2);
+            $result['pillow_installed'] = ($ret2 === 0);
+            $result['pillow_check_output'] = implode(' ', $out2);
+        }
+
+        return response()->json($result);
     }
 }

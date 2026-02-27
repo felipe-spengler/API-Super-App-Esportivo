@@ -52,23 +52,35 @@ export function PhotoUploadSection({ playerId, currentPhotos }: PhotoUploadSecti
 
     async function handleUpload(file: File, index: number) {
         setLoadingIndex(index);
+        setUploadError(null);
+        console.log(`[PhotoUpload] Iniciando upload | slot=${index} | file=${file.name} (${(file.size / 1024).toFixed(1)} KB) | removeBg=${removeBg}`);
         try {
             // Comprime automaticamente se necessário (limite: 4MB)
             const ready = await prepareImageForUpload(file, 4 * 1024 * 1024);
+            console.log(`[PhotoUpload] Após compressão: ${(ready.size / 1024).toFixed(1)} KB`);
+
             const formData = new FormData();
             formData.append('photo', ready);
             formData.append('index', index.toString());
             if (removeBg) {
                 formData.append('remove_bg', '1');
+                console.log('[PhotoUpload] remove_bg=1 adicionado ao FormData');
             }
+
+            console.log(`[PhotoUpload] Enviando para /admin/upload/player-photo/${playerId}...`);
             const res = await api.post(`/admin/upload/player-photo/${playerId}`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
                 timeout: 120000
             });
 
+            console.log('[PhotoUpload] Resposta do servidor:', res.data);
+
             // Use the no-bg version if AI processed it, otherwise original
             const newUrl = res.data.photo_nobg_url || res.data.photo_url;
             const absoluteUrl = getImageUrl(newUrl);
+            console.log(`[PhotoUpload] URL final da foto: ${absoluteUrl}`);
+            if (res.data.ai_processed) console.log(`[PhotoUpload] ✅ Background removido! Python: ${res.data.ai_python} | Tempo: ${res.data.ai_time}`);
+            if (res.data.ai_error) console.warn('[PhotoUpload] ⚠️ Falha no remove_bg:', res.data.ai_error, '| Output:', res.data.ai_output);
 
             setPhotos(prev => {
                 const newPhotos = [...prev];
