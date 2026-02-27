@@ -25,7 +25,7 @@ export function SumulaTenisMesa() {
     const BEST_OF = 5; // Melhor de 5 sets (primeiro a 3)
 
     // 🛡️ Resilience Shield
-    const { isOnline, addToQueue, pendingCount } = useOfflineResilience(id, 'Tênis de Mesa', async (action, data) => {
+    const { isOnline, addToQueue, pendingCount , getPendingCount } = useOfflineResilience(id, 'Tênis de Mesa', async (action, data) => {
         let url = '';
         switch (action) {
             case 'event': url = `/admin/matches/${id}/events`; break;
@@ -80,7 +80,7 @@ export function SumulaTenisMesa() {
 
             // Sync Interval
             const syncInterval = setInterval(() => {
-                if (pendingCount === 0) fetchMatchDetails(true);
+                if (getPendingCount() === 0) fetchMatchDetails(true);
             }, 2000);
 
             const saved = localStorage.getItem(STORAGE_KEY);
@@ -117,7 +117,7 @@ export function SumulaTenisMesa() {
         if (!id || matchFinished || loading || !matchData) return;
 
         const pingInterval = setInterval(async () => {
-            if (!isOnline || pendingCount > 0) return;
+            if (!isOnline || getPendingCount() > 0) return;
             try {
                 await api.patch(`/admin/matches/${id}`, {
                     match_details: {

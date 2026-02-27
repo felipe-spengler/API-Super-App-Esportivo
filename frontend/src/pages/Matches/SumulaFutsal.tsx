@@ -45,7 +45,7 @@ export function SumulaFutsal() {
     const [fouls, setFouls] = useState({ home: 0, away: 0 });
     const [events, setEvents] = useState<any[]>([]);
 
-    const { isOnline, addToQueue, pendingCount } = useOfflineResilience(id, 'Futsal', async (action, data) => {
+    const { isOnline, addToQueue, pendingCount , getPendingCount } = useOfflineResilience(id, 'Futsal', async (action, data) => {
         let url = ''; switch (action) {
             case 'event': url = `/admin/matches/${id}/events`; break;
             case 'finish': url = `/admin/matches/${id}/finish`; break;
@@ -115,9 +115,9 @@ export function SumulaFutsal() {
     useEffect(() => {
         if (!id) return;
         fetchMatchDetails(true);
-        const si = setInterval(() => { if (!pendingCount || pendingCount === 0) fetchMatchDetails(); }, 5000);
+        const si = setInterval(() => { if (getPendingCount() === 0) fetchMatchDetails(); }, 5000);
         return () => clearInterval(si);
-    }, [id, pendingCount]);
+    }, [id]);
 
     useEffect(() => {
         let iv: any = null;

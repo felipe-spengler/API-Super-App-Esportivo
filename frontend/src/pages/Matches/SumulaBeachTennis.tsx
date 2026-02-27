@@ -21,7 +21,7 @@ export function SumulaBeachTennis() {
     const [matchFinished, setMatchFinished] = useState(false);
 
     // 🛡️ Resilience Shield
-    const { isOnline, syncing, addToQueue, registerSystemEvent, pendingCount } = useOfflineResilience(id, 'BeachTennis', async (action, data) => {
+    const { isOnline, syncing, addToQueue, registerSystemEvent, pendingCount , getPendingCount } = useOfflineResilience(id, 'BeachTennis', async (action, data) => {
         let url = '';
         switch (action) {
             case 'event': url = `/admin/matches/${id}/events`; break;
@@ -73,12 +73,12 @@ export function SumulaBeachTennis() {
         if (!id) return;
         fetchMatchDetails(true);
         const interval = setInterval(() => {
-            if (!pendingCount || pendingCount === 0) {
+            if (getPendingCount() === 0) {
                 fetchMatchDetails();
             }
         }, 5000);
         return () => clearInterval(interval);
-    }, [id, pendingCount]);
+    }, [id]);
 
     useEffect(() => {
         if (!id || !isOnline || matchFinished) return;

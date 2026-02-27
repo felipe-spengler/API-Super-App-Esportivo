@@ -22,7 +22,7 @@ export function SumulaFutevolei() {
     const BEST_OF = 3;
 
     // 🛡️ Resilience Shield
-    const { isOnline, syncing, addToQueue, registerSystemEvent, pendingCount } = useOfflineResilience(id, 'Futevôlei', async (action, data) => {
+    const { isOnline, syncing, addToQueue, registerSystemEvent, pendingCount , getPendingCount } = useOfflineResilience(id, 'Futevôlei', async (action, data) => {
         let url = '';
         switch (action) {
             case 'event': url = `/admin/matches/${id}/events`; break;
@@ -55,13 +55,13 @@ export function SumulaFutevolei() {
         if (id) {
             fetchMatchDetails();
             const syncInterval = setInterval(() => {
-                if (!pendingCount || pendingCount === 0) {
+                if (getPendingCount() === 0) {
                     fetchMatchDetails(true);
                 }
             }, 5000);
             return () => clearInterval(syncInterval);
         }
-    }, [id, pendingCount]);
+    }, [id]);
 
     useEffect(() => {
         if (!id || matchFinished || loading || !matchData || !isOnline) return;

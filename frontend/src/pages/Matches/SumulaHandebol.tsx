@@ -22,7 +22,7 @@ export function SumulaHandebol() {
     const [events, setEvents] = useState<any[]>([]);
 
     // 🛡️ Resilience Shield
-    const { isOnline, addToQueue, pendingCount } = useOfflineResilience(id, 'Handebol', async (action, data) => {
+    const { isOnline, addToQueue, pendingCount , getPendingCount } = useOfflineResilience(id, 'Handebol', async (action, data) => {
         let url = '';
         switch (action) {
             case 'event': url = `/admin/matches/${id}/events`; break;
@@ -82,9 +82,9 @@ export function SumulaHandebol() {
     useEffect(() => {
         if (!id) return;
         fetchMatchDetails(true);
-        const syncInterval = setInterval(() => { if (!pendingCount || pendingCount === 0) fetchMatchDetails(); }, 5000);
+        const syncInterval = setInterval(() => { if (getPendingCount() === 0) fetchMatchDetails(); }, 5000);
         return () => clearInterval(syncInterval);
-    }, [id, pendingCount]);
+    }, [id]);
 
     useEffect(() => {
         let interval: any = null;

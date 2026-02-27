@@ -47,7 +47,7 @@ export function SumulaVolei() {
     const [previousRotations, setPreviousRotations] = useState<any>(null);
 
     // 🛡️ Resilience Shield
-    const { isOnline, addToQueue, pendingCount } = useOfflineResilience(id, 'Vôlei', async (action, data) => {
+    const { isOnline, addToQueue, pendingCount , getPendingCount } = useOfflineResilience(id, 'Vôlei', async (action, data) => {
         let url = '';
         switch (action) {
             case 'event': url = `/admin/matches/${id}/events`; break;
@@ -65,7 +65,7 @@ export function SumulaVolei() {
     });
 
     const apiCall = async (action: string, endpoint: string, data: any, method: 'post' | 'put' | 'delete' | 'patch' = 'post') => {
-        if (isOnline && pendingCount === 0) {
+        if (isOnline && getPendingCount() === 0) {
             try {
                 if (method === 'delete') {
                     await api.delete(endpoint);
@@ -176,11 +176,11 @@ export function SumulaVolei() {
             fetchFullDetails();
             // Sync Interval (Every 2s check for server updates to keep in sync)
             const syncInterval = setInterval(() => {
-                if (pendingCount === 0) fetchState(true);
+                if (getPendingCount() === 0) fetchState(true);
             }, 2000);
             return () => clearInterval(syncInterval);
         }
-    }, [id, pendingCount]);
+    }, [id]);
 
     const fetchFullDetails = async (silent = false) => {
         try {

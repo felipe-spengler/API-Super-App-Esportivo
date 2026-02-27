@@ -160,13 +160,16 @@ export function useOfflineResilience(matchId: string | undefined, sportName: str
         return () => clearInterval(timer);
     }, [isOnline, syncing]);
 
+    const getPendingCount = useCallback(() => queueRef.current.length, []);
+
     return {
         isOnline,
         offlineQueue,
         syncing,
         addToQueue,
         registerSystemEvent,
-        pendingCount: offlineQueue.length
+        pendingCount: offlineQueue.length,
+        getPendingCount
     };
 }
 

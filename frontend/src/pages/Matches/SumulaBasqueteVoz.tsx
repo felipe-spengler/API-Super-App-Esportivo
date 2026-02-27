@@ -35,7 +35,7 @@ export function SumulaBasqueteVoz() {
     const [voiceLogs, setVoiceLogs] = useState<any[]>([]);
 
     // 🛡️ Resilience Shield
-    const { isOnline, syncing, addToQueue, registerSystemEvent, pendingCount } = useOfflineResilience(id, 'Basquete (Voz)', async (action, data) => {
+    const { isOnline, syncing, addToQueue, registerSystemEvent, pendingCount , getPendingCount } = useOfflineResilience(id, 'Basquete (Voz)', async (action, data) => {
         let url = '';
         switch (action) {
             case 'event': url = `/admin/matches/${id}/events`; break;

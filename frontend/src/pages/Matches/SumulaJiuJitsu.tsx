@@ -32,7 +32,7 @@ export function SumulaJiuJitsu() {
     };
 
     // 🛡️ Resilience Shield
-    const { isOnline, syncing, addToQueue, registerSystemEvent, pendingCount } = useOfflineResilience(id, 'JiuJitsu', async (action, data) => {
+    const { isOnline, syncing, addToQueue, registerSystemEvent, pendingCount , getPendingCount } = useOfflineResilience(id, 'JiuJitsu', async (action, data) => {
         let url = '';
         switch (action) {
             case 'event': url = `/admin/matches/${id}/events`; break;

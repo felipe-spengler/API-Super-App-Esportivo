@@ -75,7 +75,7 @@ export function SumulaFutebol7() {
     const [showMvpTeamModal, setShowMvpTeamModal] = useState(false);
 
     // 🛡️ Offline Resilience
-    const { isOnline, addToQueue, pendingCount } = useOfflineResilience(id, 'Futebol 7', async (action, data) => {
+    const { isOnline, addToQueue, pendingCount , getPendingCount } = useOfflineResilience(id, 'Futebol 7', async (action, data) => {
         let url = '';
         switch (action) {
             case 'event': url = `/admin/matches/${id}/events`; break;
@@ -187,10 +187,10 @@ export function SumulaFutebol7() {
         }
         fetchMatchDetails(true);
         const syncInterval = setInterval(() => {
-            if (!pendingCount || pendingCount === 0) fetchMatchDetails();
+            if (getPendingCount() === 0) fetchMatchDetails();
         }, 3000);
         return () => clearInterval(syncInterval);
-    }, [id, pendingCount]);
+    }, [id]);
 
     useEffect(() => {
         if (!id || loading) return;
