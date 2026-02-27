@@ -424,6 +424,10 @@ class EventController extends Controller
             $dbTypes = ['assist'];
         elseif ($type === 'rebounds')
             $dbTypes = ['rebound'];
+        elseif ($type === '3_points')
+            $dbTypes = ['3_points', 'field_goal_3'];
+        elseif ($type === '2_points')
+            $dbTypes = ['2_points', 'field_goal_2'];
         elseif ($type === 'blue_cards')
             $dbTypes = ['blue_card'];
 
