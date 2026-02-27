@@ -14,6 +14,7 @@ export function PhotoUploadSection({ playerId, currentPhotos }: PhotoUploadSecti
     const { user, updateUser } = useAuth();
     const [photos, setPhotos] = useState<string[]>([]);
     const [loadingIndex, setLoadingIndex] = useState<number | null>(null);
+    const [uploadError, setUploadError] = useState<string | null>(null);
 
     const getImageUrl = (path: string | null | undefined) => {
         if (!path) return '';
@@ -94,9 +95,46 @@ export function PhotoUploadSection({ playerId, currentPhotos }: PhotoUploadSecti
                 updateUser(updatedUser as any);
                 console.log('[PhotoUpload] User context updated:', updatedUser);
             }
-        } catch (error) {
-            console.error(error);
-            alert('Erro ao enviar foto');
+        } catch (error: any) {
+            console.error('[PhotoUpload] Error:', error);
+
+            let errorMsg = 'Erro ao enviar foto.';
+
+            if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+                errorMsg = 'Tempo limite excedido. A foto pode ser muito grande ou a conexão está lenta.';
+            } else if (error.response) {
+                const status = error.response.status;
+                const data = error.response.data;
+
+                // Try to extract a useful message from the backend
+                const backendMsg =
+                    data?.message ||
+                    (data?.errors ? Object.values(data.errors).flat().join(' ') : null) ||
+                    null;
+
+                if (status === 413) {
+                    errorMsg = 'Imagem muito grande para o servidor. Tente uma foto menor.';
+                } else if (status === 422) {
+                    errorMsg = backendMsg || 'Arquivo inválido. Use JPG ou PNG com até 4MB.';
+                } else if (status === 403) {
+                    errorMsg = 'Sem permissão para enviar esta foto.';
+                } else if (status === 500) {
+                    errorMsg = backendMsg
+                        ? `Erro no servidor: ${backendMsg}`
+                        : 'Erro interno no servidor. Tente novamente.';
+                } else if (backendMsg) {
+                    errorMsg = backendMsg;
+                } else {
+                    errorMsg = `Erro ao enviar foto (código ${status}).`;
+                }
+            } else if (error.request) {
+                errorMsg = 'Sem resposta do servidor. Verifique sua conexão.';
+            } else if (error.message) {
+                errorMsg = error.message;
+            }
+
+            setUploadError(errorMsg);
+            alert(`❌ ${errorMsg}`);
         } finally {
             setLoadingIndex(null);
         }
@@ -106,6 +144,19 @@ export function PhotoUploadSection({ playerId, currentPhotos }: PhotoUploadSecti
 
     return (
         <div className="space-y-4">
+            {/* Error banner */}
+            {uploadError && (
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+                    <span className="mt-0.5 flex-shrink-0">⚠️</span>
+                    <span className="flex-1">{uploadError}</span>
+                    <button
+                        onClick={() => setUploadError(null)}
+                        className="flex-shrink-0 text-red-400 hover:text-red-600 font-bold"
+                    >
+                        ×
+                    </button>
+                </div>
+            )}
             <div className="flex items-center gap-2 mb-4">
                 <input
                     type="checkbox"

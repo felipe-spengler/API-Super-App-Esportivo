@@ -1046,14 +1046,26 @@ class ArtGeneratorController extends Controller
             }
 
             // Images
-            // Player Photo
+            // Player Photo — prefers _nobg.png (background removed) version automatically
             $playerPhotoPath = null;
             if ($player->photo_path) {
-                $p = storage_path('app/public/' . $player->photo_path);
-                if (!file_exists($p))
-                    $p = public_path('storage/' . $player->photo_path);
-                if (file_exists($p))
-                    $playerPhotoPath = $p;
+                // Try to find a no-background version automatically
+                $nobgPath = preg_replace('/\.(jpg|jpeg|png)$/i', '_nobg.png', $player->photo_path);
+                $nobgAbsPath = storage_path('app/public/' . $nobgPath);
+                $nobgPublicPath = public_path('storage/' . $nobgPath);
+
+                if (file_exists($nobgAbsPath)) {
+                    $playerPhotoPath = $nobgAbsPath;
+                } elseif (file_exists($nobgPublicPath)) {
+                    $playerPhotoPath = $nobgPublicPath;
+                } else {
+                    // Fallback to original photo
+                    $p = storage_path('app/public/' . $player->photo_path);
+                    if (!file_exists($p))
+                        $p = public_path('storage/' . $player->photo_path);
+                    if (file_exists($p))
+                        $playerPhotoPath = $p;
+                }
             }
             $replacements['player_photo'] = $playerPhotoPath;
 
@@ -1493,19 +1505,37 @@ class ArtGeneratorController extends Controller
         if (!$player->photo_path)
             return;
 
-        $photoPath = storage_path('app/public/' . $player->photo_path);
-        // Fallbacks de caminho
-        if (!file_exists($photoPath))
-            $photoPath = public_path('storage/' . $player->photo_path);
-        if (!file_exists($photoPath))
+        // Try _nobg.png version first (background-removed)
+        $nobgPath = preg_replace('/\.(jpg|jpeg|png)$/i', '_nobg.png', $player->photo_path);
+        $photoPath = null;
+
+        foreach ([
+            storage_path('app/public/' . $nobgPath),
+            public_path('storage/' . $nobgPath),
+            storage_path('app/public/' . $player->photo_path),
+            public_path('storage/' . $player->photo_path),
+        ] as $candidate) {
+            if (file_exists($candidate)) {
+                $photoPath = $candidate;
+                break;
+            }
+        }
+
+        if (!$photoPath)
             return;
 
-        $photoInfo = getimagesize($photoPath);
+        $photoInfo = @getimagesize($photoPath);
+        if (!$photoInfo)
+            return;
+
         $playerImg = null;
-        if ($photoInfo['mime'] == 'image/jpeg')
+        $isPng = false;
+        if ($photoInfo['mime'] == 'image/jpeg') {
             $playerImg = @imagecreatefromjpeg($photoPath);
-        elseif ($photoInfo['mime'] == 'image/png')
+        } elseif ($photoInfo['mime'] == 'image/png') {
             $playerImg = @imagecreatefrompng($photoPath);
+            $isPng = true;
+        }
 
         if ($playerImg) {
             $targetHeight = 800;
@@ -1513,18 +1543,28 @@ class ArtGeneratorController extends Controller
             $origW = imagesx($playerImg);
             $origH = imagesy($playerImg);
             $ratio = $origW / $origH;
-            $targetWidth = $targetHeight * $ratio;
+            $targetWidth = (int) round($targetHeight * $ratio);
 
             $resizedImg = imagecreatetruecolor($targetWidth, $targetHeight);
             imagealphablending($resizedImg, false);
             imagesavealpha($resizedImg, true);
+            $transparent = imagecolorallocatealpha($resizedImg, 0, 0, 0, 127);
+            imagefill($resizedImg, 0, 0, $transparent);
 
             imagecopyresampled($resizedImg, $playerImg, 0, 0, 0, 0, $targetWidth, $targetHeight, $origW, $origH);
 
-            $xPos = ($width - $targetWidth) / 2;
+            $xPos = (int) round(($width - $targetWidth) / 2);
             $yPos = 335; // Posição fixa legado
 
-            imagecopy($img, $resizedImg, $xPos, $yPos, 0, 0, $targetWidth, $targetHeight);
+            if ($isPng) {
+                // Blend PNG with alpha onto canvas
+                imagealphablending($img, true);
+                imagecopy($img, $resizedImg, $xPos, $yPos, 0, 0, $targetWidth, $targetHeight);
+                imagealphablending($img, false);
+            } else {
+                imagecopy($img, $resizedImg, $xPos, $yPos, 0, 0, $targetWidth, $targetHeight);
+            }
+
             imagedestroy($playerImg);
             imagedestroy($resizedImg);
         }
@@ -1779,24 +1819,48 @@ class ArtGeneratorController extends Controller
             } elseif ($el['type'] === 'image') {
                 $contentKey = $el['content'];
                 $sourceImage = null;
+                $sourceIsPng = false;
 
                 // Check if mapped resource is available
                 if (isset($replaceMap[$contentKey]) && $replaceMap[$contentKey]) {
                     $res = $replaceMap[$contentKey];
                     // If it's a path
                     if (is_string($res) && file_exists($res)) {
-                        $info = getimagesize($res);
-                        if ($info['mime'] == 'image/png')
+                        $info = @getimagesize($res);
+                        if ($info && $info['mime'] == 'image/png') {
                             $sourceImage = @imagecreatefrompng($res);
-                        else
+                            $sourceIsPng = true;
+                        } else {
                             $sourceImage = @imagecreatefromjpeg($res);
+                        }
                     }
                 }
 
                 if ($sourceImage) {
-                    $dstX = $x - ($width / 2);
-                    $dstY = $y - ($height / 2);
-                    imagecopyresampled($img, $sourceImage, $dstX, $dstY, 0, 0, $width, $height, imagesx($sourceImage), imagesy($sourceImage));
+                    $dstX = (int) round($x - ($width / 2));
+                    $dstY = (int) round($y - ($height / 2));
+                    $srcW = imagesx($sourceImage);
+                    $srcH = imagesy($sourceImage);
+
+                    if ($sourceIsPng) {
+                        // Preserve alpha transparency when blending PNG over background
+                        // Create intermediate canvas for proper alpha blending
+                        $tmpCanvas = imagecreatetruecolor($width, $height);
+                        imagealphablending($tmpCanvas, false);
+                        imagesavealpha($tmpCanvas, true);
+                        $transparent = imagecolorallocatealpha($tmpCanvas, 0, 0, 0, 127);
+                        imagefill($tmpCanvas, 0, 0, $transparent);
+                        imagealphablending($tmpCanvas, false);
+                        imagecopyresampled($tmpCanvas, $sourceImage, 0, 0, 0, 0, $width, $height, $srcW, $srcH);
+
+                        // Now blend the tmp canvas (with alpha) onto the main image
+                        imagealphablending($img, true);
+                        imagecopy($img, $tmpCanvas, $dstX, $dstY, 0, 0, $width, $height);
+                        imagealphablending($img, false);
+                        imagedestroy($tmpCanvas);
+                    } else {
+                        imagecopyresampled($img, $sourceImage, $dstX, $dstY, 0, 0, $width, $height, $srcW, $srcH);
+                    }
                     imagedestroy($sourceImage);
                 }
             }
