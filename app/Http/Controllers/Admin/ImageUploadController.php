@@ -155,8 +155,8 @@ class ImageUploadController extends Controller
                     }
 
                     $inputAbsPath = storage_path('app/public/' . $path);
-                    $filenameNobg = str_replace('.', '_nobg.', $filename);
-                    $filenameNobg = preg_replace('/\.(jpg|jpeg)$/i', '.png', $filenameNobg);
+                    // Always output as PNG — RGBA (transparent) cannot be saved as JPEG/JFIF
+                    $filenameNobg = pathinfo($filename, PATHINFO_FILENAME) . '_nobg.png';
                     $outputAbsPath = storage_path('app/public/players/' . $filenameNobg);
                     $scriptPath = base_path('scripts/remove_bg.py');
 
@@ -495,19 +495,41 @@ class ImageUploadController extends Controller
 
             // PROCESSAMENTO DE IA: REMOVER FUNDO
             try {
-                // Caminhos absolutos
-                $inputAbsPath = storage_path('app/public/' . $path);
-                $filenameNobg = str_replace('.', '_nobg.', $filename);
-                // Força PNG para suportar transparência
-                $filenameNobg = preg_replace('/\.(jpg|jpeg)$/i', '.png', $filenameNobg);
+                // Check if exec() is available
+                if (!function_exists('exec')) {
+                    throw new \RuntimeException('exec() esta desabilitado.');
+                }
 
+                $inputAbsPath = storage_path('app/public/' . $path);
+                // Always output as PNG
+                $filenameNobg = pathinfo($filename, PATHINFO_FILENAME) . '_nobg.png';
                 $outputAbsPath = storage_path('app/public/test/' . $filenameNobg);
 
                 // Script Python
                 $scriptPath = base_path('scripts/remove_bg.py');
 
-                // Executa comando
-                $command = "python \"{$scriptPath}\" \"{$inputAbsPath}\" \"{$outputAbsPath}\"";
+                // Determine which python binary is available
+                $pythonBin = null;
+                foreach (['python3', 'python', '/usr/bin/python3', '/usr/local/bin/python3'] as $candidate) {
+                    $testOut = [];
+                    $testRet = -1;
+                    @exec("{$candidate} --version 2>&1", $testOut, $testRet);
+                    if ($testRet === 0) {
+                        $pythonBin = $candidate;
+                        break;
+                    }
+                }
+
+                if (!$pythonBin) {
+                    throw new \RuntimeException('Python nao encontrado.');
+                }
+
+                // Command with variables
+                $cacheDir = storage_path('app/public/.u2net');
+                if (!file_exists($cacheDir))
+                    @mkdir($cacheDir, 0775, true);
+
+                $command = "export U2NET_HOME={$cacheDir} && export NUMBA_CACHE_DIR={$cacheDir} && {$pythonBin} \"{$scriptPath}\" \"{$inputAbsPath}\" \"{$outputAbsPath}\" 2>&1";
 
                 \Log::info("Lab AI Test - Command: " . $command);
 
@@ -517,9 +539,6 @@ class ImageUploadController extends Controller
 
                 exec($command, $output, $returnVar);
 
-                \Log::info("Lab AI Test - Output: " . json_encode($output));
-                \Log::info("Lab AI Test - Return: " . $returnVar);
-
                 $endTime = microtime(true);
                 $processingTime = round($endTime - $startTime, 2);
 
@@ -527,21 +546,20 @@ class ImageUploadController extends Controller
                     // Sucesso
                     $pathNobg = 'test/' . $filenameNobg;
 
-                    $responseData['photo_nobg_url'] = Storage::url($pathNobg);
+                    $responseData['photo_nobg_url'] = url('api/storage/' . $pathNobg);
                     $responseData['photo_nobg_path'] = $pathNobg;
                     $responseData['ai_processed'] = true;
                     $responseData['processing_time'] = $processingTime . 's';
-                    $responseData['original_size'] = filesize($inputAbsPath);
-                    $responseData['processed_size'] = filesize($outputAbsPath);
+                    $responseData['original_size'] = @filesize($inputAbsPath);
+                    $responseData['processed_size'] = @filesize($outputAbsPath);
                 } else {
                     \Log::error("Lab AI Test - Failed: " . json_encode($output));
                     $responseData['ai_error'] = 'Falha ao processar IA. Código: ' . $returnVar;
                     $responseData['ai_output'] = $output;
                     $responseData['command'] = $command;
                 }
-            } catch (\Exception $e) {
-                \Log::error("Lab AI Test - Exception: " . $e->getMessage());
-                $responseData['ai_error'] = $e->getMessage();
+            } catch (\Throwable $e) {
+                $responseData['ai_error'] = 'Erro: ' . $e->getMessage();
             }
 
             return response()->json($responseData);

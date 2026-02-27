@@ -1050,7 +1050,8 @@ class ArtGeneratorController extends Controller
             $playerPhotoPath = null;
             if ($player->photo_path) {
                 // Try to find a no-background version automatically
-                $nobgPath = preg_replace('/\.(jpg|jpeg|png)$/i', '_nobg.png', $player->photo_path);
+                // Find anything like filename.ext -> filename_nobg.png
+                $nobgPath = preg_replace('/\.[^.]+$/i', '_nobg.png', $player->photo_path);
                 $nobgAbsPath = storage_path('app/public/' . $nobgPath);
                 $nobgPublicPath = public_path('storage/' . $nobgPath);
 
@@ -1506,7 +1507,7 @@ class ArtGeneratorController extends Controller
             return;
 
         // Try _nobg.png version first (background-removed)
-        $nobgPath = preg_replace('/\.(jpg|jpeg|png)$/i', '_nobg.png', $player->photo_path);
+        $nobgPath = preg_replace('/\.[^.]+$/i', '_nobg.png', $player->photo_path);
         $photoPath = null;
 
         foreach ([
