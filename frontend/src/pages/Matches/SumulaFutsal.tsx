@@ -62,6 +62,7 @@ export function SumulaFutsal() {
     const [confirmationEffect, setConfirmationEffect] = useState<string | null>(null);
 
     const timerRef = useRef({ time, isRunning, currentPeriod, matchData });
+    const lastLocalUpdateAt = useRef<number>(0);
     useEffect(() => { timerRef.current = { time, isRunning, currentPeriod, matchData }; }, [time, isRunning, currentPeriod, matchData]);
 
     const calcFoulsForPeriod = (history: any[], period: string) => {
@@ -92,7 +93,7 @@ export function SumulaFutsal() {
                     if (data.rosters) setRosters(data.rosters);
                 } else {
                     const st = data.match.match_details?.sync_timer;
-                    if (st?.currentPeriod && st.currentPeriod !== timerRef.current.currentPeriod) {
+                    if (st?.currentPeriod && st.currentPeriod !== timerRef.current.currentPeriod && Date.now() - lastLocalUpdateAt.current > 5000) {
                         setCurrentPeriod(st.currentPeriod);
                         if (st.time !== undefined) setTime(st.time || 0);
                         if (st.isRunning !== undefined) setIsRunning(st.isRunning);
@@ -133,6 +134,8 @@ export function SumulaFutsal() {
     const formatTime = (s: number) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
 
     const handleNextPeriod = useCallback(() => {
+        if (Date.now() - lastLocalUpdateAt.current < 2000) return;
+        lastLocalUpdateAt.current = Date.now();
         const periods = ['1º Tempo', 'Intervalo', '2º Tempo', 'Fim de Tempo Normal', 'Prorrogação', 'Fim'];
         const cur = timerRef.current;
         const idx = periods.indexOf(cur.currentPeriod);
@@ -143,7 +146,7 @@ export function SumulaFutsal() {
             if (!next.includes('Intervalo') && !next.includes('Fim')) { setTime(0); setFouls({ home: 0, away: 0 }); }
             setCurrentPeriod(next);
             addToQueue('event', { event_type: 'period_change', team_id: cur.matchData?.home_team_id, minute: formatTime(cur.time), period: next, metadata: { label: `Mudança de Período: ${next}`, timestamp: new Date().toISOString() } });
-            if (isOnline) api.patch(`/admin/matches/${id}`, { match_details: { ...cur.matchData?.match_details, sync_timer: { time: 0, isRunning: false, currentPeriod: next } } }).catch(() => { });
+            addToQueue('patch_match', { match_details: { ...cur.matchData?.match_details, sync_timer: { time: 0, isRunning: false, currentPeriod: next } } });
         }
     }, [isOnline, id, addToQueue]);
 

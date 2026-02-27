@@ -104,6 +104,7 @@ export function SumulaFutebol7() {
     }, [isOnline, id, addToQueue]);
 
     const timerRef = useRef({ time, isRunning, currentPeriod, matchData });
+    const lastLocalUpdateAt = useRef<number>(0);
     useEffect(() => {
         timerRef.current = { time, isRunning, currentPeriod, matchData };
     }, [time, isRunning, currentPeriod, matchData]);
@@ -131,7 +132,7 @@ export function SumulaFutebol7() {
                     if (data.rosters) setRosters(data.rosters);
                 } else {
                     const serverTimer = data.match.match_details?.sync_timer;
-                    if (serverTimer?.currentPeriod && serverTimer.currentPeriod !== timerRef.current.currentPeriod) {
+                    if (serverTimer?.currentPeriod && serverTimer.currentPeriod !== timerRef.current.currentPeriod && Date.now() - lastLocalUpdateAt.current > 5000) {
                         setCurrentPeriod(serverTimer.currentPeriod);
                         if (serverTimer.time !== undefined) setTime(serverTimer.time);
                         if (serverTimer.isRunning !== undefined) setIsRunning(serverTimer.isRunning);
@@ -185,9 +186,11 @@ export function SumulaFutebol7() {
             } catch (e) { console.error('Failed to parse saved state', e); }
         }
         fetchMatchDetails(true);
-        const syncInterval = setInterval(() => fetchMatchDetails(), 3000);
+        const syncInterval = setInterval(() => {
+            if (!pendingCount || pendingCount === 0) fetchMatchDetails();
+        }, 3000);
         return () => clearInterval(syncInterval);
-    }, [id]);
+    }, [id, pendingCount]);
 
     useEffect(() => {
         if (!id || loading) return;
@@ -264,6 +267,8 @@ export function SumulaFutebol7() {
     };
 
     const handlePeriodChange = () => {
+        if (Date.now() - lastLocalUpdateAt.current < 2000) return;
+        lastLocalUpdateAt.current = Date.now();
         if (matchData && (matchData.status === 'scheduled' || matchData.status === 'Agendado') && time === 0 && !isRunning) {
             if (!window.confirm('Iniciar Partida?')) return;
             setIsRunning(true);
@@ -331,7 +336,10 @@ export function SumulaFutebol7() {
             registerSystemEvent('period_end', 'Fim dos Pênaltis. Quem levou a melhor?');
             handleFinish(); return;
         }
-        if (newPeriod) setCurrentPeriod(newPeriod);
+        if (newPeriod) {
+            setCurrentPeriod(newPeriod);
+            apiPost('patch_match', { match_details: { ...matchData?.match_details, sync_timer: { time: timerRef.current.time, isRunning: timerRef.current.isRunning, currentPeriod: newPeriod } } }).catch(() => { });
+        }
     };
 
     const openEventModal = useCallback((team: 'home' | 'away', type: any) => {

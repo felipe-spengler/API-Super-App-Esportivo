@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Minus, RotateCcw, Trophy, Sun } from 'lucide-react';
+import { ArrowLeft, Plus, Minus, RotateCcw, Trophy, Sun, AlertOctagon, RefreshCw } from 'lucide-react';
 import api from '../../services/api';
+import { useOfflineResilience } from '../../hooks/useOfflineResilience';
 
 export function SumulaVoleiPraia() {
     const { id } = useParams();
@@ -22,6 +23,18 @@ export function SumulaVoleiPraia() {
     const TIE_BREAK_POINTS = 15; // Set decisivo (3º set) é até 15
     const MIN_MARGIN = 2;
     const BEST_OF = 3;
+
+    // 🛡️ Resilience Shield
+    const { isOnline, addToQueue, pendingCount } = useOfflineResilience(id, 'Vôlei de Praia', async (action, data) => {
+        let url = '';
+        switch (action) {
+            case 'event': url = `/admin/matches/${id}/events`; break;
+            case 'finish': url = `/admin/matches/${id}/finish`; break;
+            case 'patch_match': url = `/admin/matches/${id}`; return await api.patch(url, data);
+            case 'sets': url = `/admin/matches/${id}/sets`; break;
+        }
+        if (url) return await api.post(url, data);
+    });
 
     const fetchMatchDetails = async (silent = false) => {
         try {
@@ -66,7 +79,7 @@ export function SumulaVoleiPraia() {
 
             // Sync Interval
             const syncInterval = setInterval(() => {
-                fetchMatchDetails(true);
+                if (pendingCount === 0) fetchMatchDetails(true);
             }, 2000);
 
             const saved = localStorage.getItem(STORAGE_KEY);
@@ -101,6 +114,7 @@ export function SumulaVoleiPraia() {
         if (!id || matchFinished || loading || !matchData) return;
 
         const pingInterval = setInterval(async () => {
+            if (!isOnline || pendingCount > 0) return;
             try {
                 await api.patch(`/admin/matches/${id}`, {
                     match_details: {
@@ -142,7 +156,7 @@ export function SumulaVoleiPraia() {
 
         // Save point event
         try {
-            await api.post(`/admin/matches/${id}/events`, {
+            addToQueue('event', {
                 event_type: 'point',
                 team_id: team === 'home' ? matchData.home_team_id : matchData.away_team_id,
                 period: `Set ${currentSet}`,
@@ -179,7 +193,7 @@ export function SumulaVoleiPraia() {
         }));
 
         try {
-            await api.post(`/admin/matches/${id}/sets`, {
+            addToQueue('sets', {
                 set_number: currentSet,
                 home_score: finalScore.home,
                 away_score: finalScore.away
@@ -205,7 +219,7 @@ export function SumulaVoleiPraia() {
         try {
             await registerSystemEvent('match_end', 'Partida Finalizada. Vitória na areia!');
 
-            await api.post(`/admin/matches/${id}/finish`, {
+            addToQueue('finish', {
                 home_score: matchData.scoreHome,
                 away_score: matchData.scoreAway
             });
@@ -220,7 +234,7 @@ export function SumulaVoleiPraia() {
     const registerSystemEvent = async (type: string, label: string) => {
         if (!matchData) return;
         try {
-            await api.post(`/admin/matches/${id}/events`, {
+            addToQueue('event', {
                 event_type: type,
                 team_id: matchData.home_team_id || matchData.away_team_id,
                 minute: 0,
@@ -254,7 +268,19 @@ export function SumulaVoleiPraia() {
         <div className="min-h-screen bg-gradient-to-br from-amber-600 via-orange-500 to-red-500 text-white font-sans pb-20">
             {/* Header */}
             <div className="bg-gradient-to-r from-yellow-500 to-orange-600 pb-3 pt-4 sticky top-0 z-10 border-b border-orange-700 shadow-2xl">
-                <div className="px-4 flex items-center justify-between mb-4">
+                {!isOnline && (
+                    <div className="absolute top-0 left-0 w-full bg-red-600 text-white text-[10px] font-bold py-1 px-4 z-[9999] flex items-center justify-between shadow-lg">
+                        <div className="flex items-center gap-2"><AlertOctagon size={12} className="animate-pulse" /><span>SISTEMA OFFLINE</span></div>
+                        <span>{pendingCount} PENDENTES</span>
+                    </div>
+                )}
+                {isOnline && pendingCount > 0 && (
+                    <div className="absolute top-0 left-0 w-full bg-yellow-600 text-white text-[10px] font-bold py-1 px-4 z-[9999] flex items-center justify-between shadow-lg">
+                        <div className="flex items-center gap-2"><RefreshCw size={12} className="animate-spin" /><span>SINCRONIZANDO...</span></div>
+                        <span>{pendingCount} RESTANTES</span>
+                    </div>
+                )}
+                <div className={`px-4 flex items-center justify-between mb-4 ${!isOnline || pendingCount > 0 ? 'mt-4' : ''}`}>
                     <button onClick={() => navigate(-1)} className="p-2 bg-black/20 rounded-full backdrop-blur">
                         <ArrowLeft className="w-5 h-5" />
                     </button>

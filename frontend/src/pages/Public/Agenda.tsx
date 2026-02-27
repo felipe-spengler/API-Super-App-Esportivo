@@ -126,7 +126,11 @@ export function Agenda() {
                     events.map((event) => {
                         const dateInfo = formatDate(event.date);
                         return (
-                            <div key={event.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all flex gap-4">
+                            <div
+                                key={event.id}
+                                onClick={() => event.championship_id && navigate(`/events/${event.championship_id}`)}
+                                className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all flex gap-4 cursor-pointer"
+                            >
                                 <div className="flex flex-col items-center justify-center bg-indigo-50 rounded-lg w-16 h-16 shrink-0 text-indigo-700">
                                     <span className="text-xs font-bold uppercase">{dateInfo.month}</span>
                                     <span className="text-2xl font-black leading-none">{dateInfo.day}</span>

@@ -105,7 +105,7 @@ export function SumulaTenis() {
 
             // Sync Interval
             const syncInterval = setInterval(() => {
-                fetchMatchDetails(true);
+                if (pendingCount === 0) fetchMatchDetails(true);
             }, 2000);
 
             const saved = localStorage.getItem(STORAGE_KEY);
@@ -142,6 +142,7 @@ export function SumulaTenis() {
         if (!id || matchFinished || loading || !matchData) return;
 
         const pingInterval = setInterval(async () => {
+            if (!isOnline || pendingCount > 0) return;
             try {
                 await apiPost('patch_match', {
                     match_details: {

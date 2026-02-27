@@ -191,7 +191,7 @@ export function SumulaBasqueteVoz() {
                     const homeSummary = data.rosters.home.map((p: any) => `${p.number || '0'}-${p.nickname || p.name.split(' ')[0]}`).join(', ');
                     const awaySummary = data.rosters.away.map((p: any) => `${p.number || '0'}-${p.nickname || p.name.split(' ')[0]}`).join(', ');
 
-                    api.post(`/admin/matches/${id}/events`, {
+                    addToQueue('event', {
                         event_type: 'voice_debug',
                         minute: '00:00',
                         period: 'Pré-jogo',
@@ -202,7 +202,7 @@ export function SumulaBasqueteVoz() {
                             away_roster: awaySummary,
                             system_info: 'Roster Snapshot'
                         }
-                    }).catch(err => console.error("Erro ao logar elenco", err));
+                    });
 
                     setHasLoggedRoster(true);
                 }

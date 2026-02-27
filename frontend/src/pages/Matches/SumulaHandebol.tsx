@@ -127,11 +127,9 @@ export function SumulaHandebol() {
                 metadata: { label: `Mudança de Período: ${nextPeriod}`, timestamp: new Date().toISOString() }
             });
 
-            if (isOnline) {
-                api.patch(`/admin/matches/${id}`, {
-                    match_details: { ...matchData.match_details, sync_timer: { time: 0, isRunning: false, currentPeriod: nextPeriod } }
-                }).catch(() => { });
-            }
+            addToQueue('patch_match', {
+                match_details: { ...matchData.match_details, sync_timer: { time: 0, isRunning: false, currentPeriod: nextPeriod } }
+            });
         }
     };
 
@@ -233,6 +231,20 @@ export function SumulaHandebol() {
                     </button>
                 </div>
             </div>
+
+            {/* ── OFFLINE BANNER ── */}
+            {!isOnline && (
+                <div className="bg-red-900/80 border-b border-red-500/50 text-red-100 text-[10px] font-bold py-1.5 px-4 flex items-center justify-between shadow-lg backdrop-blur-md">
+                    <div className="flex items-center gap-2"><Icon icon="solar:danger-triangle-bold" className="animate-pulse w-4 h-4" /><span>SISTEMA OFFLINE</span></div>
+                    <span>{pendingCount} PENDENTES</span>
+                </div>
+            )}
+            {isOnline && pendingCount > 0 && (
+                <div className="bg-yellow-900/80 border-b border-yellow-500/50 text-yellow-100 text-[10px] font-bold py-1.5 px-4 flex items-center justify-between shadow-lg backdrop-blur-md">
+                    <div className="flex items-center gap-2"><Icon icon="solar:refresh-circle-bold" className="animate-spin w-4 h-4" /><span>SINCRONIZANDO...</span></div>
+                    <span>{pendingCount} RESTANTES</span>
+                </div>
+            )}
 
             <div className="p-3 max-w-lg mx-auto space-y-4">
                 <div className="grid grid-cols-2 gap-3">

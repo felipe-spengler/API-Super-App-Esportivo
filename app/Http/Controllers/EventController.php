@@ -770,7 +770,8 @@ class EventController extends Controller
                 'home_team' => $match->homeTeam->name ?? 'TBA',
                 'away_team' => $match->awayTeam->name ?? 'TBA',
                 'home_score' => $match->home_score,
-                'away_score' => $match->away_score
+                'away_score' => $match->away_score,
+                'championship_id' => $match->championship_id
             ];
         });
 

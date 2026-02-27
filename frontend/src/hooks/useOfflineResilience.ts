@@ -99,16 +99,25 @@ export function useOfflineResilience(matchId: string | undefined, sportName: str
 
     const registerSystemEvent = useCallback(async (type: string, label: string) => {
         if (!matchId) return;
+        const payload = {
+            event_type: type,
+            team_id: null,
+            minute: "00:00",
+            period: 'Sistema',
+            metadata: { label, sport: sportName, system_auto: true }
+        };
         try {
-            await api.post(`/admin/matches/${matchId}/events`, {
-                event_type: type,
-                team_id: null,
-                minute: "00:00",
-                period: 'Sistema',
-                metadata: { label, sport: sportName }
-            });
+            await api.post(`/admin/matches/${matchId}/events`, payload);
         } catch (e) {
             console.error("Failed to log system event", e);
+            // Force it into the offline queue so we don't lose network connection logs
+            setOfflineQueue(prev => [...prev, {
+                id: `system-event-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+                action: 'event',
+                data: payload,
+                attempts: 0,
+                timestamp: Date.now()
+            }]);
         }
     }, [matchId, sportName]);
 

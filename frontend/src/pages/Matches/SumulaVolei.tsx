@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, RefreshCw, PlusCircle, History, Trophy, X, Repeat, ArrowRightLeft, UserPlus, AlertOctagon, XCircle, Trash2 } from 'lucide-react';
 import api from '../../services/api';
+import { useOfflineResilience } from '../../hooks/useOfflineResilience';
 
 export function SumulaVolei() {
     const { id } = useParams();
@@ -44,6 +45,47 @@ export function SumulaVolei() {
     // Setup State
     const [setupRotation, setSetupRotation] = useState<{ home: any[], away: any[] }>({ home: Array(6).fill(null), away: Array(6).fill(null) });
     const [previousRotations, setPreviousRotations] = useState<any>(null);
+
+    // 🛡️ Resilience Shield
+    const { isOnline, addToQueue, pendingCount } = useOfflineResilience(id, 'Vôlei', async (action, data) => {
+        let url = '';
+        switch (action) {
+            case 'event': url = `/admin/matches/${id}/events`; break;
+            case 'volley_point': url = `/admin/matches/${id}/volley/point`; break;
+            case 'volley_rotation': url = `/admin/matches/${id}/volley/rotation`; break;
+            case 'volley_substitution': url = `/admin/matches/${id}/volley/substitution`; break;
+            case 'volley_set_start': url = `/admin/matches/${id}/volley/set-start`; break;
+            case 'volley_set_finish': url = `/admin/matches/${id}/volley/set-finish`; break;
+            case 'put_match': url = `/admin/matches/${id}`; return await api.put(url, data);
+            case 'delete_event':
+                url = `/admin/matches/${id}/events/${data.eventId}`;
+                return await api.delete(url);
+        }
+        if (url) return await api.post(url, data);
+    });
+
+    const apiCall = async (action: string, endpoint: string, data: any, method: 'post' | 'put' | 'delete' | 'patch' = 'post') => {
+        if (isOnline && pendingCount === 0) {
+            try {
+                if (method === 'delete') {
+                    await api.delete(endpoint);
+                } else if (method === 'put') {
+                    await api.put(endpoint, data);
+                } else if (method === 'patch') {
+                    await api.patch(endpoint, data);
+                } else {
+                    await api.post(endpoint, data);
+                }
+                return true;
+            } catch (e) {
+                addToQueue(action, data);
+                return false;
+            }
+        } else {
+            addToQueue(action, data);
+            return false;
+        }
+    };
 
     // Serving Info
     const [servingTeamId, setServingTeamId] = useState<number | null>(null);
@@ -134,11 +176,11 @@ export function SumulaVolei() {
             fetchFullDetails();
             // Sync Interval (Every 2s check for server updates to keep in sync)
             const syncInterval = setInterval(() => {
-                fetchState(true);
+                if (pendingCount === 0) fetchState(true);
             }, 2000);
             return () => clearInterval(syncInterval);
         }
-    }, [id]);
+    }, [id, pendingCount]);
 
     const fetchFullDetails = async (silent = false) => {
         try {
@@ -243,13 +285,13 @@ export function SumulaVolei() {
         registerSystemEvent('user_action', `Confirmou ponto '${type}' para ${teamSide}${pid ? '' : ' (jogador não identificado)'}`);
 
         try {
-            await api.post(`/admin/matches/${id}/volley/point`, {
+            const success = await apiCall('volley_point', `/admin/matches/${id}/volley/point`, {
                 team_id: teamId,
                 point_type: type,
                 player_id: pid,
                 game_time: elapsedTime
             });
-            fetchState();
+            if (success) fetchState();
         } catch (e: any) {
             registerSystemEvent('system_error', `Erro ao registrar ponto '${type}': ${e?.message || 'Falha de rede'}`);
             alert('Erro ao registrar ponto');
@@ -260,12 +302,12 @@ export function SumulaVolei() {
         const teamSide = teamId === matchData?.home_team_id ? 'Mandante' : 'Visitante';
         const dirLabel = direction === 'forward' ? 'Avançar (+)' : 'Voltar (-)';
         try {
-            await api.post(`/admin/matches/${id}/volley/rotation`, {
+            const success = await apiCall('volley_rotation', `/admin/matches/${id}/volley/rotation`, {
                 team_id: teamId,
                 direction: direction
             });
             registerSystemEvent('user_action', `Rodizio ${dirLabel} para ${teamSide}`);
-            fetchState();
+            if (success) fetchState();
         } catch (e: any) {
             registerSystemEvent('system_error', `Erro ao rotacionar ${teamSide}: ${e?.message}`);
             alert('Erro ao rotacionar');
@@ -286,13 +328,13 @@ export function SumulaVolei() {
         registerSystemEvent('user_action', `Registrou erro do time ${committingTeamSide} -> ponto para ${receivingTeamName}`);
 
         try {
-            await api.post(`/admin/matches/${id}/volley/point`, {
+            const success = await apiCall('volley_point', `/admin/matches/${id}/volley/point`, {
                 team_id: receivingTeamId,
                 point_type: 'erro',
                 player_id: null,
                 game_time: elapsedTime
             });
-            fetchState();
+            if (success) fetchState();
         } catch (e: any) {
             registerSystemEvent('system_error', `Erro ao registrar ponto por erro: ${e?.message || 'Falha de rede'}`);
             alert('Erro ao registrar ponto');
@@ -322,7 +364,7 @@ export function SumulaVolei() {
                 return;
             }
             const teamName = teamId === matchData?.home_team_id ? matchData.home_team?.name : matchData.away_team?.name;
-            await api.post(`/admin/matches/${id}/events`, {
+            const success = await apiCall('event', `/admin/matches/${id}/events`, {
                 event_type: 'timeout',
                 team_id: teamId,
                 minute: elapsedTime,
@@ -334,7 +376,7 @@ export function SumulaVolei() {
             });
             registerSystemEvent('user_action', `Registrou pedido de tempo do time ${teamSide} (${teamName})`);
             alert("Tempo registrado!");
-            fetchState();
+            if (success) fetchState();
         } catch (e: any) {
             registerSystemEvent('system_error', `Erro ao registrar tempo técnico: ${e?.message || 'Falha de rede'}`);
             console.error(e);
@@ -347,7 +389,7 @@ export function SumulaVolei() {
             // Ensure we have a valid team_id or null
             const teamId = matchData.home_team_id || matchData.away_team_id || null;
 
-            await api.post(`/admin/matches/${id}/events`, {
+            await apiCall('event', `/admin/matches/${id}/events`, {
                 event_type: type,
                 team_id: teamId,
                 minute: "00:00",
@@ -376,7 +418,7 @@ export function SumulaVolei() {
 
             if (type !== 'system_error') {
                 try {
-                    await api.post(`/admin/matches/${id}/events`, {
+                    await apiCall('event', `/admin/matches/${id}/events`, {
                         event_type: 'system_error',
                         team_id: null,
                         minute: "00:00",
@@ -406,7 +448,7 @@ export function SumulaVolei() {
         setCardFlow(null);
 
         try {
-            await api.post(`/admin/matches/${id}/events`, {
+            await apiCall('event', `/admin/matches/${id}/events`, {
                 event_type: cardType === 'yellow' ? 'yellow_card' : 'red_card',
                 team_id: teamId,
                 player_id: playerId,
@@ -427,7 +469,7 @@ export function SumulaVolei() {
         const { teamId } = mvpFlow;
         setMvpFlow(null);
         try {
-            await api.post(`/admin/matches/${id}/events`, {
+            await apiCall('event', `/admin/matches/${id}/events`, {
                 event_type: 'mvp',
                 team_id: teamId,
                 player_id: playerId,
@@ -438,7 +480,7 @@ export function SumulaVolei() {
                 }
             });
             // Also save mvp on match details endpoint
-            await api.put(`/admin/matches/${id}`, { mvp_player_id: playerId });
+            await apiCall('put_match', `/admin/matches/${id}`, { mvp_player_id: playerId }, 'put');
             alert("Craque registrado com sucesso!");
         } catch (e) {
             alert("Erro ao registrar craque");
@@ -455,7 +497,7 @@ export function SumulaVolei() {
         if (!subData) return;
         const teamSide = subData.teamId === matchData?.home_team_id ? 'Mandante' : 'Visitante';
         try {
-            await api.post(`/admin/matches/${id}/volley/substitution`, {
+            const success = await apiCall('volley_substitution', `/admin/matches/${id}/volley/substitution`, {
                 team_id: subData.teamId,
                 position: subData.position,
                 player_in: playerInId
@@ -463,7 +505,7 @@ export function SumulaVolei() {
             registerSystemEvent('user_action', `Substituição realizada no time ${teamSide} na P${subData.position + 1}`);
             setSubModalOpen(false);
             setSubData(null);
-            fetchState();
+            if (success) fetchState();
         } catch (e: any) {
             registerSystemEvent('system_error', `Erro na substituição (${teamSide}): ${e?.message}`);
             alert('Erro na substituição');
@@ -473,9 +515,9 @@ export function SumulaVolei() {
     const handleDeleteEvent = async (eventId: number) => {
         if (!window.confirm("Deseja cancelar este lançamento? (O placar será ajustado automaticamente se for um ponto)")) return;
         try {
-            await api.delete(`/admin/matches/${id}/events/${eventId}`);
+            const success = await apiCall('delete_event', `/admin/matches/${id}/events/${eventId}`, { eventId }, 'delete');
             registerSystemEvent('user_action', `Excluiu/Cancelou evento ID: ${eventId}`);
-            fetchState();
+            if (success) fetchState();
         } catch (e: any) {
             registerSystemEvent('system_error', `Erro ao excluir evento: ${e?.message}`);
             alert("Erro ao excluir evento");
@@ -501,7 +543,7 @@ export function SumulaVolei() {
         }
 
         try {
-            await api.post(`/admin/matches/${id}/volley/set-start`, {
+            await apiCall('volley_set_start', `/admin/matches/${id}/volley/set-start`, {
                 set_number: volleyState.current_set || 1,
                 home_rotation: rotations.home,
                 away_rotation: rotations.away,
@@ -535,8 +577,11 @@ export function SumulaVolei() {
 
         try {
             // Chamar API para encerrar set no servidor e avançar o número do set persistentemente
-            const response = await api.post(`/admin/matches/${id}/volley/set-finish`);
-            processStateResponse(response.data);
+            const success = await apiCall('volley_set_finish', `/admin/matches/${id}/volley/set-finish`, {});
+            if (success) {
+                const response = await api.get(`/admin/matches/${id}/volley-state`);
+                processStateResponse(response.data);
+            }
 
             // Inverter lados preventivamente para o próximo
             setInvertedSides(prev => !prev);
@@ -721,7 +766,19 @@ export function SumulaVolei() {
         <div className="min-h-screen bg-gray-900 text-white font-sans pb-20">
             {/* Header */}
             <div className="bg-gray-800 p-3 border-b border-gray-700 sticky top-0 z-20 shadow-lg">
-                <div className="flex items-center justify-between">
+                {!isOnline && (
+                    <div className="absolute top-0 left-0 w-full bg-red-600 text-white text-[10px] font-bold py-1 px-4 z-[9999] flex items-center justify-between shadow-lg">
+                        <div className="flex items-center gap-2"><AlertOctagon size={12} className="animate-pulse" /><span>SISTEMA OFFLINE</span></div>
+                        <span>{pendingCount} PENDENTES</span>
+                    </div>
+                )}
+                {isOnline && pendingCount > 0 && (
+                    <div className="absolute top-0 left-0 w-full bg-yellow-600 text-white text-[10px] font-bold py-1 px-4 z-[9999] flex items-center justify-between shadow-lg">
+                        <div className="flex items-center gap-2"><RefreshCw size={12} className="animate-spin" /><span>SINCRONIZANDO...</span></div>
+                        <span>{pendingCount} RESTANTES</span>
+                    </div>
+                )}
+                <div className={`flex items-center justify-between ${!isOnline || pendingCount > 0 ? 'mt-4' : ''}`}>
                     <button onClick={() => navigate(-1)} className="p-2 bg-gray-700 rounded-full"><ArrowLeft className="w-5 h-5" /></button>
                     <div className="text-center">
                         <div className="text-[10px] font-bold tracking-widest text-gray-400 uppercase">Súmula Digital</div>
