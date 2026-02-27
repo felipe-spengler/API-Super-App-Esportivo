@@ -47,7 +47,7 @@ export function SumulaVolei() {
     const [previousRotations, setPreviousRotations] = useState<any>(null);
 
     // 🛡️ Resilience Shield
-    const { isOnline, addToQueue, pendingCount , getPendingCount } = useOfflineResilience(id, 'Vôlei', async (action, data) => {
+    const { isOnline, addToQueue, pendingCount, getPendingCount } = useOfflineResilience(id, 'Vôlei', async (action, data) => {
         let url = '';
         switch (action) {
             case 'event': url = `/admin/matches/${id}/events`; break;
@@ -291,6 +291,15 @@ export function SumulaVolei() {
                 player_id: pid,
                 game_time: elapsedTime
             });
+            // 🚀 Optimistic Update
+            setVolleyState((prev: any) => {
+                if (!prev) return prev;
+                return {
+                    ...prev,
+                    home_score: teamId === matchData?.home_team_id ? prev.home_score + 1 : prev.home_score,
+                    away_score: teamId !== matchData?.home_team_id ? prev.away_score + 1 : prev.away_score
+                };
+            });
             if (success) fetchState();
         } catch (e: any) {
             registerSystemEvent('system_error', `Erro ao registrar ponto '${type}': ${e?.message || 'Falha de rede'}`);
@@ -333,6 +342,15 @@ export function SumulaVolei() {
                 point_type: 'erro',
                 player_id: null,
                 game_time: elapsedTime
+            });
+            // 🚀 Optimistic Update
+            setVolleyState((prev: any) => {
+                if (!prev) return prev;
+                return {
+                    ...prev,
+                    home_score: receivingTeamId === matchData?.home_team_id ? prev.home_score + 1 : prev.home_score,
+                    away_score: receivingTeamId !== matchData?.home_team_id ? prev.away_score + 1 : prev.away_score
+                };
             });
             if (success) fetchState();
         } catch (e: any) {
