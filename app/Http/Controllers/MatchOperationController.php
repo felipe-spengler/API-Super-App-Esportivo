@@ -13,13 +13,32 @@ class MatchOperationController extends Controller
     // RETORNA DADOS COMPLETOS PARA A SÚMULA (Players, histórico, sets, etc)
     public function show($id)
     {
-        $match = GameMatch::with(['championship.sport', 'events.player'])->findOrFail($id);
+        $match = GameMatch::findOrFail($id);
+
+        // 1. CARREGAR JOGADORES FILTRADOS POR CAMPEONATO (Evitar vazamento de outros campeonatos)
+        $champId = $match->championship_id;
+        $match->load([
+            'homeTeam.players' => function ($q) use ($champId) {
+                $q->where('team_players.championship_id', $champId);
+            },
+            'awayTeam.players' => function ($q) use ($champId) {
+                $q->where('team_players.championship_id', $champId);
+            },
+            'championship.sport',
+            'events.player'
+        ]);
 
         $details = $match->match_details ?? [];
 
         if (!isset($details['events'])) {
             $details['events'] = [];
         }
+
+        // Otimização: Cache de números de camisa do campeonato atual
+        $rosterNumbers = DB::table('team_players')
+            ->where('championship_id', $champId)
+            ->get()
+            ->groupBy(['team_id', 'user_id']);
 
         // Se houver eventos na tabela MatchEvent, eles são a fonte de verdade
         // Tipos internos de auditoria nunca devem aparecer na página pública
@@ -53,7 +72,7 @@ class MatchOperationController extends Controller
             $tableEvents = $match->events
                 ->sortByDesc('id') // O mais recente primeiro
                 ->filter(fn($e) => !in_array($e->event_type, $auditTypes))
-                ->map(function ($e) use ($eventLabels, $match) {
+                ->map(function ($e) use ($eventLabels, $match, $rosterNumbers) {
                     $isVolley = ($match->championship->sport->slug ?? '') === 'volei';
                     $info = $eventLabels[$e->event_type] ?? ['label' => ucfirst(str_replace('_', ' ', $e->event_type)), 'icon' => '📋'];
 
@@ -78,12 +97,8 @@ class MatchOperationController extends Controller
 
                     $player = $e->player;
                     $number = null;
-                    if ($player) {
-                        $number = DB::table('team_players')
-                            ->where('user_id', $player->id)
-                            ->where('team_id', $e->team_id ?? 0)
-                            ->where('championship_id', $match->championship_id)
-                            ->value('number');
+                    if ($player && $e->team_id) {
+                        $number = $rosterNumbers[$e->team_id][$player->id][0]->number ?? null;
                     }
 
                     // Resolve Player Name
@@ -122,19 +137,7 @@ class MatchOperationController extends Controller
         if (!isset($details['positions']))
             $details['positions'] = [];
 
-        // Carrega apenas os jogadores vinculados a ESTE campeonato
-        $champId = $match->championship_id;
-
-        $match->load([
-            'homeTeam.players' => function ($q) use ($champId) {
-                $q->where('team_players.championship_id', $champId);
-            },
-            'awayTeam.players' => function ($q) use ($champId) {
-                $q->where('team_players.championship_id', $champId);
-            }
-        ]);
-
-        // Carregar jogadores reais dos times
+        // Carregar jogadores reais dos times (Rosters já carregados e filtrados no topo)
         $rosters = [
             'home' => $this->formatRoster($match->homeTeam),
             'away' => $this->formatRoster($match->awayTeam),
@@ -219,9 +222,19 @@ class MatchOperationController extends Controller
         $match->status = 'live'; // Garante que está ao vivo
         $match->save();
 
+        $champId = $match->championship_id;
+        $match->load([
+            'homeTeam.players' => function ($q) use ($champId) {
+                $q->where('team_players.championship_id', $champId);
+            },
+            'awayTeam.players' => function ($q) use ($champId) {
+                $q->where('team_players.championship_id', $champId);
+            }
+        ]);
+
         return response()->json([
             'success' => true,
-            'match' => $match, // Retorna objeto atualizado
+            'match' => $match, // Retorna objeto atualizado com rosters filtrados
             'event' => $newEvent
         ]);
     }
@@ -267,6 +280,16 @@ class MatchOperationController extends Controller
         $match->match_details = $details;
         $match->save();
 
+        $champId = $match->championship_id;
+        $match->load([
+            'homeTeam.players' => function ($q) use ($champId) {
+                $q->where('team_players.championship_id', $champId);
+            },
+            'awayTeam.players' => function ($q) use ($champId) {
+                $q->where('team_players.championship_id', $champId);
+            }
+        ]);
+
         return response()->json(['success' => true, 'match' => $match]);
     }
 
@@ -280,6 +303,17 @@ class MatchOperationController extends Controller
             $match->status = $status;
             $match->save();
         }
-        return response()->json(['success' => true, 'status' => $match->status]);
+
+        $champId = $match->championship_id;
+        $match->load([
+            'homeTeam.players' => function ($q) use ($champId) {
+                $q->where('team_players.championship_id', $champId);
+            },
+            'awayTeam.players' => function ($q) use ($champId) {
+                $q->where('team_players.championship_id', $champId);
+            }
+        ]);
+
+        return response()->json(['success' => true, 'status' => $match->status, 'match' => $match]);
     }
 }

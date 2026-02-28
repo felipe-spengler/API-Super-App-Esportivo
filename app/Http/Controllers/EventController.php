@@ -683,7 +683,11 @@ class EventController extends Controller
         }
 
         if ($request->has('with_players') && $request->with_players == 'true') {
-            $query->with('players');
+            $query->with([
+                'players' => function ($q) use ($championshipId) {
+                    $q->where('team_players.championship_id', $championshipId);
+                }
+            ]);
         }
 
         // Evita duplicatas se o time estiver em várias categorias

@@ -114,7 +114,16 @@ class AdminMatchController extends Controller
         }
 
         $match->update($validated);
-        $match->load(['homeTeam', 'awayTeam', 'category']);
+        $champId = $match->championship_id;
+        $match->load([
+            'homeTeam.players' => function ($q) use ($champId) {
+                $q->where('team_players.championship_id', $champId);
+            },
+            'awayTeam.players' => function ($q) use ($champId) {
+                $q->where('team_players.championship_id', $champId);
+            },
+            'category'
+        ]);
 
         MatchUpdated::dispatch($match->id, $match->toArray());
 
@@ -145,7 +154,16 @@ class AdminMatchController extends Controller
             $updateData['away_penalty_score'] = $validated['away_penalty_score'];
 
         $match->update($updateData);
-        $match->load(['homeTeam', 'awayTeam', 'category']);
+        $champId = $match->championship_id;
+        $match->load([
+            'homeTeam.players' => function ($q) use ($champId) {
+                $q->where('team_players.championship_id', $champId);
+            },
+            'awayTeam.players' => function ($q) use ($champId) {
+                $q->where('team_players.championship_id', $champId);
+            },
+            'category'
+        ]);
 
         MatchUpdated::dispatch($match->id, $match->toArray());
 
@@ -743,7 +761,17 @@ class AdminMatchController extends Controller
         $event->delete();
 
         // Refresh and broadcast
-        $match->refresh()->load(['homeTeam', 'awayTeam', 'category']);
+        $match->refresh();
+        $champId = $match->championship_id;
+        $match->load([
+            'homeTeam.players' => function ($q) use ($champId) {
+                $q->where('team_players.championship_id', $champId);
+            },
+            'awayTeam.players' => function ($q) use ($champId) {
+                $q->where('team_players.championship_id', $champId);
+            },
+            'category'
+        ]);
         MatchUpdated::dispatch($match->id, $match->toArray());
 
         return response()->json(['message' => 'Event deleted successfully', 'match' => $match]);
