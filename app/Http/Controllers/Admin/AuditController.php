@@ -20,8 +20,16 @@ class AuditController extends Controller
         }
 
         // Filtros opcionais
-        if ($request->has('action')) {
-            $query->where('action', 'like', '%' . $request->action . '%');
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('action', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhereHas('user', function ($uq) use ($search) {
+                        $uq->where('name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                    });
+            });
         }
 
         if ($request->has('start_date')) {
