@@ -692,11 +692,10 @@ class AdminMatchController extends Controller
                 if ($setNumber) {
                     $set = \App\Models\MatchSet::where('game_match_id', $match->id)->where('set_number', (string) $setNumber)->first();
                     if ($set) {
-                        if ($event->team_id == $match->home_team_id) {
-                            $set->decrement('home_score', $value);
-                        } else {
-                            $set->decrement('away_score', $value);
-                        }
+                        $column = ($event->team_id == $match->home_team_id) ? 'home_score' : 'away_score';
+                        $set->update([
+                            $column => DB::raw("GREATEST(0, $column - $value)")
+                        ]);
                     }
                 }
             } else {
@@ -706,16 +705,16 @@ class AdminMatchController extends Controller
                 if ($event->team_id == $match->home_team_id) {
                     // If home team scored, but it's own goal, decrement away score
                     if ($isOwnGoal) {
-                        $match->decrement('away_score', $value);
+                        $match->update(['away_score' => DB::raw("GREATEST(0, away_score - $value)")]);
                     } else {
-                        $match->decrement('home_score', $value);
+                        $match->update(['home_score' => DB::raw("GREATEST(0, home_score - $value)")]);
                     }
                 } elseif ($event->team_id == $match->away_team_id) {
                     // If away team scored, but it's own goal, decrement home score
                     if ($isOwnGoal) {
-                        $match->decrement('home_score', $value);
+                        $match->update(['home_score' => DB::raw("GREATEST(0, home_score - $value)")]);
                     } else {
-                        $match->decrement('away_score', $value);
+                        $match->update(['away_score' => DB::raw("GREATEST(0, away_score - $value)")]);
                     }
                 }
             }
@@ -724,14 +723,29 @@ class AdminMatchController extends Controller
         // Auto-update penalty score
         if ($event->event_type === 'shootout_goal') {
             if ($event->team_id == $match->home_team_id) {
-                $match->decrement('home_penalty_score');
+                $match->update(['home_penalty_score' => DB::raw("GREATEST(0, home_penalty_score - 1)")]);
             } elseif ($event->team_id == $match->away_team_id) {
-                $match->decrement('away_penalty_score');
+                $match->update(['away_penalty_score' => DB::raw("GREATEST(0, away_penalty_score - 1)")]);
             }
+        }
+
+        // --- NEW: Status / Period Reversion Logic ---
+        // Revert to 'live' if 'match_end' is deleted
+        if ($event->event_type === 'match_end' || ($event->event_type === 'period_end' && $event->period === 'Fim')) {
+            $match->update(['status' => 'live']);
+        }
+
+        // Revert to 'scheduled' if 'match_start' is deleted
+        if ($event->event_type === 'match_start') {
+            $match->update(['status' => 'scheduled']);
         }
 
         $event->delete();
 
-        return response()->json(['message' => 'Event deleted successfully']);
+        // Refresh and broadcast
+        $match->refresh()->load(['homeTeam', 'awayTeam', 'category']);
+        MatchUpdated::dispatch($match->id, $match->toArray());
+
+        return response()->json(['message' => 'Event deleted successfully', 'match' => $match]);
     }
 }
