@@ -125,6 +125,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/teams/{id}', [\App\Http\Controllers\TeamController::class, 'show']);
     Route::post('/teams/{id}/players', [\App\Http\Controllers\TeamController::class, 'addPlayer']);
 
+    // Testes de Auditoria (Remover depois)
+    Route::get('/audit-test-raw', function () {
+        return \App\Models\AuditLog::all();
+    });
+
     // Área Admin (Web) - Protegido com middleware 'admin' e 'audit'
     Route::prefix('admin')->middleware(['admin', 'audit'])->group(function () {
         Route::get('/dashboard', [\App\Http\Controllers\AdminController::class, 'dashboard']);
@@ -321,6 +326,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Auditoria (NEW)
         Route::get('/audit-logs', [\App\Http\Controllers\Admin\AuditController::class, 'index']);
+
+        Route::get('/audit-test-no-middleware', function () {
+            return \App\Models\AuditLog::with('user', 'club')->limit(5)->get();
+        });
     });
 });
 
