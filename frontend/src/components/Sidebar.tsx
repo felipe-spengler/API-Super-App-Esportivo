@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Trophy, List, BarChart3, Settings, Users, UserPlus, X, Building2, Settings2, ShoppingBag, Key, Wand2, Palette } from 'lucide-react';
+import { Home, Trophy, List, BarChart3, Settings, Users, UserPlus, X, Building2, Settings2, ShoppingBag, Key, Wand2, Palette, History } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useAuth } from '../context/AuthContext';
@@ -34,6 +34,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             { label: 'Sistema', path: '/admin/system-settings', icon: Settings2 },
             { label: 'Laboratório IA', path: '/admin/ia-lab', icon: Wand2 },
             { label: 'Relatórios', path: '/admin/reports', icon: BarChart3 },
+            { label: 'Ações', path: '/admin/audit-logs', icon: History },
         ];
     } else {
         // Club Admin (Standard) OR Impersonating
@@ -45,6 +46,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             { label: 'Jogadores', path: '/admin/players', icon: UserPlus },
             { label: 'Loja', path: '/admin/products', icon: ShoppingBag },
             { label: 'Relatórios', path: '/admin/reports', icon: BarChart3 },
+            { label: 'Ações', path: '/admin/audit-logs', icon: History },
             { label: 'Editor de Artes', path: '/admin/art-editor', icon: Palette },
             { label: 'Configurações', path: '/admin/settings', icon: Settings },
             { label: 'Acessos', path: '/admin/temporary-access', icon: Key },

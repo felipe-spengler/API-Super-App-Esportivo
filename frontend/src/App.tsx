@@ -18,6 +18,7 @@ import { TeamDetails } from './pages/Teams/TeamDetails';
 import { Players } from './pages/Players';
 import { PlayerForm } from './pages/Players/PlayerForm';
 import { Reports } from './pages/Admin/Reports';
+import { AuditLogs } from './pages/Admin/AuditLogs';
 import { Settings } from './pages/Settings';
 import { Matches } from './pages/Matches';
 import { SumulaFutebol } from './pages/Matches/SumulaFutebol';
@@ -152,6 +153,7 @@ function App() {
               <Route path="players/new" element={<PlayerForm />} />
               <Route path="players/:id/edit" element={<PlayerForm />} />
               <Route path="reports" element={<Reports />} />
+              <Route path="audit-logs" element={<AuditLogs />} />
               <Route path="settings" element={<Settings />} />
               <Route path="clubs-manage" element={<ClubList />} />
               <Route path="clubs-manage/new" element={<ClubForm />} />
