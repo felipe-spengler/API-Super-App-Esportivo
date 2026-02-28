@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use App\Services\AuditLogger;
 
 class TemporaryAccessController extends Controller
 {
@@ -71,6 +72,11 @@ class TemporaryAccessController extends Controller
             'is_active' => true
         ]);
 
+        AuditLogger::log('access.create', "Criou acesso temporário para '{$user->name}' (Expira em: {$user->expires_at})", [
+            'target_user_id' => $user->id,
+            'expires_at' => $user->expires_at
+        ]);
+
         return response()->json([
             'message' => 'Acesso temporário criado com sucesso.',
             'user' => $user,
@@ -104,6 +110,11 @@ class TemporaryAccessController extends Controller
 
         $userToUpdate->save();
 
+        AuditLogger::log('access.update', "Renovou ou alterou acesso temporário de '{$userToUpdate->name}' (Nova expiração: {$userToUpdate->expires_at})", [
+            'target_user_id' => $id,
+            'expires_at' => $userToUpdate->expires_at
+        ]);
+
         return response()->json([
             'message' => 'Acesso renovado com sucesso.',
             'user' => $userToUpdate
@@ -124,8 +135,8 @@ class TemporaryAccessController extends Controller
         }
 
         $userToDelete->delete(); // Soft delete or hard delete? Default is hard unless trait used.
-        // Or just expire immediately?
-        // Let's delete to remove clutter
+
+        AuditLogger::log('access.revoke', "Revogou imediatamente o acesso temporário de '{$userToDelete->name}' (ID: {$id})");
 
         return response()->json(['message' => 'Acesso revogado com sucesso.']);
     }

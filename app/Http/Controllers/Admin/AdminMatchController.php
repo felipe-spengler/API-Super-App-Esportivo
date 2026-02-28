@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 
 use App\Http\Requests\StoreMatchRequest;
 use App\Http\Controllers\Admin\BracketController;
+use App\Services\AuditLogger;
 
 class AdminMatchController extends Controller
 {
@@ -114,6 +115,12 @@ class AdminMatchController extends Controller
         }
 
         $match->update($validated);
+
+        AuditLogger::log('match.update', "Editou a partida (ID: {$match->id})", [
+            'match_id' => $match->id,
+            'changes' => array_keys($validated)
+        ]);
+
         $champId = $match->championship_id;
         $match->load([
             'homeTeam.players' => function ($q) use ($champId) {
@@ -154,6 +161,12 @@ class AdminMatchController extends Controller
             $updateData['away_penalty_score'] = $validated['away_penalty_score'];
 
         $match->update($updateData);
+
+        AuditLogger::log('match.finish', "Finalizou a partida (ID: {$match->id}) - Placar: {$updateData['home_score']} x {$updateData['away_score']}", [
+            'match_id' => $match->id,
+            'score' => "{$updateData['home_score']} x {$updateData['away_score']}"
+        ]);
+
         $champId = $match->championship_id;
         $match->load([
             'homeTeam.players' => function ($q) use ($champId) {
@@ -402,6 +415,11 @@ class AdminMatchController extends Controller
             'awards' => $awards,
         ]);
 
+        AuditLogger::log('match.mvp_set', "Definiu o MVP da partida (ID: {$match->id})", [
+            'match_id' => $match->id,
+            'player_id' => $validated['player_id']
+        ]);
+
         MatchUpdated::dispatch($match->id, $match->toArray());
 
         return response()->json($match);
@@ -425,7 +443,8 @@ class AdminMatchController extends Controller
         $auditTypesToStorage = ['system_error', 'user_action', 'user_action_blocked', 'voice_debug', 'voice_input'];
 
         if (in_array($validated['event_type'], $auditTypesToStorage)) {
-            \App\Services\AuditLogger::log($validated['event_type'], $match->id, [
+            AuditLogger::log($validated['event_type'], "Ação de sistema/voz na partida (ID: {$match->id})", [
+                'match_id' => $match->id,
                 'team_id' => $validated['team_id'] ?? null,
                 'player_id' => $validated['player_id'] ?? null,
                 'game_time' => $validated['minute'] ?? null,
@@ -551,6 +570,11 @@ class AdminMatchController extends Controller
                 'mvp_player_id' => $event->player_id,
                 'awards' => $awards,
             ]);
+
+            AuditLogger::log('match.mvp_auto', "MVP definido automaticamente via evento (ID: {$match->id})", [
+                'match_id' => $match->id,
+                'player_id' => $event->player_id
+            ]);
         }
 
         MatchUpdated::dispatch($match->id, ['event' => $event]);
@@ -658,6 +682,8 @@ class AdminMatchController extends Controller
         $match = GameMatch::findOrFail($id);
         $match->delete();
 
+        AuditLogger::log('match.delete', "Excluiu a partida (ID: {$id})");
+
         return response()->json(['message' => 'Match deleted successfully']);
     }
 
@@ -671,6 +697,8 @@ class AdminMatchController extends Controller
         ]);
 
         $match->update(['awards' => $validated['awards']]);
+
+        AuditLogger::log('match.awards_update', "Atualizou as premiações da partida (ID: {$match->id})");
 
         return response()->json($match);
     }
@@ -759,6 +787,11 @@ class AdminMatchController extends Controller
         }
 
         $event->delete();
+
+        AuditLogger::log('match.event_delete', "Removeu evento (ID: {$eventId}) da partida (ID: {$match->id})", [
+            'match_id' => $match->id,
+            'event_type' => $event->event_type
+        ]);
 
         // Refresh and broadcast
         $match->refresh();

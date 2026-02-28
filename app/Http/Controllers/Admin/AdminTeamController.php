@@ -67,12 +67,42 @@ class AdminTeamController extends Controller
     public function store(StoreTeamRequest $request)
     {
         $user = $request->user();
-
         $validated = $request->validated();
+        $clubId = $user->club_id ?? ($request->club_id ?? null);
+        $validated['club_id'] = $clubId;
 
-        $validated['club_id'] = $user->club_id ?? $request->club_id;
+        // 1. De-duplicação: Verifica se já existe um time com este nome neste clube
+        $existingTeam = Team::where('name', $validated['name'])
+            ->where('club_id', $clubId)
+            ->first();
 
+        if ($existingTeam) {
+            // Log de tentativa de duplicata/vinculação automática
+            \App\Services\AuditLogger::log(
+                'team.duplicate_prevented',
+                "Tentativa de criar time duplicado '{$validated['name']}'. Vinculado ao ID {$existingTeam->id}.",
+                ['team_id' => $existingTeam->id]
+            );
+
+            // Se um championship_id foi enviado, já vincula ao campeonato
+            if ($request->has('championship_id')) {
+                $this->addToChampionship($request, $existingTeam->id);
+            }
+
+            return response()->json([
+                'message' => 'Este time já existe no seu clube e foi selecionado automaticamente.',
+                'team' => $existingTeam
+            ], 200); // Retorna 200 em vez de 201
+        }
+
+        // 2. Criação normal se não for duplicado
         $team = Team::create($validated);
+
+        \App\Services\AuditLogger::log(
+            'team.create',
+            "Criou o time '{$team->name}' (ID {$team->id})",
+            ['team_id' => $team->id]
+        );
 
         return response()->json($team, 201);
     }
@@ -92,7 +122,14 @@ class AdminTeamController extends Controller
             'secondary_color' => 'nullable|string|max:7',
         ]);
 
+        $oldName = $team->name;
         $team->update($validated);
+
+        \App\Services\AuditLogger::log(
+            'team.update',
+            "Editou o time '{$team->name}' (ID {$team->id}). Nome antigo era '{$oldName}'",
+            ['team_id' => $team->id, 'changes' => $validated]
+        );
 
         return response()->json($team);
     }
@@ -101,7 +138,14 @@ class AdminTeamController extends Controller
     public function destroy($id)
     {
         $team = Team::findOrFail($id);
+        $name = $team->name;
         $team->delete();
+
+        \App\Services\AuditLogger::log(
+            'team.delete',
+            "Excluiu o time '{$name}' (ID {$id})",
+            ['team_id' => $id]
+        );
 
         return response()->json(['message' => 'Team deleted successfully']);
     }
@@ -157,6 +201,12 @@ class AdminTeamController extends Controller
         $championship->teams()->syncWithoutDetaching([
             $teamId => ['category_id' => $categoryId]
         ]);
+
+        \App\Services\AuditLogger::log(
+            'team.championship_add',
+            "Vinculou o time '{$team->name}' ao campeonato '{$championship->name}'",
+            ['team_id' => $teamId, 'championship_id' => $championship->id]
+        );
 
         return response()->json(['message' => 'Team added to championship']);
     }

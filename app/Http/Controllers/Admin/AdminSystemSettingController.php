@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\SystemSetting;
+use App\Services\AuditLogger;
 
 class AdminSystemSettingController extends Controller
 {
@@ -39,6 +40,10 @@ class AdminSystemSettingController extends Controller
                 ['value' => $value]
             );
         }
+
+        AuditLogger::log('system.settings_update', "Atualizou configurações globais do sistema", [
+            'keys' => array_keys($data['settings'])
+        ]);
 
         return response()->json(['message' => 'Configurações de sistema atualizadas!']);
     }

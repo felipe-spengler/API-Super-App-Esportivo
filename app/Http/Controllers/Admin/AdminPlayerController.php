@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\User;
 
 use App\Http\Requests\StorePlayerRequest;
+use App\Services\AuditLogger;
 
 class AdminPlayerController extends Controller
 {
@@ -109,6 +110,11 @@ class AdminPlayerController extends Controller
 
         $player = User::create($validated);
 
+        AuditLogger::log('user.create', "Criou o usuário/atleta '{$player->name}' (ID: {$player->id})", [
+            'user_id' => $player->id,
+            'email' => $player->email
+        ]);
+
         return response()->json($player, 201);
     }
 
@@ -146,6 +152,11 @@ class AdminPlayerController extends Controller
 
         $player->update($validated);
 
+        AuditLogger::log('user.update', "Editou dados do usuário/atleta '{$player->name}' (ID: {$player->id})", [
+            'user_id' => $player->id,
+            'changes' => array_keys($validated)
+        ]);
+
         // Handle Team Context Update (Pivot)
         if ($request->has('team_id')) {
             $teamId = $request->input('team_id');
@@ -181,6 +192,8 @@ class AdminPlayerController extends Controller
     {
         $player = User::findOrFail($id);
         $player->delete();
+
+        AuditLogger::log('user.delete', "Excluiu o usuário/atleta '{$player->name}' (ID: {$id})");
 
         return response()->json(['message' => 'Player deleted successfully']);
     }

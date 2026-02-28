@@ -10,6 +10,7 @@ use App\Models\Sport;
 use App\Models\Category;
 
 use App\Http\Requests\StoreChampionshipRequest;
+use App\Services\AuditLogger;
 
 class AdminChampionshipController extends Controller
 {
@@ -57,6 +58,10 @@ class AdminChampionshipController extends Controller
 
         $championship = Championship::create($validated);
 
+        AuditLogger::log('championship.create', "Criou o campeonato '{$championship->name}' (ID: {$championship->id})", [
+            'championship_id' => $championship->id
+        ]);
+
         // Cria uma categoria padrão automaticamente para evitar que o campeonato fique vazio
         $championship->categories()->create([
             'name' => 'Principal',
@@ -96,6 +101,11 @@ class AdminChampionshipController extends Controller
 
         $championship->update($validated);
 
+        AuditLogger::log('championship.update', "Editou o campeonato '{$championship->name}' (ID: {$championship->id})", [
+            'championship_id' => $championship->id,
+            'changes' => array_keys($validated)
+        ]);
+
         return response()->json($championship->load(['sport', 'club']));
     }
 
@@ -113,6 +123,8 @@ class AdminChampionshipController extends Controller
 
         $championship->delete();
 
+        AuditLogger::log('championship.delete', "Excluiu o campeonato '{$championship->name}' (ID: {$id})");
+
         return response()->json(['message' => 'Championship deleted successfully']);
     }
 
@@ -129,6 +141,11 @@ class AdminChampionshipController extends Controller
         $championship = Championship::findOrFail($championshipId);
 
         $category = $championship->categories()->create($validated);
+
+        AuditLogger::log('championship.category_add', "Adicionou a categoria '{$category->name}' ao campeonato '{$championship->name}'", [
+            'championship_id' => $championship->id,
+            'category_id' => $category->id
+        ]);
 
         return response()->json($category, 201);
     }
@@ -151,6 +168,10 @@ class AdminChampionshipController extends Controller
         ]);
 
         $championship->update(['awards' => $validated['awards']]);
+
+        AuditLogger::log('championship.awards_update', "Atualizou as premiações do campeonato '{$championship->name}'", [
+            'championship_id' => $championship->id
+        ]);
 
         return response()->json($championship);
     }

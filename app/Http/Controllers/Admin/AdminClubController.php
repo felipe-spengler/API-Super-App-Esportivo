@@ -10,6 +10,7 @@ use App\Models\City;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use App\Services\AuditLogger;
 
 class AdminClubController extends Controller
 {
@@ -95,6 +96,11 @@ class AdminClubController extends Controller
 
             DB::commit();
 
+            AuditLogger::log('club.create', "Criou o Clube '{$club->name}' e o administrador '{$adminUser->name}'", [
+                'club_id' => $club->id,
+                'admin_id' => $adminUser->id
+            ]);
+
             return response()->json([
                 'message' => 'Clube e Administrador criados com sucesso!',
                 'club' => $club,
@@ -161,6 +167,11 @@ class AdminClubController extends Controller
 
         $club->update($data);
 
+        AuditLogger::log('club.update', "Editou o Clube '{$club->name}' (ID: {$club->id})", [
+            'club_id' => $club->id,
+            'changes' => array_keys($data)
+        ]);
+
         return response()->json([
             'message' => 'Clube atualizado com sucesso!',
             'club' => $club
@@ -187,6 +198,7 @@ class AdminClubController extends Controller
         // Idealmente usar try/catch
         try {
             $club->delete();
+            AuditLogger::log('club.delete', "Excluiu o Clube '{$club->name}' (ID: {$id})");
         } catch (\Exception $e) {
             return response()->json(['message' => 'Não foi possível excluir. O clube possui dados vinculados (campeonatos, etc). Tente inativá-lo.'], 400);
         }
@@ -212,6 +224,8 @@ class AdminClubController extends Controller
 
         // Generate Token (Sanctum)
         $token = $targetUser->createToken('ImpersonationToken')->plainTextToken;
+
+        AuditLogger::log('club.impersonate', "Iniciou personificação do Clube (ID: {$id}) através do usuário '{$targetUser->name}'");
 
         return response()->json([
             'user' => $targetUser,

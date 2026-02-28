@@ -125,8 +125,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/teams/{id}', [\App\Http\Controllers\TeamController::class, 'show']);
     Route::post('/teams/{id}/players', [\App\Http\Controllers\TeamController::class, 'addPlayer']);
 
-    // Área Admin (Web) - Protegido com middleware 'admin'
-    Route::prefix('admin')->middleware('admin')->group(function () {
+    // Área Admin (Web) - Protegido com middleware 'admin' e 'audit'
+    Route::prefix('admin')->middleware(['admin', 'audit'])->group(function () {
         Route::get('/dashboard', [\App\Http\Controllers\AdminController::class, 'dashboard']);
         Route::get('/stats', [\App\Http\Controllers\Admin\AdminDashboardController::class, 'index']);
 
@@ -318,6 +318,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/products-manage/{id}', [\App\Http\Controllers\Admin\AdminProductController::class, 'update']);
         Route::delete('/products-manage/{id}', [\App\Http\Controllers\Admin\AdminProductController::class, 'destroy']);
         Route::post('/upload/product-image', [\App\Http\Controllers\Admin\AdminProductController::class, 'uploadImage']);
+
+        // Auditoria (NEW)
+        Route::get('/audit-logs', [\App\Http\Controllers\Admin\AuditController::class, 'index']);
     });
 });
 

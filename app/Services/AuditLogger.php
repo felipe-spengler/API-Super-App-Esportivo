@@ -2,24 +2,32 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Log;
+use App\Models\AuditLog;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Request;
 
 class AuditLogger
 {
     /**
-     * Log a system audit event.
+     * Log a system audit event in the database.
      *
-     * @param string $eventType
-     * @param int $matchId
-     * @param array $metadata
+     * @param string $action Action key (e.g. 'team.create')
+     * @param string|null $description Human readable description
+     * @param array $metadata Extra data
      * @return void
      */
-    public static function log(string $eventType, int $matchId, array $metadata = [])
+    public static function log(string $action, ?string $description = null, array $metadata = [])
     {
-        Log::channel('audit')->info($eventType, [
-            'match_id' => $matchId,
+        $user = Auth::user();
+
+        AuditLog::create([
+            'user_id' => $user ? $user->id : null,
+            'club_id' => $user ? $user->club_id : null,
+            'action' => $action,
+            'description' => $description,
+            'ip_address' => Request::ip(),
+            'user_agent' => Request::userAgent(),
             'metadata' => $metadata,
-            'timestamp' => now()->toIso8601String(),
         ]);
     }
 }

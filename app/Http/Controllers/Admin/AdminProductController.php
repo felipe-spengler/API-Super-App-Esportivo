@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Product;
 use Illuminate\Support\Facades\Storage;
+use App\Services\AuditLogger;
 
 class AdminProductController extends Controller
 {
@@ -65,6 +66,10 @@ class AdminProductController extends Controller
             'variants' => [] // Pode ser implementado depois
         ]);
 
+        AuditLogger::log('product.create', "Adicionou o produto '{$product->name}' à loja (ID: {$product->id})", [
+            'product_id' => $product->id
+        ]);
+
         \Illuminate\Support\Facades\Log::info('Product created', ['id' => $product->id, 'image_url' => $product->image_url]);
 
         return response()->json($product, 201);
@@ -95,6 +100,11 @@ class AdminProductController extends Controller
 
         $product->update($validated);
 
+        AuditLogger::log('product.update', "Editou o produto '{$product->name}' (ID: {$id})", [
+            'product_id' => $id,
+            'changes' => array_keys($validated)
+        ]);
+
         \Illuminate\Support\Facades\Log::info("Product updated ID: {$id}", ['image_url' => $product->image_url]);
 
         return response()->json($product);
@@ -113,6 +123,8 @@ class AdminProductController extends Controller
         }
 
         $product->delete();
+
+        AuditLogger::log('product.delete', "Excluiu o produto '{$product->name}' (ID: {$id})");
 
         return response()->json(['message' => 'Produto removido com sucesso']);
     }

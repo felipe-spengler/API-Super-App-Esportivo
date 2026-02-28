@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Club;
 use Illuminate\Support\Facades\Schema;
+use App\Services\AuditLogger;
 
 class AdminSettingController extends Controller
 {
@@ -114,6 +115,11 @@ class AdminSettingController extends Controller
 
             $club->update($data);
 
+            AuditLogger::log('club.settings_update', "Atualizou as configurações do perfil/clube '{$club->name}'", [
+                'club_id' => $club->id,
+                'changes' => array_keys($data)
+            ]);
+
             return response()->json(['message' => 'Configurações atualizadas com sucesso!', 'club' => $club]);
         } catch (\Exception $e) {
             \Log::error('Settings Update Error: ' . $e->getMessage());
@@ -136,6 +142,9 @@ class AdminSettingController extends Controller
                 $path = $request->file('logo')->store("clubs/{$club->id}", 'public');
                 $url = '/storage/' . $path;
                 $club->update(['logo_url' => $url]);
+
+                AuditLogger::log('club.logo_update', "Atualizou o logotipo do clube '{$club->name}'", ['club_id' => $club->id]);
+
                 return response()->json(['url' => $url, 'message' => 'Logo atualizado']);
             }
             return response()->json(['message' => 'Nenhum arquivo enviado'], 400);
@@ -158,6 +167,9 @@ class AdminSettingController extends Controller
                 $path = $request->file('banner')->store("clubs/{$club->id}", 'public');
                 $url = '/storage/' . $path;
                 $club->update(['banner_url' => $url]);
+
+                AuditLogger::log('club.banner_update', "Atualizou o banner do clube '{$club->name}'", ['club_id' => $club->id]);
+
                 return response()->json(['url' => $url, 'message' => 'Banner atualizado']);
             }
             return response()->json(['message' => 'Nenhum arquivo enviado'], 400);
