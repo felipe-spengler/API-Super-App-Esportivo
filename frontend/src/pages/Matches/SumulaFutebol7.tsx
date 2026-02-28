@@ -404,7 +404,11 @@ export function SumulaFutebol7() {
             const response = await apiPost('event', {
                 event_type: eventType, team_id: teamId, minute: currentTime, period: currentPeriod,
                 player_id: player.id === 'unknown' ? null : player.id,
-                metadata: { own_goal: player.isOwnGoal || false, system_period: currentPeriod }
+                metadata: {
+                    own_goal: player.isOwnGoal || false,
+                    system_period: currentPeriod,
+                    player_name: player.name
+                }
             });
             const newEvent = {
                 id: response?.data?.id || Date.now(), type: eventType, team: selectedTeam,
@@ -889,7 +893,10 @@ export function SumulaFutebol7() {
                                                 {player.number || '#'}
                                             </div>
                                             <div className="flex flex-col items-start text-left">
-                                                <span className="font-bold text-sm text-gray-100">{player.name}</span>
+                                                <span className="font-bold text-sm text-gray-100">
+                                                    {player.name}
+                                                    {player.nickname && <span className="ml-1 text-emerald-400 opacity-80 text-[10px] font-medium">({player.nickname})</span>}
+                                                </span>
                                                 {player.position && <span className="text-[9px] text-gray-600 uppercase tracking-tight">{player.position}</span>}
                                             </div>
                                         </button>

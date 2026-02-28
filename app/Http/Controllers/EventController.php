@@ -832,18 +832,43 @@ class EventController extends Controller
         if ($match->events->count() > 0) {
             $tableEvents = $match->events
                 ->filter(fn($e) => !in_array($e->event_type, $auditTypes))
-                ->map(function ($e) use ($eventLabels) {
-                    $info = $eventLabels[$e->event_type] ?? ['label' => ucfirst(str_replace('_', ' ', $e->event_type)), 'icon' => '📋'];
+                ->map(function ($e) use ($eventLabels, $match) {
                     $metadata = is_string($e->metadata) ? json_decode($e->metadata, true) : (array) $e->metadata;
+                    $isOwnGoal = isset($metadata['own_goal']) && filter_var($metadata['own_goal'], FILTER_VALIDATE_BOOLEAN);
+
+                    $info = $eventLabels[$e->event_type] ?? ['label' => ucfirst(str_replace('_', ' ', $e->event_type)), 'icon' => '📋'];
+                    $label = $metadata['label'] ?? $info['label'];
+                    if ($isOwnGoal && $e->event_type === 'goal') {
+                        $label = 'Gol Contra';
+                    }
+
+                    // Resolve Player Name
+                    $pName = null;
+                    if ($e->player) {
+                        $pName = $e->player->nickname ?: $e->player->name;
+                    } else {
+                        // Fallback to metadata
+                        $pName = $metadata['player_name'] ?? ($metadata['original_player_name'] ?? null);
+                    }
+
+                    // Final fallback if still null: check if it's a team event or just "Equipe"
+                    if (!$pName) {
+                        if ($e->team_id) {
+                            $team = ($e->team_id == $match->home_team_id) ? $match->homeTeam : $match->awayTeam;
+                            $pName = $team->name ?? 'Equipe';
+                        } else {
+                            $pName = 'Equipe';
+                        }
+                    }
 
                     return [
                         'id' => $e->id,
                         'type' => $e->event_type,
-                        'label' => $metadata['label'] ?? $info['label'],
+                        'label' => $label,
                         'icon' => $info['icon'],
                         'team_id' => $e->team_id,
                         'player_id' => $e->player_id,
-                        'player_name' => $e->player?->name ?? '?',
+                        'player_name' => $pName,
                         'minute' => $e->game_time ?? '00:00',
                         'period' => $e->period ?? '1º Tempo',
                         'value' => $e->value,

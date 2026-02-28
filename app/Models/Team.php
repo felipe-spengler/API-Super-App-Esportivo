@@ -39,7 +39,7 @@ class Team extends Model
     public function players()
     {
         return $this->belongsToMany(User::class, 'team_players')
-            ->withPivot(['position', 'number', 'temp_player_name', 'is_approved'])
+            ->withPivot(['position', 'number', 'temp_player_name', 'is_approved', 'championship_id'])
             ->withTimestamps();
     }
 

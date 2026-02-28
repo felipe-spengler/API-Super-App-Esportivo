@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Users, Shield, Plus, User, MoreHorizontal, Trash2, CheckCircle, Clock } from 'lucide-react';
+import { ArrowLeft, Users, Shield, Plus, User, MoreHorizontal, Trash2, CheckCircle, Clock, Trophy, Copy, Loader2, ArrowRight } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
@@ -21,12 +21,23 @@ interface Player {
     photo_url?: string;
 }
 
+interface Championship {
+    id: number;
+    name: string;
+    status: string;
+    category_name?: string;
+    sport?: {
+        name: string;
+    };
+}
+
 interface Team {
     id: number;
     name: string;
     city?: string;
     captain_id: number;
     players: Player[];
+    championships: Championship[];
 }
 
 export function MyTeamDetails() {
@@ -37,6 +48,9 @@ export function MyTeamDetails() {
     const [team, setTeam] = useState<Team | null>(null);
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
+    const [viewMode, setViewMode] = useState<'selector' | 'roster'>('selector');
+    const [selectedChampionshipId, setSelectedChampionshipId] = useState<number | null>(null);
+    const [isCopying, setIsCopying] = useState(false);
 
     // Form states
     const [newPlayerName, setNewPlayerName] = useState('');
@@ -54,17 +68,45 @@ export function MyTeamDetails() {
 
     useEffect(() => {
         loadTeam();
-    }, [id]);
+    }, [id, selectedChampionshipId]);
 
     async function loadTeam() {
         try {
-            const response = await api.get(`/teams/${id}`);
+            const response = await api.get(`/teams/${id}`, {
+                params: {
+                    championship_id: selectedChampionshipId
+                }
+            });
             setTeam(response.data);
         } catch (error) {
             alert('Erro ao carregar time');
             navigate('/profile/teams');
         } finally {
             setLoading(false);
+        }
+    }
+
+    function handleSelectChampionship(champId: number | null) {
+        setSelectedChampionshipId(champId);
+        setViewMode('roster');
+    }
+
+    async function handleCopyFromGeneral() {
+        if (!selectedChampionshipId) return;
+        if (!window.confirm('Deseja copiar todos os jogadores da base geral (sem vínculo) para este campeonato? Jogadoresjá vinculados não serão duplicados.')) return;
+
+        setIsCopying(true);
+        try {
+            const response = await api.post(`/admin/teams/${id}/copy-roster`, {
+                championship_id: selectedChampionshipId
+            });
+            alert(response.data.message || 'Sincronização concluída!');
+            loadTeam();
+        } catch (error: any) {
+            console.error(error);
+            alert(error.response?.data?.message || 'Erro ao copiar jogadores.');
+        } finally {
+            setIsCopying(false);
         }
     }
 
@@ -85,6 +127,9 @@ export function MyTeamDetails() {
             formData.append('address', newPlayerAddress);
             if (documentFile) {
                 formData.append('document_file', documentFile);
+            }
+            if (selectedChampionshipId) {
+                formData.append('championship_id', String(selectedChampionshipId));
             }
 
             await api.post(`/teams/${id}/players`, formData, {
@@ -146,57 +191,139 @@ export function MyTeamDetails() {
             </div>
 
             {/* Content */}
-            <div className="max-w-lg mx-auto p-4">
+            <div className="max-w-lg mx-auto p-4 space-y-6">
 
-                {/* Team Stats/Banner could go here */}
+                {/*  Selector Mode */}
+                {viewMode === 'selector' && (
+                    <div className="space-y-4 animate-in fade-in duration-300">
+                        <div className="flex items-center gap-2 px-1">
+                            <Trophy className="w-5 h-5 text-indigo-600" />
+                            <h2 className="font-bold text-gray-800">Selecione o Elenco</h2>
+                        </div>
 
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div className="p-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
-                        <span className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                            <Users className="w-4 h-4" />
-                            Elenco ({team.players.length})
-                        </span>
-                    </div>
+                        <div className="grid gap-4">
+                            {/* Card: Base de Atletas (Global) */}
+                            <button
+                                onClick={() => handleSelectChampionship(null)}
+                                className="bg-white p-5 rounded-2xl border-2 border-dashed border-gray-200 hover:border-indigo-400 hover:bg-indigo-50/30 transition-all text-left flex items-center gap-4 group"
+                            >
+                                <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center group-hover:bg-white transition-colors">
+                                    <Users className="w-6 h-6 text-gray-500 group-hover:text-indigo-600" />
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-gray-800">Base Geral</h4>
+                                    <p className="text-xs text-gray-500">Atletas sem vínculo específico</p>
+                                </div>
+                            </button>
 
-                    <div className="divide-y divide-gray-100">
-                        {team.players.map(player => (
-                            <div key={player.id} className="p-4 flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 overflow-hidden">
-                                        {player.photo_url ? <img src={player.photo_url} className="w-full h-full object-cover" /> : <User className="w-5 h-5" />}
-                                    </div>
-                                    <div>
-                                        <div className="font-bold text-gray-900 text-sm">
-                                            {player.pivot?.temp_player_name || player.name}
-                                            {player.pivot?.number && <span className="ml-1 text-gray-400">#{player.pivot.number}</span>}
+                            {/* Cards: Championships */}
+                            {team.championships.map(camp => (
+                                <button
+                                    key={camp.id}
+                                    onClick={() => handleSelectChampionship(camp.id)}
+                                    className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 hover:border-indigo-100 transition-all text-left group"
+                                >
+                                    <div className="flex items-center justify-between mb-2">
+                                        <div className="flex gap-2">
+                                            <span className={`text-[9px] uppercase font-black px-1.5 py-0.5 rounded ${camp.status === 'active' || camp.status === 'ongoing' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                                                {camp.status}
+                                            </span>
+                                            <span className="text-[9px] font-black bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded uppercase">
+                                                {camp.sport?.name}
+                                            </span>
                                         </div>
-                                        <div className="text-xs text-gray-500">{player.pivot?.position || player.position}</div>
                                     </div>
-                                </div>
-
-                                <div className="flex items-center gap-2">
-                                    {player.pivot?.is_approved ? (
-                                        <span className="text-emerald-500"><CheckCircle className="w-4 h-4" /></span>
-                                    ) : (
-                                        <span className="text-orange-500"><Clock className="w-4 h-4" /></span>
-                                    )}
-
-                                    {isCaptain && (
-                                        <button className="p-2 text-gray-400 hover:text-red-500">
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
-
-                        {team.players.length === 0 && (
-                            <div className="p-8 text-center text-gray-400 text-sm">
-                                Nenhum jogador cadastrado. Adicione atletas para começar.
-                            </div>
-                        )}
+                                    <h4 className="font-black text-gray-900 leading-tight mb-1">{camp.name}</h4>
+                                    {camp.category_name && <p className="text-[11px] text-gray-500 font-bold uppercase">Cat: {camp.category_name}</p>}
+                                    <div className="mt-4 flex items-center text-[11px] font-black text-indigo-600 uppercase tracking-wider group-hover:translate-x-1 transition-transform">
+                                        Ver Elenco <ArrowRight className="w-3 h-3 ml-1" />
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                </div>
+                )}
+
+                {/* Roster Mode */}
+                {viewMode === 'roster' && (
+                    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <div className="flex items-center justify-between bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
+                            <div className="flex items-center gap-2 overflow-hidden">
+                                <Shield className="w-4 h-4 text-indigo-600 flex-shrink-0" />
+                                <span className="font-bold text-xs text-gray-700 truncate">
+                                    {selectedChampionshipId ? (team?.championships.find(c => c.id === selectedChampionshipId)?.name || 'Campeonato') : 'Base Geral'}
+                                </span>
+                            </div>
+                            <button
+                                onClick={() => setViewMode('selector')}
+                                className="text-[10px] font-black text-indigo-600 hover:text-indigo-800 uppercase tracking-tighter"
+                            >
+                                ALTERAR
+                            </button>
+                        </div>
+
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                            <div className="p-4 bg-gray-50 border-b border-gray-100 flex flex-col gap-3">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                                        <Users className="w-4 h-4" />
+                                        Atletas ({team.players.length})
+                                    </span>
+                                </div>
+
+                                {selectedChampionshipId && isCaptain && (
+                                    <button
+                                        onClick={handleCopyFromGeneral}
+                                        disabled={isCopying}
+                                        className="w-full py-2 bg-emerald-50 text-emerald-700 rounded-lg flex items-center justify-center gap-2 text-xs font-bold border border-emerald-100 active:scale-95 transition-all disabled:opacity-50"
+                                    >
+                                        {isCopying ? <Loader2 className="w-3 h-3 animate-spin" /> : <Copy className="w-3 h-3" />}
+                                        SINCRONIZAR COM BASE GERAL
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="divide-y divide-gray-100">
+                                {team.players.map(player => (
+                                    <div key={player.id} className="p-4 flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 overflow-hidden">
+                                                {player.photo_url ? <img src={player.photo_url} className="w-full h-full object-cover" /> : <User className="w-5 h-5" />}
+                                            </div>
+                                            <div>
+                                                <div className="font-bold text-gray-900 text-sm">
+                                                    {player.pivot?.temp_player_name || player.name}
+                                                    {player.pivot?.number && <span className="ml-1 text-gray-400">#{player.pivot.number}</span>}
+                                                </div>
+                                                <div className="text-xs text-gray-500">{player.pivot?.position || player.position}</div>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-2">
+                                            {player.pivot?.is_approved ? (
+                                                <span className="text-emerald-500"><CheckCircle className="w-4 h-4" /></span>
+                                            ) : (
+                                                <span className="text-orange-500"><Clock className="w-4 h-4" /></span>
+                                            )}
+
+                                            {isCaptain && (
+                                                <button className="p-2 text-gray-400 hover:text-red-500">
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+
+                                {team.players.length === 0 && (
+                                    <div className="p-8 text-center text-gray-400 text-sm">
+                                        Nenhum jogador vinculado neste contexto.
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Add Player Modal */}

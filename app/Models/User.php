@@ -100,7 +100,7 @@ class User extends Authenticatable
 
     public function teamsAsPlayer()
     {
-        return $this->belongsToMany(Team::class, 'team_players')->withPivot(['position', 'number', 'is_approved']);
+        return $this->belongsToMany(Team::class, 'team_players')->withPivot(['position', 'number', 'is_approved', 'championship_id', 'temp_player_name']);
     }
 
     /**

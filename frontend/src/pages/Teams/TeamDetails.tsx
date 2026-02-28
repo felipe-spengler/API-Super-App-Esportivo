@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Users, Shield, Trophy, Loader2, Plus, User as UserIcon, CheckCircle, Clock, Trash2, X, Edit } from 'lucide-react';
+import { ArrowLeft, Users, Shield, Trophy, Loader2, Plus, User as UserIcon, CheckCircle, Clock, Trash2, X, Edit, Copy } from 'lucide-react';
 import api from '../../services/api';
 import { PlayerEditModal } from '../Players/PlayerEditModal';
 import { useAuth } from '../../context/AuthContext';
@@ -65,6 +65,7 @@ export function TeamDetails() {
     const [photoFile, setPhotoFile] = useState<File | null>(null);
     const [adding, setAdding] = useState(false);
     const [editingPlayerId, setEditingPlayerId] = useState<number | null>(null);
+    const [isCopying, setIsCopying] = useState(false);
 
     useEffect(() => {
         loadTeam();
@@ -163,6 +164,25 @@ export function TeamDetails() {
         } catch (error) {
             console.error(error);
             alert('Erro ao remover jogador.');
+        }
+    }
+
+    async function handleCopyFromGeneral() {
+        if (!selectedChampionshipId) return;
+        if (!window.confirm('Deseja copiar todos os jogadores da base geral (sem vínculo) para este campeonato? Jogadores já vinculados não serão duplicados.')) return;
+
+        setIsCopying(true);
+        try {
+            const response = await api.post(`/admin/teams/${id}/copy-roster`, {
+                championship_id: selectedChampionshipId
+            });
+            alert(response.data.message || 'Sincronização concluída!');
+            loadTeam();
+        } catch (error: any) {
+            console.error(error);
+            alert(error.response?.data?.message || 'Erro ao copiar jogadores.');
+        } finally {
+            setIsCopying(false);
         }
     }
 
@@ -337,12 +357,25 @@ export function TeamDetails() {
                                     <Users className="w-5 h-5 text-indigo-600" />
                                     <h3 className="font-bold text-gray-900">Elenco Atual</h3>
                                 </div>
-                                <button
-                                    onClick={() => setShowAddModal(true)}
-                                    className="p-2 bg-indigo-50 text-indigo-600 rounded-lg flex items-center gap-1 text-xs font-bold hover:bg-indigo-100 transition-colors"
-                                >
-                                    <Plus className="w-4 h-4" /> Add
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    {selectedChampionshipId && (
+                                        <button
+                                            onClick={handleCopyFromGeneral}
+                                            disabled={isCopying}
+                                            className="px-3 py-2 bg-emerald-50 text-emerald-600 rounded-lg flex items-center gap-2 text-xs font-bold hover:bg-emerald-100 transition-colors disabled:opacity-50 shadow-sm border border-emerald-100"
+                                            title="Copiar jogadores cadastrados na Base Geral para este campeonato"
+                                        >
+                                            {isCopying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Copy className="w-4 h-4" />}
+                                            Copiar da Base Geral
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => setShowAddModal(true)}
+                                        className="p-2 bg-indigo-50 text-indigo-600 rounded-lg flex items-center gap-1 text-xs font-bold hover:bg-indigo-100 transition-colors"
+                                    >
+                                        <Plus className="w-4 h-4" /> Add
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="space-y-3">

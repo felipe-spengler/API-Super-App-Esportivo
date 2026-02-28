@@ -86,6 +86,20 @@ class MatchOperationController extends Controller
                             ->value('number');
                     }
 
+                    // Resolve Player Name
+                    $pName = null;
+                    if ($player) {
+                        $pName = $player->nickname ?: $player->name;
+                    } else {
+                        // For team level events or missing records, use team name if possible
+                        if ($e->team_id) {
+                            $team = ($e->team_id == $match->home_team_id) ? $match->homeTeam : $match->awayTeam;
+                            $pName = $team->name ?? 'Equipe';
+                        } else {
+                            $pName = 'Equipe';
+                        }
+                    }
+
                     return [
                         'id' => $e->id,
                         'type' => $e->event_type,
@@ -93,7 +107,7 @@ class MatchOperationController extends Controller
                         'icon' => $icon,
                         'team_id' => $e->team_id,
                         'player_id' => $e->player_id,
-                        'player_name' => $player ? ($player->nickname ?: $player->name) : '?',
+                        'player_name' => $pName,
                         'player_number' => $number,
                         'minute' => $e->game_time ?? '00:00',
                         'period' => $e->period ?? ($isVolley ? '1º Set' : '1º Tempo'),

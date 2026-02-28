@@ -37,9 +37,30 @@ class TeamController extends Controller
     }
 
     // 2. Detalhes do Time (Elenco)
-    public function show($id)
+    public function show(Request $request, $id)
     {
-        $team = Team::with(['club', 'captain', 'players'])->findOrFail($id);
+        $team = Team::with(['club', 'captain', 'championships.sport', 'championships.categories'])
+            ->with([
+                'players' => function ($q) use ($request) {
+                    if ($request->has('championship_id')) {
+                        $q->where('team_players.championship_id', $request->championship_id);
+                    } else {
+                        $q->whereNull('team_players.championship_id');
+                    }
+                }
+            ])
+            ->findOrFail($id);
+
+        // Map the category name to each championship
+        $team->championships->each(function ($championship) {
+            $categoryId = $championship->pivot->category_id;
+            if ($categoryId) {
+                $category = $championship->categories->firstWhere('id', $categoryId);
+                $championship->category_name = $category ? $category->name : null;
+            } else {
+                $championship->category_name = null;
+            }
+        });
 
         // Remove mock logic
         $team->description = $team->description ?? "Equipe {$team->name} da cidade de " . ($team->city ?? 'Toledo');

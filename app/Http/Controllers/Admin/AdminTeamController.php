@@ -196,4 +196,53 @@ class AdminTeamController extends Controller
 
         return response()->json(['message' => 'Player removed from team']);
     }
+
+    // NEW: Copy players from general roster to championship context
+    public function copyRoster(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'championship_id' => 'required|integer',
+        ]);
+
+        $championshipId = $validated['championship_id'];
+
+        // Get players from general roster (championship_id null)
+        $generalPlayers = \DB::table('team_players')
+            ->where('team_id', $id)
+            ->whereNull('championship_id')
+            ->get();
+
+        if ($generalPlayers->isEmpty()) {
+            return response()->json(['message' => 'Nenhum jogador na base geral para copiar.'], 400);
+        }
+
+        $count = 0;
+        foreach ($generalPlayers as $player) {
+            // Check if already in championship
+            $exists = \DB::table('team_players')
+                ->where('team_id', $id)
+                ->where('user_id', $player->user_id)
+                ->where('championship_id', $championshipId)
+                ->exists();
+
+            if (!$exists) {
+                \DB::table('team_players')->insert([
+                    'team_id' => $id,
+                    'user_id' => $player->user_id,
+                    'championship_id' => $championshipId,
+                    'position' => $player->position,
+                    'number' => $player->number,
+                    'is_approved' => $player->is_approved,
+                    'temp_player_name' => $player->temp_player_name ?? null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                $count++;
+            }
+        }
+
+        return response()->json([
+            'message' => "Sincronização concluída: $count novos jogadores vinculados ao campeonato."
+        ]);
+    }
 }
