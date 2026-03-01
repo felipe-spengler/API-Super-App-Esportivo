@@ -75,6 +75,7 @@ import { MatchPrintView } from './pages/Matches/MatchPrintView';
 import { TestUpload } from './pages/Public/TestUpload';
 import { ForgotPassword } from './pages/ForgotPassword';
 import { ResetPassword } from './pages/ResetPassword';
+import { PrivacyPolicy } from './pages/Public/PrivacyPolicy';
 
 import { Toaster } from 'react-hot-toast';
 import { ScrollToTop } from './components/ScrollToTop';
@@ -112,6 +113,7 @@ function App() {
             <Route path="/races/:id/results" element={<div className="p-10 text-center">Resultados (Em Breve)</div>} />
             <Route path="/matches/:id/print" element={<MatchPrintView />} />
             <Route path="/test-upload" element={<TestUpload />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
 
             {/* Athlete Private Area */}
             <Route path="/profile/teams" element={<MyTeams />} />
