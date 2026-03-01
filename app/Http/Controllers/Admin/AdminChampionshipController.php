@@ -101,9 +101,35 @@ class AdminChampionshipController extends Controller
 
         $championship->update($validated);
 
-        AuditLogger::log('championship.update', "Editou o campeonato '{$championship->name}' (ID: {$championship->id})", [
+        $changedFields = array_keys($validated);
+        $description = "Editou o campeonato '{$championship->name}' (ID: {$championship->id})";
+
+        if (count($changedFields) > 0) {
+            $translatedFields = [
+                'name' => 'nome',
+                'start_date' => 'data de início',
+                'end_date' => 'data de fim',
+                'description' => 'descrição',
+                'format' => 'formato',
+                'status' => 'status',
+                'max_teams' => 'limite de times',
+            ];
+
+            $details = [];
+            foreach ($changedFields as $field) {
+                if (isset($translatedFields[$field])) {
+                    $details[] = $translatedFields[$field];
+                }
+            }
+
+            if (!empty($details)) {
+                $description .= ". Campos alterados: " . implode(', ', $details);
+            }
+        }
+
+        AuditLogger::log('championship.update', $description, [
             'championship_id' => $championship->id,
-            'changes' => array_keys($validated)
+            'changes' => $changedFields
         ]);
 
         return response()->json($championship->load(['sport', 'club']));

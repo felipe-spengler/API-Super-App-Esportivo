@@ -116,9 +116,32 @@ class AdminMatchController extends Controller
 
         $match->update($validated);
 
-        AuditLogger::log('match.update', "Editou a partida (ID: {$match->id})", [
+        $changedFields = array_keys($validated);
+        $description = "Editou a partida (ID: {$match->id}) : " . ($match->homeTeam->name ?? 'Casa') . " x " . ($match->awayTeam->name ?? 'Fora');
+
+        $translatedFields = [
+            'start_time' => 'horário',
+            'location' => 'local',
+            'round_number' => 'rodada',
+            'status' => 'status',
+            'home_score' => 'placar mandante',
+            'away_score' => 'placar visitante',
+        ];
+
+        $details = [];
+        foreach ($changedFields as $field) {
+            if (isset($translatedFields[$field])) {
+                $details[] = $translatedFields[$field];
+            }
+        }
+
+        if (!empty($details)) {
+            $description .= ". Alterou: " . implode(', ', $details);
+        }
+
+        AuditLogger::log('match.update', $description, [
             'match_id' => $match->id,
-            'changes' => array_keys($validated)
+            'changes' => $changedFields
         ]);
 
         $champId = $match->championship_id;
@@ -162,7 +185,9 @@ class AdminMatchController extends Controller
 
         $match->update($updateData);
 
-        AuditLogger::log('match.finish', "Finalizou a partida (ID: {$match->id}) - Placar: {$updateData['home_score']} x {$updateData['away_score']}", [
+        $description = "Finalizou a partida (ID: {$match->id}) : " . ($match->homeTeam->name ?? 'Casa') . " {$updateData['home_score']} x {$updateData['away_score']} " . ($match->awayTeam->name ?? 'Fora');
+
+        AuditLogger::log('match.finish', $description, [
             'match_id' => $match->id,
             'score' => "{$updateData['home_score']} x {$updateData['away_score']}"
         ]);
@@ -477,6 +502,35 @@ class AdminMatchController extends Controller
             'metadata' => $validated['metadata'] ?? null,
         ]);
 
+        // Log manual detalhado (isso vai impedir o log genérico do middleware)
+        $team = $event->team_id ? \App\Models\Team::find($event->team_id) : null;
+        $player = $event->player_id ? \App\Models\User::find($event->player_id) : null;
+
+        $types = [
+            'goal' => 'Gol',
+            'yellow_card' => 'Cartão Amarelo',
+            'red_card' => 'Cartão Vermelho',
+            'assist' => 'Assistência',
+            'substitution' => 'Substituição',
+            'match_start' => 'Início de Partida',
+            'match_end' => 'Fim de Partida',
+        ];
+
+        $typeName = $types[$event->event_type] ?? $event->event_type;
+        $desc = "Evento: $typeName";
+        if ($player)
+            $desc .= " - " . ($player->nickname ?: $player->name);
+        if ($team)
+            $desc .= " (" . ($team->short_name ?: $team->name) . ")";
+        if ($event->game_time)
+            $desc .= " aos {$event->game_time}";
+
+        AuditLogger::log('match.event_add', $desc, [
+            'match_id' => $match->id,
+            'event_id' => $event->id,
+            'type' => $event->event_type
+        ]);
+
         // Auto-update match score for regular points/goals
         $scoreEvents = [
             'goal',
@@ -788,9 +842,30 @@ class AdminMatchController extends Controller
 
         $event->delete();
 
-        AuditLogger::log('match.event_delete', "Removeu evento (ID: {$eventId}) da partida (ID: {$match->id})", [
+        $types = [
+            'goal' => 'Gol',
+            'yellow_card' => 'Cartão Amarelo',
+            'red_card' => 'Cartão Vermelho',
+            'assist' => 'Assistência',
+            'substitution' => 'Substituição',
+            'match_start' => 'Início de Partida',
+            'match_end' => 'Fim de Partida',
+        ];
+
+        $typeName = $types[$event->event_type] ?? $event->event_type;
+        $player = $event->player_id ? \App\Models\User::find($event->player_id) : null;
+
+        $desc = "Removeu evento: $typeName";
+        if ($player)
+            $desc .= " - " . ($player->nickname ?: $player->name);
+        if ($event->game_time)
+            $desc .= " (aos {$event->game_time})";
+        $desc .= " da partida (ID: {$match->id})";
+
+        AuditLogger::log('match.event_delete', $desc, [
             'match_id' => $match->id,
-            'event_type' => $event->event_type
+            'event_type' => $event->event_type,
+            'event_id' => $eventId
         ]);
 
         // Refresh and broadcast

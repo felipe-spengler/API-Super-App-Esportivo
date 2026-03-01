@@ -24,6 +24,11 @@ class GlobalAuditMiddleware
         $methods = ['POST', 'PUT', 'PATCH', 'DELETE'];
 
         if (in_array($request->method(), $methods) && $request->is('api/admin/*')) {
+            // Se o AuditLogger já logou manualmente neste request, pula o log automático do middleware
+            if (AuditLogger::hasLoggedExternally()) {
+                return $response;
+            }
+
             $user = Auth::user();
             if (!$user)
                 return $response;
@@ -52,7 +57,7 @@ class GlobalAuditMiddleware
 
             $description = $this->generateDescription($request, $user, $isSuccess, $status);
 
-            AuditLogger::log($action, $description, [
+            AuditLogger::log('system.' . $action, $description, [
                 'method' => $request->method(),
                 'url' => $request->fullUrl(),
                 'referer' => $request->header('referer'), // Captura a página frontend de origem

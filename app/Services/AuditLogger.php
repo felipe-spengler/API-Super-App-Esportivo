@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Request;
 
 class AuditLogger
 {
+    private static $hasLogged = false;
+
     /**
      * Log a system audit event in the database.
      *
@@ -29,5 +31,12 @@ class AuditLogger
             'user_agent' => Request::userAgent(),
             'metadata' => $metadata,
         ]);
+
+        static::$hasLogged = true;
+    }
+
+    public static function hasLoggedExternally(): bool
+    {
+        return static::$hasLogged;
     }
 }
