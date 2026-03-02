@@ -1761,17 +1761,28 @@ class ArtGeneratorController extends Controller
                 $isTeamName = isset($el['id']) && in_array($el['id'], ['team_name_a', 'team_name_b', 'team_name', 'score_home', 'score_away']);
                 // Use a generic heuristic: if it's a team name or any long text configured to wrap
                 if ($isTeamName && mb_strlen($text, 'UTF-8') > 15) {
-                    if (str_contains($text, '/')) {
-                        $parts = explode('/', $text);
-                        $text = implode("/\n", array_map('trim', $parts));
-                    } elseif (str_contains($text, ' ')) {
-                        // Try to break at a good center point
-                        $text = wordwrap($text, ceil(mb_strlen($text, 'UTF-8') / 2), "\n", false);
-                        if (substr_count($text, "\n") > 1) { // Fallback if wordwrap splits into too many lines
-                            $text = wordwrap(str_replace("\n", " ", $text), 15, "\n", false);
+                    // Trata '/' como um ponto de quebra adicionando espaço temporário
+                    $text = str_replace('/', "/ ", $text);
+
+                    // Aplica o wordwrap para garantir aproximadamente 15 caracteres por linha sem quebrar palavras
+                    $text = wordwrap($text, 15, "\n", false);
+
+                    // Limpa espaços extras e remove espaços indesejados após a barra na reconstrução
+                    $lines = explode("\n", $text);
+                    $formattedLines = [];
+                    foreach ($lines as $line) {
+                        $trimmed = trim($line);
+                        // Se a linha termina com '/', garante que não tenha espaço depois dela antes da quebra
+                        if (str_ends_with($trimmed, '/')) {
+                            // Já está OK
+                        }
+                        if (!empty($trimmed)) {
+                            $formattedLines[] = $trimmed;
                         }
                     }
-                    $fontSize = $fontSize * 0.9; // Reduce font slightly to fit
+                    $text = implode("\n", $formattedLines);
+
+                    $fontSize = $fontSize * 0.9; // Reduz fonte levemente para caber
                 }
 
                 $rgb = $this->hexToRgb($el['color'] ?? '#FFFFFF');
