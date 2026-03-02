@@ -229,4 +229,83 @@ class AuthController extends Controller
 
         return response()->json(['message' => 'Senha alterada com sucesso! Agora você pode fazer login.']);
     }
+
+    // 8. Excluir Conta (Anonimização para Google Play)
+    public function deleteAccount(Request $request)
+    {
+        $user = $request->user();
+
+        try {
+            DB::beginTransaction();
+
+            // 1. Logs de auditoria seriam bons aqui, mas vamos focar na anonimização
+            $oldEmail = $user->email;
+            $anonymousEmail = "excluido_" . $user->id . "_" . bin2hex(random_bytes(4)) . "@esportivo.com.br";
+
+            // 2. Limpar dados sensíveis, mantendo apenas o nome para histórico
+            $user->update([
+                'email' => $anonymousEmail,
+                'password' => Hash::make(bin2hex(random_bytes(16))), // Senha aleatória inacessível
+                'phone' => null,
+                'cpf' => null,
+                'birth_date' => null,
+                'rg' => null,
+                'mother_name' => null,
+                'gender' => null,
+                'document_number' => null,
+                'photo_path' => null,
+                'photos' => null,
+                'document_path' => null,
+                'device_token' => null,
+                // Mantemos o 'name' conforme solicitado
+            ]);
+
+            // 3. Revogar todos os tokens
+            $user->tokens()->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Sua conta foi desativada e seus dados pessoais foram removidos com sucesso.'
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error("Account Deletion Error: " . $e->getMessage());
+            return response()->json([
+                'message' => 'Erro ao processar exclusão de conta.'
+            ], 500);
+        }
+    }
+
+    // 9. Solicitação Pública de Exclusão (Web)
+    public function requestDeletion(Request $request)
+    {
+        $request->validate([
+            'identifier' => 'required|string', // Pode ser email ou CPF
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        // Como é uma rota pública sem login, apenas registramos a intenção ou enviamos e-mail para o admin
+        // Para conformidade Google, ter um formulário que o admin recebe já é válido, 
+        // mas vamos tentar localizar o usuário e marcar algo se possível.
+
+        $user = User::where('email', $request->identifier)
+            ->orWhere('cpf', $request->identifier)
+            ->first();
+
+        if ($user) {
+            // Notificar admin (simulado via log ou e-mail se configurado)
+            \Log::info("Solicitação de exclusão de conta recebida via Web para: " . $request->identifier);
+
+            // Aqui poderíamos enviar um e-mail para o Felipe/Admin
+            return response()->json([
+                'message' => 'Recebemos sua solicitação. Analisaremos os dados e processaremos a exclusão em até 48h úteis.'
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Se os dados informados estiverem corretos, processaremos a solicitação em breve.'
+        ]);
+    }
 }

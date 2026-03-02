@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, User, Shield, LogOut, Camera, X } from 'lucide-react';
+import { ArrowLeft, User, Shield, LogOut, Camera, X, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Icon } from '@iconify/react';
 import { useAuth } from '../../context/AuthContext';
@@ -168,6 +168,18 @@ export function Profile() {
                             <span className="text-slate-800 font-extrabold uppercase tracking-widest text-sm">Dados e Fotos</span>
                         </div>
                         <ArrowLeft className="w-5 h-5 text-slate-200 group-hover:text-indigo-400 rotate-180 transition-all" />
+                    </button>
+                    <button
+                        onClick={() => navigate('/deletar-conta')}
+                        className="w-full p-6 flex items-center justify-between hover:bg-slate-50 transition-all group border-b border-slate-50"
+                    >
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-slate-50 text-slate-400 rounded-xl group-hover:bg-red-50 group-hover:text-red-600 transition-colors">
+                                <Trash2 className="w-5 h-5" />
+                            </div>
+                            <span className="text-slate-800 font-extrabold uppercase tracking-widest text-sm group-hover:text-red-600">Excluir Minha Conta</span>
+                        </div>
+                        <ArrowLeft className="w-5 h-5 text-slate-200 group-hover:text-red-400 rotate-180 transition-all" />
                     </button>
                     <button
                         onClick={() => { signOut(); navigate('/'); }}

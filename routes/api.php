@@ -101,6 +101,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/me', [AuthController::class, 'update']);
 
     Route::post('/me/photo', [\App\Http\Controllers\Admin\ImageUploadController::class, 'uploadMyPhoto']);
+    Route::delete('/me', [AuthController::class, 'deleteAccount']);
     Route::post('/logout', [AuthController::class, 'logout']);
 
     // Checkout e Cupons
