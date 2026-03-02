@@ -1762,8 +1762,8 @@ class ArtGeneratorController extends Controller
                 // Use a generic heuristic: if it's a team name or any long text configured to wrap
                 if ($isTeamName && mb_strlen($text, 'UTF-8') > 15) {
                     if (str_contains($text, '/')) {
-                        $parts = explode('/', $text, 2);
-                        $text = trim($parts[0]) . "/\n" . trim($parts[1]);
+                        $parts = explode('/', $text);
+                        $text = implode("/\n", array_map('trim', $parts));
                     } elseif (str_contains($text, ' ')) {
                         // Try to break at a good center point
                         $text = wordwrap($text, ceil(mb_strlen($text, 'UTF-8') / 2), "\n", false);
