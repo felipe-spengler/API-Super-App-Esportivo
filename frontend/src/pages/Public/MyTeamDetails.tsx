@@ -232,7 +232,7 @@ export function MyTeamDetails() {
                         <span className="text-xs text-gray-500">{team.city}</span>
                     </div>
                 </div>
-                {isCaptain && (
+                {isCaptain && viewMode === 'roster' && (
                     <button
                         onClick={() => {
                             resetForm();
@@ -257,19 +257,12 @@ export function MyTeamDetails() {
                         </div>
 
                         <div className="grid gap-4">
-                            {/* Card: Base de Atletas (Global) */}
-                            <button
-                                onClick={() => handleSelectChampionship(null)}
-                                className="bg-white p-5 rounded-2xl border-2 border-dashed border-gray-200 hover:border-indigo-400 hover:bg-indigo-50/30 transition-all text-left flex items-center gap-4 group"
-                            >
-                                <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center group-hover:bg-white transition-colors">
-                                    <Users className="w-6 h-6 text-gray-500 group-hover:text-indigo-600" />
+                            {team.championships.length === 0 && (
+                                <div className="text-center p-6 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                                    <Trophy className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                                    <p className="text-gray-500 text-sm">Este time ainda não está vinculado a nenhum campeonato.</p>
                                 </div>
-                                <div>
-                                    <h4 className="font-bold text-gray-800">Base Geral</h4>
-                                    <p className="text-xs text-gray-500">Atletas sem vínculo específico</p>
-                                </div>
-                            </button>
+                            )}
 
                             {/* Cards: Championships */}
                             {team.championships.map(camp => (

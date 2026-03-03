@@ -40,27 +40,30 @@ export async function compressImage(
             if (!ctx) return reject(new Error('Canvas não disponível'));
             ctx.drawImage(img, 0, 0, w, h);
 
-            // --- Estágio 2: Compressão JPEG progressiva (só se ainda grande) ---
+            // --- Estágio 2: Compressão progressiva (só se ainda grande) ---
             let quality = initialQuality;
+            const isPng = file.type === 'image/png';
+            const outputType = isPng ? 'image/png' : 'image/jpeg';
+
             const attempt = () => {
                 canvas.toBlob(
                     (blob) => {
                         if (!blob) return reject(new Error('Falha ao comprimir imagem'));
 
-                        if (blob.size <= maxSizeBytes || quality <= 0.5) {
-                            // Cabe no limite ou chegamos no mínimo aceitável (50% ainda é ótima qualidade)
+                        if (blob.size <= maxSizeBytes || quality <= 0.5 || isPng) {
+                            // Cabe no limite, chegamos no mínimo aceitável, ou é PNG (PNG não tem compressão lossy no toBlob)
                             const compressedFile = new File([blob], file.name, {
-                                type: 'image/jpeg',
+                                type: outputType,
                                 lastModified: Date.now(),
                             });
                             resolve(compressedFile);
                         } else {
-                            // Reduz em passos pequenos de 0.05 (mínimo necessário)
+                            // Reduz em passos pequenos (só afeta JPEG/WebP)
                             quality -= 0.05;
                             attempt();
                         }
                     },
-                    'image/jpeg',
+                    outputType,
                     quality
                 );
             };

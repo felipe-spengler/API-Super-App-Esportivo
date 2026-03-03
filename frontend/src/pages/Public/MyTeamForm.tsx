@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Shield, Save, Loader2 } from 'lucide-react';
+import { ArrowLeft, Shield, Save, Loader2, Trophy, Tag } from 'lucide-react';
 import api from '../../services/api';
 
 export function MyTeamForm() {
@@ -9,31 +9,50 @@ export function MyTeamForm() {
     const [city, setCity] = useState('');
     const [loading, setLoading] = useState(false);
 
+    // New states for Championship and Category selection
+    const [championships, setChampionships] = useState<any[]>([]);
+    const [selectedChampionship, setSelectedChampionship] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('');
+    const [fetchingEvents, setFetchingEvents] = useState(true);
+
+    useEffect(() => {
+        loadEvents();
+    }, []);
+
+    async function loadEvents() {
+        try {
+            const response = await api.get('/public/events');
+            setChampionships(response.data);
+        } catch (error) {
+            console.error('Erro ao carregar campeonatos', error);
+        } finally {
+            setFetchingEvents(false);
+        }
+    }
+
+    const availableCategories = championships.find(c => c.id.toString() === selectedChampionship)?.categories || [];
+
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
+
+        if (!selectedChampionship || !selectedCategory) {
+            alert('Por favor, selecione um campeonato e uma categoria.');
+            return;
+        }
+
         setLoading(true);
         try {
-            // Removed incorrect call to /inscriptions/team
-
-            // Wait, InscriptionController usually links to a championship. 
-            // We need a generic Create Team endpoint for User.
-            // Let's check api routes again.
-            // Route::post('/inscriptions/team', [InscriptionController::class, 'registerTeam']);
-            // Route::post('/teams', ...AdminController)
-
-            // I should double check if there is a 'create personal team' endpoint.
-            // AdminTeamController stores teams.
-            // TeamController had addPlayer but not 'store'.
-            // I might need to add 'store' to TeamController for users.
-
-            // For now, let's assume we will add a 'store' method to TeamController or use the Admin one if permitted (usually not).
-            // Let's try adding it to TeamController since users create teams.
-
-            await api.post('/my-teams', { name, city });
+            await api.post('/my-teams', {
+                name,
+                city,
+                championship_id: selectedChampionship,
+                category_id: selectedCategory
+            });
             navigate('/profile/teams');
 
-        } catch (error) {
-            alert('Erro ao criar equipe. Tente novamente.');
+        } catch (error: any) {
+            const msg = error.response?.data?.message || 'Erro ao criar equipe. Tente novamente.';
+            alert(msg);
         } finally {
             setLoading(false);
         }
@@ -79,6 +98,51 @@ export function MyTeamForm() {
                                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
                                 placeholder="Ex: Toledo"
                             />
+                        </div>
+
+                        <div className="pt-2 border-t border-gray-100 mt-4">
+                            <h3 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
+                                <Trophy className="w-4 h-4 text-indigo-500" /> Vínculo do Time
+                            </h3>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">Campeonato</label>
+                                    <select
+                                        required
+                                        value={selectedChampionship}
+                                        onChange={e => {
+                                            setSelectedChampionship(e.target.value);
+                                            setSelectedCategory('');
+                                        }}
+                                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
+                                        disabled={fetchingEvents}
+                                    >
+                                        <option value="">Selecione um campeonato...</option>
+                                        {championships.map(camp => (
+                                            <option key={camp.id} value={camp.id}>{camp.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {selectedChampionship && (
+                                    <div className="animate-in fade-in duration-300">
+                                        <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1">
+                                            <Tag className="w-4 h-4 text-gray-400" /> Categoria
+                                        </label>
+                                        <select
+                                            required
+                                            value={selectedCategory}
+                                            onChange={e => setSelectedCategory(e.target.value)}
+                                            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
+                                        >
+                                            <option value="">Selecione a categoria...</option>
+                                            {availableCategories.map((cat: any) => (
+                                                <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         <div className="pt-4">

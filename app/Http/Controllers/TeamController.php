@@ -361,15 +361,20 @@ class TeamController extends Controller
         $request->validate([
             'name' => 'required|string',
             'city' => 'required|string',
+            'championship_id' => 'required|exists:championships,id',
+            'category_id' => 'required|exists:categories,id',
         ]);
 
         $team = Team::create([
             'name' => $request->name,
             'city' => $request->city,
             'captain_id' => $request->user()->id,
-            // You might want to assign a default club or handle it differently if logic changes
             'club_id' => 1, // Defaulting to 1 for now or fetching from env/config
         ]);
+
+        // Automatically link the team to the selected championship and category
+        $team->championships()->attach($request->championship_id, ['category_id' => $request->category_id]);
+        $team->categories()->syncWithoutDetaching([$request->category_id]);
 
         return response()->json($team, 201);
     }
