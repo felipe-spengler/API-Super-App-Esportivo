@@ -67,8 +67,11 @@ export function PhotoUploadSection({ playerId, currentPhotos }: PhotoUploadSecti
                 console.log('[PhotoUpload] remove_bg=1 adicionado ao FormData');
             }
 
-            console.log(`[PhotoUpload] Enviando para /admin/upload/player-photo/${playerId}...`);
-            const res = await api.post(`/admin/upload/player-photo/${playerId}`, formData, {
+            const isOwnProfile = user && user.id.toString() === playerId;
+            const endpoint = isOwnProfile ? '/me/photo' : `/admin/upload/player-photo/${playerId}`;
+
+            console.log(`[PhotoUpload] Enviando para ${endpoint}...`);
+            const res = await api.post(endpoint, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
                 timeout: 120000
             });
