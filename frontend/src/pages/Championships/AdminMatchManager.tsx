@@ -17,6 +17,16 @@ interface Match {
     location?: string;
     group_name?: string;
     round_name?: string; // Enhanced round support
+    mvp_player_id?: number | string | null;
+    category_id?: number | null;
+    match_details?: {
+        arbitration?: {
+            referee?: string;
+            assistant1?: string;
+            assistant2?: string;
+        }
+    };
+    events?: any[];
 }
 
 export function AdminMatchManager() {
@@ -31,9 +41,9 @@ export function AdminMatchManager() {
     const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
     const [showEditModal, setShowEditModal] = useState(false);
 
-    const [editData, setEditData] = useState({ start_time: '', location: '', round_number: 1, category_id: null as number | null, home_score: undefined as number | undefined, away_score: undefined as number | undefined });
+    const [editData, setEditData] = useState({ start_time: '', location: '', round_number: 1, category_id: null as number | null, home_score: undefined as number | undefined, away_score: undefined as number | undefined, group_name: '' });
     const [showAddModal, setShowAddModal] = useState(false);
-    const [newData, setNewData] = useState({ home_team_id: '', away_team_id: '', start_time: '', location: '', round_number: 1 });
+    const [newData, setNewData] = useState({ home_team_id: '', away_team_id: '', start_time: '', location: '', round_number: 1, group_name: '' });
 
     // Arbitration Modal State
     const [isArbitrationOpen, setIsArbitrationOpen] = useState(false);
@@ -138,11 +148,22 @@ export function AdminMatchManager() {
             try {
                 const groupsRes = await api.get(`/admin/championships/${id}/groups`);
                 const groupsData = groupsRes.data.groups || {};
+
+                const assignments: Record<string, string> = {};
+                Object.entries(groupsData).forEach(([gName, teamsList]: [string, any]) => {
+                    if (Array.isArray(teamsList)) {
+                        teamsList.forEach(team => {
+                            assignments[team.id] = gName;
+                        });
+                    }
+                });
+                setGroupAssignments(assignments);
+
                 // If we have groups, set numGroups accordingly
-                const groupCount = Object.keys(groupsData).length;
-                if (groupCount > 0) {
-                    setNumGroups(groupCount);
-                    setAvailableGroupNames(Object.keys(groupsData).sort());
+                const groupNames = Object.keys(groupsData).sort();
+                if (groupNames.length > 0) {
+                    setNumGroups(groupNames.length);
+                    setAvailableGroupNames(groupNames);
                 }
             } catch (e) {
                 console.warn("Could not fetch groups info yet", e);
@@ -270,9 +291,10 @@ export function AdminMatchManager() {
             start_time: formattedDate,
             location: match.location || '',
             round_number: match.round_number || 1,
-            category_id: (match as any).category_id || null,
+            category_id: match.category_id || null,
             home_score: match.home_score !== null ? match.home_score : undefined,
-            away_score: match.away_score !== null ? match.away_score : undefined
+            away_score: match.away_score !== null ? match.away_score : undefined,
+            group_name: match.group_name || ''
         });
         setShowEditModal(true);
     };
@@ -293,7 +315,8 @@ export function AdminMatchManager() {
                 ...newData,
                 start_time: toUTCString(newData.start_time),
                 championship_id: id,
-                category_id: selectedCategoryId
+                category_id: selectedCategoryId,
+                group_name: newData.group_name || null
             });
             alert('Jogo criado com sucesso!');
             setShowAddModal(false);
@@ -311,7 +334,8 @@ export function AdminMatchManager() {
                 start_time: toUTCString(editData.start_time),
                 location: editData.location,
                 round_number: editData.round_number,
-                category_id: editData.category_id
+                category_id: editData.category_id,
+                group_name: editData.group_name || null
             };
 
             if (selectedMatch.status === 'finished') {
@@ -341,7 +365,7 @@ export function AdminMatchManager() {
         }
     };
 
-    const openArbitration = (match: any) => {
+    const openArbitration = (match: Match) => {
         setSelectedMatch(match);
         // Pre-fill if exists
         const currentRef = match.match_details?.arbitration || {};
@@ -393,7 +417,7 @@ export function AdminMatchManager() {
         navigate(sumulaPath);
     };
 
-    const openMatchSumula = (match: any) => {
+    const openMatchSumula = (match: Match) => {
         setSelectedMatch(match);
         if (match.status === 'finished') {
             setIsSummaryOpen(true);
@@ -602,7 +626,8 @@ export function AdminMatchManager() {
                                         away_team_id: '',
                                         start_time: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
                                         location: championship?.location || '',
-                                        round_number: maxRound + 1
+                                        round_number: maxRound + 1,
+                                        group_name: ''
                                     });
                                     setShowAddModal(true);
                                 }}
@@ -618,7 +643,8 @@ export function AdminMatchManager() {
                                         away_team_id: '',
                                         start_time: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
                                         location: championship?.location || '',
-                                        round_number: 1
+                                        round_number: 1,
+                                        group_name: ''
                                     });
                                     setShowAddModal(true);
                                 }}
@@ -722,7 +748,8 @@ export function AdminMatchManager() {
                                         away_team_id: '',
                                         start_time: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
                                         location: championship?.location || '',
-                                        round_number: 1
+                                        round_number: 1,
+                                        group_name: ''
                                     });
                                     setShowAddModal(true);
                                 }}
@@ -774,7 +801,8 @@ export function AdminMatchManager() {
                                                     away_team_id: '',
                                                     start_time: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
                                                     location: championship?.location || '',
-                                                    round_number: Number(round)
+                                                    round_number: Number(round),
+                                                    group_name: ''
                                                 });
                                                 setShowAddModal(true);
                                             }}
@@ -943,6 +971,21 @@ export function AdminMatchManager() {
                             </button>
                         </div>
                         <div className="p-6 space-y-4">
+                            {(championship?.format === 'groups' || championship?.format === 'group_knockout') && (
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Grupo</label>
+                                    <select
+                                        value={editData.group_name || ''}
+                                        onChange={e => setEditData({ ...editData, group_name: e.target.value })}
+                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
+                                    >
+                                        <option value="">Nenhum (Mata-mata)</option>
+                                        {availableGroupNames.map(g => (
+                                            <option key={g} value={g}>Grupo {g}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Data e Hora</label>
                                 <input
@@ -1214,13 +1257,11 @@ export function AdminMatchManager() {
                                 <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
                                     <div className="text-[10px] text-indigo-400 font-bold uppercase mb-2">Equipe de Arbitragem</div>
                                     <div className="text-sm font-medium text-indigo-900">
-                                        {/* @ts-ignore */}
                                         <b>Árbitro:</b> {selectedMatch.match_details?.arbitration?.referee || 'Não informado'}
                                     </div>
-                                    {(selectedMatch as any).match_details?.arbitration?.assistant1 && (
+                                    {selectedMatch.match_details?.arbitration?.assistant1 && (
                                         <div className="text-sm text-indigo-700 mt-1">
-                                            {/* @ts-ignore */}
-                                            <b>Assistentes:</b> {(selectedMatch as any).match_details?.arbitration?.assistant1} {(selectedMatch as any).match_details?.arbitration?.assistant2 ? ` / ${(selectedMatch as any).match_details?.arbitration?.assistant2}` : ''}
+                                            <b>Assistentes:</b> {selectedMatch.match_details?.arbitration?.assistant1} {selectedMatch.match_details?.arbitration?.assistant2 ? ` / ${selectedMatch.match_details?.arbitration?.assistant2}` : ''}
                                         </div>
                                     )}
                                 </div>
@@ -1246,8 +1287,8 @@ export function AdminMatchManager() {
                         {activeTab === 'audit' && (
                             <div className="p-0 flex-1 overflow-y-auto max-h-[500px] bg-gray-50">
                                 <div className="p-4 space-y-3">
-                                    {(selectedMatch as any).events && (selectedMatch as any).events.length > 0 ? (
-                                        (selectedMatch as any).events.slice().reverse().map((event: any) => {
+                                    {selectedMatch.events && selectedMatch.events.length > 0 ? (
+                                        selectedMatch.events.slice().reverse().map((event: any) => {
                                             const etype = (event.event_type || '').toLowerCase().trim();
                                             const isVoice = etype === 'voice_debug';
                                             const isTimer = etype === 'timer_control';
@@ -1418,6 +1459,22 @@ export function AdminMatchManager() {
                                 </button>
                             </div>
                             <div className="p-6 space-y-4">
+                                {(championship?.format === 'groups' || championship?.format === 'group_knockout') && (
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Vincular a um Grupo?</label>
+                                        <select
+                                            value={newData.group_name || ''}
+                                            onChange={e => setNewData({ ...newData, group_name: e.target.value, home_team_id: '', away_team_id: '' })}
+                                            className="w-full bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold text-indigo-700"
+                                        >
+                                            <option value="">Nenhum (Mata-mata / Avulso)</option>
+                                            {availableGroupNames.map(g => (
+                                                <option key={g} value={g}>Grupo {g}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Time Mandante</label>
@@ -1427,9 +1484,11 @@ export function AdminMatchManager() {
                                             className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
                                         >
                                             <option value="">Selecione...</option>
-                                            {(teams || []).map((t: any) => (
-                                                <option key={t.id} value={t.id}>{t.name}</option>
-                                            ))}
+                                            {(teams || [])
+                                                .filter(t => !newData.group_name || String(groupAssignments[t.id]) === String(newData.group_name))
+                                                .map((t: any) => (
+                                                    <option key={t.id} value={t.id}>{t.name}</option>
+                                                ))}
                                         </select>
                                     </div>
                                     <div>
@@ -1440,9 +1499,11 @@ export function AdminMatchManager() {
                                             className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
                                         >
                                             <option value="">Selecione...</option>
-                                            {(teams || []).map((t: any) => (
-                                                <option key={t.id} value={t.id}>{t.name}</option>
-                                            ))}
+                                            {(teams || [])
+                                                .filter(t => !newData.group_name || String(groupAssignments[t.id]) === String(newData.group_name))
+                                                .map((t: any) => (
+                                                    <option key={t.id} value={t.id}>{t.name}</option>
+                                                ))}
                                         </select>
                                     </div>
                                 </div>
@@ -1706,9 +1767,9 @@ export function AdminMatchManager() {
                         </div>
 
                         <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
-                            {(selectedMatch as any).events && (selectedMatch as any).events.length > 0 ? (
+                            {selectedMatch.events && selectedMatch.events.length > 0 ? (
                                 <div className="space-y-3">
-                                    {(selectedMatch as any).events.slice().reverse().map((event: any) => {
+                                    {selectedMatch.events.slice().reverse().map((event: any) => {
                                         const isVoice = event.event_type === 'voice_debug';
                                         const isTimer = event.event_type === 'timer_control';
                                         const isRosterLog = event.metadata?.system_info === 'Roster Snapshot';

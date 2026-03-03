@@ -197,15 +197,27 @@ class AdminTeamController extends Controller
             }
         }
 
-        // Attach team to championship
-        $championship->teams()->syncWithoutDetaching([
-            $teamId => ['category_id' => $categoryId]
-        ]);
+        // Attach team to championship with specific category
+        $exists = \DB::table('championship_team')
+            ->where('championship_id', $championship->id)
+            ->where('team_id', $teamId)
+            ->where('category_id', $categoryId)
+            ->exists();
+
+        if (!$exists) {
+            \DB::table('championship_team')->insert([
+                'championship_id' => $championship->id,
+                'team_id' => $teamId,
+                'category_id' => $categoryId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
 
         \App\Services\AuditLogger::log(
             'team.championship_add',
-            "Vinculou o time '{$team->name}' ao campeonato '{$championship->name}'",
-            ['team_id' => $teamId, 'championship_id' => $championship->id]
+            "Vinculou o time '{$team->name}' ao campeonato '{$championship->name}' (Categoria ID: " . ($categoryId ?? 'Nenhuma') . ")",
+            ['team_id' => $teamId, 'championship_id' => $championship->id, 'category_id' => $categoryId]
         );
 
         return response()->json(['message' => 'Team added to championship']);
@@ -216,12 +228,38 @@ class AdminTeamController extends Controller
     {
         $validated = $request->validate([
             'championship_id' => 'required|exists:championships,id',
+            'category_id' => 'nullable|exists:categories,id',
         ]);
 
         $team = Team::findOrFail($teamId);
         $championship = Championship::findOrFail($validated['championship_id']);
+        $categoryId = $validated['category_id'] ?? null;
 
-        $championship->teams()->detach($teamId);
+        // Check if there are matches for this team in this category
+        $hasMatches = \App\Models\GameMatch::where('championship_id', $championship->id)
+            ->where(function ($q) use ($teamId) {
+                $q->where('home_team_id', $teamId)->orWhere('away_team_id', $teamId);
+            });
+
+        if ($categoryId) {
+            $hasMatches->where('category_id', $categoryId);
+        }
+
+        if ($hasMatches->exists()) {
+            return response()->json([
+                'message' => 'Não é possível remover este time porque ele já possui jogos vinculados' . ($categoryId ? ' nesta categoria.' : '.')
+            ], 400);
+        }
+
+        if ($categoryId) {
+            \DB::table('championship_team')
+                ->where('championship_id', $championship->id)
+                ->where('team_id', $teamId)
+                ->where('category_id', $categoryId)
+                ->delete();
+        } else {
+            $championship->teams()->detach($teamId);
+        }
 
         return response()->json(['message' => 'Team removed from championship']);
     }

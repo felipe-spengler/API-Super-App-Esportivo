@@ -20,27 +20,39 @@ export function AdminTeamChampionshipManager() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [addingTeamId, setAddingTeamId] = useState<number | null>(null);
+    const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+    const [loadingTeams, setLoadingTeams] = useState(false);
 
     useEffect(() => {
         loadData();
     }, [id]);
 
+    useEffect(() => {
+        if (championship) {
+            loadTeamsForCategory(selectedCategoryId);
+        }
+    }, [selectedCategoryId]);
+
     async function loadData() {
         try {
             setLoading(true);
-            const [campRes, campTeamsRes, allTeamsRes] = await Promise.all([
+            const [campRes, allTeamsRes] = await Promise.all([
                 api.get(`/championships/${id}`),
-                api.get(`/championships/${id}/teams`),
                 api.get('/admin/teams')
             ]);
 
-            setChampionship(campRes.data);
-
-            const cTeams = Array.isArray(campTeamsRes.data) ? campTeamsRes.data : (campTeamsRes.data.data || []);
-            setChampionshipTeams(cTeams);
+            const champ = campRes.data;
+            setChampionship(champ);
 
             const aTeams = Array.isArray(allTeamsRes.data) ? allTeamsRes.data : (allTeamsRes.data.data || []);
             setAllTeams(aTeams);
+
+            if (champ.categories && champ.categories.length > 0) {
+                setSelectedCategoryId(champ.categories[0].id);
+            } else {
+                loadTeamsForCategory(null);
+            }
+
         } catch (error) {
             console.error(error);
         } finally {
@@ -48,28 +60,48 @@ export function AdminTeamChampionshipManager() {
         }
     }
 
+    async function loadTeamsForCategory(catId: number | null) {
+        try {
+            setLoadingTeams(true);
+            const query = catId ? `?category_id=${catId}` : '';
+            const campTeamsRes = await api.get(`/championships/${id}/teams${query}`);
+            const cTeams = Array.isArray(campTeamsRes.data) ? campTeamsRes.data : (campTeamsRes.data.data || []);
+            setChampionshipTeams(cTeams);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoadingTeams(false);
+        }
+    }
+
     async function handleAddTeam(teamId: number) {
         try {
             setAddingTeamId(teamId);
-            await api.post(`/admin/teams/${teamId}/add-to-championship`, { championship_id: id });
-            loadData();
-        } catch (error) {
+            await api.post(`/admin/teams/${teamId}/add-to-championship`, {
+                championship_id: id,
+                category_id: selectedCategoryId
+            });
+            loadTeamsForCategory(selectedCategoryId);
+        } catch (error: any) {
             console.error(error);
-            alert('Erro ao adicionar time ao campeonato.');
+            alert(error.response?.data?.message || 'Erro ao adicionar time ao campeonato.');
         } finally {
             setAddingTeamId(null);
         }
     }
 
     async function handleRemoveTeam(teamId: number) {
-        if (!confirm('Deseja remover este time do campeonato?')) return;
+        if (!confirm('Deseja remover este time desta categoria do campeonato?')) return;
 
         try {
-            await api.post(`/admin/teams/${teamId}/remove-from-championship`, { championship_id: id });
-            loadData();
-        } catch (error) {
+            await api.post(`/admin/teams/${teamId}/remove-from-championship`, {
+                championship_id: id,
+                category_id: selectedCategoryId
+            });
+            loadTeamsForCategory(selectedCategoryId);
+        } catch (error: any) {
             console.error(error);
-            alert('Erro ao remover time do campeonato.');
+            alert(error.response?.data?.message || 'Erro ao remover time do campeonato.');
         }
     }
 
@@ -89,7 +121,7 @@ export function AdminTeamChampionshipManager() {
 
     return (
         <div className="max-w-6xl mx-auto p-6 animate-in fade-in duration-500 pb-20">
-            <div className="flex items-center gap-4 mb-8">
+            <div className="flex items-center gap-4 mb-4">
                 <button onClick={() => navigate(`/admin/championships/${id}`)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                     <ArrowLeft className="w-6 h-6 text-gray-600" />
                 </button>
@@ -99,12 +131,33 @@ export function AdminTeamChampionshipManager() {
                 </div>
             </div>
 
+            {championship && championship.categories && championship.categories.length > 0 && (
+                <div className="mb-8 overflow-x-auto pb-2">
+                    <div className="flex items-center gap-2 border-b border-gray-200 min-w-max px-1">
+                        {championship.categories.map((cat: any) => (
+                            <button
+                                key={cat.id}
+                                onClick={() => setSelectedCategoryId(cat.id)}
+                                className={clsx(
+                                    "px-4 py-3 text-sm font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap",
+                                    selectedCategoryId === cat.id
+                                        ? "border-indigo-600 text-indigo-600 bg-indigo-50/50"
+                                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50/50"
+                                )}
+                            >
+                                {cat.name}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Times no Campeonato */}
                 <div className="space-y-4">
                     <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2 px-2">
                         <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                        Equipes Confirmadas ({championshipTeams.length})
+                        Equipes Confirmadas ({loadingTeams ? '...' : championshipTeams.length})
                     </h2>
 
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 divide-y overflow-hidden">
