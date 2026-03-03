@@ -690,8 +690,12 @@ class EventController extends Controller
             ]);
         }
 
-        // Evita duplicatas se o time estiver em várias categorias
-        $teams = $query->select('teams.*')->distinct()->orderBy('teams.name')->get();
+        if ($request->has('category_id') && $request->category_id != 'null') {
+            $teams = $query->orderBy('teams.name')->get();
+        } else {
+            $teams = $query->orderBy('teams.name')->get()->unique('id')->values();
+        }
+
         return response()->json($teams);
     }
 

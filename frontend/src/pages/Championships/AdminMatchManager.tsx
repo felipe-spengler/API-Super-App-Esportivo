@@ -375,24 +375,33 @@ export function AdminMatchManager() {
         return date.toISOString().slice(0, 16);
     };
 
-    const handleSaveAdd = async () => {
-        if (!newData.home_team_id || !newData.away_team_id || !newData.start_time) {
-            alert('Preencha os campos obrigatórios.');
-            return;
-        }
+    const handleSaveAdd = async (matchesData: any[]) => {
+        if (!matchesData || matchesData.length === 0) return;
+
         try {
-            await api.post('/admin/matches', {
-                ...newData,
-                start_time: toUTCString(newData.start_time),
-                championship_id: id,
-                category_id: selectedCategoryId,
-                group_name: newData.group_name || null
-            });
-            alert('Jogo criado com sucesso!');
+            // Loop through each match and make a POST request
+            for (const match of matchesData) {
+                if (!match.home_team_id || !match.away_team_id || !match.start_time) {
+                    continue; // Skip invalid matches if any
+                }
+
+                await api.post('/admin/matches', {
+                    home_team_id: match.home_team_id,
+                    away_team_id: match.away_team_id,
+                    location: match.location,
+                    round_number: match.round_number,
+                    start_time: toUTCString(match.start_time),
+                    championship_id: id,
+                    category_id: selectedCategoryId,
+                    group_name: match.group_name || null
+                });
+            }
+
+            alert('Jogo(s) criado(s) com sucesso!');
             setShowAddModal(false);
             loadMatches();
         } catch (err) {
-            alert('Erro ao criar jogo.');
+            alert('Erro ao criar jogo(s).');
         }
     };
 
@@ -1074,8 +1083,7 @@ export function AdminMatchManager() {
                 isOpen={showAddModal}
                 onClose={() => setShowAddModal(false)}
                 handleSaveAdd={handleSaveAdd}
-                newData={newData}
-                setNewData={setNewData}
+                initialData={newData}
                 championship={championship}
                 availableGroupNames={availableGroupNames}
                 teams={teams}

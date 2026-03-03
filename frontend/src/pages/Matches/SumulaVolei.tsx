@@ -94,39 +94,29 @@ export function SumulaVolei() {
     const [elapsedTime, setElapsedTime] = useState('00:00');
 
     useEffect(() => {
-        const interval = setInterval(() => {
-            const currentSet = sets.find(s => s.set_number == volleyState?.current_set);
-            if (!currentSet?.start_time) {
-                setElapsedTime('00:00');
-                return;
-            }
+        let interval: ReturnType<typeof setInterval>;
 
-            try {
-                // Parse date correctly, ensuring it is treated as UTC if it doesn't have timezone info
-                const startTimeStr = currentSet.start_time;
-                const dateToParse = startTimeStr.includes('Z') ? startTimeStr : startTimeStr.replace(' ', 'T') + 'Z';
-                const startTime = new Date(dateToParse).getTime();
-                if (isNaN(startTime)) {
-                    setElapsedTime('00:00');
-                    return;
+        if (matchData?.match_details?.sync_timer) {
+            const st = matchData.match_details.sync_timer;
+
+            interval = setInterval(() => {
+                let currentSeconds = st.time || 0;
+                if (st.isRunning) {
+                    const now = new Date().getTime();
+                    // st.updated_at is in milliseconds epoch from DB logic: `round(microtime(true) * 1000)`
+                    const diffMs = Math.max(0, now - (st.updated_at || now));
+                    currentSeconds += Math.floor(diffMs / 1000);
                 }
-
-                const now = new Date().getTime();
-                const diff = Math.max(0, now - startTime);
-
-                const minutes = Math.floor(diff / 60000);
-                const seconds = Math.floor((diff % 60000) / 1000);
-
-                setElapsedTime(
-                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
-                );
-            } catch (e) {
-                setElapsedTime('00:00');
-            }
-        }, 1000);
+                const mins = Math.floor(currentSeconds / 60);
+                const secs = currentSeconds % 60;
+                setElapsedTime(`${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`);
+            }, 1000);
+        } else {
+            setElapsedTime('00:00');
+        }
 
         return () => clearInterval(interval);
-    }, [sets, volleyState?.current_set]);
+    }, [matchData?.match_details?.sync_timer]);
 
     // 🔬 Advanced Audit: Logging & Error Recovery
     useEffect(() => {
@@ -518,7 +508,8 @@ export function SumulaVolei() {
             const success = await apiCall('volley_substitution', `/admin/matches/${id}/volley/substitution`, {
                 team_id: subData.teamId,
                 position: subData.position,
-                player_in: playerInId
+                player_in: playerInId,
+                game_time: elapsedTime
             });
             registerSystemEvent('user_action', `Substituição realizada no time ${teamSide} na P${subData.position + 1}`);
             setSubModalOpen(false);

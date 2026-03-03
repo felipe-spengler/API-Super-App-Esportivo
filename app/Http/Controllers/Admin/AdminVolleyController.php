@@ -282,7 +282,6 @@ class AdminVolleyController extends Controller
                     $number = DB::table('team_players')
                         ->where('user_id', $playerId)
                         ->where('team_id', $teamId)
-                        ->where('championship_id', $match->championship_id)
                         ->value('number');
                 }
 
@@ -409,7 +408,17 @@ class AdminVolleyController extends Controller
         $match = GameMatch::findOrFail($matchId);
         $setNum = $match->match_details['volley_state']['current_set'] ?? 1;
 
-        DB::transaction(function () use ($matchId, $teamId, $position, $playerIn, $setNum) {
+        DB::transaction(function () use ($request, $matchId, $teamId, $position, $playerIn, $setNum) {
+            $match = GameMatch::find($matchId);
+
+            // Find player out (previous player in that position)
+            $playerOutId = DB::table('match_positions')
+                ->where('game_match_id', $matchId)
+                ->where('team_id', $teamId)
+                ->where('set_number', (string) $setNum)
+                ->where('position', $position)
+                ->value('player_id');
+
             DB::table('match_positions')->updateOrInsert(
                 [
                     'game_match_id' => $matchId,
@@ -422,6 +431,30 @@ class AdminVolleyController extends Controller
                     'updated_at' => now()
                 ]
             );
+
+            // Fetch players for label
+            $pIn = $playerIn ? \App\Models\User::find($playerIn) : null;
+            $pOut = $playerOutId ? \App\Models\User::find($playerOutId) : null;
+            $label = "Substituição: Entrou " . ($pIn ? ($pIn->nickname ?: $pIn->name) : 'N/A') . " no lugar de " . ($pOut ? ($pOut->nickname ?: $pOut->name) : 'N/A');
+
+            // Log event
+            $gameTime = $request->input('game_time', '00:00');
+            DB::table('match_events')->insert([
+                'game_match_id' => $matchId,
+                'team_id' => $teamId,
+                'player_id' => $playerIn, // Store player in
+                'event_type' => 'substitution',
+                'period' => "{$setNum}º Set",
+                'game_time' => $gameTime,
+                'metadata' => json_encode([
+                    'label' => $label,
+                    'player_out' => $playerOutId,
+                    'player_in' => $playerIn,
+                    'system_period' => "{$setNum}º Set"
+                ]),
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
         });
 
         return $this->getState($matchId);

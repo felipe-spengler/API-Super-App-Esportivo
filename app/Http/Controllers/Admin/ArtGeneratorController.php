@@ -1546,28 +1546,19 @@ class ArtGeneratorController extends Controller
             $ratio = $origW / $origH;
             $targetWidth = (int) round($targetHeight * $ratio);
 
-            $resizedImg = imagecreatetruecolor($targetWidth, $targetHeight);
-            imagealphablending($resizedImg, false);
-            imagesavealpha($resizedImg, true);
-            $transparent = imagecolorallocatealpha($resizedImg, 0, 0, 0, 127);
-            imagefill($resizedImg, 0, 0, $transparent);
-
-            imagecopyresampled($resizedImg, $playerImg, 0, 0, 0, 0, $targetWidth, $targetHeight, $origW, $origH);
-
             $xPos = (int) round(($width - $targetWidth) / 2);
             $yPos = 335; // Posição fixa legado
 
             if ($isPng) {
-                // Blend PNG with alpha onto canvas
+                // Blend PNG with alpha onto canvas directly
                 imagealphablending($img, true);
-                imagecopy($img, $resizedImg, $xPos, $yPos, 0, 0, $targetWidth, $targetHeight);
-                imagealphablending($img, false);
+                imagecopyresampled($img, $playerImg, $xPos, $yPos, 0, 0, $targetWidth, $targetHeight, $origW, $origH);
             } else {
-                imagecopy($img, $resizedImg, $xPos, $yPos, 0, 0, $targetWidth, $targetHeight);
+                imagealphablending($img, true);
+                imagecopyresampled($img, $playerImg, $xPos, $yPos, 0, 0, $targetWidth, $targetHeight, $origW, $origH);
             }
 
             imagedestroy($playerImg);
-            imagedestroy($resizedImg);
         }
     }
 
@@ -1856,21 +1847,10 @@ class ArtGeneratorController extends Controller
 
                     if ($sourceIsPng) {
                         // Preserve alpha transparency when blending PNG over background
-                        // Create intermediate canvas for proper alpha blending
-                        $tmpCanvas = imagecreatetruecolor($width, $height);
-                        imagealphablending($tmpCanvas, false);
-                        imagesavealpha($tmpCanvas, true);
-                        $transparent = imagecolorallocatealpha($tmpCanvas, 0, 0, 0, 127);
-                        imagefill($tmpCanvas, 0, 0, $transparent);
-                        imagealphablending($tmpCanvas, false);
-                        imagecopyresampled($tmpCanvas, $sourceImage, 0, 0, 0, 0, $width, $height, $srcW, $srcH);
-
-                        // Now blend the tmp canvas (with alpha) onto the main image
                         imagealphablending($img, true);
-                        imagecopy($img, $tmpCanvas, $dstX, $dstY, 0, 0, $width, $height);
-                        imagealphablending($img, false);
-                        imagedestroy($tmpCanvas);
+                        imagecopyresampled($img, $sourceImage, $dstX, $dstY, 0, 0, $width, $height, $srcW, $srcH);
                     } else {
+                        imagealphablending($img, true);
                         imagecopyresampled($img, $sourceImage, $dstX, $dstY, 0, 0, $width, $height, $srcW, $srcH);
                     }
                     imagedestroy($sourceImage);
