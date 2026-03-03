@@ -64,6 +64,7 @@ export function MyTeamDetails() {
     const [newPlayerGender, setNewPlayerGender] = useState('');
     const [newPlayerAddress, setNewPlayerAddress] = useState('');
     const [documentFile, setDocumentFile] = useState<File | null>(null);
+    const [photoFile, setPhotoFile] = useState<File | null>(null);
     const [adding, setAdding] = useState(false);
     const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
 
@@ -126,6 +127,7 @@ export function MyTeamDetails() {
         setNewPlayerGender('');
         setNewPlayerAddress('');
         setDocumentFile(null);
+        setPhotoFile(null);
         setShowAddModal(true);
     }
 
@@ -146,6 +148,9 @@ export function MyTeamDetails() {
             formData.append('address', newPlayerAddress);
             if (documentFile) {
                 formData.append('document_file', documentFile);
+            }
+            if (photoFile) {
+                formData.append('photo_file', photoFile);
             }
             if (selectedChampionshipId) {
                 formData.append('championship_id', String(selectedChampionshipId));
@@ -199,6 +204,7 @@ export function MyTeamDetails() {
         setNewPlayerGender('');
         setNewPlayerAddress('');
         setDocumentFile(null);
+        setPhotoFile(null);
         setEditingPlayer(null);
     }
 
@@ -425,14 +431,27 @@ export function MyTeamDetails() {
                                     onChange={e => setNewPlayerCpf(e.target.value)}
                                 />
                             </div>
-                            <div>
-                                <label className="block text-xs font-bold text-gray-600 mb-1">Documento (Foto/PDF - Opcional)</label>
-                                <input
-                                    type="file"
-                                    onChange={e => setDocumentFile(e.target.files ? e.target.files[0] : null)}
-                                    className="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-                                />
-                                <p className="text-[10px] text-gray-400 mt-1">Para validação de idade e autenticidade (Futuro OCR).</p>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-600 mb-1">Foto (Opcional)</label>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={e => setPhotoFile(e.target.files ? e.target.files[0] : null)}
+                                        className="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                                    />
+                                    <p className="text-[10px] text-gray-400 mt-1">Foto do perfil do atleta.</p>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-600 mb-1">Documento (Opcional)</label>
+                                    <input
+                                        type="file"
+                                        accept=".pdf,image/*"
+                                        onChange={e => setDocumentFile(e.target.files ? e.target.files[0] : null)}
+                                        className="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-gray-50 file:text-gray-700 hover:file:bg-gray-100"
+                                    />
+                                    <p className="text-[10px] text-gray-400 mt-1">Para validação (Foto/PDF).</p>
+                                </div>
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-gray-600 mb-1">Email (Opcional - p/ vincular login)</label>
