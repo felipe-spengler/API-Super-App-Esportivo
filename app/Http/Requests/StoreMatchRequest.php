@@ -21,6 +21,7 @@ class StoreMatchRequest extends FormRequest
             'location' => 'nullable|string|max:255',
             'round_number' => 'nullable|integer|min:1',
             'category_id' => 'nullable|exists:categories,id',
+            'group_name' => 'nullable|string|max:255',
         ];
     }
 

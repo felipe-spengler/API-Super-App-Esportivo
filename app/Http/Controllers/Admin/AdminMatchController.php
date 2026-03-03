@@ -97,6 +97,7 @@ class AdminMatchController extends Controller
             'away_penalty_score' => 'nullable|integer|min:0',
             'status' => 'sometimes|in:scheduled,live,finished,cancelled',
             'category_id' => 'nullable|integer|exists:categories,id',
+            'group_name' => 'nullable|string|max:100',
             'match_details' => 'nullable|array',
             'arbitration' => 'nullable|array',
         ]);
@@ -126,6 +127,7 @@ class AdminMatchController extends Controller
             'status' => 'status',
             'home_score' => 'placar mandante',
             'away_score' => 'placar visitante',
+            'group_name' => 'grupo',
         ];
 
         $details = [];

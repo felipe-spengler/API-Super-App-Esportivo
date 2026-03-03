@@ -22,8 +22,6 @@ services:
       - storage_volume:/var/www/storage
 
   # Reverb WebSocket Server
-
-  # Reverb WebSocket Server
   reverb:
     image: app-esportivo-api
     restart: always
@@ -98,8 +96,6 @@ services:
       - "80"
     depends_on:
       - api
-
-  # Database
 
   # Database
   db:
