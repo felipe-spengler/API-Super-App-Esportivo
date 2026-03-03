@@ -1550,9 +1550,27 @@ class ArtGeneratorController extends Controller
             $yPos = 335; // Posição fixa legado
 
             if ($isPng) {
-                // Blend PNG with alpha onto canvas directly
+                // Ensure source has alpha properly configured
+                imagealphablending($playerImg, false);
+                imagesavealpha($playerImg, true);
+
+                // Use an intermediate transparent canvas to prevent GD imagecopyresampled black background bugs
+                $tempCanvas = imagecreatetruecolor($targetWidth, $targetHeight);
+                imagealphablending($tempCanvas, false);
+                imagesavealpha($tempCanvas, true);
+
+                // Pure transparent white avoids dark blurry edges
+                $transparent = imagecolorallocatealpha($tempCanvas, 255, 255, 255, 127);
+                imagefilledrectangle($tempCanvas, 0, 0, $targetWidth, $targetHeight, $transparent);
+
+                // Resample onto intermediate
+                imagecopyresampled($tempCanvas, $playerImg, 0, 0, 0, 0, $targetWidth, $targetHeight, $origW, $origH);
+
+                // Blend onto main background
                 imagealphablending($img, true);
-                imagecopyresampled($img, $playerImg, $xPos, $yPos, 0, 0, $targetWidth, $targetHeight, $origW, $origH);
+                imagecopy($img, $tempCanvas, $xPos, $yPos, 0, 0, $targetWidth, $targetHeight);
+
+                imagedestroy($tempCanvas);
             } else {
                 imagealphablending($img, true);
                 imagecopyresampled($img, $playerImg, $xPos, $yPos, 0, 0, $targetWidth, $targetHeight, $origW, $origH);
@@ -1846,9 +1864,27 @@ class ArtGeneratorController extends Controller
                     $srcH = imagesy($sourceImage);
 
                     if ($sourceIsPng) {
-                        // Preserve alpha transparency when blending PNG over background
+                        // Ensure source has alpha configured
+                        imagealphablending($sourceImage, false);
+                        imagesavealpha($sourceImage, true);
+
+                        // Use an intermediate transparent canvas
+                        $tempCanvas = imagecreatetruecolor($width, $height);
+                        imagealphablending($tempCanvas, false);
+                        imagesavealpha($tempCanvas, true);
+
+                        // Pure transparent white
+                        $transparent = imagecolorallocatealpha($tempCanvas, 255, 255, 255, 127);
+                        imagefilledrectangle($tempCanvas, 0, 0, $width, $height, $transparent);
+
+                        // Resample onto intermediate
+                        imagecopyresampled($tempCanvas, $sourceImage, 0, 0, 0, 0, $width, $height, $srcW, $srcH);
+
+                        // Blend onto main background
                         imagealphablending($img, true);
-                        imagecopyresampled($img, $sourceImage, $dstX, $dstY, 0, 0, $width, $height, $srcW, $srcH);
+                        imagecopy($img, $tempCanvas, $dstX, $dstY, 0, 0, $width, $height);
+
+                        imagedestroy($tempCanvas);
                     } else {
                         imagealphablending($img, true);
                         imagecopyresampled($img, $sourceImage, $dstX, $dstY, 0, 0, $width, $height, $srcW, $srcH);
