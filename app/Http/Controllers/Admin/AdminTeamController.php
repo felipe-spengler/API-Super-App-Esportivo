@@ -138,6 +138,18 @@ class AdminTeamController extends Controller
     public function destroy($id)
     {
         $team = Team::findOrFail($id);
+
+        // Check if the team has matches
+        $hasMatches = \App\Models\GameMatch::where('home_team_id', $id)
+            ->orWhere('away_team_id', $id)
+            ->exists();
+
+        if ($hasMatches) {
+            return response()->json([
+                'message' => 'Não é possível excluir este time pois ele já possui jogos agendados ou concluídos. Remova-o dos jogos primeiro ou apenas desvincule-o do campeonato.'
+            ], 400);
+        }
+
         $name = $team->name;
         $team->delete();
 
