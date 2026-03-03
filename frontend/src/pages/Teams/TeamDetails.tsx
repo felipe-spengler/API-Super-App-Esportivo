@@ -63,6 +63,7 @@ export function TeamDetails() {
     const [newPlayerAddress, setNewPlayerAddress] = useState('');
     const [documentFile, setDocumentFile] = useState<File | null>(null);
     const [photoFile, setPhotoFile] = useState<File | null>(null);
+    const [removeBg, setRemoveBg] = useState(true);
     const [adding, setAdding] = useState(false);
     const [editingPlayerId, setEditingPlayerId] = useState<number | null>(null);
     const [isCopying, setIsCopying] = useState(false);
@@ -115,6 +116,9 @@ export function TeamDetails() {
             }
             if (photoFile) {
                 formData.append('photo_file', photoFile);
+                if (removeBg) {
+                    formData.append('remove_bg', '1');
+                }
             }
 
             if (selectedChampionshipId) {
@@ -150,6 +154,7 @@ export function TeamDetails() {
         setNewPlayerAddress('');
         setDocumentFile(null);
         setPhotoFile(null);
+        setRemoveBg(true);
     }
 
     async function handleRemovePlayer(playerId: number) {
@@ -548,8 +553,24 @@ export function TeamDetails() {
                                             type="file"
                                             accept="image/*"
                                             onChange={e => setPhotoFile(e.target.files?.[0] || null)}
-                                            className="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                                            className="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 mb-2"
                                         />
+                                        {photoFile && (
+                                            <label className="flex items-center gap-2 mt-2 cursor-pointer group">
+                                                <div className="relative flex items-center justify-center w-5 h-5 rounded border border-gray-300 group-hover:border-indigo-500 bg-white shadow-sm transition-colors">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="peer sr-only"
+                                                        checked={removeBg}
+                                                        onChange={e => setRemoveBg(e.target.checked)}
+                                                    />
+                                                    {removeBg && <CheckCircle className="w-4 h-4 text-indigo-600 absolute" />}
+                                                </div>
+                                                <span className="text-xs font-semibold text-gray-700 group-hover:text-indigo-600 transition-colors">
+                                                    Remover Fundo (IA)
+                                                </span>
+                                            </label>
+                                        )}
                                     </div>
                                     <div className="col-span-1">
                                         <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Doc (PDF/Img)</label>

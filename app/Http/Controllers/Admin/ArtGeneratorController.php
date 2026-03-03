@@ -1554,23 +1554,9 @@ class ArtGeneratorController extends Controller
                 imagealphablending($playerImg, false);
                 imagesavealpha($playerImg, true);
 
-                // Use an intermediate transparent canvas to prevent GD imagecopyresampled black background bugs
-                $tempCanvas = imagecreatetruecolor($targetWidth, $targetHeight);
-                imagealphablending($tempCanvas, false);
-                imagesavealpha($tempCanvas, true);
-
-                // Pure transparent white avoids dark blurry edges
-                $transparent = imagecolorallocatealpha($tempCanvas, 255, 255, 255, 127);
-                imagefilledrectangle($tempCanvas, 0, 0, $targetWidth, $targetHeight, $transparent);
-
-                // Resample onto intermediate
-                imagecopyresampled($tempCanvas, $playerImg, 0, 0, 0, 0, $targetWidth, $targetHeight, $origW, $origH);
-
-                // Blend onto main background
+                // Blend onto main background directly
                 imagealphablending($img, true);
-                imagecopy($img, $tempCanvas, $xPos, $yPos, 0, 0, $targetWidth, $targetHeight);
-
-                imagedestroy($tempCanvas);
+                imagecopyresampled($img, $playerImg, $xPos, $yPos, 0, 0, $targetWidth, $targetHeight, $origW, $origH);
             } else {
                 imagealphablending($img, true);
                 imagecopyresampled($img, $playerImg, $xPos, $yPos, 0, 0, $targetWidth, $targetHeight, $origW, $origH);

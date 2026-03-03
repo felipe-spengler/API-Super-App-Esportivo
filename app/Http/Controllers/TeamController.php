@@ -114,6 +114,45 @@ class TeamController extends Controller
         $photoPath = null;
         if ($request->hasFile('photo_file')) {
             $photoPath = $request->file('photo_file')->store('players/photos', 'public');
+
+            // PROCESSAMENTO DE IA: REMOVER FUNDO
+            if ($request->boolean('remove_bg') || $request->input('remove_bg') == '1') {
+                try {
+                    $inputAbsPath = storage_path('app/public/' . $photoPath);
+                    $filenameNobg = pathinfo($photoPath, PATHINFO_FILENAME) . '_nobg.png';
+                    $outputAbsPath = storage_path('app/public/players/photos/' . $filenameNobg);
+                    $scriptPath = base_path('scripts/remove_bg.py');
+
+                    $cacheDir = storage_path('app/public/.u2net');
+                    if (!file_exists($cacheDir)) {
+                        @mkdir($cacheDir, 0775, true);
+                    }
+
+                    $pythonBin = null;
+                    foreach (['python3', 'python', '/usr/bin/python3', '/usr/local/bin/python3'] as $candidate) {
+                        $testOut = [];
+                        $testRet = -1;
+                        @exec("{$candidate} --version 2>&1", $testOut, $testRet);
+                        if ($testRet === 0) {
+                            $pythonBin = $candidate;
+                            break;
+                        }
+                    }
+
+                    if ($pythonBin) {
+                        $command = "export U2NET_HOME={$cacheDir} && export NUMBA_CACHE_DIR={$cacheDir} && {$pythonBin} \"{$scriptPath}\" \"{$inputAbsPath}\" \"{$outputAbsPath}\" 2>&1";
+                        exec($command, $output, $returnVar);
+
+                        if ($returnVar === 0 && file_exists($outputAbsPath)) {
+                            @chmod($outputAbsPath, 0664);
+                            // Define para usar a imagem sem fundo!
+                            $photoPath = 'players/photos/' . $filenameNobg;
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    \Log::error("Lab AI TeamController (add) - Exception: " . $e->getMessage());
+                }
+            }
         }
 
         // 3. Create User if not exists (Auto-Registration Logic)
@@ -270,6 +309,45 @@ class TeamController extends Controller
             // Se enviou nova foto, processar (apenas se tiver permissão global)
             if ($request->hasFile('photo_file')) {
                 $photoPath = $request->file('photo_file')->store('players/photos', 'public');
+
+                // PROCESSAMENTO DE IA: REMOVER FUNDO
+                if ($request->boolean('remove_bg') || $request->input('remove_bg') == '1') {
+                    try {
+                        $inputAbsPath = storage_path('app/public/' . $photoPath);
+                        $filenameNobg = pathinfo($photoPath, PATHINFO_FILENAME) . '_nobg.png';
+                        $outputAbsPath = storage_path('app/public/players/photos/' . $filenameNobg);
+                        $scriptPath = base_path('scripts/remove_bg.py');
+
+                        $cacheDir = storage_path('app/public/.u2net');
+                        if (!file_exists($cacheDir)) {
+                            @mkdir($cacheDir, 0775, true);
+                        }
+
+                        $pythonBin = null;
+                        foreach (['python3', 'python', '/usr/bin/python3', '/usr/local/bin/python3'] as $candidate) {
+                            $testOut = [];
+                            $testRet = -1;
+                            @exec("{$candidate} --version 2>&1", $testOut, $testRet);
+                            if ($testRet === 0) {
+                                $pythonBin = $candidate;
+                                break;
+                            }
+                        }
+
+                        if ($pythonBin) {
+                            $command = "export U2NET_HOME={$cacheDir} && export NUMBA_CACHE_DIR={$cacheDir} && {$pythonBin} \"{$scriptPath}\" \"{$inputAbsPath}\" \"{$outputAbsPath}\" 2>&1";
+                            exec($command, $output, $returnVar);
+
+                            if ($returnVar === 0 && file_exists($outputAbsPath)) {
+                                @chmod($outputAbsPath, 0664);
+                                $photoPath = 'players/photos/' . $filenameNobg;
+                            }
+                        }
+                    } catch (\Throwable $e) {
+                        \Log::error("Lab AI TeamController (update) - Exception: " . $e->getMessage());
+                    }
+                }
+
                 $player->update(['photo_path' => $photoPath]);
             }
         }
