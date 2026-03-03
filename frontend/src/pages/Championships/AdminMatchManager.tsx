@@ -181,26 +181,53 @@ export function AdminMatchManager() {
             const loadedTeams = Array.isArray(teamsRes.data) ? teamsRes.data : (teamsRes.data.data || []);
             setTeams(loadedTeams);
 
-            // Handle groups
+            // Handle groups accurately considering categories
             const groupsData = groupsRes.data.groups || {};
             const assignments: Record<string, string> = {};
+            const activeGroupNames = new Set<string>();
+
+            // 1. Check groupsData from API
             Object.entries(groupsData).forEach(([gName, teamsList]: [string, any]) => {
                 if (Array.isArray(teamsList)) {
                     teamsList.forEach(team => {
-                        assignments[team.id] = gName;
+                        // Ensure this team actually belongs to the current category before assigning it a group
+                        if (loadedTeams.some((t: any) => t.id === team.id)) {
+                            assignments[team.id] = gName;
+                            activeGroupNames.add(gName);
+                        }
                     });
                 }
             });
+
+            // 2. Check pivot data from teams
+            loadedTeams.forEach((t: any) => {
+                if (t.pivot?.group_name) {
+                    assignments[t.id] = t.pivot.group_name;
+                    activeGroupNames.add(t.pivot.group_name);
+                }
+            });
+
+            // 3. Check existing matches
+            const matchesData = Array.isArray(matchesRes.data) ? matchesRes.data : (matchesRes.data.data || Object.values(matchesRes.data) || []);
+            matchesData.forEach((m: any) => {
+                if (m && m.group_name) {
+                    activeGroupNames.add(m.group_name);
+                }
+            });
+
             setGroupAssignments(assignments);
 
-            const groupNames = Object.keys(groupsData).sort();
+            const groupNames = Array.from(activeGroupNames).sort();
             if (groupNames.length > 0) {
                 setNumGroups(groupNames.length);
                 setAvailableGroupNames(groupNames);
+            } else if (availableGroupNames.length === 0 || (availableGroupNames.length === 4 && availableGroupNames[0] === 'A')) {
+                // Keep default if nothing is found to prevent empty state
+                setAvailableGroupNames(['A', 'B', 'C', 'D']);
             }
 
             // Handle matches
-            setMatches(matchesRes.data);
+            setMatches(matchesData);
 
         } catch (error) {
             console.error(error);
@@ -245,9 +272,39 @@ export function AdminMatchManager() {
                 api.get(teamsUrl)
             ]);
 
-            setMatches(matchesRes.data);
+            const matchesData = Array.isArray(matchesRes.data) ? matchesRes.data : (matchesRes.data.data || Object.values(matchesRes.data) || []);
+            setMatches(matchesData);
+
             const loadedTeams = Array.isArray(teamsRes.data) ? teamsRes.data : (teamsRes.data.data || []);
             setTeams(loadedTeams);
+
+            // Recompute group assignments for the new category
+            const assignments: Record<string, string> = {};
+            const activeGroupNames = new Set<string>();
+
+            loadedTeams.forEach((t: any) => {
+                if (t.pivot?.group_name) {
+                    assignments[t.id] = t.pivot.group_name;
+                    activeGroupNames.add(t.pivot.group_name);
+                }
+            });
+
+            matchesData.forEach((m: any) => {
+                if (m && m.group_name) {
+                    activeGroupNames.add(m.group_name);
+                }
+            });
+
+            setGroupAssignments(assignments);
+
+            const groupNames = Array.from(activeGroupNames).sort();
+            if (groupNames.length > 0) {
+                setNumGroups(groupNames.length);
+                setAvailableGroupNames(groupNames);
+            } else {
+                setAvailableGroupNames(['A', 'B', 'C', 'D']);
+            }
+
         } catch (error) {
             console.error(error);
         }

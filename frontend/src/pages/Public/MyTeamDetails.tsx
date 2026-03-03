@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Users, Shield, Plus, User, MoreHorizontal, Trash2, CheckCircle, Clock, Trophy, Copy, Loader2, ArrowRight } from 'lucide-react';
+import { ArrowLeft, Users, Shield, Plus, User, Edit2, MoreHorizontal, Trash2, CheckCircle, Clock, Trophy, Copy, Loader2, ArrowRight } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
@@ -65,6 +65,7 @@ export function MyTeamDetails() {
     const [newPlayerAddress, setNewPlayerAddress] = useState('');
     const [documentFile, setDocumentFile] = useState<File | null>(null);
     const [adding, setAdding] = useState(false);
+    const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
 
     useEffect(() => {
         loadTeam();
@@ -110,7 +111,25 @@ export function MyTeamDetails() {
         }
     }
 
-    async function handleAddPlayer(e: React.FormEvent) {
+    function openEditModal(player: Player) {
+        setEditingPlayer(player);
+        setNewPlayerName(player.pivot?.temp_player_name || player.name);
+        setNewPlayerPos(player.pivot?.position || player.position || '');
+        setNewPlayerNum(player.pivot?.number || player.number || '');
+        setNewPlayerEmail(player.email || '');
+        // Other fields might not be available directly on the player object returned here
+        // Set them to empty or fetch if needed
+        setNewPlayerCpf('');
+        setNewPlayerNickname('');
+        setNewPlayerPhone('');
+        setNewPlayerBirthDate('');
+        setNewPlayerGender('');
+        setNewPlayerAddress('');
+        setDocumentFile(null);
+        setShowAddModal(true);
+    }
+
+    async function handleSavePlayer(e: React.FormEvent) {
         e.preventDefault();
         setAdding(true);
         try {
@@ -132,19 +151,39 @@ export function MyTeamDetails() {
                 formData.append('championship_id', String(selectedChampionshipId));
             }
 
-            await api.post(`/teams/${id}/players`, formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data'
-                }
-            });
+            if (editingPlayer) {
+                formData.append('_method', 'PUT');
+                await api.post(`/teams/${id}/players/${editingPlayer.id}`, formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                alert('Jogador atualizado!');
+            } else {
+                await api.post(`/teams/${id}/players`, formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                alert('Jogador adicionado!');
+            }
+
             setShowAddModal(false);
             resetForm();
             loadTeam();
-            alert('Jogador adicionado!');
         } catch (error) {
-            alert('Erro ao adicionar jogador.');
+            alert('Erro ao salvar jogador.');
         } finally {
             setAdding(false);
+        }
+    }
+
+    async function handleDeletePlayer(playerId: number) {
+        if (!window.confirm('Deseja realmente remover este jogador do time (neste contexto)?')) return;
+        try {
+            await api.delete(`/teams/${id}/players/${playerId}`, {
+                data: { championship_id: selectedChampionshipId }
+            });
+            alert('Jogador removido!');
+            loadTeam();
+        } catch (error) {
+            alert('Erro ao remover jogador');
         }
     }
 
@@ -160,6 +199,7 @@ export function MyTeamDetails() {
         setNewPlayerGender('');
         setNewPlayerAddress('');
         setDocumentFile(null);
+        setEditingPlayer(null);
     }
 
     const isCaptain = user?.id === team?.captain_id;
@@ -182,7 +222,10 @@ export function MyTeamDetails() {
                 </div>
                 {isCaptain && (
                     <button
-                        onClick={() => setShowAddModal(true)}
+                        onClick={() => {
+                            resetForm();
+                            setShowAddModal(true);
+                        }}
                         className="p-2 bg-indigo-50 text-indigo-600 rounded-lg flex items-center gap-1 text-xs font-bold hover:bg-indigo-100"
                     >
                         <Plus className="w-4 h-4" /> Add Jogador
@@ -307,9 +350,14 @@ export function MyTeamDetails() {
                                             )}
 
                                             {isCaptain && (
-                                                <button className="p-2 text-gray-400 hover:text-red-500">
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
+                                                <div className="flex gap-1">
+                                                    <button onClick={() => openEditModal(player)} className="p-2 text-gray-400 hover:text-indigo-500 transition-colors">
+                                                        <Edit2 className="w-4 h-4" />
+                                                    </button>
+                                                    <button onClick={() => handleDeletePlayer(player.id)} className="p-2 text-gray-400 hover:text-red-500 transition-colors">
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
                                             )}
                                         </div>
                                     </div>
@@ -326,16 +374,16 @@ export function MyTeamDetails() {
                 )}
             </div>
 
-            {/* Add Player Modal */}
+            {/* Add/Edit Player Modal */}
             {showAddModal && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4 animate-in fade-in duration-200">
                     <div className="bg-white w-full max-w-md rounded-2xl p-6 pb-20 space-y-4 max-h-[85vh] overflow-y-auto">
                         <div className="flex justify-between items-center mb-2">
-                            <h3 className="text-lg font-bold">Adicionar Jogador</h3>
-                            <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-gray-600">Fechar</button>
+                            <h3 className="text-lg font-bold">{editingPlayer ? 'Editar Atleta' : 'Adicionar Jogador'}</h3>
+                            <button onClick={() => { setShowAddModal(false); resetForm(); }} className="text-gray-400 hover:text-gray-600">Fechar</button>
                         </div>
 
-                        <form onSubmit={handleAddPlayer} className="space-y-3">
+                        <form onSubmit={handleSavePlayer} className="space-y-3">
                             <div>
                                 <label className="block text-xs font-bold text-gray-600 mb-1">Nome do Atleta</label>
                                 <input
@@ -459,7 +507,7 @@ export function MyTeamDetails() {
                                 disabled={adding}
                                 className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors mt-4 disabled:opacity-75"
                             >
-                                {adding ? 'Adicionando...' : 'Confirmar'}
+                                {adding ? 'Salvando...' : 'Confirmar'}
                             </button>
                         </form>
                     </div>
