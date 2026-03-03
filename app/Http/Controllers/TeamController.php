@@ -143,7 +143,8 @@ class TeamController extends Controller
                 'role' => 'user',
                 'club_id' => $team->club_id,
                 'document_path' => $documentPath,
-                'photo_path' => $photoPath
+                'photo_path' => $photoPath,
+                'created_by' => $request->user()->id
             ]);
         } else {
             // Update existing user with new info if they are blank
@@ -218,7 +219,65 @@ class TeamController extends Controller
 
         return response()->json(['message' => 'Jogador adicionado e vinculado com sucesso!'], 201);
     }
-    // 4. Create Team (For users)
+    // 4. Editar Jogador (Pelo Capitão)
+    public function updatePlayer(Request $request, $id, $playerId)
+    {
+        $team = Team::findOrFail($id);
+        $user = $request->user();
+
+        // Verifica permissão (apenas capitão ou admin)
+        if ($user->id !== $team->captain_id && !$user->is_admin) {
+            return response()->json(['message' => 'Você não tem permissão para editar este time.'], 403);
+        }
+
+        $player = \App\Models\User::findOrFail($playerId);
+
+        // 1. Atualizar Dados de Contexto (Pivô) - SEMPRE PERMITIDO
+        $pivot = \App\Models\TeamPlayer::where('team_id', $id)
+            ->where('user_id', $playerId)
+            ->first();
+
+        if ($pivot) {
+            $pivot->update([
+                'position' => $request->position,
+                'number' => $request->number
+            ]);
+        }
+
+        // 2. Lógica de Dados Globais (Nome, Foto, etc)
+        // Permite se: Criou o jogador OU jogador é exclusivo deste time OU é admin
+        $isExclusive = $player->teamsAsPlayer()->count() <= 1;
+        $canEditGlobal = ($player->created_by === $user->id) || $isExclusive || $user->is_admin;
+
+        if ($canEditGlobal) {
+            $validated = $request->validate([
+                'name' => 'nullable|string|max:255',
+                'nickname' => 'nullable|string|max:255',
+                'birth_date' => 'nullable|date',
+                'phone' => 'nullable|string',
+                'gender' => 'nullable|string|in:M,F,O',
+                'address' => 'nullable|string|max:500',
+            ]);
+
+            // Impedir alteração de CPF/Email de jogadores compartilhados para segurança
+            if (!$isExclusive && !$user->is_admin) {
+                unset($validated['email']);
+                unset($validated['cpf']);
+            }
+
+            $player->update($validated);
+
+            // Se enviou nova foto, processar (apenas se tiver permissão global)
+            if ($request->hasFile('photo_file')) {
+                $photoPath = $request->file('photo_file')->store('players/photos', 'public');
+                $player->update(['photo_path' => $photoPath]);
+            }
+        }
+
+        return response()->json(['message' => 'Atleta atualizado com sucesso!']);
+    }
+
+    // 5. Create Team (For users)
     public function store(Request $request)
     {
         $request->validate([

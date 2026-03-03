@@ -125,6 +125,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/my-teams', [\App\Http\Controllers\TeamController::class, 'store']);
     Route::get('/teams/{id}', [\App\Http\Controllers\TeamController::class, 'show']);
     Route::post('/teams/{id}/players', [\App\Http\Controllers\TeamController::class, 'addPlayer']);
+    Route::put('/teams/{id}/players/{playerId}', [\App\Http\Controllers\TeamController::class, 'updatePlayer']);
 
     // Área Admin (Web) - Protegido com middleware 'admin' e 'audit'
     Route::prefix('admin')->middleware(['admin', 'audit'])->group(function () {

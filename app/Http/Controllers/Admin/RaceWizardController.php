@@ -40,7 +40,7 @@ class RaceWizardController extends Controller
         $data = $request->validate([
             'general.name' => 'required|string',
             'general.start_date' => 'required|date',
-            'general.sport' => 'required|string'
+            'general.sport_id' => 'nullable|integer'
         ]);
 
         try {
@@ -53,11 +53,12 @@ class RaceWizardController extends Controller
                 'club_id' => $clubId,
                 'name' => $request->input('general.name'),
                 'start_date' => $request->input('general.start_date'),
-                'end_date' => $request->input('general.start_date'), // Em corrida geralmente é o mesmo dia
-                'sport' => $request->input('general.sport', 'Running'),
+                'end_date' => $request->input('general.start_date'),
+                'sport_id' => $request->input('general.sport_id', 3), // Default 3 (Corrida)
+                'registration_type' => 'individual',
+                'format' => 'racing',
                 'status' => 'upcoming',
                 'description' => $request->input('general.description'),
-                'location' => $request->input('general.location'),
             ]);
 
             // 2. Criar tabela detalhe de corrida (opcional, se tiver dados específicos)
@@ -99,18 +100,31 @@ class RaceWizardController extends Controller
             }
 
             // 4. Produtos (Kits, Camisetas)
-            // Aqui podemos criar Products vinculados ao evento ou globais.
-            // Por simplicidade, vou assumir tabela 'products' com json
             $productsData = $request->input('products', []);
             foreach ($productsData as $prod) {
+                if (empty($prod['name']))
+                    continue;
                 Product::create([
                     'club_id' => $clubId,
                     'name' => $prod['name'],
                     'price' => $prod['price'] ?? 0,
-                    'type' => 'kit',
                     'variants' => $prod['variants'] ?? null
                 ]);
-                // TODO: Vincular produto ao evento se a tabela products for global
+            }
+
+            // 5. Cupons de Desconto
+            $couponsData = $request->input('coupons', []);
+            foreach ($couponsData as $cup) {
+                if (empty($cup['code']))
+                    continue;
+                \App\Models\Coupon::create([
+                    'club_id' => $clubId,
+                    'code' => strtoupper($cup['code']),
+                    'discount_type' => $cup['discount_type'] ?? 'fixed',
+                    'discount_value' => $cup['discount_value'] ?? 0,
+                    'max_uses' => $cup['max_uses'] ?? 100,
+                    'expires_at' => $cup['expires_at'] ?? $championship->start_date
+                ]);
             }
 
             DB::commit();
