@@ -2148,6 +2148,47 @@ class ArtGeneratorController extends Controller
 
         // 2. NoBG Version
         $html .= "<div class='box'><h2>2. Versão Sem Fundo (_nobg.png)</h2>";
+        $html .= "<a href='?run_rembg=1' style='display:inline-block; padding:8px 15px; background:blue; color:white; text-decoration:none; border-radius:4px; margin-bottom:10px;'>Executar REMBG Novamente Agora</a>";
+
+        $nobgPath = $player->photo_path ? preg_replace('/\.[^.]+$/i', '_nobg.png', $player->photo_path) : null;
+
+        if (request()->query('run_rembg') && $player->photo_path) {
+            $html .= "<div style='background:#f9f9f9; border-left:4px solid blue; padding:10px; margin-bottom:15px;'>";
+            $html .= "<h3>Rodando IA Rembg...</h3>";
+            try {
+                $inputAbsPath = storage_path('app/public/' . $player->photo_path);
+                $outputAbsPath = storage_path('app/public/players/' . pathinfo($nobgPath, PATHINFO_BASENAME));
+                $scriptPath = base_path('scripts/remove_bg.py');
+                $cacheDir = storage_path('app/public/.u2net');
+                if (!file_exists($cacheDir))
+                    @mkdir($cacheDir, 0775, true);
+
+                $pythonBin = null;
+                foreach (['python3', 'python', '/usr/bin/python3', '/usr/local/bin/python3'] as $candidate) {
+                    $testOut = [];
+                    $testRet = -1;
+                    @exec("{$candidate} --version 2>&1", $testOut, $testRet);
+                    if ($testRet === 0) {
+                        $pythonBin = $candidate;
+                        break;
+                    }
+                }
+
+                if ($pythonBin) {
+                    $command = "export U2NET_HOME={$cacheDir} && export NUMBA_CACHE_DIR={$cacheDir} && {$pythonBin} \"{$scriptPath}\" \"{$inputAbsPath}\" \"{$outputAbsPath}\" 2>&1";
+                    exec($command, $output, $returnVar);
+                    $html .= "<p><b>Comando:</b> <code>{$command}</code></p>";
+                    $html .= "<p><b>Código de Retorno:</b> {$returnVar}</p>";
+                    $html .= "<p><b>Saída:</b><br/>" . implode("<br/>", $output) . "</p>";
+                } else {
+                    $html .= "<p style='color:red;'>Python não encontrado</p>";
+                }
+            } catch (\Exception $e) {
+                $html .= "<p style='color:red'>Erro: {$e->getMessage()}</p>";
+            }
+            $html .= "</div>";
+        }
+
         $nobgPath = $player->photo_path ? preg_replace('/\.[^.]+$/i', '_nobg.png', $player->photo_path) : null;
         $html .= "<p>Expected Path: <code>{$nobgPath}</code></p>";
         $hasNobg = false;
