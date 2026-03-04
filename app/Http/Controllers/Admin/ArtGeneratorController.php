@@ -2111,4 +2111,187 @@ class ArtGeneratorController extends Controller
 
         return null;
     }
+
+    public function debugPlayerArt($playerId)
+    {
+        $player = \App\Models\User::findOrFail($playerId);
+
+        $html = "<!DOCTYPE html><html><head><title>Debug Player Art</title><style>
+                 body { font-family: sans-serif; background: #f0f0f0; margin: 20px; }
+                 .checker {
+                     background-image: linear-gradient(45deg, #ccc 25%, transparent 25%), 
+                                       linear-gradient(-45deg, #ccc 25%, transparent 25%), 
+                                       linear-gradient(45deg, transparent 75%, #ccc 75%), 
+                                       linear-gradient(-45deg, transparent 75%, #ccc 75%);
+                     background-size: 20px 20px;
+                     background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+                     background-color: #fff;
+                     border: 1px solid #333;
+                     display: inline-block;
+                 }
+                 img { max-width: 400px; display: block; margin-top: 5px; }
+                 .box { background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+                 </style></head><body>";
+
+        $html .= "<h1>Debug: Player {$player->name} (ID: {$player->id})</h1>";
+
+        // 1. Original
+        $html .= "<div class='box'><h2>1. Imagem Original Salva (photo_path)</h2>";
+        $html .= "<p>DB Path: <code>" . ($player->photo_path ?: 'NULL') . "</code></p>";
+        if ($player->photo_path) {
+            $urlOrig = rtrim(config('app.url'), '/') . '/storage/' . $player->photo_path;
+            // Or just use relative via storage link
+            $urlRel = '/storage/' . $player->photo_path;
+            $html .= "<div class='checker'><img src='{$urlRel}' alt='Original' /></div>";
+        }
+        $html .= "</div>";
+
+        // 2. NoBG Version
+        $html .= "<div class='box'><h2>2. Versão Sem Fundo (_nobg.png)</h2>";
+        $nobgPath = $player->photo_path ? preg_replace('/\.[^.]+$/i', '_nobg.png', $player->photo_path) : null;
+        $html .= "<p>Expected Path: <code>{$nobgPath}</code></p>";
+        $hasNobg = false;
+
+        if ($nobgPath) {
+            $absNobgPath1 = storage_path('app/public/' . $nobgPath);
+            $absNobgPath2 = public_path('storage/' . $nobgPath);
+
+            $fileToLoad = null;
+            if (file_exists($absNobgPath1)) {
+                $fileToLoad = $absNobgPath1;
+                $hasNobg = true;
+            } elseif (file_exists($absNobgPath2)) {
+                $fileToLoad = $absNobgPath2;
+                $hasNobg = true;
+            }
+
+            if ($hasNobg) {
+                $urlNobg = '/storage/' . $nobgPath;
+                $html .= "<div class='checker'><img src='{$urlNobg}' alt='NoBG' /></div>";
+            } else {
+                $html .= "<p style='color:red;'>Arquivo _nobg n├úo existe fisicamente no disco.</p>";
+            }
+        }
+        $html .= "</div>";
+
+        // 3. GD Render Test
+        $html .= "<div class='box'><h2>3. Teste do PHP GD (Resizing)</h2>";
+        $testPath = null;
+        if ($hasNobg) {
+            $testPath = $fileToLoad;
+            $html .= "<p>Usando arquivo: _nobg.png</p>";
+        } elseif ($player->photo_path) {
+            $p1 = storage_path('app/public/' . $player->photo_path);
+            $p2 = public_path('storage/' . $player->photo_path);
+            if (file_exists($p1))
+                $testPath = $p1;
+            elseif (file_exists($p2))
+                $testPath = $p2;
+            $html .= "<p>Usando arquivo: Original</p>";
+        }
+
+        if ($testPath && file_exists($testPath)) {
+            // Simulated rendering process
+            $info = getimagesize($testPath);
+            $mime = $info['mime'];
+
+            $sourceImg = null;
+            if ($mime == 'image/png') {
+                $sourceImg = @imagecreatefrompng($testPath);
+            } elseif ($mime == 'image/webp' && function_exists('imagecreatefromwebp')) {
+                $sourceImg = @imagecreatefromwebp($testPath);
+            } else {
+                $sourceImg = @imagecreatefromjpeg($testPath);
+            }
+
+            if ($sourceImg) {
+                // Resize Process from the code
+                $targetHeight = 400; // smaller for debug
+                $origW = imagesx($sourceImg);
+                $origH = imagesy($sourceImg);
+                $ratio = $origW / $origH;
+                $targetWidth = (int) round($targetHeight * $ratio);
+
+                $tempCanvas = imagecreatetruecolor($targetWidth, $targetHeight);
+                imagealphablending($tempCanvas, false);
+                imagesavealpha($tempCanvas, true);
+
+                // Transparente (fundo preto no GD se nao for salvo alpha, mas ok)
+                $transparent = imagecolorallocatealpha($tempCanvas, 255, 255, 255, 127);
+                imagefilledrectangle($tempCanvas, 0, 0, $targetWidth, $targetHeight, $transparent);
+
+                imagecopyresampled($tempCanvas, $sourceImg, 0, 0, 0, 0, $targetWidth, $targetHeight, $origW, $origH);
+
+                // Output to base64
+                ob_start();
+                imagepng($tempCanvas);
+                $imgData = ob_get_clean();
+                $base64 = base64_encode($imgData);
+
+                $html .= "<p>Se essa imagem tiver fundo preto/branco indesejado, o bug est├í no `imagecopyresampled` do GD intermedi├írio.</p>";
+                $html .= "<div class='checker'><img src='data:image/png;base64,{$base64}' alt='GD Render' /></div>";
+
+                imagedestroy($tempCanvas);
+                imagedestroy($sourceImg);
+            } else {
+                $html .= "<p style='color:red;'>Erro ao carregar no GD usando imagecreatefrom...</p>";
+            }
+        } else {
+            $html .= "<p>Arquivo n├úo encontrado para teste do GD.</p>";
+        }
+        $html .= "</div>";
+
+        // 4. Composition Test
+        $html .= "<div class='box'><h2>4. Teste de Composi├º├úo (Fundo Verde Lim├úo)</h2>";
+        if ($testPath && file_exists($testPath)) {
+            // Crie um fundo verde limo forte para testar transparncia compondo
+            $baseImg = imagecreatetruecolor(600, 600);
+            $green = imagecolorallocate($baseImg, 50, 205, 50);
+            imagefill($baseImg, 0, 0, $green);
+
+            $sourceImg = null;
+            if ($mime == 'image/png') {
+                $sourceImg = @imagecreatefrompng($testPath);
+            } elseif ($mime == 'image/webp' && function_exists('imagecreatefromwebp')) {
+                $sourceImg = @imagecreatefromwebp($testPath);
+            } else {
+                $sourceImg = @imagecreatefromjpeg($testPath);
+            }
+
+            if ($sourceImg) {
+                $targetHeight = 400;
+                $origW = imagesx($sourceImg);
+                $origH = imagesy($sourceImg);
+                $targetWidth = (int) round($targetHeight * ($origW / $origH));
+
+                $tempCanvas = imagecreatetruecolor($targetWidth, $targetHeight);
+                imagealphablending($tempCanvas, false);
+                imagesavealpha($tempCanvas, true);
+                $transparent = imagecolorallocatealpha($tempCanvas, 255, 255, 255, 127);
+                imagefilledrectangle($tempCanvas, 0, 0, $targetWidth, $targetHeight, $transparent);
+                imagecopyresampled($tempCanvas, $sourceImg, 0, 0, 0, 0, $targetWidth, $targetHeight, $origW, $origH);
+
+                // Blend onto green background
+                imagealphablending($baseImg, true);
+                imagecopy($baseImg, $tempCanvas, 100, 100, 0, 0, $targetWidth, $targetHeight);
+
+                ob_start();
+                // Testar salvando em JPEG que nem a arte final
+                imagejpeg($baseImg, null, 90);
+                $imgData = ob_get_clean();
+                $base64 = base64_encode($imgData);
+
+                $html .= "<p>Isso simula a gera├º├úo da arte final. O formato de sa├¡da ├® JPEG.</p>";
+                $html .= "<div><img src='data:image/jpeg;base64,{$base64}' alt='Composition Test' /></div>";
+
+                imagedestroy($tempCanvas);
+                imagedestroy($sourceImg);
+                imagedestroy($baseImg);
+            }
+        }
+        $html .= "</div>";
+
+        $html .= "</body></html>";
+        return response($html)->header('Content-Type', 'text/html');
+    }
 }

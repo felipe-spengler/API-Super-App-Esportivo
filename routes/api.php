@@ -53,6 +53,7 @@ Route::post('/ocr/analyze', [App\Http\Controllers\DocumentOCRController::class, 
 
 // 🧪 ROTA DE TESTE - Remover em produção ou proteger
 Route::post('/test-remove-bg', [App\Http\Controllers\Admin\ImageUploadController::class, 'testRemoveBg']);
+Route::get('/debug/player-art/{playerId}', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'debugPlayerArt']);
 
 
 Route::get('/cities', [CoreController::class, 'cities']);
