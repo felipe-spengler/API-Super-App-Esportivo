@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Http\Controllers\Admin;
 
@@ -57,7 +57,7 @@ class ArtGeneratorController extends Controller
                     return response()->json(['message' => 'Template salvo para o campeonato com sucesso']);
                 }
             }
-            return response()->json(['message' => 'Erro ao salvar template para o campeonato. Verifique permissões.'], 403);
+            return response()->json(['message' => 'Erro ao salvar template para o campeonato. Verifique permiss├Áes.'], 403);
         }
 
         // Check if user is Club Admin (Fallback to Club Level)
@@ -346,7 +346,7 @@ class ArtGeneratorController extends Controller
         $category = $request->query('category', 'craque');
 
         if (!$match->mvp_player_id) {
-            return response('MVP não definido para esta partida.', 404);
+            return response('MVP n├úo definido para esta partida.', 404);
         }
 
         return $this->generatePlayerArt($match->mvp, $match, $category);
@@ -358,7 +358,7 @@ class ArtGeneratorController extends Controller
     }
 
     /**
-     * Gera Arte de Classificação (Standings)
+     * Gera Arte de Classifica├º├úo (Standings)
      */
     public function standingsArt($championshipId, Request $request)
     {
@@ -374,7 +374,7 @@ class ArtGeneratorController extends Controller
         }
 
         if (!$img) {
-            return response('Erro ao inicializar imagem de classificação.', 500);
+            return response('Erro ao inicializar imagem de classifica├º├úo.', 500);
         }
 
         // Cores
@@ -394,10 +394,10 @@ class ArtGeneratorController extends Controller
     }
 
     /**
-     * Gera Arte de Premiação do Campeonato (Melhor Goleiro, Artilheiro, etc.)
+     * Gera Arte de Premia├º├úo do Campeonato (Melhor Goleiro, Artilheiro, etc.)
      */
     /**
-     * Gera Arte de Premiação do Campeonato (Melhor Goleiro, Artilheiro, etc.)
+     * Gera Arte de Premia├º├úo do Campeonato (Melhor Goleiro, Artilheiro, etc.)
      * Rota: /art/championship/{championshipId}/award/{awardType}?categoryId={id}
      */
     public function championshipAwardArt($championshipId, $awardType, Request $request)
@@ -411,7 +411,7 @@ class ArtGeneratorController extends Controller
 
         $targetAward = null;
 
-        // 1. Tenta buscar específico da categoria ID
+        // 1. Tenta buscar espec├¡fico da categoria ID
         if ($categoryId && isset($awards[$categoryId]) && isset($awards[$categoryId][$awardType])) {
             $targetAward = $awards[$categoryId][$awardType];
         }
@@ -425,7 +425,7 @@ class ArtGeneratorController extends Controller
         }
 
         if (!$targetAward || !isset($targetAward['player_id'])) {
-            return response("Premiação não definida para esta categoria: $awardType" . ($categoryId ? " (CatID: $categoryId)" : ""), 404);
+            return response("Premia├º├úo n├úo definida para esta categoria: $awardType" . ($categoryId ? " (CatID: $categoryId)" : ""), 404);
         }
 
         $playerId = $targetAward['player_id'];
@@ -437,7 +437,7 @@ class ArtGeneratorController extends Controller
             $team = \App\Models\Team::find($targetAward['team_id']);
         }
 
-        // Se não tem team_id salvo, tenta inferir
+        // Se n├úo tem team_id salvo, tenta inferir
         if (!$team) {
             $team = $championship->teams()->whereHas('players', function ($q) use ($playerId) {
                 $q->where('users.id', $playerId);
@@ -573,7 +573,7 @@ class ArtGeneratorController extends Controller
             $this->drawCenteredText($img, $size, $y, $color, $text, $useSecFont);
         };
 
-        // Helper para desenhar com Sombra em Posição X Específica
+        // Helper para desenhar com Sombra em Posi├º├úo X Espec├¡fica
         $drawTextAt = function ($size, $xCenter, $y, $color, $text, $useSecFont) use ($img, $black) {
             $font = $useSecFont ? $this->secondaryFontPath : $this->fontPath;
             $box = imagettfbbox($size, 0, $font, $text);
@@ -595,17 +595,17 @@ class ArtGeneratorController extends Controller
         $ySport = $isStory ? 350 : 190;
         $yRound = $isStory ? 450 : 280;
 
-        // Usar Cor Secundária para o Camp
+        // Usar Cor Secund├íria para o Camp
         $drawText($isStory ? 45 : 35, $yTop, $secondaryColor, $champName, true);
-        // Usar Cor Primária para o Esporte (Destaque)
+        // Usar Cor Prim├íria para o Esporte (Destaque)
         $drawText($isStory ? 80 : 65, $ySport, $primaryColor, mb_strtoupper($sport), false);
 
-        // 2. Meio: Rodada e Brasões
+        // 2. Meio: Rodada e Bras├Áes
         $roundText = mb_strtoupper($match->round_name ?? "RODADA " . ($match->round_number ?? 1));
         $drawText($isStory ? 40 : 30, $yRound, $secondaryColor, $roundText, true);
 
-        // Tamanho do brasão
-        // Story: 400px. Quadrado: 300px. Retângulo Wide: 380px.
+        // Tamanho do bras├úo
+        // Story: 400px. Quadrado: 300px. Ret├óngulo Wide: 380px.
         $badgeSize = $isStory ? 400 : (abs($width - $height) < 100 ? 300 : 380);
 
         // Centralizar verticalmente
@@ -632,20 +632,20 @@ class ArtGeneratorController extends Controller
         // VS (Versus) no meio
         $drawText($isStory ? 80 : 60, $yBadges + ($badgeSize / 2) + 20, $primaryColor, "X", false);
 
-        // 3. Rodapé: Data, Horário e Local
+        // 3. Rodap├®: Data, Hor├írio e Local
         $yLoc = $isStory ? ($height - 250) : ($height - 80);
         $yDate = $yLoc - ($isStory ? 100 : 80);
 
-        $dateStr = \Carbon\Carbon::parse($match->start_time)->setTimezone('America/Sao_Paulo')->translatedFormat('d \d\e F \à\s H:i');
+        $dateStr = \Carbon\Carbon::parse($match->start_time)->setTimezone('America/Sao_Paulo')->translatedFormat('d \d\e F \├á\s H:i');
         $location = mb_strtoupper($match->location ?? 'LOCAL A DEFINIR');
 
         // Aumentar fonte no story
         $dateSize = $isStory ? 60 : 50;
         $locSize = $isStory ? 40 : 35;
 
-        // Data com Cor Primária
+        // Data com Cor Prim├íria
         $drawText($dateSize, $yDate, $primaryColor, mb_strtoupper($dateStr), false);
-        // Local com Branco/Secundário
+        // Local com Branco/Secund├írio
         $drawText($locSize, $yLoc, $secondaryColor, $location, true);
 
         return $this->outputImage($img, 'jogo_programado_' . $match->id);
@@ -772,14 +772,14 @@ class ArtGeneratorController extends Controller
         $awayTeam = $match->awayTeam;
         $placar = ($match->home_score ?? 0) . ' x ' . ($match->away_score ?? 0);
 
-        // 1. Brasões Grandes
+        // 1. Bras├Áes Grandes
         $badgeSize = 300;
         $yBadges = 1170 - 280; // Legacy Position
         $centerDist = 400;
 
         // Team A (Left)
         $xA = 102 + ($width / 2) - $centerDist - ($badgeSize / 2);
-        // Usar cor secundária como fallback de caixa para brasão
+        // Usar cor secund├íria como fallback de caixa para bras├úo
         $this->drawTeamBadge($img, $homeTeam, $xA, $yBadges, $badgeSize, $secondaryColor);
 
         // Team B (Right)
@@ -791,7 +791,7 @@ class ArtGeneratorController extends Controller
         $placarSize = 100; // Increased size
         list($scoreA, $scoreB) = explode(' x ', $placar);
 
-        // Usar Cor Primária para o Placar (com sombra)
+        // Usar Cor Prim├íria para o Placar (com sombra)
         // Manual shadow for imagettftext since drawCenteredText is centered globaly
         $shadowOffset = 5;
 
@@ -807,9 +807,9 @@ class ArtGeneratorController extends Controller
         $champName = mb_strtoupper($match->championship->name);
         $roundName = mb_strtoupper($match->round_name ?? 'Rodada');
 
-        // Secundária para o campeonato
+        // Secund├íria para o campeonato
         $drawText(40, 1600, $secondaryColor, $champName, true);
-        // Primária para a rodada
+        // Prim├íria para a rodada
         $drawText(30, 1660, $primaryColor, $roundName, true);
 
 
@@ -945,7 +945,7 @@ class ArtGeneratorController extends Controller
     private function generatePlayerArt($player, $match, $category)
     {
         if (!$player)
-            return response('Jogador não definido.', 404);
+            return response('Jogador n├úo definido.', 404);
 
         $sport = strtolower($match->championship->sport->name ?? 'futebol');
 
@@ -974,13 +974,13 @@ class ArtGeneratorController extends Controller
             $category,
             null, // Sem rodada
             null, // Sem partida (sem placar)
-            $team, // Time específico do jogador
+            $team, // Time espec├¡fico do jogador
             $club
         );
     }
 
     /**
-     * Função Genérica de Criação de Card de Jogador
+     * Fun├º├úo Gen├®rica de Cria├º├úo de Card de Jogador
      */
     private function createCard($player, $championship, $sport, $category, $roundName = null, $match = null, $playerTeam = null, $club = null)
     {
@@ -1046,7 +1046,7 @@ class ArtGeneratorController extends Controller
             }
 
             // Images
-            // Player Photo — prefers _nobg.png (background removed) version automatically
+            // Player Photo ÔÇö prefers _nobg.png (background removed) version automatically
             $playerPhotoPath = null;
             if ($player->photo_path) {
                 // Try to find a no-background version automatically
@@ -1107,7 +1107,7 @@ class ArtGeneratorController extends Controller
 
         // 3. Textos Principais
 
-        // Formatação de Nome (Smart Particle Logic)
+        // Formata├º├úo de Nome (Smart Particle Logic)
         $rawName = !empty($player->nickname) ? $player->nickname : $player->name;
         $nameParts = explode(' ', trim($rawName));
         $finalName = $nameParts[0];
@@ -1124,19 +1124,19 @@ class ArtGeneratorController extends Controller
         }
 
         $playerName = mb_strtoupper($finalName);
-        // Nome do Jogador em Primária com Destaque
+        // Nome do Jogador em Prim├íria com Destaque
         $drawText(75, 1230, $primaryColor, $playerName, false);
 
         $champName = mb_strtoupper($championship->name);
-        // Campeonato em Secundária
+        // Campeonato em Secund├íria
         $drawText(40, 1690, $secondaryColor, $champName, true);
 
         if ($roundName) {
-            // Rodada em Branco (ou Secundária)
+            // Rodada em Branco (ou Secund├íria)
             $drawText(30, 1750, $white, mb_strtoupper($roundName), true);
         }
 
-        // Título da Categoria para Vôlei (Legacy)
+        // T├¡tulo da Categoria para V├┤lei (Legacy)
         if (str_contains($sport, 'volei') || str_contains($sport, 'volley')) {
             $catTitle = mb_strtoupper(str_replace('_', ' ', $category));
             $mapTitles = [
@@ -1147,7 +1147,7 @@ class ArtGeneratorController extends Controller
             $drawText(50, 1150, $secondaryColor, $title, true);
         }
 
-        // 4. Layout: MVP (com Placar) vs Award (sem Placar, só time)
+        // 4. Layout: MVP (com Placar) vs Award (sem Placar, s├│ time)
         if ($match && in_array($category, ['craque', 'mvp', 'melhor_jogador', 'melhor_quadra'])) {
 
             // Layout MVP com Placar
@@ -1172,7 +1172,7 @@ class ArtGeneratorController extends Controller
 
             $placarSize = 100;
 
-            // Calcular centros baseados nas posições dos brasões
+            // Calcular centros baseados nas posi├º├Áes dos bras├Áes
             // Centro do Badge A = xA + badgeSize/2
             // Centro do Badge B = xB + badgeSize/2
 
@@ -1195,7 +1195,7 @@ class ArtGeneratorController extends Controller
             imagettftext($img, $placarSize, 0, $centerB - ($wB / 2), $scoreY, $black, $this->fontPath, $scoreB);
 
         } else {
-            // Layout Award: Apenas Brasão da Equipe do Jogador
+            // Layout Award: Apenas Bras├úo da Equipe do Jogador
             $targetTeam = $playerTeam;
 
             if (!$targetTeam && $match) {
@@ -1262,7 +1262,7 @@ class ArtGeneratorController extends Controller
             }
         }
 
-        // Normalização de Slugs e Aliases
+        // Normaliza├º├úo de Slugs e Aliases
         $sportSlug = Str::slug($sport, '-'); // Re-declare for subsequent checks
         $aliases = [
             'fut7' => 'futebol-7',
@@ -1284,7 +1284,7 @@ class ArtGeneratorController extends Controller
             $settings = $club->art_settings;
 
             // Tenta pegar pelo nome direto
-            // OBS: Verificamos o slug normalizado também como prioridade se o nome direto falhar
+            // OBS: Verificamos o slug normalizado tamb├®m como prioridade se o nome direto falhar
 
             // 1. Tenta slug normalizado (futebol-7)
             if (isset($settings[$sportSlug]) && isset($settings[$sportSlug][$category])) {
@@ -1387,7 +1387,7 @@ class ArtGeneratorController extends Controller
             'meia' => 'fundo_melhor_meia.jpg',
             'atacante' => 'fundo_melhor_atacante.jpg',
             'assistencia' => 'fundo_melhor_assistencia.jpg',
-            'estreante' => 'fundo_melhor_estreiante.jpg' // sic (erro digitação original)
+            'estreante' => 'fundo_melhor_estreiante.jpg' // sic (erro digita├º├úo original)
         ];
 
         $final = $map[$category] ?? 'fundo_craque_do_jogo.jpg';
@@ -1480,7 +1480,7 @@ class ArtGeneratorController extends Controller
             }
         }
 
-        // Carrega também a fonte secundária
+        // Carrega tamb├®m a fonte secund├íria
         if ($club->secondary_font) {
             $fontName = $club->secondary_font;
             $candidate = public_path('assets/fonts/' . $fontName);
@@ -1496,7 +1496,7 @@ class ArtGeneratorController extends Controller
                 }
             }
         } else {
-            // Se user não definiu secundária, usa a primária (ou padrão se primária falhou)
+            // Se user n├úo definiu secund├íria, usa a prim├íria (ou padr├úo se prim├íria falhou)
             $this->secondaryFontPath = $this->fontPath;
         }
     }
@@ -1547,7 +1547,7 @@ class ArtGeneratorController extends Controller
             $targetWidth = (int) round($targetHeight * $ratio);
 
             $xPos = (int) round(($width - $targetWidth) / 2);
-            $yPos = 335; // Posição fixa legado
+            $yPos = 335; // Posi├º├úo fixa legado
 
             if ($isPng) {
                 // Ensure source has alpha properly configured
@@ -1587,7 +1587,7 @@ class ArtGeneratorController extends Controller
             return;
 
         $badgePath = null;
-        // Tenta achar o brasão
+        // Tenta achar o bras├úo
         if ($team->logo_path) {
             $possiblePaths = [
                 storage_path('app/public/' . $team->logo_path),
@@ -1670,7 +1670,7 @@ class ArtGeneratorController extends Controller
             $px = (int) $p[0];
             $py = (int) $p[1];
 
-            // Verificação extra de redundância
+            // Verifica├º├úo extra de redund├óncia
             if ($px < 0 || $px >= $imgW || $py < 0 || $py >= $imgH)
                 continue;
 
@@ -1700,7 +1700,7 @@ class ArtGeneratorController extends Controller
     }
 
     /**
-     * Renderiza Elementos Dinâmicos Salvos no Editor
+     * Renderiza Elementos Din├ómicos Salvos no Editor
      */
     private function renderDynamicElements($img, $elements, $replaceMap)
     {
@@ -1718,7 +1718,7 @@ class ArtGeneratorController extends Controller
 
                 // --- SMART OVERRIDE (Semantic IDs) ---
                 // Garante que elementos vitais usem os placeholders corretos, 
-                // mesmo que o usuário tenha alterado o texto para "teste" no editor.
+                // mesmo que o usu├írio tenha alterado o texto para "teste" no editor.
                 if (isset($el['id'])) {
                     $id = $el['id'];
                     if ($id === 'player_name')
@@ -1744,7 +1744,7 @@ class ArtGeneratorController extends Controller
                 }
                 // -------------------------------------
 
-                // Substituições em chaves {}
+                // Substitui├º├Áes em chaves {}
                 foreach ($replaceMap as $k => $val) {
                     if (is_string($val) || is_numeric($val)) {
                         $text = str_replace($k, $val, $text);
@@ -1756,20 +1756,20 @@ class ArtGeneratorController extends Controller
                 $isTeamName = isset($el['id']) && in_array($el['id'], ['team_name_a', 'team_name_b', 'team_name', 'score_home', 'score_away']);
                 // Use a generic heuristic: if it's a team name or any long text configured to wrap
                 if ($isTeamName && mb_strlen($text, 'UTF-8') > 15) {
-                    // Trata '/' como um ponto de quebra adicionando espaço temporário
+                    // Trata '/' como um ponto de quebra adicionando espa├ºo tempor├írio
                     $text = str_replace('/', "/ ", $text);
 
                     // Aplica o wordwrap para garantir aproximadamente 15 caracteres por linha sem quebrar palavras
                     $text = wordwrap($text, 15, "\n", false);
 
-                    // Limpa espaços extras e remove espaços indesejados após a barra na reconstrução
+                    // Limpa espa├ºos extras e remove espa├ºos indesejados ap├│s a barra na reconstru├º├úo
                     $lines = explode("\n", $text);
                     $formattedLines = [];
                     foreach ($lines as $line) {
                         $trimmed = trim($line);
-                        // Se a linha termina com '/', garante que não tenha espaço depois dela antes da quebra
+                        // Se a linha termina com '/', garante que n├úo tenha espa├ºo depois dela antes da quebra
                         if (str_ends_with($trimmed, '/')) {
-                            // Já está OK
+                            // J├í est├í OK
                         }
                         if (!empty($trimmed)) {
                             $formattedLines[] = $trimmed;
@@ -2051,8 +2051,8 @@ class ArtGeneratorController extends Controller
             return [
                 "elements" => [
                     ["id" => "championship", "type" => "text", "x" => 1500, "y" => 281, "fontSize" => 45, "color" => "#FFFFFF", "align" => "center", "label" => "Campeonato", "zIndex" => 2, "content" => "{CAMPEONATO}", "fontFamily" => "Roboto"],
-                    ["id" => "team_a", "type" => "image", "x" => 250, "y" => 1050, "width" => 400, "height" => 400, "label" => "Brasão Mandante", "zIndex" => 2, "content" => "team_a"],
-                    ["id" => "team_b", "type" => "image", "x" => 830, "y" => 1050, "width" => 400, "height" => 400, "label" => "Brasão Visitante", "zIndex" => 2, "content" => "team_b"],
+                    ["id" => "team_a", "type" => "image", "x" => 250, "y" => 1050, "width" => 400, "height" => 400, "label" => "Bras├úo Mandante", "zIndex" => 2, "content" => "team_a"],
+                    ["id" => "team_b", "type" => "image", "x" => 830, "y" => 1050, "width" => 400, "height" => 400, "label" => "Bras├úo Visitante", "zIndex" => 2, "content" => "team_b"],
                     ["id" => "vs", "type" => "text", "x" => 535, "y" => 1050, "fontSize" => 80, "color" => "#FFB700", "align" => "center", "label" => "X (Versus)", "zIndex" => 2, "content" => "X", "fontFamily" => "Roboto-Bold"],
                     ["id" => "date", "type" => "text", "x" => 540, "y" => 1740, "fontSize" => 60, "color" => "#FFB700", "align" => "center", "label" => "Data", "zIndex" => 2, "content" => "DD/MM HH:MM", "fontFamily" => "Roboto"],
                     ["id" => "local", "type" => "text", "x" => 543, "y" => 1800, "fontSize" => 35, "color" => "#ffffff", "align" => "center", "label" => "Local", "zIndex" => 2, "content" => "Local da Partida", "fontFamily" => "Roboto"],
@@ -2071,8 +2071,8 @@ class ArtGeneratorController extends Controller
                 "elements" => [
                     ["id" => "player_photo", "type" => "image", "x" => 540, "y" => 701, "width" => 700, "height" => 700, "label" => "Foto do Jogador", "zIndex" => 1, "content" => "player_photo", "borderRadius" => 0],
                     ["id" => "player_name", "type" => "text", "x" => 550, "y" => 1140, "fontSize" => 75, "color" => "#FFB700", "align" => "center", "label" => "Nome do Jogador", "zIndex" => 2, "content" => "{JOGADOR}", "fontFamily" => "Roboto"],
-                    ["id" => "team_badge_a", "type" => "image", "x" => 295, "y" => 1329, "width" => 160, "height" => 160, "label" => "Brasão Mandante", "zIndex" => 2, "content" => "team_a"],
-                    ["id" => "team_badge_b", "type" => "image", "x" => 780, "y" => 1329, "width" => 160, "height" => 160, "label" => "Brasão Visitante", "zIndex" => 2, "content" => "team_b"],
+                    ["id" => "team_badge_a", "type" => "image", "x" => 295, "y" => 1329, "width" => 160, "height" => 160, "label" => "Bras├úo Mandante", "zIndex" => 2, "content" => "team_a"],
+                    ["id" => "team_badge_b", "type" => "image", "x" => 780, "y" => 1329, "width" => 160, "height" => 160, "label" => "Bras├úo Visitante", "zIndex" => 2, "content" => "team_b"],
                     ["id" => "championship", "type" => "text", "x" => 540, "y" => 1720, "fontSize" => 40, "color" => "#FFFFFF", "align" => "center", "label" => "Nome Campeonato", "zIndex" => 2, "content" => "{CAMPEONATO}"],
                     ["id" => "round", "type" => "text", "x" => 540, "y" => 1780, "fontSize" => 30, "color" => "#FFFFFF", "align" => "center", "label" => "Rodada/Fase", "zIndex" => 2, "content" => "{RODADA}"],
                     ["id" => "score_home", "type" => "text", "x" => 290, "y" => 1495, "fontSize" => 100, "color" => "#000000", "align" => "center", "label" => "Placar Casa", "zIndex" => 3, "content" => "{PA}", "fontFamily" => "Roboto-Bold"],
@@ -2091,8 +2091,8 @@ class ArtGeneratorController extends Controller
                     ["id" => "championship", "type" => "text", "x" => 540, "y" => 1600, "fontSize" => 50, "color" => "#FFFFFF", "align" => "center", "label" => "Campeonato", "zIndex" => 2, "content" => "{CAMPEONATO}", "fontFamily" => "Roboto"],
                     ["id" => "round", "type" => "text", "x" => 540, "y" => 1680, "fontSize" => 35, "color" => "#FFFFFF", "align" => "center", "label" => "Rodada", "zIndex" => 2, "content" => "{RODADA}", "fontFamily" => "Roboto"],
 
-                    ["id" => "team_a", "type" => "image", "x" => 250, "y" => 800, "width" => 350, "height" => 350, "label" => "Brasão Mandante", "zIndex" => 2, "content" => "team_a"],
-                    ["id" => "team_b", "type" => "image", "x" => 830, "y" => 800, "width" => 350, "height" => 350, "label" => "Brasão Visitante", "zIndex" => 2, "content" => "team_b"],
+                    ["id" => "team_a", "type" => "image", "x" => 250, "y" => 800, "width" => 350, "height" => 350, "label" => "Bras├úo Mandante", "zIndex" => 2, "content" => "team_a"],
+                    ["id" => "team_b", "type" => "image", "x" => 830, "y" => 800, "width" => 350, "height" => 350, "label" => "Bras├úo Visitante", "zIndex" => 2, "content" => "team_b"],
 
                     ["id" => "vs", "type" => "text", "x" => 540, "y" => 900, "fontSize" => 80, "color" => "#FFB700", "align" => "center", "label" => "X (Versus)", "zIndex" => 2, "content" => "X", "fontFamily" => "Roboto-Bold"],
 

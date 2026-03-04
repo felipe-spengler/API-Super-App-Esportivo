@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -10,7 +10,7 @@ use App\Http\Controllers\InscriptionController;
 use App\Http\Controllers\VoteController;
 use App\Http\Controllers\WalletController;
 
-// Serve storage files (necessário para php artisan serve + Coolify proxy)
+// Serve storage files (necess├írio para php artisan serve + Coolify proxy)
 Route::get('/storage/{path}', function ($path) {
     $fullPath = storage_path('app/public/' . $path);
 
@@ -21,7 +21,7 @@ Route::get('/storage/{path}', function ($path) {
     return response()->file($fullPath);
 })->where('path', '.*');
 
-// Serve default templates (visualização no admin)
+// Serve default templates (visualiza├º├úo no admin)
 Route::get('/assets-templates/{filename}', function ($filename) {
     $path = public_path('assets/templates/' . $filename);
     if (!file_exists($path)) {
@@ -30,11 +30,11 @@ Route::get('/assets-templates/{filename}', function ($filename) {
     return response()->file($path);
 });
 
-// Serve fonts (visualização no admin)
+// Serve fonts (visualiza├º├úo no admin)
 Route::get('/assets-fonts/{filename}', function ($filename) {
     $path = public_path('assets/fonts/' . $filename);
     if (!file_exists($path)) {
-        // Tenta adicionar extensão .ttf se não tiver
+        // Tenta adicionar extens├úo .ttf se n├úo tiver
         if (file_exists($path . '.ttf')) {
             $path .= '.ttf';
         } else {
@@ -44,14 +44,14 @@ Route::get('/assets-fonts/{filename}', function ($filename) {
     return response()->file($path);
 });
 
-// Rotas Públicas (Core do App)
+// Rotas P├║blicas (Core do App)
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 Route::post('/ocr/analyze', [App\Http\Controllers\DocumentOCRController::class, 'analyze']);
 
-// 🧪 ROTA DE TESTE - Remover em produção ou proteger
+// ­ƒº¬ ROTA DE TESTE - Remover em produ├º├úo ou proteger
 Route::post('/test-remove-bg', [App\Http\Controllers\Admin\ImageUploadController::class, 'testRemoveBg']);
 
 
@@ -60,7 +60,7 @@ Route::get('/cities/{citySlug}/clubs', [CoreController::class, 'clubs']);
 Route::get('/clubs/{clubSlug}', [CoreController::class, 'clubDetails']);
 Route::get('/sports', [CoreController::class, 'sports']);
 
-// Eventos (Público)
+// Eventos (P├║blico)
 Route::get('/public/events', [EventController::class, 'publicList']);
 Route::get('/clubs/{clubId}/championships', [EventController::class, 'championships']);
 Route::get('/championships/{id}', [EventController::class, 'championshipDetails']);
@@ -90,7 +90,7 @@ Route::get('/art/match/{matchId}/scheduled', [\App\Http\Controllers\Admin\ArtGen
 Route::get('/art/match/{matchId}/mvp', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'downloadMvpArt']);
 Route::get('/art/championship/{championshipId}/award/{category}', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'championshipAwardArt']);
 
-// Loja (Público)
+// Loja (P├║blico)
 Route::get('/clubs/{clubId}/products', [ShopController::class, 'products']);
 Route::get('/public/products', [ShopController::class, 'allProducts']); // NEW
 Route::get('/products/{id}', [ShopController::class, 'productDetails']);
@@ -109,31 +109,31 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/checkout', [ShopController::class, 'dateCheckout']);
     Route::get('/my-orders', [ShopController::class, 'myOrders']);
 
-    // Inscrições (Times e Atletas)
+    // Inscri├º├Áes (Times e Atletas)
     Route::post('/inscriptions/team', [InscriptionController::class, 'registerTeam']);
     Route::post('/inscriptions/upload', [InscriptionController::class, 'uploadDocument']);
 
-    // Votação (Craque do Jogo)
+    // Vota├º├úo (Craque do Jogo)
     Route::post('/votes/mvp', [VoteController::class, 'voteMvp']);
 
     // Carteirinha Digital
     Route::get('/wallet/my-card', [WalletController::class, 'getWallet']);
     Route::get('/wallet/generate-qr', [\App\Http\Controllers\Admin\QRValidationController::class, 'generateWalletQR']);
 
-    // Gestão de Times (Capitão)
+    // Gest├úo de Times (Capit├úo)
     Route::get('/my-teams', [\App\Http\Controllers\TeamController::class, 'index']);
     Route::post('/my-teams', [\App\Http\Controllers\TeamController::class, 'store']);
     Route::get('/teams/{id}', [\App\Http\Controllers\TeamController::class, 'show']);
     Route::post('/teams/{id}/players', [\App\Http\Controllers\TeamController::class, 'addPlayer']);
     Route::put('/teams/{id}/players/{playerId}', [\App\Http\Controllers\TeamController::class, 'updatePlayer']);
 
-    // Área Admin (Web) - Protegido com middleware 'admin' e 'audit'
+    // ├ürea Admin (Web) - Protegido com middleware 'admin' e 'audit'
     Route::prefix('admin')->middleware(['admin', 'audit'])->group(function () {
         Route::get('/dashboard', [\App\Http\Controllers\AdminController::class, 'dashboard']);
         Route::get('/stats', [\App\Http\Controllers\Admin\AdminDashboardController::class, 'index']);
 
 
-        // Gestão de Campeonatos (NEW)
+        // Gest├úo de Campeonatos (NEW)
         Route::get('/championships', [\App\Http\Controllers\Admin\AdminChampionshipController::class, 'index']);
         Route::get('/championships/{id}', [\App\Http\Controllers\Admin\AdminChampionshipController::class, 'show']);
         Route::post('/championships', [\App\Http\Controllers\Admin\AdminChampionshipController::class, 'store']);
@@ -143,7 +143,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/championships/{id}/categories', [\App\Http\Controllers\Admin\AdminChampionshipController::class, 'categories']);
         Route::put('/championships/{id}/awards', [\App\Http\Controllers\Admin\AdminChampionshipController::class, 'updateAwards']);
 
-        // Gestão de Partidas (NEW)
+        // Gest├úo de Partidas (NEW)
         Route::get('/matches', [\App\Http\Controllers\Admin\AdminMatchController::class, 'index']);
         Route::get('/matches/{id}', [\App\Http\Controllers\Admin\AdminMatchController::class, 'show']);
         Route::post('/matches', [\App\Http\Controllers\Admin\AdminMatchController::class, 'store']);
@@ -157,7 +157,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/matches/{id}/events/{eventId}', [\App\Http\Controllers\Admin\AdminMatchController::class, 'deleteEvent']);
         Route::put('/matches/{id}/awards', [\App\Http\Controllers\Admin\AdminMatchController::class, 'updateAwards']);
 
-        // Gestão de Vôlei
+        // Gest├úo de V├┤lei
         Route::get('/matches/{id}/volley-state', [\App\Http\Controllers\Admin\AdminVolleyController::class, 'getState']);
         Route::post('/matches/{id}/volley/point', [\App\Http\Controllers\Admin\AdminVolleyController::class, 'registerPoint']);
         Route::post('/matches/{id}/volley/set-start', [\App\Http\Controllers\Admin\AdminVolleyController::class, 'startSet']);
@@ -165,19 +165,18 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/matches/{id}/volley/rotation', [\App\Http\Controllers\Admin\AdminVolleyController::class, 'manualRotation']);
         Route::post('/matches/{id}/volley/substitution', [\App\Http\Controllers\Admin\AdminVolleyController::class, 'substitutePlayer']);
 
-        // Gestão de Equipes (NEW)
+        // Gest├úo de Equipes (NEW)
         Route::get('/teams', [\App\Http\Controllers\Admin\AdminTeamController::class, 'index']);
         Route::get('/teams/{id}', [\App\Http\Controllers\Admin\AdminTeamController::class, 'show']);
         Route::post('/teams', [\App\Http\Controllers\Admin\AdminTeamController::class, 'store']);
         Route::put('/teams/{id}', [\App\Http\Controllers\Admin\AdminTeamController::class, 'update']);
         Route::delete('/teams/{id}', [\App\Http\Controllers\Admin\AdminTeamController::class, 'destroy']);
         Route::post('/teams/{id}/add-to-championship', [\App\Http\Controllers\Admin\AdminTeamController::class, 'addToChampionship']);
-        Route::patch('/teams/{id}/championship-captain', [\App\Http\Controllers\Admin\AdminTeamController::class, 'updateChampionshipCaptain']);
         Route::post('/teams/{id}/remove-from-championship', [\App\Http\Controllers\Admin\AdminTeamController::class, 'removeFromChampionship']);
         Route::post('/teams/{id}/copy-roster', [\App\Http\Controllers\Admin\AdminTeamController::class, 'copyRoster']);
         Route::delete('/teams/{id}/players/{playerId}', [\App\Http\Controllers\Admin\AdminTeamController::class, 'removePlayer']);
 
-        // Gestão de Jogadores (NEW)
+        // Gest├úo de Jogadores (NEW)
         Route::get('/players', [\App\Http\Controllers\Admin\AdminPlayerController::class, 'index']);
         Route::get('/players/search', [\App\Http\Controllers\Admin\AdminPlayerController::class, 'search']);
         Route::get('/players/{id}', [\App\Http\Controllers\Admin\AdminPlayerController::class, 'show']);
@@ -200,10 +199,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/upload-image', [\App\Http\Controllers\Admin\ImageUploadController::class, 'uploadImage']); // Unified upload
         Route::get('/upload/list', [\App\Http\Controllers\Admin\ImageUploadController::class, 'listImages']);
         Route::delete('/upload/delete', [\App\Http\Controllers\Admin\ImageUploadController::class, 'deleteImage']);
-        Route::get('/test-ai-env', [\App\Http\Controllers\Admin\ImageUploadController::class, 'testAiEnv']); // Diagnóstico IA
+        Route::get('/test-ai-env', [\App\Http\Controllers\Admin\ImageUploadController::class, 'testAiEnv']); // Diagn├│stico IA
 
 
-        // Gestão de Categorias (NEW)
+        // Gest├úo de Categorias (NEW)
         Route::get('/championships/{championshipId}/categories-list', [\App\Http\Controllers\Admin\CategoryController::class, 'index']);
         Route::post('/championships/{championshipId}/categories-new', [\App\Http\Controllers\Admin\CategoryController::class, 'store']);
         Route::put('/championships/{championshipId}/categories/{categoryId}', [\App\Http\Controllers\Admin\CategoryController::class, 'update']);
@@ -217,11 +216,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/championships/{championshipId}/bracket/shuffle', [\App\Http\Controllers\Admin\BracketController::class, 'shuffle']);
         Route::post('/championships/{championshipId}/bracket/generate-from-groups', [\App\Http\Controllers\Admin\BracketController::class, 'generateFromGroups']);
 
-        // Gestão Manual de Grupos (NEW) // Trigger Deploy
+        // Gest├úo Manual de Grupos (NEW) // Trigger Deploy
         Route::get('/championships/{championshipId}/groups', [\App\Http\Controllers\Admin\BracketController::class, 'getGroups']);
         Route::post('/championships/{championshipId}/groups', [\App\Http\Controllers\Admin\BracketController::class, 'saveGroups']);
 
-        // Estatísticas e Relatórios (NEW)
+        // Estat├¡sticas e Relat├│rios (NEW)
         Route::get('/championships/{championshipId}/stats/goals', [\App\Http\Controllers\Admin\StatisticsController::class, 'goalsByPlayer']);
         Route::get('/championships/{championshipId}/stats/top-scorers', [\App\Http\Controllers\Admin\StatisticsController::class, 'topScorers']);
         Route::get('/championships/{championshipId}/stats/assists', [\App\Http\Controllers\Admin\StatisticsController::class, 'assistsByPlayer']);
@@ -235,11 +234,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/qr/check-in', [\App\Http\Controllers\Admin\QRValidationController::class, 'checkInPlayer']);
         Route::post('/qr/validate-ticket', [\App\Http\Controllers\Admin\QRValidationController::class, 'validateTicket']);
 
-        // Notificações (NEW)
+        // Notifica├º├Áes (NEW)
         Route::post('/notifications/send', [\App\Http\Controllers\Admin\NotificationController::class, 'send']);
         Route::post('/notifications/token', [\App\Http\Controllers\Admin\NotificationController::class, 'storeToken']);
 
-        // Exportação de Dados (NEW)
+        // Exporta├º├úo de Dados (NEW)
         Route::get('/export/players', [\App\Http\Controllers\Admin\ExportController::class, 'exportPlayers']);
         Route::get('/export/teams', [\App\Http\Controllers\Admin\ExportController::class, 'exportTeams']);
 
@@ -254,12 +253,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/art/championship/{championshipId}/award/{category}', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'championshipAwardArt']);
         Route::get('/art/championship/{championshipId}/standings', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'standingsArt']);
 
-        // Rodízio de Vôlei (NEW)
+        // Rod├¡zio de V├┤lei (NEW)
         Route::get('/volleyball/match/{matchId}/positions', [\App\Http\Controllers\Admin\VolleyballRotationController::class, 'getPositions']);
         Route::post('/volleyball/match/{matchId}/positions', [\App\Http\Controllers\Admin\VolleyballRotationController::class, 'savePositions']); // Para Drag & Drop
         Route::post('/volleyball/rotate', [\App\Http\Controllers\Admin\VolleyballRotationController::class, 'rotate']);
 
-        // Gestão de Produtos (NEW)
+        // Gest├úo de Produtos (NEW)
         Route::get('/products-manage', [\App\Http\Controllers\Admin\AdminProductController::class, 'index']);
         Route::post('/products-manage', [\App\Http\Controllers\Admin\AdminProductController::class, 'store']);
         Route::put('/products-manage/{id}', [\App\Http\Controllers\Admin\AdminProductController::class, 'update']);
@@ -287,7 +286,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/races/{id}/results', [\App\Http\Controllers\Admin\RaceResultController::class, 'store']);
         Route::post('/races/{id}/results/import', [\App\Http\Controllers\Admin\RaceResultController::class, 'uploadCsv']);
         Route::put('/results/{id}', [\App\Http\Controllers\Admin\RaceResultController::class, 'update']);
-        // Configurações (NEW)
+        // Configura├º├Áes (NEW)
         Route::get('/settings', [\App\Http\Controllers\Admin\AdminSettingController::class, 'show']);
         Route::put('/settings', [\App\Http\Controllers\Admin\AdminSettingController::class, 'update']);
         Route::post('/settings/logo', [\App\Http\Controllers\Admin\AdminSettingController::class, 'uploadLogo']);
@@ -302,20 +301,20 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/categories', [\App\Http\Controllers\Admin\AdminCategoryController::class, 'store']);
         Route::put('/categories/{id}', [\App\Http\Controllers\Admin\AdminCategoryController::class, 'update']);
         Route::delete('/categories/{id}', [\App\Http\Controllers\Admin\AdminCategoryController::class, 'destroy']);
-        // Acessos Temporários (NEW)
+        // Acessos Tempor├írios (NEW)
         Route::get('/temporary-access', [\App\Http\Controllers\Admin\TemporaryAccessController::class, 'index']);
         Route::post('/temporary-access', [\App\Http\Controllers\Admin\TemporaryAccessController::class, 'store']);
         Route::put('/temporary-access/{id}', [\App\Http\Controllers\Admin\TemporaryAccessController::class, 'update']);
         Route::delete('/temporary-access/{id}', [\App\Http\Controllers\Admin\TemporaryAccessController::class, 'destroy']);
 
-        // Gestão de Clubes (Super Admin)
+        // Gest├úo de Clubes (Super Admin)
         Route::get('/clubs-manage', [\App\Http\Controllers\Admin\AdminClubController::class, 'index']);
         Route::post('/clubs-manage', [\App\Http\Controllers\Admin\AdminClubController::class, 'store']);
         Route::get('/clubs-manage/{id}', [\App\Http\Controllers\Admin\AdminClubController::class, 'show']);
         Route::put('/clubs-manage/{id}', [\App\Http\Controllers\Admin\AdminClubController::class, 'update']);
         Route::delete('/clubs-manage/{id}', [\App\Http\Controllers\Admin\AdminClubController::class, 'destroy']);
         Route::post('/clubs-manage/{id}/impersonate', [\App\Http\Controllers\Admin\AdminClubController::class, 'impersonate']);
-        // Gestão de Loja/Produtos (NEW)
+        // Gest├úo de Loja/Produtos (NEW)
         Route::get('/products-manage', [\App\Http\Controllers\Admin\AdminProductController::class, 'index']);
         Route::post('/products-manage', [\App\Http\Controllers\Admin\AdminProductController::class, 'store']);
         Route::put('/products-manage/{id}', [\App\Http\Controllers\Admin\AdminProductController::class, 'update']);
@@ -328,5 +327,5 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 
-// Webhooks (Público)
+// Webhooks (P├║blico)
 Route::post('/webhooks/payment/{gateway}', [\App\Http\Controllers\PaymentWebhookController::class, 'handle']);
