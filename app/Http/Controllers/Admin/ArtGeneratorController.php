@@ -1506,8 +1506,9 @@ class ArtGeneratorController extends Controller
         if (!$player->photo_path)
             return;
 
-        // Try _nobg.png version first (background-removed)
-        $nobgPath = preg_replace('/\.[^.]+$/i', '_nobg.png', $player->photo_path);
+        // Forçar IA a rodar em todas as fotos para corrigir fundos pretos legados
+        // Vai usar _processed.png. Se não existir, vai gerar.
+        $nobgPath = preg_replace('/\.[^.]+$/i', '_processed.png', $player->photo_path);
         $photoPath = null;
 
         foreach ([
