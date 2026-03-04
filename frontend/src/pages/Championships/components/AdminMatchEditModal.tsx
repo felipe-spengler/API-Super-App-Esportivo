@@ -42,21 +42,7 @@ export function AdminMatchEditModal({
                     </button>
                 </div>
                 <div className="p-6 space-y-4">
-                    {(championship?.format === 'groups' || championship?.format === 'group_knockout') && (
-                        <div>
-                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Grupo</label>
-                            <select
-                                value={editData.group_name || ''}
-                                onChange={e => setEditData({ ...editData, group_name: e.target.value })}
-                                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
-                            >
-                                <option value="">Nenhum (Mata-mata)</option>
-                                {availableGroupNames.map(g => (
-                                    <option key={g} value={g}>Grupo {g}</option>
-                                ))}
-                            </select>
-                        </div>
-                    )}
+
                     <div>
                         <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Data e Hora</label>
                         <input

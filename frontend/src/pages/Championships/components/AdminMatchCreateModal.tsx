@@ -122,9 +122,13 @@ export function AdminMatchCreateModal({
                                             className="w-full bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold text-indigo-700 text-sm"
                                         >
                                             <option value="">Nenhum (Mata-mata / Avulso)</option>
-                                            {availableGroupNames.map(g => (
-                                                <option key={g} value={g}>Grupo {g}</option>
-                                            ))}
+                                            {availableGroupNames.map(g => {
+                                                const displayG = String(g).trim();
+                                                const isGrupoAlready = /^grupo\s/i.test(displayG);
+                                                return (
+                                                    <option key={g} value={g}>{isGrupoAlready ? displayG : `Grupo ${displayG}`}</option>
+                                                );
+                                            })}
                                         </select>
                                     </div>
                                 )}
@@ -139,7 +143,12 @@ export function AdminMatchCreateModal({
                                         >
                                             <option value="">Selecione...</option>
                                             {(teams || [])
-                                                .filter(t => !matchData.group_name || String(groupAssignments[t.id]) === String(matchData.group_name))
+                                                .filter(t => {
+                                                    if (!matchData.group_name) return true;
+                                                    const teamG = String(groupAssignments[t.id] || '').toLowerCase().replace(/^grupo\s+/, '').trim();
+                                                    const selG = String(matchData.group_name).toLowerCase().replace(/^grupo\s+/, '').trim();
+                                                    return teamG === selG;
+                                                })
                                                 .map((t: any) => (
                                                     <option key={t.id} value={t.id}>{t.name}</option>
                                                 ))}
@@ -154,7 +163,12 @@ export function AdminMatchCreateModal({
                                         >
                                             <option value="">Selecione...</option>
                                             {(teams || [])
-                                                .filter(t => !matchData.group_name || String(groupAssignments[t.id]) === String(matchData.group_name))
+                                                .filter(t => {
+                                                    if (!matchData.group_name) return true;
+                                                    const teamG = String(groupAssignments[t.id] || '').toLowerCase().replace(/^grupo\s+/, '').trim();
+                                                    const selG = String(matchData.group_name).toLowerCase().replace(/^grupo\s+/, '').trim();
+                                                    return teamG === selG;
+                                                })
                                                 .map((t: any) => (
                                                     <option key={t.id} value={t.id}>{t.name}</option>
                                                 ))}
