@@ -130,48 +130,57 @@ class TeamController extends Controller
         }
 
         $photoPath = null;
-        if ($request->hasFile('photo_file')) {
-            $photoPath = $request->file('photo_file')->store('players/photos', 'public');
+        $photosArray = [];
 
-            // PROCESSAMENTO DE IA: REMOVER FUNDO
-            if ($request->boolean('remove_bg') || $request->input('remove_bg') == '1') {
-                try {
-                    $inputAbsPath = storage_path('app/public/' . $photoPath);
-                    $filenameNobg = pathinfo($photoPath, PATHINFO_FILENAME) . '_nobg.png';
-                    $outputAbsPath = storage_path('app/public/players/photos/' . $filenameNobg);
-                    $scriptPath = base_path('scripts/remove_bg.py');
+        foreach (['photo_file', 'photo_file_1', 'photo_file_2'] as $index => $fileInput) {
+            if ($request->hasFile($fileInput)) {
+                $pPath = $request->file($fileInput)->store('players/photos', 'public');
 
-                    $cacheDir = storage_path('app/public/.u2net');
-                    if (!file_exists($cacheDir)) {
-                        @mkdir($cacheDir, 0775, true);
-                    }
+                // PROCESSAMENTO DE IA: REMOVER FUNDO
+                if ($request->boolean('remove_bg') || $request->input('remove_bg') == '1') {
+                    try {
+                        $inputAbsPath = storage_path('app/public/' . $pPath);
+                        $filenameNobg = pathinfo($pPath, PATHINFO_FILENAME) . '_nobg.png';
+                        $outputAbsPath = storage_path('app/public/players/photos/' . $filenameNobg);
+                        $scriptPath = base_path('scripts/remove_bg.py');
 
-                    $pythonBin = null;
-                    foreach (['python3', 'python', '/usr/bin/python3', '/usr/local/bin/python3'] as $candidate) {
-                        $testOut = [];
-                        $testRet = -1;
-                        @exec("{$candidate} --version 2>&1", $testOut, $testRet);
-                        if ($testRet === 0) {
-                            $pythonBin = $candidate;
-                            break;
+                        $cacheDir = storage_path('app/public/.u2net');
+                        if (!file_exists($cacheDir)) {
+                            @mkdir($cacheDir, 0775, true);
                         }
-                    }
 
-                    if ($pythonBin) {
-                        $command = "export U2NET_HOME={$cacheDir} && export NUMBA_CACHE_DIR={$cacheDir} && {$pythonBin} \"{$scriptPath}\" \"{$inputAbsPath}\" \"{$outputAbsPath}\" 2>&1";
-                        exec($command, $output, $returnVar);
-
-                        if ($returnVar === 0 && file_exists($outputAbsPath)) {
-                            @chmod($outputAbsPath, 0664);
-                            // Define para usar a imagem sem fundo!
-                            $photoPath = 'players/photos/' . $filenameNobg;
+                        $pythonBin = null;
+                        foreach (['python3', 'python', '/usr/bin/python3', '/usr/local/bin/python3'] as $candidate) {
+                            $testOut = [];
+                            $testRet = -1;
+                            @exec("{$candidate} --version 2>&1", $testOut, $testRet);
+                            if ($testRet === 0) {
+                                $pythonBin = $candidate;
+                                break;
+                            }
                         }
+
+                        if ($pythonBin) {
+                            $command = "export U2NET_HOME={$cacheDir} && export NUMBA_CACHE_DIR={$cacheDir} && {$pythonBin} \"{$scriptPath}\" \"{$inputAbsPath}\" \"{$outputAbsPath}\" 2>&1";
+                            exec($command, $output, $returnVar);
+
+                            if ($returnVar === 0 && file_exists($outputAbsPath)) {
+                                @chmod($outputAbsPath, 0664);
+                                $pPath = 'players/photos/' . $filenameNobg;
+                            }
+                        }
+                    } catch (\Throwable $e) {
+                        \Log::error("Lab AI TeamController (add) - Exception: " . $e->getMessage());
                     }
-                } catch (\Throwable $e) {
-                    \Log::error("Lab AI TeamController (add) - Exception: " . $e->getMessage());
+                }
+
+                $photosArray[$index] = $pPath;
+                if ($index === 0) {
+                    $photoPath = $pPath; // Mantém compatibilidade principal
                 }
             }
         }
+        $photosArray = array_values($photosArray);
 
         // 3. Create User if not exists (Auto-Registration Logic)
         if (!$userData) {
@@ -201,6 +210,7 @@ class TeamController extends Controller
                 'club_id' => $team->club_id,
                 'document_path' => $documentPath,
                 'photo_path' => $photoPath,
+                'photos' => $photosArray,
                 'created_by' => $request->user()->id
             ]);
         } else {
@@ -208,8 +218,12 @@ class TeamController extends Controller
             $updateData = [];
             if (!$userData->document_path && $documentPath)
                 $updateData['document_path'] = $documentPath;
-            if (!$userData->photo_path && $photoPath)
+            if (!$userData->photo_path && $photoPath) {
                 $updateData['photo_path'] = $photoPath;
+                $updateData['photos'] = array_values(array_unique(array_merge($userData->photos ?? [], $photosArray)));
+            } else if (!empty($photosArray)) {
+                $updateData['photos'] = array_values(array_unique(array_merge($userData->photos ?? [], $photosArray)));
+            }
             if (!$userData->phone && $request->phone)
                 $updateData['phone'] = $request->phone;
             if (!$userData->gender && $request->gender)
@@ -325,48 +339,74 @@ class TeamController extends Controller
             $player->update($validated);
 
             // Se enviou nova foto, processar (apenas se tiver permissão global)
-            if ($request->hasFile('photo_file')) {
-                $photoPath = $request->file('photo_file')->store('players/photos', 'public');
+            // Se enviou novas fotos, processar (apenas se tiver permissão global)
+            $photosArray = [];
+            $hasAnyPhoto = false;
+            $photoPath = null;
 
-                // PROCESSAMENTO DE IA: REMOVER FUNDO
-                if ($request->boolean('remove_bg') || $request->input('remove_bg') == '1') {
-                    try {
-                        $inputAbsPath = storage_path('app/public/' . $photoPath);
-                        $filenameNobg = pathinfo($photoPath, PATHINFO_FILENAME) . '_nobg.png';
-                        $outputAbsPath = storage_path('app/public/players/photos/' . $filenameNobg);
-                        $scriptPath = base_path('scripts/remove_bg.py');
+            foreach (['photo_file', 'photo_file_1', 'photo_file_2'] as $index => $fileInput) {
+                if ($request->hasFile($fileInput)) {
+                    $hasAnyPhoto = true;
+                    $pPath = $request->file($fileInput)->store('players/photos', 'public');
 
-                        $cacheDir = storage_path('app/public/.u2net');
-                        if (!file_exists($cacheDir)) {
-                            @mkdir($cacheDir, 0775, true);
-                        }
+                    // PROCESSAMENTO DE IA: REMOVER FUNDO
+                    if ($request->boolean('remove_bg') || $request->input('remove_bg') == '1') {
+                        try {
+                            $inputAbsPath = storage_path('app/public/' . $pPath);
+                            $filenameNobg = pathinfo($pPath, PATHINFO_FILENAME) . '_nobg.png';
+                            $outputAbsPath = storage_path('app/public/players/photos/' . $filenameNobg);
+                            $scriptPath = base_path('scripts/remove_bg.py');
 
-                        $pythonBin = null;
-                        foreach (['python3', 'python', '/usr/bin/python3', '/usr/local/bin/python3'] as $candidate) {
-                            $testOut = [];
-                            $testRet = -1;
-                            @exec("{$candidate} --version 2>&1", $testOut, $testRet);
-                            if ($testRet === 0) {
-                                $pythonBin = $candidate;
-                                break;
+                            $cacheDir = storage_path('app/public/.u2net');
+                            if (!file_exists($cacheDir)) {
+                                @mkdir($cacheDir, 0775, true);
                             }
-                        }
 
-                        if ($pythonBin) {
-                            $command = "export U2NET_HOME={$cacheDir} && export NUMBA_CACHE_DIR={$cacheDir} && {$pythonBin} \"{$scriptPath}\" \"{$inputAbsPath}\" \"{$outputAbsPath}\" 2>&1";
-                            exec($command, $output, $returnVar);
-
-                            if ($returnVar === 0 && file_exists($outputAbsPath)) {
-                                @chmod($outputAbsPath, 0664);
-                                $photoPath = 'players/photos/' . $filenameNobg;
+                            $pythonBin = null;
+                            foreach (['python3', 'python', '/usr/bin/python3', '/usr/local/bin/python3'] as $candidate) {
+                                $testOut = [];
+                                $testRet = -1;
+                                @exec("{$candidate} --version 2>&1", $testOut, $testRet);
+                                if ($testRet === 0) {
+                                    $pythonBin = $candidate;
+                                    break;
+                                }
                             }
+
+                            if ($pythonBin) {
+                                $command = "export U2NET_HOME={$cacheDir} && export NUMBA_CACHE_DIR={$cacheDir} && {$pythonBin} \"{$scriptPath}\" \"{$inputAbsPath}\" \"{$outputAbsPath}\" 2>&1";
+                                exec($command, $output, $returnVar);
+
+                                if ($returnVar === 0 && file_exists($outputAbsPath)) {
+                                    @chmod($outputAbsPath, 0664);
+                                    $pPath = 'players/photos/' . $filenameNobg;
+                                }
+                            }
+                        } catch (\Throwable $e) {
+                            \Log::error("Lab AI TeamController (update loop) - Exception: " . $e->getMessage());
                         }
-                    } catch (\Throwable $e) {
-                        \Log::error("Lab AI TeamController (update) - Exception: " . $e->getMessage());
+                    }
+
+                    $photosArray[$index] = $pPath;
+                    if ($index === 0) {
+                        $photoPath = $pPath; // Mantém compatibilidade principal
                     }
                 }
+            }
 
-                $player->update(['photo_path' => $photoPath]);
+            if ($hasAnyPhoto) {
+                // If they uploaded at least one new file, we merge it with existing photos or replace?
+                // The most sensible UX for multiple select is replace the slot. Wait, since it's an array,
+                // if they upload 2, it replaces the existing? Or it just merges?
+                // Let's just merge all uniquely to be safe, like we did in addPlayer.
+                $photosArray = array_values($photosArray);
+                $finalPhotos = array_values(array_unique(array_merge($player->photos ?? [], $photosArray)));
+
+                $updateData = ['photos' => $finalPhotos];
+                if ($photoPath) {
+                    $updateData['photo_path'] = $photoPath;
+                }
+                $player->update($updateData);
             }
         }
 

@@ -69,6 +69,8 @@ export function MyTeamDetails() {
     const [newPlayerAddress, setNewPlayerAddress] = useState('');
     const [documentFile, setDocumentFile] = useState<File | null>(null);
     const [photoFile, setPhotoFile] = useState<File | null>(null);
+    const [photoFile1, setPhotoFile1] = useState<File | null>(null);
+    const [photoFile2, setPhotoFile2] = useState<File | null>(null);
     const [removeBg, setRemoveBg] = useState(true);
     const [adding, setAdding] = useState(false);
     const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
@@ -133,6 +135,8 @@ export function MyTeamDetails() {
         setNewPlayerAddress('');
         setDocumentFile(null);
         setPhotoFile(null);
+        setPhotoFile1(null);
+        setPhotoFile2(null);
         setRemoveBg(true);
         setShowAddModal(true);
     }
@@ -157,9 +161,15 @@ export function MyTeamDetails() {
             }
             if (photoFile) {
                 formData.append('photo_file', photoFile);
-                if (removeBg) {
-                    formData.append('remove_bg', '1');
-                }
+            }
+            if (photoFile1) {
+                formData.append('photo_file_1', photoFile1);
+            }
+            if (photoFile2) {
+                formData.append('photo_file_2', photoFile2);
+            }
+            if (removeBg && (photoFile || photoFile1 || photoFile2)) {
+                formData.append('remove_bg', '1');
             }
             if (selectedChampionshipId) {
                 formData.append('championship_id', String(selectedChampionshipId));
@@ -214,6 +224,8 @@ export function MyTeamDetails() {
         setNewPlayerAddress('');
         setDocumentFile(null);
         setPhotoFile(null);
+        setPhotoFile1(null);
+        setPhotoFile2(null);
         setRemoveBg(true);
         setEditingPlayer(null);
     }
@@ -439,14 +451,37 @@ export function MyTeamDetails() {
                             </div>
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-600 mb-1">Foto (Opcional)</label>
-                                    <input
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={e => setPhotoFile(e.target.files ? e.target.files[0] : null)}
-                                        className="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 mb-2"
-                                    />
-                                    {photoFile && (
+                                    <label className="block text-xs font-bold text-gray-600 mb-1">Fotos do Atleta (Até 3) {editingPlayer && <span className="text-[9px] text-gray-400 font-normal">Ao enviar novas, elas serão incluídas</span>}</label>
+                                    <div className="flex gap-2">
+                                        <div className="flex-1">
+                                            <span className="text-[10px] text-gray-500 font-bold">Principal</span>
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={e => setPhotoFile(e.target.files ? e.target.files[0] : null)}
+                                                className="w-full text-[10px] text-gray-500 file:mr-2 file:py-1.5 file:px-2 file:rounded-xl file:border-0 file:text-[10px] file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                                            />
+                                        </div>
+                                        <div className="flex-1">
+                                            <span className="text-[10px] text-gray-500 font-bold">Opcional 1</span>
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={e => setPhotoFile1(e.target.files ? e.target.files[0] : null)}
+                                                className="w-full text-[10px] text-gray-500 file:mr-2 file:py-1.5 file:px-2 file:rounded-xl file:border-0 file:text-[10px] file:font-semibold file:bg-gray-50 file:text-gray-700 hover:file:bg-gray-100"
+                                            />
+                                        </div>
+                                        <div className="flex-1">
+                                            <span className="text-[10px] text-gray-500 font-bold">Opcional 2</span>
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={e => setPhotoFile2(e.target.files ? e.target.files[0] : null)}
+                                                className="w-full text-[10px] text-gray-500 file:mr-2 file:py-1.5 file:px-2 file:rounded-xl file:border-0 file:text-[10px] file:font-semibold file:bg-gray-50 file:text-gray-700 hover:file:bg-gray-100"
+                                            />
+                                        </div>
+                                    </div>
+                                    {(photoFile || photoFile1 || photoFile2) && (
                                         <label className="flex items-center gap-2 mt-2 cursor-pointer group">
                                             <div className="relative flex items-center justify-center w-5 h-5 rounded border border-gray-300 group-hover:border-indigo-500 bg-white shadow-sm transition-colors">
                                                 <input
@@ -462,7 +497,6 @@ export function MyTeamDetails() {
                                             </span>
                                         </label>
                                     )}
-                                    <p className="text-[10px] text-gray-400 mt-1">Foto do perfil do atleta.</p>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-gray-600 mb-1">Documento (Opcional)</label>
