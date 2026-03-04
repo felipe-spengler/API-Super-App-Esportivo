@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Camera, Loader2, X, Plus } from 'lucide-react';
+import { Camera, Loader2, X, Plus, Download } from 'lucide-react';
 import api from '../../../services/api';
 import { useAuth } from '../../../context/AuthContext';
 import { prepareImageForUpload } from '../../../utils/imageCompressor';
@@ -209,7 +209,7 @@ export function PhotoUploadSection({ playerId, currentPhotos }: PhotoUploadSecti
                                         </div>
                                     )}
                                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                        <label className="cursor-pointer p-2 bg-white rounded-full hover:bg-gray-100">
+                                        <label className="cursor-pointer p-2 bg-white rounded-full hover:bg-gray-100" title="Alterar Foto">
                                             <Camera className="w-4 h-4 text-gray-700" />
                                             <input
                                                 type="file"
@@ -220,6 +220,9 @@ export function PhotoUploadSection({ playerId, currentPhotos }: PhotoUploadSecti
                                                 }}
                                             />
                                         </label>
+                                        <a href={hasPhoto} target="_blank" rel="noopener noreferrer" download={`foto-${playerId}-${index}.png`} className="cursor-pointer p-2 bg-white rounded-full hover:bg-gray-100" title="Baixar Foto">
+                                            <Download className="w-4 h-4 text-gray-700" />
+                                        </a>
                                     </div>
                                     {index === 0 && <span className="absolute bottom-0 left-0 right-0 bg-indigo-600 text-white text-[10px] text-center py-0.5">Principal</span>}
                                 </>
