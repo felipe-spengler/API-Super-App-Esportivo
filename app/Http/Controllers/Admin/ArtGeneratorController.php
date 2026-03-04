@@ -890,6 +890,7 @@ class ArtGeneratorController extends Controller
             // Draw balls
             for ($i = 0; $i < $count; $i++) {
                 if ($ballImg) {
+                    imagealphablending($img, true);
                     imagecopyresampled($img, $ballImg, $x_current - ($count - 1) * $tamanho_bola, $y_goleadores + $offset_y_a - $tamanho_bola, 0, 0, $tamanho_bola, $tamanho_bola, imagesx($ballImg), imagesy($ballImg));
                 } else {
                     // Fallback: Draw Circle
@@ -920,6 +921,7 @@ class ArtGeneratorController extends Controller
 
             for ($i = 0; $i < $count; $i++) {
                 if ($ballImg) {
+                    imagealphablending($img, true);
                     imagecopyresampled($img, $ballImg, $x_current - ($count - 1) * $tamanho_bola, $y_goleadores + $offset_y_b - $tamanho_bola, 0, 0, $tamanho_bola, $tamanho_bola, imagesx($ballImg), imagesy($ballImg));
                 } else {
                     imagefilledellipse($img, $x_current - ($count - 1) * $tamanho_bola + ($tamanho_bola / 2), $y_goleadores + $offset_y_b - $tamanho_bola + ($tamanho_bola / 2), $tamanho_bola, $tamanho_bola, $white);
@@ -1447,12 +1449,21 @@ class ArtGeneratorController extends Controller
     private function createFromFormat($path)
     {
         $info = @getimagesize($path);
-        if (!$info)
-            return @imagecreatefromjpeg($path); // Try anyway
-
-        if ($info['mime'] == 'image/png') {
-            return @imagecreatefrompng($path);
+        if (!$info) {
+            // Tentativa de carregar sem info, pode ser WebP sem suporte a getimagesize em versoes antigas
+            if (str_ends_with(strtolower($path), '.webp')) {
+                if (function_exists('imagecreatefromwebp'))
+                    return @imagecreatefromwebp($path);
+            }
+            return @imagecreatefromjpeg($path);
         }
+
+        $mime = $info['mime'];
+        if ($mime == 'image/png')
+            return @imagecreatefrompng($path);
+        if ($mime == 'image/webp' && function_exists('imagecreatefromwebp'))
+            return @imagecreatefromwebp($path);
+
         return @imagecreatefromjpeg($path);
     }
 
@@ -1506,64 +1517,60 @@ class ArtGeneratorController extends Controller
         if (!$player->photo_path)
             return;
 
-        // Try _nobg.png version first (background-removed)
-        $nobgPath = preg_replace('/\.[^.]+$/i', '_nobg.png', $player->photo_path);
+        // Try _nobg version primarily (PNG or WebP)
+        $noBgExtensions = ['_nobg.png', '_nobg.webp', '.png', '.webp', '.jpg', '.jpeg'];
         $photoPath = null;
 
-        foreach ([
-            storage_path('app/public/' . $nobgPath),
-            public_path('storage/' . $nobgPath),
-            storage_path('app/public/' . $player->photo_path),
-            public_path('storage/' . $player->photo_path),
-        ] as $candidate) {
-            if (file_exists($candidate)) {
-                $photoPath = $candidate;
-                break;
+        foreach ($noBgExtensions as $ext) {
+            $testPath = $player->photo_path;
+            if (str_contains($ext, '_nobg')) {
+                $testPath = preg_replace('/\.[^.]+$/i', $ext, $player->photo_path);
+            }
+
+            foreach ([
+                storage_path('app/public/' . $testPath),
+                public_path('storage/' . $testPath),
+            ] as $candidate) {
+                if (file_exists($candidate)) {
+                    $photoPath = $candidate;
+                    break 2;
+                }
             }
         }
 
         if (!$photoPath)
             return;
 
-        $photoInfo = @getimagesize($photoPath);
-        if (!$photoInfo)
+        $playerImg = $this->createFromFormat($photoPath);
+        if (!$playerImg)
             return;
 
-        $playerImg = null;
-        $isPng = false;
-        if ($photoInfo['mime'] == 'image/jpeg') {
-            $playerImg = @imagecreatefromjpeg($photoPath);
-        } elseif ($photoInfo['mime'] == 'image/png') {
-            $playerImg = @imagecreatefrompng($photoPath);
-            $isPng = true;
-        }
+        $targetHeight = 800;
+        $width = imagesx($img);
+        $origW = imagesx($playerImg);
+        $origH = imagesy($playerImg);
+        $ratio = $origW / $origH;
+        $targetWidth = (int) round($targetHeight * $ratio);
 
-        if ($playerImg) {
-            $targetHeight = 800;
-            $width = imagesx($img);
-            $origW = imagesx($playerImg);
-            $origH = imagesy($playerImg);
-            $ratio = $origW / $origH;
-            $targetWidth = (int) round($targetHeight * $ratio);
+        $xPos = (int) round(($width - $targetWidth) / 2);
+        $yPos = 335; // Posição fixa legado
 
-            $xPos = (int) round(($width - $targetWidth) / 2);
-            $yPos = 335; // Posição fixa legado
+        // PRESERVAR ALPHA: Usar canvas intermediário para evitar fundo preto em PNGs/WebP
+        $tempCanvas = imagecreatetruecolor($targetWidth, $targetHeight);
+        imagealphablending($tempCanvas, false);
+        imagesavealpha($tempCanvas, true);
 
-            if ($isPng) {
-                // Ensure source has alpha properly configured
-                imagealphablending($playerImg, false);
-                imagesavealpha($playerImg, true);
+        $transparent = imagecolorallocatealpha($tempCanvas, 255, 255, 255, 127);
+        imagefilledrectangle($tempCanvas, 0, 0, $targetWidth, $targetHeight, $transparent);
 
-                // Blend onto main background directly
-                imagealphablending($img, true);
-                imagecopyresampled($img, $playerImg, $xPos, $yPos, 0, 0, $targetWidth, $targetHeight, $origW, $origH);
-            } else {
-                imagealphablending($img, true);
-                imagecopyresampled($img, $playerImg, $xPos, $yPos, 0, 0, $targetWidth, $targetHeight, $origW, $origH);
-            }
+        imagecopyresampled($tempCanvas, $playerImg, 0, 0, 0, 0, $targetWidth, $targetHeight, $origW, $origH);
 
-            imagedestroy($playerImg);
-        }
+        // Blend final no background principal
+        imagealphablending($img, true);
+        imagecopy($img, $tempCanvas, $xPos, $yPos, 0, 0, $targetWidth, $targetHeight);
+
+        imagedestroy($tempCanvas);
+        imagedestroy($playerImg);
     }
 
     private function hexToRgb($hex)
@@ -1603,15 +1610,22 @@ class ArtGeneratorController extends Controller
         }
 
         if ($badgePath) {
-            $info = getimagesize($badgePath);
-            $badgeImg = null;
-            if ($info['mime'] == 'image/jpeg')
-                $badgeImg = @imagecreatefromjpeg($badgePath);
-            elseif ($info['mime'] == 'image/png')
-                $badgeImg = @imagecreatefrompng($badgePath);
+            $badgeImg = $this->createFromFormat($badgePath);
 
             if ($badgeImg) {
-                imagecopyresampled($img, $badgeImg, $x, $y, 0, 0, $size, $size, imagesx($badgeImg), imagesy($badgeImg));
+                // Usar canvas intermediário para preservar transparência do escudo
+                $tempCanvas = imagecreatetruecolor($size, $size);
+                imagealphablending($tempCanvas, false);
+                imagesavealpha($tempCanvas, true);
+                $transparent = imagecolorallocatealpha($tempCanvas, 255, 255, 255, 127);
+                imagefilledrectangle($tempCanvas, 0, 0, $size, $size, $transparent);
+
+                imagecopyresampled($tempCanvas, $badgeImg, 0, 0, 0, 0, $size, $size, imagesx($badgeImg), imagesy($badgeImg));
+
+                imagealphablending($img, true);
+                imagecopy($img, $tempCanvas, $x, $y, 0, 0, $size, $size);
+
+                imagedestroy($tempCanvas);
                 imagedestroy($badgeImg);
                 return;
             }
@@ -1993,6 +2007,7 @@ class ArtGeneratorController extends Controller
                 // Draw balls
                 for ($i = 0; $i < $count; $i++) {
                     if ($ballImg) {
+                        imagealphablending($img, true);
                         imagecopyresampled($img, $ballImg, $currX, $y + $offset_y - $tamanho_bola + ($tamanho_bola / 2), 0, 0, $tamanho_bola, $tamanho_bola, imagesx($ballImg), imagesy($ballImg));
                     } else {
                         imagefilledellipse($img, $currX + ($tamanho_bola / 2), $y + $offset_y, $tamanho_bola, $tamanho_bola, $white);
@@ -2016,16 +2031,14 @@ class ArtGeneratorController extends Controller
 
             $offset_y = 0;
             foreach ($scorersB as $name => $count) {
-                $ballsWidth = ($count * $tamanho_bola) + (($count - 1) * $espacamento_bola);
-                $box = imagettfbbox($fontSize, 0, $this->fontPath, mb_strtoupper($name));
-                $nameWidth = abs($box[2] - $box[0]);
-
-                $totalWidth = $ballsWidth + 10 + $nameWidth;
-                $startX = $x - ($totalWidth / 2); // Center alignment
+                // ... (calculos de largura)
+                $totalWidth = (($count * $tamanho_bola) + (($count - 1) * $espacamento_bola)) + 10 + $nameWidth;
+                $startX = $x - ($totalWidth / 2);
 
                 $currX = $startX;
                 for ($i = 0; $i < $count; $i++) {
                     if ($ballImg) {
+                        imagealphablending($img, true);
                         imagecopyresampled($img, $ballImg, $currX, $y + $offset_y - $tamanho_bola + ($tamanho_bola / 2), 0, 0, $tamanho_bola, $tamanho_bola, imagesx($ballImg), imagesy($ballImg));
                     } else {
                         imagefilledellipse($img, $currX + ($tamanho_bola / 2), $y + $offset_y, $tamanho_bola, $tamanho_bola, $white);

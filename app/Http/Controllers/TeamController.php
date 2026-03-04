@@ -13,8 +13,11 @@ class TeamController extends Controller
     {
         $user = $request->user();
 
-        // Times que sou capitão
+        // Times que sou capitão (na equipe principal OU em algum campeonato)
         $captainTeams = Team::where('captain_id', $user->id)
+            ->orWhereHas('championships', function ($q) use ($user) {
+                $q->where('championship_team.captain_id', $user->id);
+            })
             ->with(['club'])
             ->get()
             ->map(function ($team) {
@@ -39,6 +42,8 @@ class TeamController extends Controller
     // 2. Detalhes do Time (Elenco)
     public function show(Request $request, $id)
     {
+        $user = $request->user();
+
         $team = Team::with(['club', 'captain', 'championships.sport', 'championships.categories'])
             ->with([
                 'players' => function ($q) use ($request) {
@@ -50,6 +55,19 @@ class TeamController extends Controller
                 }
             ])
             ->findOrFail($id);
+
+        if (!$user->is_admin && $team->captain_id !== $user->id) {
+            $userChampionshipIds = \DB::table('team_players')
+                ->where('team_id', $id)
+                ->where('user_id', $user->id)
+                ->whereNotNull('championship_id')
+                ->pluck('championship_id')
+                ->toArray();
+
+            $team->setRelation('championships', $team->championships->filter(function ($championship) use ($user, $userChampionshipIds) {
+                return $championship->pivot->captain_id === $user->id || in_array($championship->id, $userChampionshipIds);
+            })->values());
+        }
 
         // Map the category name to each championship
         $team->championships->each(function ($championship) {
@@ -372,8 +390,11 @@ class TeamController extends Controller
             'club_id' => 1, // Defaulting to 1 for now or fetching from env/config
         ]);
 
-        // Automatically link the team to the selected championship and category
-        $team->championships()->attach($request->championship_id, ['category_id' => $request->category_id]);
+        // Automatically link the team to the selected championship and category, with the creator as captain
+        $team->championships()->attach($request->championship_id, [
+            'category_id' => $request->category_id,
+            'captain_id' => $request->user()->id
+        ]);
         $team->categories()->syncWithoutDetaching([$request->category_id]);
 
         return response()->json($team, 201);

@@ -25,7 +25,7 @@ class EventController extends Controller
     {
         $this->syncStatuses();
 
-        $query = Championship::with(['club', 'sport']);
+        $query = Championship::with(['club', 'sport', 'categories']);
 
         if ($request->has('status')) {
             $status = $request->status;

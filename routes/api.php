@@ -172,6 +172,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/teams/{id}', [\App\Http\Controllers\Admin\AdminTeamController::class, 'update']);
         Route::delete('/teams/{id}', [\App\Http\Controllers\Admin\AdminTeamController::class, 'destroy']);
         Route::post('/teams/{id}/add-to-championship', [\App\Http\Controllers\Admin\AdminTeamController::class, 'addToChampionship']);
+        Route::patch('/teams/{id}/championship-captain', [\App\Http\Controllers\Admin\AdminTeamController::class, 'updateChampionshipCaptain']);
         Route::post('/teams/{id}/remove-from-championship', [\App\Http\Controllers\Admin\AdminTeamController::class, 'removeFromChampionship']);
         Route::post('/teams/{id}/copy-roster', [\App\Http\Controllers\Admin\AdminTeamController::class, 'copyRoster']);
         Route::delete('/teams/{id}/players/{playerId}', [\App\Http\Controllers\Admin\AdminTeamController::class, 'removePlayer']);

@@ -4,6 +4,7 @@ import { ArrowLeft, Users, Shield, Trophy, Loader2, Plus, User as UserIcon, Chec
 import api from '../../services/api';
 import { PlayerEditModal } from '../Players/PlayerEditModal';
 import { useAuth } from '../../context/AuthContext';
+import { clsx } from 'clsx';
 
 interface Player {
     id: number;
@@ -19,6 +20,10 @@ interface Championship {
     category_name?: string;
     sport?: {
         name: string;
+    };
+    pivot?: {
+        category_id?: number | null;
+        captain_id?: number | null;
     };
 }
 
@@ -155,6 +160,24 @@ export function TeamDetails() {
         setDocumentFile(null);
         setPhotoFile(null);
         setRemoveBg(true);
+    }
+
+    async function handleSetChampionshipCaptain(playerId: number | null) {
+        if (!selectedChampionshipId) return;
+        const msg = playerId ? 'Definir este jogador como líder/capitão para este campeonato?' : 'Remover líder atual deste campeonato?';
+        if (!window.confirm(msg)) return;
+
+        try {
+            await api.patch(`/admin/teams/${id}/championship-captain`, {
+                championship_id: selectedChampionshipId,
+                category_id: team?.championships.find(c => c.id === selectedChampionshipId)?.pivot?.category_id,
+                captain_id: playerId
+            });
+            loadTeam();
+        } catch (error: any) {
+            console.error(error);
+            alert(error.response?.data?.message || 'Erro ao definir capitão.');
+        }
     }
 
     async function handleRemovePlayer(playerId: number) {
@@ -390,15 +413,39 @@ export function TeamDetails() {
                                     team.players.map(player => (
                                         <div key={player.id} className="flex justify-between items-center p-3 hover:bg-gray-50 rounded-lg border border-gray-50 hover:border-gray-100 transition-all">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-xs font-bold text-indigo-700">
+                                                <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-xs font-bold text-indigo-700 relative">
                                                     {player.name.substring(0, 2).toUpperCase()}
+                                                    {selectedChampionshipId && team?.championships.find(c => c.id === selectedChampionshipId)?.pivot?.captain_id === player.id && (
+                                                        <div className="absolute -top-1 -right-1 bg-amber-400 text-[8px] text-white p-0.5 rounded-full shadow-sm" title="Líder do Time">
+                                                            <Shield className="w-2.5 h-2.5 fill-current" />
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <div>
-                                                    <p className="text-sm font-medium text-gray-900">{player.name}</p>
+                                                    <p className="text-sm font-medium text-gray-900 flex items-center gap-1">
+                                                        {player.name}
+                                                        {team.captain_id === player.id && (
+                                                            <span className="text-[10px] bg-gray-100 text-gray-500 px-1 rounded" title="Capitão Global">G</span>
+                                                        )}
+                                                    </p>
                                                     <p className="text-xs text-gray-500">{player.position}</p>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2">
+                                                {selectedChampionshipId && (
+                                                    <button
+                                                        onClick={() => handleSetChampionshipCaptain(team?.championships.find(c => c.id === selectedChampionshipId)?.pivot?.captain_id === player.id ? null : player.id)}
+                                                        className={clsx(
+                                                            "p-1.5 rounded-md transition-colors",
+                                                            team?.championships.find(c => c.id === selectedChampionshipId)?.pivot?.captain_id === player.id
+                                                                ? "text-amber-500 bg-amber-50"
+                                                                : "text-gray-400 hover:text-amber-500 hover:bg-amber-50"
+                                                        )}
+                                                        title={team?.championships.find(c => c.id === selectedChampionshipId)?.pivot?.captain_id === player.id ? "Remover de Líder" : "Tornar Líder do Campeonato"}
+                                                    >
+                                                        <Shield className="w-3.5 h-3.5" />
+                                                    </button>
+                                                )}
                                                 <div className="text-sm font-bold text-gray-400 mr-2">
                                                     #{player.number || '-'}
                                                 </div>

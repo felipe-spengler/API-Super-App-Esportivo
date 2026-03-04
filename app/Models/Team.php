@@ -46,7 +46,7 @@ class Team extends Model
     public function championships()
     {
         return $this->belongsToMany(Championship::class, 'championship_team')
-            ->withPivot('category_id')
+            ->withPivot(['category_id', 'captain_id'])
             ->withTimestamps();
     }
 

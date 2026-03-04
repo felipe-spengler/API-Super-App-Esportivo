@@ -9,6 +9,14 @@ interface Team {
     name: string;
     city: string;
     logo_url?: string;
+    pivot?: {
+        captain_id?: number | null;
+        category_id?: number | null;
+    };
+    captain?: {
+        id: number;
+        name: string;
+    };
 }
 
 export function AdminTeamChampionshipManager() {
@@ -178,7 +186,15 @@ export function AdminTeamChampionshipManager() {
                                         </div>
                                         <div>
                                             <p className="font-bold text-gray-900">{team.name}</p>
-                                            <p className="text-xs text-gray-500">{team.city || 'Cidade não informada'}</p>
+                                            <div className="flex items-center gap-2">
+                                                <p className="text-xs text-gray-500">{team.city || 'Cidade não informada'}</p>
+                                                {team.pivot?.captain_id && (
+                                                    <span className="text-[10px] bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded-full font-bold flex items-center gap-1 border border-amber-100">
+                                                        <Shield className="w-2.5 h-2.5" />
+                                                        Líder vinculado
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2">

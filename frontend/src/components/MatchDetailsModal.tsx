@@ -78,6 +78,13 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
     }, [isOpen, matchId]);
 
     // Sync local timer with server data
+    const localTimeRef = useRef(localTime);
+    const isTimerRunningRef = useRef(isTimerRunning);
+    useEffect(() => {
+        localTimeRef.current = localTime;
+        isTimerRunningRef.current = isTimerRunning;
+    }, [localTime, isTimerRunning]);
+
     useEffect(() => {
         const timerData = match?.match_details?.sync_timer || details?.sync_timer;
         const matchStatus = match?.status || details?.status;
@@ -85,17 +92,27 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
 
         if (timerData) {
             const st = timerData;
-            const baseTime = st.time ?? 0;
-            const diff = localTime !== null ? Math.abs(localTime - baseTime) : 0;
+            let adjustedTime = st.time ?? 0;
 
             // Se o jogo está encerrado, o timer nunca deve rodar
             const serverIsRunning = isMatchFinished ? false : (st.isRunning ?? false);
 
+            if (serverIsRunning && st.updated_at) {
+                const now = new Date().getTime();
+                const diffMs = Math.max(0, now - st.updated_at);
+                adjustedTime += Math.floor(diffMs / 1000);
+            }
+
+            const currentLocal = localTimeRef.current;
+            const currentRunning = isTimerRunningRef.current;
+
+            const diff = currentLocal !== null ? Math.abs(currentLocal - adjustedTime) : 0;
+
             // Sync Logic: ONLY update if timer state changed or difference is significant
-            const shouldSync = localTime === null || isTimerRunning !== serverIsRunning || diff > 5;
+            const shouldSync = currentLocal === null || currentRunning !== serverIsRunning || diff > 5;
 
             if (shouldSync) {
-                setLocalTime(baseTime);
+                setLocalTime(adjustedTime);
                 setIsTimerRunning(serverIsRunning);
             }
 

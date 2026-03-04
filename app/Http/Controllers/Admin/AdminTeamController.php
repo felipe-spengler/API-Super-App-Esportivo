@@ -168,6 +168,7 @@ class AdminTeamController extends Controller
         $validated = $request->validate([
             'championship_id' => 'required|exists:championships,id',
             'category_id' => 'nullable|exists:categories,id',
+            'captain_id' => 'nullable|exists:users,id',
         ]);
 
         $team = Team::with(['players', 'captain'])->findOrFail($teamId);
@@ -177,12 +178,13 @@ class AdminTeamController extends Controller
         if (!empty($validated['category_id'])) {
             $category = \App\Models\Category::findOrFail($validated['category_id']);
 
-            // Verifica o capitão
-            if ($team->captain) {
-                $check = $category->isUserEligible($team->captain);
+            // Verifica o capitão informado ou o global
+            $checkCaptain = $validated['captain_id'] ? \App\Models\User::find($validated['captain_id']) : $team->captain;
+            if ($checkCaptain) {
+                $check = $category->isUserEligible($checkCaptain);
                 if (!$check['eligible']) {
                     return response()->json([
-                        'message' => "O capitão {$team->captain->name} não atende aos requisitos da categoria {$category->name}.",
+                        'message' => "O capitão {$checkCaptain->name} não atende aos requisitos da categoria {$category->name}.",
                         'reason' => $check['reason']
                     ], 403);
                 }
@@ -209,6 +211,9 @@ class AdminTeamController extends Controller
             }
         }
 
+        // Determina o capitão para este vínculo (prioriza o informado, depois o do time)
+        $captainIdForPivot = $validated['captain_id'] ?? ($team->captain_id ?? null);
+
         // Attach team to championship with specific category
         $exists = \DB::table('championship_team')
             ->where('championship_id', $championship->id)
@@ -221,9 +226,20 @@ class AdminTeamController extends Controller
                 'championship_id' => $championship->id,
                 'team_id' => $teamId,
                 'category_id' => $categoryId,
+                'captain_id' => $captainIdForPivot,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
+        } else {
+            // Se já existe, apenas atualiza o capitão se for necessário
+            \DB::table('championship_team')
+                ->where('championship_id', $championship->id)
+                ->where('team_id', $teamId)
+                ->where('category_id', $categoryId)
+                ->update([
+                    'captain_id' => $captainIdForPivot,
+                    'updated_at' => now(),
+                ]);
         }
 
         \App\Services\AuditLogger::log(
@@ -344,5 +360,30 @@ class AdminTeamController extends Controller
         return response()->json([
             'message' => "Sincronização concluída: $count novos jogadores vinculados ao campeonato."
         ]);
+    }
+
+    // NEW (Lider Context): Update captain for specific championship
+    public function updateChampionshipCaptain(Request $request, $teamId)
+    {
+        $validated = $request->validate([
+            'championship_id' => 'required|exists:championships,id',
+            'category_id' => 'nullable|exists:categories,id',
+            'captain_id' => 'nullable|exists:users,id',
+        ]);
+
+        $query = \DB::table('championship_team')
+            ->where('team_id', $teamId)
+            ->where('championship_id', $validated['championship_id']);
+
+        if (!empty($validated['category_id'])) {
+            $query->where('category_id', $validated['category_id']);
+        }
+
+        $query->update([
+            'captain_id' => $validated['captain_id'],
+            'updated_at' => now(),
+        ]);
+
+        return response()->json(['message' => 'Líder da categoria atualizado com sucesso!']);
     }
 }

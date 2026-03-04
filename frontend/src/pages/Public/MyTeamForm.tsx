@@ -21,7 +21,7 @@ export function MyTeamForm() {
 
     async function loadEvents() {
         try {
-            const response = await api.get('/public/events');
+            const response = await api.get('/public/events?status=open');
             setChampionships(response.data);
         } catch (error) {
             console.error('Erro ao carregar campeonatos', error);
@@ -106,7 +106,7 @@ export function MyTeamForm() {
                             </h3>
                             <div className="space-y-4">
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">Campeonato</label>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">Campeonatos com Inscrição aberta</label>
                                     <select
                                         required
                                         value={selectedChampionship}
@@ -119,7 +119,9 @@ export function MyTeamForm() {
                                     >
                                         <option value="">Selecione um campeonato...</option>
                                         {championships.map(camp => (
-                                            <option key={camp.id} value={camp.id}>{camp.name}</option>
+                                            <option key={camp.id} value={camp.id}>
+                                                {camp.club?.name ? `${camp.club.name} - ${camp.name}` : camp.name}
+                                            </option>
                                         ))}
                                     </select>
                                 </div>
