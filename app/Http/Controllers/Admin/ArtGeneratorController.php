@@ -1559,6 +1559,7 @@ class ArtGeneratorController extends Controller
 
                     if ($pythonBin) {
                         $command = "export U2NET_HOME={$cacheDir} && export NUMBA_CACHE_DIR={$cacheDir} && {$pythonBin} \"{$scriptPath}\" \"{$originalAbsPath}\" \"{$outputAbsPath}\" 2>&1";
+                        \Log::info("Processando jogador via Python: " . $command);
                         exec($command, $output, $returnVar);
 
                         if ($returnVar === 0 && file_exists($outputAbsPath)) {
