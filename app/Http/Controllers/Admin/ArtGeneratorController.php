@@ -1506,91 +1506,69 @@ class ArtGeneratorController extends Controller
         if (!$player->photo_path)
             return;
 
-        // Forçar IA a rodar em todas as fotos para corrigir fundos pretos legados
-        // Vai usar _processed.png. Se não existir, vai gerar.
-        $nobgPath = preg_replace('/\.[^.]+$/i', '_processed.png', $player->photo_path);
-        $photoPath = null;
-
+        // -- Localiza foto original --
+        $originalAbsPath = null;
         foreach ([
-            storage_path('app/public/' . $nobgPath),
-            public_path('storage/' . $nobgPath),
-        ] as $candidate) {
-            if (file_exists($candidate)) {
-                $photoPath = $candidate;
+            storage_path('app/public/' . $player->photo_path),
+            public_path('storage/' . $player->photo_path),
+        ] as $c) {
+            if (file_exists($c)) {
+                $originalAbsPath = $c;
                 break;
             }
         }
 
-        // Se _nobg não existe, roda rembg AGORA para criar a imagem cortada
-        if (!$photoPath) {
-            try {
-                // Tenta achar a imagem original do player
-                $originalPhotoCandidates = [
-                    storage_path('app/public/' . $player->photo_path),
-                    public_path('storage/' . $player->photo_path)
-                ];
+        if (!$originalAbsPath)
+            return;
 
-                $originalAbsPath = null;
-                foreach ($originalPhotoCandidates as $c) {
-                    if (file_exists($c)) {
-                        $originalAbsPath = $c;
-                        break;
-                    }
-                }
+        // -- SEMPRE roda rembg para garantir remoção de fundo, independente de cache --
+        $processedFilename = pathinfo(basename($player->photo_path), PATHINFO_FILENAME) . '_processed.png';
+        $outputAbsPath = storage_path('app/public/players/' . $processedFilename);
+        $photoPath = null;
 
-                if ($originalAbsPath) {
-                    $outputAbsPath = storage_path('app/public/players/' . pathinfo($nobgPath, PATHINFO_BASENAME));
-                    $scriptPath = base_path('scripts/remove_bg.py');
-                    $cacheDir = storage_path('app/public/.u2net');
-                    if (!file_exists($cacheDir)) {
-                        @mkdir($cacheDir, 0775, true);
-                    }
+        try {
+            $scriptPath = base_path('scripts/remove_bg.py');
+            $cacheDir = storage_path('app/public/.u2net');
+            if (!file_exists($cacheDir))
+                @mkdir($cacheDir, 0775, true);
 
-                    $pythonBin = null;
-                    foreach (['python3', 'python', '/usr/bin/python3', '/usr/local/bin/python3'] as $candidateBin) {
-                        $testOut = [];
-                        $testRet = -1;
-                        @exec("{$candidateBin} --version 2>&1", $testOut, $testRet);
-                        if ($testRet === 0) {
-                            $pythonBin = $candidateBin;
-                            break;
-                        }
-                    }
-
-                    if ($pythonBin) {
-                        $command = "export U2NET_HOME={$cacheDir} && export NUMBA_CACHE_DIR={$cacheDir} && {$pythonBin} \"{$scriptPath}\" \"{$originalAbsPath}\" \"{$outputAbsPath}\" 2>&1";
-                        \Log::info("Processando jogador via Python: " . $command);
-                        exec($command, $output, $returnVar);
-
-                        if ($returnVar === 0 && file_exists($outputAbsPath)) {
-                            // Sucesso! Vamos usar a nova imagem que o rembg acabou de criar
-                            $photoPath = $outputAbsPath;
-                        } else {
-                            // Se falhar o rembg, usa a foto original mesmo
-                            \Log::error("Failed to run rembg generated player art: " . implode(' ', $output));
-                        }
-                    }
-                }
-            } catch (\Exception $e) {
-                \Log::error("Error generating nobg player art: " . $e->getMessage());
-            }
-        }
-
-        // Se a geracao de nobg falhou ou nao tinha python, fallback para a imagem original
-        if (!$photoPath) {
-            foreach ([
-                storage_path('app/public/' . $player->photo_path),
-                public_path('storage/' . $player->photo_path),
-            ] as $candidate) {
-                if (file_exists($candidate)) {
-                    $photoPath = $candidate;
+            $pythonBin = null;
+            foreach (['python3', 'python', '/usr/bin/python3', '/usr/local/bin/python3'] as $bin) {
+                $out = [];
+                $ret = -1;
+                @exec("{$bin} --version 2>&1", $out, $ret);
+                if ($ret === 0) {
+                    $pythonBin = $bin;
                     break;
                 }
             }
+
+            if ($pythonBin && file_exists($scriptPath)) {
+                $cmd = "export U2NET_HOME={$cacheDir} && export NUMBA_CACHE_DIR={$cacheDir} && {$pythonBin} \"{$scriptPath}\" \"{$originalAbsPath}\" \"{$outputAbsPath}\" 2>&1";
+                \Log::info("[drawPlayerPhoto] Rodando rembg: {$cmd}");
+                $cmdOutput = [];
+                $cmdRet = -1;
+                exec($cmd, $cmdOutput, $cmdRet);
+                \Log::info("[drawPlayerPhoto] returnVar={$cmdRet} output=" . implode(' | ', $cmdOutput));
+
+                if ($cmdRet === 0 && file_exists($outputAbsPath)) {
+                    $photoPath = $outputAbsPath;
+                    \Log::info("[drawPlayerPhoto] rembg OK. Usando: {$photoPath}");
+                } else {
+                    \Log::error("[drawPlayerPhoto] rembg FALHOU. Output: " . implode(' | ', $cmdOutput));
+                }
+            } else {
+                \Log::warning("[drawPlayerPhoto] Python nao encontrado ou script ausente.");
+            }
+        } catch (\Exception $e) {
+            \Log::error("[drawPlayerPhoto] Excecao: " . $e->getMessage());
         }
 
-        if (!$photoPath)
-            return;
+        // Fallback: usa foto original se rembg falhou
+        if (!$photoPath) {
+            $photoPath = $originalAbsPath;
+            \Log::warning("[drawPlayerPhoto] Fallback: usando foto original sem remocao de fundo.");
+        }
 
         $photoInfo = @getimagesize($photoPath);
         if (!$photoInfo)
@@ -1612,33 +1590,11 @@ class ArtGeneratorController extends Controller
             $origH = imagesy($playerImg);
             $ratio = $origW / $origH;
             $targetWidth = (int) round($targetHeight * $ratio);
-
             $xPos = (int) round(($width - $targetWidth) / 2);
-            $yPos = 335; // Posição fixa legado
+            $yPos = 335;
 
-            if ($isPng) {
-                // Esconde fundo preto usando canvas intermediário transparente
-                imagealphablending($playerImg, false);
-                imagesavealpha($playerImg, true);
-
-                $tempCanvas = imagecreatetruecolor($targetWidth, $targetHeight);
-                imagealphablending($tempCanvas, false);
-                imagesavealpha($tempCanvas, true);
-
-                // Transparente (preto transparente 127)
-                $transparent = imagecolorallocatealpha($tempCanvas, 0, 0, 0, 127);
-                imagefilledrectangle($tempCanvas, 0, 0, $targetWidth, $targetHeight, $transparent);
-
-                imagecopyresampled($tempCanvas, $playerImg, 0, 0, 0, 0, $targetWidth, $targetHeight, $origW, $origH);
-
-                imagealphablending($img, true);
-                imagecopy($img, $tempCanvas, $xPos, $yPos, 0, 0, $targetWidth, $targetHeight);
-                imagedestroy($tempCanvas);
-            } else {
-                imagealphablending($img, true);
-                imagecopyresampled($img, $playerImg, $xPos, $yPos, 0, 0, $targetWidth, $targetHeight, $origW, $origH);
-            }
-
+            imagealphablending($img, true);
+            imagecopyresampled($img, $playerImg, $xPos, $yPos, 0, 0, $targetWidth, $targetHeight, $origW, $origH);
             imagedestroy($playerImg);
         }
     }
