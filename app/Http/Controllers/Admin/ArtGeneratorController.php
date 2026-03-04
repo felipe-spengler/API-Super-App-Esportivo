@@ -1550,13 +1550,23 @@ class ArtGeneratorController extends Controller
             $yPos = 335; // Posição fixa legado
 
             if ($isPng) {
-                // Ensure source has alpha properly configured
+                // Esconde fundo preto usando canvas intermediário transparente
                 imagealphablending($playerImg, false);
                 imagesavealpha($playerImg, true);
 
-                // Blend onto main background directly
+                $tempCanvas = imagecreatetruecolor($targetWidth, $targetHeight);
+                imagealphablending($tempCanvas, false);
+                imagesavealpha($tempCanvas, true);
+
+                // Transparente (preto transparente 127)
+                $transparent = imagecolorallocatealpha($tempCanvas, 0, 0, 0, 127);
+                imagefilledrectangle($tempCanvas, 0, 0, $targetWidth, $targetHeight, $transparent);
+
+                imagecopyresampled($tempCanvas, $playerImg, 0, 0, 0, 0, $targetWidth, $targetHeight, $origW, $origH);
+
                 imagealphablending($img, true);
-                imagecopyresampled($img, $playerImg, $xPos, $yPos, 0, 0, $targetWidth, $targetHeight, $origW, $origH);
+                imagecopy($img, $tempCanvas, $xPos, $yPos, 0, 0, $targetWidth, $targetHeight);
+                imagedestroy($tempCanvas);
             } else {
                 imagealphablending($img, true);
                 imagecopyresampled($img, $playerImg, $xPos, $yPos, 0, 0, $targetWidth, $targetHeight, $origW, $origH);
@@ -1859,8 +1869,8 @@ class ArtGeneratorController extends Controller
                         imagealphablending($tempCanvas, false);
                         imagesavealpha($tempCanvas, true);
 
-                        // Pure transparent white
-                        $transparent = imagecolorallocatealpha($tempCanvas, 255, 255, 255, 127);
+                        // Preto transparente para evitar borda branca halo effects
+                        $transparent = imagecolorallocatealpha($tempCanvas, 0, 0, 0, 127);
                         imagefilledrectangle($tempCanvas, 0, 0, $width, $height, $transparent);
 
                         // Resample onto intermediate
