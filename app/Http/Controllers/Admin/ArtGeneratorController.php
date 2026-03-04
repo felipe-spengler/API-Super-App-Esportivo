@@ -1046,26 +1046,66 @@ class ArtGeneratorController extends Controller
             }
 
             // Images
-            // Player Photo — prefers _nobg.png (background removed) version automatically
+            // Player Photo — SEMPRE roda rembg para garantir fundo removido
             $playerPhotoPath = null;
             if ($player->photo_path) {
-                // Try to find a no-background version automatically
-                // Find anything like filename.ext -> filename_nobg.png
-                $nobgPath = preg_replace('/\.[^.]+$/i', '_nobg.png', $player->photo_path);
-                $nobgAbsPath = storage_path('app/public/' . $nobgPath);
-                $nobgPublicPath = public_path('storage/' . $nobgPath);
+                $originalPhotoCandidates = [
+                    storage_path('app/public/' . $player->photo_path),
+                    public_path('storage/' . $player->photo_path),
+                ];
+                $originalAbsPath = null;
+                foreach ($originalPhotoCandidates as $c) {
+                    if (file_exists($c)) {
+                        $originalAbsPath = $c;
+                        break;
+                    }
+                }
 
-                if (file_exists($nobgAbsPath)) {
-                    $playerPhotoPath = $nobgAbsPath;
-                } elseif (file_exists($nobgPublicPath)) {
-                    $playerPhotoPath = $nobgPublicPath;
-                } else {
-                    // Fallback to original photo
-                    $p = storage_path('app/public/' . $player->photo_path);
-                    if (!file_exists($p))
-                        $p = public_path('storage/' . $player->photo_path);
-                    if (file_exists($p))
-                        $playerPhotoPath = $p;
+                if ($originalAbsPath) {
+                    $processedFilename = pathinfo(basename($player->photo_path), PATHINFO_FILENAME) . '_processed.png';
+                    $outputAbsPath = storage_path('app/public/players/' . $processedFilename);
+
+                    try {
+                        $scriptPath = base_path('scripts/remove_bg.py');
+                        $cacheDir = storage_path('app/public/.u2net');
+                        if (!file_exists($cacheDir))
+                            @mkdir($cacheDir, 0775, true);
+
+                        $pythonBin = null;
+                        foreach (['python3', 'python', '/usr/bin/python3', '/usr/local/bin/python3'] as $bin) {
+                            $out = [];
+                            $ret = -1;
+                            @exec("{$bin} --version 2>&1", $out, $ret);
+                            if ($ret === 0) {
+                                $pythonBin = $bin;
+                                break;
+                            }
+                        }
+
+                        if ($pythonBin && file_exists($scriptPath)) {
+                            $cmd = "export U2NET_HOME={$cacheDir} && export NUMBA_CACHE_DIR={$cacheDir} && {$pythonBin} \"{$scriptPath}\" \"{$originalAbsPath}\" \"{$outputAbsPath}\" 2>&1";
+                            \Log::info("[templatePlayerPhoto] Rodando rembg: {$cmd}");
+                            $cmdOut = [];
+                            $cmdRet = -1;
+                            exec($cmd, $cmdOut, $cmdRet);
+                            \Log::info("[templatePlayerPhoto] returnVar={$cmdRet} output=" . implode(' | ', $cmdOut));
+
+                            if ($cmdRet === 0 && file_exists($outputAbsPath)) {
+                                $playerPhotoPath = $outputAbsPath;
+                                \Log::info("[templatePlayerPhoto] rembg OK: {$playerPhotoPath}");
+                            } else {
+                                \Log::error("[templatePlayerPhoto] rembg FALHOU: " . implode(' | ', $cmdOut));
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        \Log::error("[templatePlayerPhoto] Excecao: " . $e->getMessage());
+                    }
+
+                    // Fallback para foto original se rembg falhou
+                    if (!$playerPhotoPath) {
+                        $playerPhotoPath = $originalAbsPath;
+                        \Log::warning("[templatePlayerPhoto] Fallback: usando foto original.");
+                    }
                 }
             }
             $replacements['player_photo'] = $playerPhotoPath;
