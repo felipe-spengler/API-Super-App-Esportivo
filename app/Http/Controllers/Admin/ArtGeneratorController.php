@@ -1513,12 +1513,77 @@ class ArtGeneratorController extends Controller
         foreach ([
             storage_path('app/public/' . $nobgPath),
             public_path('storage/' . $nobgPath),
-            storage_path('app/public/' . $player->photo_path),
-            public_path('storage/' . $player->photo_path),
         ] as $candidate) {
             if (file_exists($candidate)) {
                 $photoPath = $candidate;
                 break;
+            }
+        }
+
+        // Se _nobg não existe, roda rembg AGORA para criar a imagem cortada
+        if (!$photoPath) {
+            try {
+                // Tenta achar a imagem original do player
+                $originalPhotoCandidates = [
+                    storage_path('app/public/' . $player->photo_path),
+                    public_path('storage/' . $player->photo_path)
+                ];
+
+                $originalAbsPath = null;
+                foreach ($originalPhotoCandidates as $c) {
+                    if (file_exists($c)) {
+                        $originalAbsPath = $c;
+                        break;
+                    }
+                }
+
+                if ($originalAbsPath) {
+                    $outputAbsPath = storage_path('app/public/players/' . pathinfo($nobgPath, PATHINFO_BASENAME));
+                    $scriptPath = base_path('scripts/remove_bg.py');
+                    $cacheDir = storage_path('app/public/.u2net');
+                    if (!file_exists($cacheDir)) {
+                        @mkdir($cacheDir, 0775, true);
+                    }
+
+                    $pythonBin = null;
+                    foreach (['python3', 'python', '/usr/bin/python3', '/usr/local/bin/python3'] as $candidateBin) {
+                        $testOut = [];
+                        $testRet = -1;
+                        @exec("{$candidateBin} --version 2>&1", $testOut, $testRet);
+                        if ($testRet === 0) {
+                            $pythonBin = $candidateBin;
+                            break;
+                        }
+                    }
+
+                    if ($pythonBin) {
+                        $command = "export U2NET_HOME={$cacheDir} && export NUMBA_CACHE_DIR={$cacheDir} && {$pythonBin} \"{$scriptPath}\" \"{$originalAbsPath}\" \"{$outputAbsPath}\" 2>&1";
+                        exec($command, $output, $returnVar);
+
+                        if ($returnVar === 0 && file_exists($outputAbsPath)) {
+                            // Sucesso! Vamos usar a nova imagem que o rembg acabou de criar
+                            $photoPath = $outputAbsPath;
+                        } else {
+                            // Se falhar o rembg, usa a foto original mesmo
+                            \Log::error("Failed to run rembg generated player art: " . implode(' ', $output));
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                \Log::error("Error generating nobg player art: " . $e->getMessage());
+            }
+        }
+
+        // Se a geracao de nobg falhou ou nao tinha python, fallback para a imagem original
+        if (!$photoPath) {
+            foreach ([
+                storage_path('app/public/' . $player->photo_path),
+                public_path('storage/' . $player->photo_path),
+            ] as $candidate) {
+                if (file_exists($candidate)) {
+                    $photoPath = $candidate;
+                    break;
+                }
             }
         }
 
