@@ -1,5 +1,4 @@
-
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Calendar, MapPin, Clock, Eye, FileText } from 'lucide-react';
 import api from '../../services/api';

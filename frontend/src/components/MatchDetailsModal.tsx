@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Calendar, Clock, MapPin, Trophy, User, Share2, FileText, ChevronRight, Star, History, Printer, Timer, Triangle } from 'lucide-react';
 import api from '../services/api';
 import echo from '../services/echo';

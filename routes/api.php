@@ -244,8 +244,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/export/teams', [\App\Http\Controllers\Admin\ExportController::class, 'exportTeams']);
 
         // Gerador de Artes Templates (NEW)
-        Route::get('/art-templates', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'getTemplate']);
-        Route::post('/art-templates', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'saveTemplate']);
+        Route::get('/art-templates', [\App\Http\Controllers\Admin\ArtTemplateController::class, 'getTemplate']);
+        Route::post('/art-templates', [\App\Http\Controllers\Admin\ArtTemplateController::class, 'saveTemplate']);
 
         // Gerador de Artes (NEW)
         Route::get('/art/match/{matchId}/faceoff', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'matchFaceoff']);
