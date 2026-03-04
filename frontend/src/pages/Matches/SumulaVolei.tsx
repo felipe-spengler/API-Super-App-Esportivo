@@ -975,7 +975,7 @@ export function SumulaVolei() {
                                         'ace': 'Saque (Ace)',
                                         'saque': 'Saque (Ace)',
                                         'goal': 'Ponto',
-                                        'erro': 'Erro Adv.',
+                                        'erro': 'Ponto de Erro do Adversário',
                                         'timeout': 'Pedido de Tempo',
                                         'substitution': 'Substituição',
                                         'yellow_card': 'Cartão Amarelo',
@@ -1126,7 +1126,7 @@ export function SumulaVolei() {
                                     <button onClick={() => selectPointType('ataque')} className="p-6 bg-blue-600 hover:bg-blue-500 rounded-xl font-bold">ATAQUE</button>
                                     <button onClick={() => selectPointType('bloqueio')} className="p-6 bg-purple-600 hover:bg-purple-500 rounded-xl font-bold">BLOQUEIO</button>
                                     <button onClick={() => selectPointType('saque')} className="p-6 bg-yellow-600 hover:bg-yellow-500 rounded-xl font-bold">SAQUE (Ace)</button>
-                                    <button onClick={() => selectPointType('erro')} className="p-6 bg-red-600 hover:bg-red-500 rounded-xl font-bold">ERRO ADV.</button>
+                                    <button onClick={() => selectPointType('erro')} className="p-6 bg-red-600 hover:bg-red-500 rounded-xl font-bold shrink-0 text-sm md:text-base">ERRO DO ADVERSÁRIO</button>
                                 </div>
                             </>
                         ) : (

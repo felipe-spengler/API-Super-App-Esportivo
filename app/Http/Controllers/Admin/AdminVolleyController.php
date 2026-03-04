@@ -288,6 +288,11 @@ class AdminVolleyController extends Controller
                 $playerName = $player ? ($player->nickname ?: $player->name) : "";
                 $playerLabel = $playerName ? " (" . $playerName . ($number ? " #{$number}" : "") . ")" : "";
 
+                $pointTypeDisplay = ucfirst($pointType);
+                if ($pointType === 'erro') {
+                    $pointTypeDisplay = 'Erro do Adversário';
+                }
+
                 DB::table('match_events')->insert([
                     'game_match_id' => $match->id,
                     'team_id' => $teamId,
@@ -296,7 +301,7 @@ class AdminVolleyController extends Controller
                     'period' => "{$setNum}º Set",
                     'game_time' => $gameTime,
                     'metadata' => json_encode([
-                        'label' => "Ponto de " . ucfirst($pointType) . $playerLabel,
+                        'label' => "Ponto de " . $pointTypeDisplay . $playerLabel,
                         'volley_type' => $pointType,
                         'player_name' => $player ? ($player->nickname ?: $player->name) : null,
                         'system_period' => "{$setNum}º Set"
