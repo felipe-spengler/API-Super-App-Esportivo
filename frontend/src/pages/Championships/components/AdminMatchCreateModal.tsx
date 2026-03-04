@@ -144,10 +144,15 @@ export function AdminMatchCreateModal({
                                             <option value="">Selecione...</option>
                                             {(teams || [])
                                                 .filter(t => {
-                                                    if (!matchData.group_name) return true;
-                                                    const teamG = String(groupAssignments[t.id] || '').toLowerCase().replace(/^grupo\s+/, '').trim();
-                                                    const selG = String(matchData.group_name).toLowerCase().replace(/^grupo\s+/, '').trim();
-                                                    return teamG === selG;
+                                                    if (!matchData.group_name || matchData.group_name === 'null' || matchData.group_name === '') return true;
+
+                                                    const rawTeamGroup = String(groupAssignments[t.id] || '');
+                                                    if (!rawTeamGroup) return false;
+
+                                                    const teamG = rawTeamGroup.toLowerCase().replace(/grupo/g, '').trim();
+                                                    const selG = String(matchData.group_name).toLowerCase().replace(/grupo/g, '').trim();
+
+                                                    return teamG === selG || (teamG && selG && (teamG.includes(selG) || selG.includes(teamG)));
                                                 })
                                                 .map((t: any) => (
                                                     <option key={t.id} value={t.id}>{t.name}</option>
@@ -164,10 +169,15 @@ export function AdminMatchCreateModal({
                                             <option value="">Selecione...</option>
                                             {(teams || [])
                                                 .filter(t => {
-                                                    if (!matchData.group_name) return true;
-                                                    const teamG = String(groupAssignments[t.id] || '').toLowerCase().replace(/^grupo\s+/, '').trim();
-                                                    const selG = String(matchData.group_name).toLowerCase().replace(/^grupo\s+/, '').trim();
-                                                    return teamG === selG;
+                                                    if (!matchData.group_name || matchData.group_name === 'null' || matchData.group_name === '') return true;
+
+                                                    const rawTeamGroup = String(groupAssignments[t.id] || '');
+                                                    if (!rawTeamGroup) return false;
+
+                                                    const teamG = rawTeamGroup.toLowerCase().replace(/grupo/g, '').trim();
+                                                    const selG = String(matchData.group_name).toLowerCase().replace(/grupo/g, '').trim();
+
+                                                    return teamG === selG || (teamG && selG && (teamG.includes(selG) || selG.includes(teamG)));
                                                 })
                                                 .map((t: any) => (
                                                     <option key={t.id} value={t.id}>{t.name}</option>
