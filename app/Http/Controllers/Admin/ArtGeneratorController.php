@@ -224,6 +224,8 @@ class ArtGeneratorController extends Controller
             'Jogo Programado (Story)' => 'art_layout_scheduled_story',
             'Confronto' => 'art_layout_faceoff',
             'Confronto (Placar)' => 'art_layout_faceoff',
+            'Atleta Confirmado' => 'art_layout_individual_confirmed',
+            'Colocação do Atleta' => 'art_layout_individual_placement',
         ];
         return $map[$name] ?? 'art_layout_custom_' . Str::slug($name);
     }
@@ -337,6 +339,35 @@ class ArtGeneratorController extends Controller
         }
 
         return $this->generateAwardCard($player, $championship, $team, $awardType, $championship->club);
+    }
+
+    /**
+     * Gera Arte Individual de Atleta (Confirmado ou Colocação)
+     */
+    public function individualAthleteArt($championshipId, $athleteId, $category, Request $request)
+    {
+        $championship = \App\Models\Championship::with(['sport', 'club'])->findOrFail($championshipId);
+        $athlete = \App\Models\User::findOrFail($athleteId);
+
+        $this->loadClubResources($championship->club);
+        $sport = strtolower($championship->sport->name ?? 'futebol');
+
+        // Extra replacements for individual context
+        $rank = $request->query('rank', '');
+        $catName = $request->query('category_name', '');
+
+        // We'll use createCard but we need to pass these replacements.
+        // Since createCard builds its own replacements, we might need a way to inject these.
+        // I've already updated createCard to use some default empty strings for these.
+        // I'll use a little trick: I'll store them in a temporary property or use a more direct approach if possible.
+
+        // Let's modify createCard to accept an optional $extraReplacements array as a better long-term fix.
+        // For now, I'll pass them via a "match" object or similar if it works, or I'll just update createCard signature.
+
+        return $this->createCard($athlete, $championship, $sport, $category, null, null, null, $championship->club, [
+            '{COLOCACAO}' => $rank,
+            '{CATEGORIA}' => mb_strtoupper($catName)
+        ]);
     }
 
     /** Legacy Wrapper (antigo downloadArt) */

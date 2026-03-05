@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { Palette, Wand2, Download, RefreshCw, AlertCircle, Image as ImageIcon, ChevronRight, Layers } from 'lucide-react';
 import api from '../../../services/api';
 
@@ -30,10 +30,19 @@ export function IndividualArtManager() {
                     <h1 className="text-2xl font-black text-slate-900">Artes por Categoria</h1>
                     <p className="text-slate-500 font-medium">Gere artes personalizadas com templates exclusivos para cada prova.</p>
                 </div>
-                <button className="flex items-center gap-2 px-6 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700 font-bold transition-all shadow-lg">
-                    <RefreshCw size={18} />
-                    Gerar em Massa
-                </button>
+                <div className="flex items-center gap-3">
+                    <Link
+                        to={`/admin/individual/championships/${id}/arts/editor`}
+                        className="flex items-center gap-2 px-6 py-2 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 font-bold transition-all"
+                    >
+                        <Wand2 size={18} />
+                        Editar Templates
+                    </Link>
+                    <button className="flex items-center gap-2 px-6 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 font-bold transition-all shadow-lg">
+                        <RefreshCw size={18} />
+                        Gerar em Massa
+                    </button>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -254,6 +254,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/art/match/{matchId}/mvp', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'mvpArt']);
         Route::get('/art/championship/{championshipId}/award/{category}', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'championshipAwardArt']);
         Route::get('/art/championship/{championshipId}/standings', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'standingsArt']);
+        Route::get('/art/championship/{championshipId}/individual/{athleteId}/{category}', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'individualAthleteArt']);
 
         // Rodízio de Vôlei (NEW)
         Route::get('/volleyball/match/{matchId}/positions', [\App\Http\Controllers\Admin\VolleyballRotationController::class, 'getPositions']);
@@ -299,6 +300,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/system-settings', [\App\Http\Controllers\Admin\AdminSystemSettingController::class, 'update']);
 
         // Categories
+        Route::apiResource('/coupons', \App\Http\Controllers\Admin\CouponController::class);
+
+        // Asaas
+        Route::get('/asaas/settings', [\App\Http\Controllers\Admin\AsaasController::class, 'getSettings']);
+        Route::post('/asaas/settings', [\App\Http\Controllers\Admin\AsaasController::class, 'updateSettings']);
+        Route::post('/asaas/webhook', [\App\Http\Controllers\Admin\AsaasController::class, 'webhook'])->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]); // Se tiver CSRF, precisa ignorar no webhook
         Route::get('/categories', [\App\Http\Controllers\Admin\AdminCategoryController::class, 'index']);
         Route::post('/categories', [\App\Http\Controllers\Admin\AdminCategoryController::class, 'store']);
         Route::put('/categories/{id}', [\App\Http\Controllers\Admin\AdminCategoryController::class, 'update']);

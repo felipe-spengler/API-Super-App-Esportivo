@@ -37,9 +37,11 @@ import { IndividualChampionshipDetails } from './pages/Admin/Individual/Individu
 import { IndividualAthleteManager } from './pages/Admin/Individual/IndividualAthleteManager';
 import { IndividualResultManager } from './pages/Admin/Individual/IndividualResultManager';
 import { IndividualArtManager } from './pages/Admin/Individual/IndividualArtManager';
+import { IndividualArtEditor } from './pages/Admin/Individual/IndividualArtEditor';
 import { IndividualCouponManager } from './pages/Admin/Individual/IndividualCouponManager';
 import { IndividualPaymentManager } from './pages/Admin/Individual/IndividualPaymentManager';
 import { IndividualCategoryManager } from './pages/Admin/Individual/IndividualCategoryManager';
+import { IndividualManualResult } from './pages/Admin/Individual/IndividualManualResult';
 
 import { Explore } from './pages/Public/Explore';
 import { ClubExplore } from './pages/Public/ClubExplore';
@@ -186,6 +188,8 @@ function App() {
                 <Route path="championships/:id/athletes" element={<IndividualAthleteManager />} />
                 <Route path="championships/:id/results" element={<IndividualResultManager />} />
                 <Route path="championships/:id/arts" element={<IndividualArtManager />} />
+                <Route path="championships/:id/arts/editor" element={<IndividualArtEditor />} />
+                <Route path="championships/:id/results/manual" element={<IndividualManualResult />} />
                 <Route path="championships/:id/coupons" element={<IndividualCouponManager />} />
                 <Route path="championships/:id/payments" element={<IndividualPaymentManager />} />
                 <Route path="championships/:id/categories" element={<IndividualCategoryManager />} />

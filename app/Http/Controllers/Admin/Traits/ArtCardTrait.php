@@ -192,11 +192,15 @@ trait ArtCardTrait
     /**
      * Função Genérica de Criação de Card de Jogador
      */
-    private function createCard($player, $championship, $sport, $category, $roundName = null, $match = null, $playerTeam = null, $club = null)
+    private function createCard($player, $championship, $sport, $category, $roundName = null, $match = null, $playerTeam = null, $club = null, $extraReplacements = [])
     {
         $templateKey = null;
         if (in_array($category, ['craque', 'mvp', 'melhor_jogador', 'melhor_quadra'])) {
             $templateKey = 'art_layout_mvp_vertical';
+        } elseif ($category === 'atleta_confirmado') {
+            $templateKey = 'art_layout_individual_confirmed';
+        } elseif ($category === 'colocacao') {
+            $templateKey = 'art_layout_individual_placement';
         }
 
         $bgFile = $this->getBackgroundFile($sport, $category, $club, $championship);
@@ -227,12 +231,23 @@ trait ArtCardTrait
             $name = !empty($player->nickname) ? $player->nickname : $player->name;
             $replacements = [
                 '{JOGADOR}' => mb_strtoupper($name),
+                '{ATLETA}' => mb_strtoupper($name),
                 '{CAMPEONATO}' => mb_strtoupper($championship->name),
+                '{EVENTO}' => mb_strtoupper($championship->name),
+                '{CATEGORIA}' => '', // To be filled by context
+                '{LOCAL}' => $championship->location ?? '',
+                '{DATA}' => $championship->start_date ? $championship->start_date->format('d/m/Y') : '',
+                '{HORA}' => $championship->start_time ?? '',
+                '{COLOCACAO}' => '', // To be filled by context
                 '{RODADA}' => $roundName ? mb_strtoupper($roundName) : '',
                 'X' => 'X',
                 '3' => '3',
                 '1' => '1',
             ];
+
+            if ($extraReplacements) {
+                $replacements = array_merge($replacements, $extraReplacements);
+            }
 
             if ($match) {
                 $sH = $match->home_score ?? 0;
@@ -272,11 +287,30 @@ trait ArtCardTrait
             }
             $replacements['player_photo'] = $playerPhotoPath;
 
-            if ($match) {
-                $replacements['team_a'] = $this->getTeamLogoPath($match->homeTeam);
-                $replacements['team_b'] = $this->getTeamLogoPath($match->awayTeam);
-            } elseif ($playerTeam) {
+            if ($playerTeam) {
                 $replacements['team_logo'] = $this->getTeamLogoPath($playerTeam);
+            }
+
+            // Inject Category and Ranking if provided from outer scope (via session or temp var)
+            // Or better: pass them as arguments to createCard is not easy now without changing signature.
+            // I will use replacements which can be pre-filled.
+
+            // RANK COLOR LOGIC
+            if ($category === 'colocacao' || $templateKey === 'art_layout_individual_placement') {
+                $rankVal = $replacements['{COLOCACAO}'] ?? '';
+                $rankColor = '#E5E4E2'; // Platinum default
+                if ($rankVal == '1' || $rankVal == '1º')
+                    $rankColor = '#FFD700';
+                elseif ($rankVal == '2' || $rankVal == '2º')
+                    $rankColor = '#C0C0C0';
+                elseif ($rankVal == '3' || $rankVal == '3º')
+                    $rankColor = '#CD7F32';
+
+                foreach ($elements as &$el) {
+                    if (isset($el['id']) && ($el['id'] === 'rank_number' || $el['id'] === 'placement')) {
+                        $el['color'] = $rankColor;
+                    }
+                }
             }
 
             $this->renderDynamicElements($img, $elements, $replacements);

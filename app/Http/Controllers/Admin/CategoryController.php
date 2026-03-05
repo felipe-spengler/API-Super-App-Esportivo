@@ -53,7 +53,9 @@ class CategoryController extends Controller
             'min_age' => 'nullable|integer|min:0',
             'max_age' => 'nullable|integer|min:0',
             'gender' => 'nullable|in:male,female,mixed',
-            'max_teams' => 'nullable|integer|min:2',
+            'max_teams' => 'nullable|integer|min:0',
+            'parent_id' => 'nullable|exists:categories,id',
+            'price' => 'nullable|numeric|min:0',
         ]);
 
         $category = $championship->categories()->create($validated);
@@ -92,7 +94,9 @@ class CategoryController extends Controller
             'min_age' => 'nullable|integer|min:0',
             'max_age' => 'nullable|integer|min:0',
             'gender' => 'nullable|in:male,female,mixed',
-            'max_teams' => 'nullable|integer|min:2',
+            'max_teams' => 'nullable|integer|min:0',
+            'parent_id' => 'nullable|exists:categories,id',
+            'price' => 'nullable|numeric|min:0',
         ]);
 
         $category->update($validated);
