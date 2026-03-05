@@ -872,7 +872,22 @@ export function SumulaVolei() {
                             <button
                                 onClick={async () => {
                                     if (!window.confirm('Deseja encerrar a partida? Você não conseguirá mais lançar eventos.')) return;
+
+                                    // 1. Registra evento de fim
                                     await registerSystemEvent('match_end', 'Partida Finalizada. Grande jogo!');
+
+                                    // 2. Atualiza status da partida para 'finished' no servidor usando o endpoint específico
+                                    try {
+                                        await api.post(`/admin/matches/${id}/finish`, {
+                                            home_score: matchData.home_score,
+                                            away_score: matchData.away_score
+                                        });
+                                        // Update local state if needed, though we navigate away
+                                        setMatchData(prev => prev ? { ...prev, status: 'finished' } : prev);
+                                    } catch (e) {
+                                        console.error("Erro ao finalizar partida no servidor", e);
+                                    }
+
                                     navigate(-1);
                                 }}
                                 className="w-full py-2 bg-red-600 hover:bg-red-500 font-black tracking-widest text-[9px] uppercase border-b-4 border-red-800 active:border-b-0 active:translate-y-[4px] transition-all rounded-lg flex items-center justify-center gap-1"
