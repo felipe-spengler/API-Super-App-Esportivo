@@ -147,9 +147,9 @@ export function IndividualCouponManager() {
                                 <h3 className="text-2xl font-black text-slate-900 mb-1">{coupon.code}</h3>
                                 <div className="flex items-center gap-2 text-indigo-600 font-black mb-4">
                                     {coupon.discount_type === 'percentage' ? (
-                                        <><Percent size={16} /> <span>{coupon.discount_value}% de desconto</span></>
+                                        <><Percent size={16} /> <span>{Number(coupon.discount_value).toFixed(0)}% de desconto</span></>
                                     ) : (
-                                        <span>R$ {coupon.discount_value.toFixed(2).replace('.', ',')} de desconto</span>
+                                        <span>R$ {Number(coupon.discount_value).toFixed(2).replace('.', ',')} de desconto</span>
                                     )}
                                 </div>
 

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
     Save, Upload, Type, Image as ImageIcon, Layout, Move,
@@ -53,9 +53,15 @@ const TEMPLATE_PLACEMENT: Element[] = [
 export function IndividualArtEditor() {
     const { id: championshipId } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
+
+    // Read template from query params if available
+    const queryParams = new URLSearchParams(location.search);
+    const initialTemplate = queryParams.get('template') || 'Atleta Confirmado';
+
     const [elements, setElements] = useState<Element[]>([]);
     const [activeElementId, setActiveElementId] = useState<string | null>(null);
-    const [templateName, setTemplateName] = useState('Atleta Confirmado');
+    const [templateName, setTemplateName] = useState(initialTemplate);
     const [bgImage, setBgImage] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [previewMode, setPreviewMode] = useState(false);

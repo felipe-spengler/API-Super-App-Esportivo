@@ -203,7 +203,8 @@ trait ArtCardTrait
             $templateKey = 'art_layout_individual_placement';
         }
 
-        $bgFile = $this->getBackgroundFile($sport, $category, $club, $championship);
+        $bgFileFromSettings = $this->getBackgroundFile($sport, $category, $club, $championship);
+        $bgFile = $bgFileFromSettings;
         $templateData = null;
 
         if ($templateKey && $championship && !empty($championship->art_settings['templates'][$templateKey])) {
@@ -212,7 +213,11 @@ trait ArtCardTrait
             $templateData = $club->art_settings['templates'][$templateKey];
         }
 
-        if ($templateData && !empty($templateData['bg_url'])) {
+        // Only override with template background if we didn't find a specific one for the category/sport in settings
+        // (getBackgroundFile returns a default string if not found in DB)
+        $isSpecific = $championship && isset($championship->art_settings[Str::slug($sport, '-')][$category]);
+
+        if (!$isSpecific && $templateData && !empty($templateData['bg_url'])) {
             $customBg = $this->urlToPath($templateData['bg_url']);
             if (file_exists($customBg))
                 $bgFile = $customBg;
@@ -428,15 +433,23 @@ trait ArtCardTrait
 
         if ($championship && !empty($championship->art_settings)) {
             $settings = $championship->art_settings;
+
+            // 1. Check by Category ID (stored in category_backgrounds)
+            if (isset($settings['category_backgrounds'][$category])) {
+                return $settings['category_backgrounds'][$category];
+            }
+
             $sportSlug = Str::slug($sport, '-');
             $aliases = ['fut7' => 'futebol-7', 'society' => 'futebol-7', 'futebol-society' => 'futebol-7', 'futebol7' => 'futebol-7', 'f7' => 'futebol-7'];
             if (isset($aliases[$sportSlug]))
                 $sportSlug = $aliases[$sportSlug];
 
+            // 2. Check by Sport/Category Name (legacy/slug)
             if (isset($settings[$sportSlug][$category]))
                 return $settings[$sportSlug][$category];
             if (isset($settings[$sport][$category]))
                 return $settings[$sport][$category];
+
             if ($category === 'jogo_programado') {
                 if (isset($settings[$sportSlug]['confronto']))
                     return $settings[$sportSlug]['confronto'];

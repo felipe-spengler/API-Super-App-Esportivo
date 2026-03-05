@@ -211,6 +211,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/championships/{championshipId}/categories/{categoryId}', [\App\Http\Controllers\Admin\CategoryController::class, 'destroy']);
         Route::post('/championships/{championshipId}/categories/{categoryId}/teams', [\App\Http\Controllers\Admin\CategoryController::class, 'addTeam']);
         Route::delete('/championships/{championshipId}/categories/{categoryId}/teams/{teamId}', [\App\Http\Controllers\Admin\CategoryController::class, 'removeTeam']);
+        Route::post('/championships/{championshipId}/categories/{categoryId}/art-background', [\App\Http\Controllers\Admin\CategoryController::class, 'updateArtBackground']);
 
         // Chaveamento/Sorteio (NEW)
         Route::post('/championships/{championshipId}/bracket/generate', [\App\Http\Controllers\Admin\BracketController::class, 'generate']);

@@ -30,7 +30,7 @@ export function IndividualResultManager() {
     async function loadResults() {
         try {
             setLoading(true);
-            const response = await api.get(`/races/${id}/results`);
+            const response = await api.get(`/admin/races/${id}/results`);
             setResults(response.data);
         } catch (error) {
             console.error(error);
@@ -45,7 +45,7 @@ export function IndividualResultManager() {
         const data = new FormData();
         data.append('file', file);
         try {
-            await api.post(`/races/${id}/results/import`, data);
+            await api.post(`/admin/races/${id}/results/import`, data);
             setShowImport(false);
             setFile(null);
             loadResults();

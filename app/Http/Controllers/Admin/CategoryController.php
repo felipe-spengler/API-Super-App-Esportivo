@@ -29,7 +29,56 @@ class CategoryController extends Controller
             ->withCount('teams')
             ->get();
 
+        // Append art background URL if exists in art_settings
+        $artSettings = $championship->art_settings ?? [];
+        $categories->each(function ($category) use ($artSettings) {
+            $path = $artSettings['category_backgrounds'][$category->id] ?? null;
+            if ($path) {
+                $category->art_background_url = rtrim(config('app.url'), '/') . '/api/storage/' . $path;
+            } else {
+                $category->art_background_url = null;
+            }
+        });
+
         return response()->json($categories);
+    }
+
+    /**
+     * Atualizar fundo da arte para a categoria
+     */
+    public function updateArtBackground(Request $request, $championshipId, $categoryId)
+    {
+        $championship = Championship::findOrFail($championshipId);
+        $category = Category::where('championship_id', $championshipId)->findOrFail($categoryId);
+
+        $user = $request->user();
+        if ($user->club_id !== null && $championship->club_id !== $user->club_id) {
+            return response()->json(['message' => 'Permissão negada.'], 403);
+        }
+
+        $request->validate([
+            'image' => 'required|image|mimes:jpeg,png,jpg|max:5120',
+        ]);
+
+        if ($request->hasFile('image')) {
+            $file = $request->file('image');
+            $filename = 'bg_cat_' . $categoryId . '_' . time() . '.' . $file->getClientOriginalExtension();
+            $path = $file->storeAs('art-backgrounds', $filename, 'public');
+
+            $artSettings = $championship->art_settings ?? [];
+            $artSettings['category_backgrounds'][$categoryId] = $path;
+            $championship->art_settings = $artSettings;
+            $championship->save();
+
+            $fullUrl = rtrim(config('app.url'), '/') . '/api/storage/' . $path;
+
+            return response()->json([
+                'message' => 'Fundo atualizado com sucesso!',
+                'url' => $fullUrl
+            ]);
+        }
+
+        return response()->json(['message' => 'Nenhum arquivo enviado.'], 400);
     }
 
     /**
