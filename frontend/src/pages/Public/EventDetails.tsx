@@ -24,7 +24,7 @@ const SPORT_MENUS: any = {
     futebol: [
         { label: 'Jogos', icon: Trophy, route: 'matches', color: 'orange' },
         { label: 'Classificação', icon: ListOrdered, route: 'leaderboard', color: 'blue' },
-        { label: 'Equipes', icon: Users, route: 'participants', color: 'indigo' },
+        { label: 'Equipes', icon: Users, route: 'teams', color: 'indigo' },
         { label: 'Artilharia', icon: Target, route: 'stats', params: { type: 'goals', title: 'Artilharia' }, color: 'gray' },
         { label: 'Cartões', icon: Square, iconColor: '#EF4444', route: 'stats', params: { type: 'cards', title: 'Cartões' }, color: 'red' },
         { label: 'Melhor em Campo', icon: Crown, route: 'mvp', color: 'black' },
@@ -35,7 +35,7 @@ const SPORT_MENUS: any = {
     handebol: [
         { label: 'Jogos', icon: Trophy, route: 'matches', color: 'orange' },
         { label: 'Classificação', icon: ListOrdered, route: 'leaderboard', color: 'blue' },
-        { label: 'Equipes', icon: Users, route: 'participants', color: 'indigo' },
+        { label: 'Equipes', icon: Users, route: 'teams', color: 'indigo' },
         { label: 'Artilharia', icon: Target, route: 'stats', params: { type: 'goals', title: 'Artilharia' }, color: 'gray' },
         { label: 'MVP', icon: Crown, route: 'mvp', color: 'black' },
         { label: 'Ver Artes', icon: Images, route: 'awards', color: 'green' },
@@ -43,7 +43,7 @@ const SPORT_MENUS: any = {
     volei: [
         { label: 'Jogos', icon: Trophy, route: 'matches', color: 'orange' },
         { label: 'Classificação', icon: ListOrdered, route: 'leaderboard', color: 'blue' },
-        { label: 'Equipes', icon: Users, route: 'participants', color: 'indigo' },
+        { label: 'Equipes', icon: Users, route: 'teams', color: 'indigo' },
         { label: 'Pontuador', icon: Target, route: 'stats', params: { type: 'points', title: 'Maiores Pontuadores' }, color: 'gray' },
         { label: 'Bloqueador', icon: HandMetal, route: 'stats', params: { type: 'blocks', title: 'Melhores Bloqueadores' }, color: 'cyan' },
         { label: 'Acer', icon: Star, route: 'stats', params: { type: 'aces', title: 'Melhores Sacadores' }, color: 'indigo' },
@@ -53,7 +53,7 @@ const SPORT_MENUS: any = {
     basquete: [
         { label: 'Jogos', icon: Trophy, route: 'matches', color: 'orange' },
         { label: 'Classificação', icon: ListOrdered, route: 'leaderboard', color: 'blue' },
-        { label: 'Equipes', icon: Users, route: 'participants', color: 'indigo' },
+        { label: 'Equipes', icon: Users, route: 'teams', color: 'indigo' },
         { label: 'Cestinhas', icon: Target, route: 'stats', params: { type: 'points', title: 'Cestinhas' }, color: 'gray' },
         { label: 'Rebotes', icon: Hand, route: 'stats', params: { type: 'rebounds', title: 'Líderes em Rebotes' }, color: 'cyan' },
         { label: 'Assistências', icon: HandMetal, route: 'stats', params: { type: 'assists', title: 'Líderes em Assistências' }, color: 'indigo' },
@@ -64,7 +64,7 @@ const SPORT_MENUS: any = {
     // 2. CORRIDA / TEMPO (RACING)
     corrida: [
         { label: 'Resultados', icon: Trophy, route: 'results', color: 'orange' },
-        { label: 'Inscritos', icon: Users, route: 'participants', color: 'blue' },
+        { label: 'Inscritos', icon: Users, route: 'teams', color: 'blue' },
         { label: 'Categorias', icon: ListOrdered, route: 'categories', color: 'cyan' },
         { label: 'Ver Artes', icon: Images, route: 'awards', color: 'green' },
     ],
@@ -76,7 +76,7 @@ const SPORT_MENUS: any = {
     // 3. COMBATE / INDIVIDUAL (COMBAT & RACKET)
     'jiu-jitsu': [
         { label: 'Chaves', icon: Target, route: 'brackets', color: 'orange' },
-        { label: 'Inscritos', icon: Users, route: 'participants', color: 'blue' },
+        { label: 'Inscritos', icon: Users, route: 'teams', color: 'blue' },
         { label: 'Ao Vivo', icon: Trophy, route: 'matches', color: 'red' },
         { label: 'Ver Artes', icon: Images, route: 'awards', color: 'green' },
     ],
@@ -88,7 +88,7 @@ const SPORT_MENUS: any = {
     tenis: [
         { label: 'Chaves', icon: Target, route: 'brackets', color: 'orange' },
         { label: 'Jogos', icon: Trophy, route: 'matches', color: 'blue' },
-        { label: 'Inscritos', icon: Users, route: 'participants', color: 'purple' },
+        { label: 'Inscritos', icon: Users, route: 'teams', color: 'purple' },
         { label: 'Ver Artes', icon: Images, route: 'awards', color: 'green' },
     ],
     'beach-tennis': 'tenis',
@@ -99,7 +99,7 @@ const SPORT_MENUS: any = {
     skate: [
         { label: 'Resultados', icon: Trophy, route: 'leaderboard', color: 'orange' }, // Ranking por nota
         { label: 'Baterias', icon: ListOrdered, route: 'heats', color: 'blue' },
-        { label: 'Inscritos', icon: Users, route: 'participants', color: 'purple' },
+        { label: 'Inscritos', icon: Users, route: 'teams', color: 'purple' },
         { label: 'Ver Artes', icon: Images, route: 'awards', color: 'green' },
     ],
     surf: 'skate',
@@ -109,7 +109,7 @@ const SPORT_MENUS: any = {
     default: [
         { label: 'Jogos', icon: Trophy, route: 'matches', color: 'orange' },
         { label: 'Classificação', icon: ListOrdered, route: 'leaderboard', color: 'blue' },
-        { label: 'Equipes', icon: Users, route: 'participants', color: 'indigo' },
+        { label: 'Equipes', icon: Users, route: 'teams', color: 'indigo' },
     ]
 };
 
