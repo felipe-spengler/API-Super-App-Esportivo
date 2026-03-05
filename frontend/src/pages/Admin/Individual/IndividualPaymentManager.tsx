@@ -80,7 +80,7 @@ export function IndividualPaymentManager() {
                                         value={settings.asaas_token}
                                         onChange={e => setSettings({ ...settings, asaas_token: e.target.value })}
                                     />
-                                    <p className="mt-1.5 text-[10px] text-slate-400 font-bold uppercase tracking-tight italic">O token pode ser gerado em Minha Conta -> Integrações no painel do Asaas.</p>
+                                    <p className="mt-1.5 text-[10px] text-slate-400 font-bold uppercase tracking-tight italic">O token pode ser gerado em Minha Conta → Integrações no painel do Asaas.</p>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
