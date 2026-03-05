@@ -38,7 +38,7 @@ export function IndividualCategoryManager() {
     async function loadCategories() {
         try {
             setLoading(true);
-            const response = await api.get(`/championships/${id}/categories-list`);
+            const response = await api.get(`/admin/championships/${id}/categories-list`);
             // Organizar hierarquicamente
             const all = response.data as Category[];
             const parents = all.filter(c => !c.parent_id);

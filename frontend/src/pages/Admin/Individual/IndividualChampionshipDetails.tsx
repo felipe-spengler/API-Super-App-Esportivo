@@ -22,7 +22,7 @@ export function IndividualChampionshipDetails() {
         try {
             const [campRes, catRes] = await Promise.all([
                 api.get(`/championships/${id}`),
-                api.get(`/admin/championships/${id}/categories`).catch(() => ({ data: [] }))
+                api.get(`/admin/championships/${id}/categories-list`).catch(() => ({ data: [] }))
             ]);
             setChampionship(campRes.data);
             setCategories(catRes.data);
