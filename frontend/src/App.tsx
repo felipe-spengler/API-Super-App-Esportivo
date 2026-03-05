@@ -32,6 +32,14 @@ import { IaLaboratory } from './pages/SuperAdmin/IaLaboratory';
 import { AdminProductManager } from './pages/Shop/AdminProductManager';
 import { TemporaryAccess } from './pages/Settings/TemporaryAccess';
 import { ArtEditor } from './pages/Admin/ArtEditor';
+import { IndividualLayout } from './layouts/IndividualLayout';
+import { IndividualChampionshipDetails } from './pages/Admin/Individual/IndividualChampionshipDetails';
+import { IndividualAthleteManager } from './pages/Admin/Individual/IndividualAthleteManager';
+import { IndividualResultManager } from './pages/Admin/Individual/IndividualResultManager';
+import { IndividualArtManager } from './pages/Admin/Individual/IndividualArtManager';
+import { IndividualCouponManager } from './pages/Admin/Individual/IndividualCouponManager';
+import { IndividualPaymentManager } from './pages/Admin/Individual/IndividualPaymentManager';
+import { IndividualCategoryManager } from './pages/Admin/Individual/IndividualCategoryManager';
 
 import { Explore } from './pages/Public/Explore';
 import { ClubExplore } from './pages/Public/ClubExplore';
@@ -169,6 +177,19 @@ function App() {
               <Route path="art-editor" element={<ArtEditor />} />
 
               <Route path="matches" element={<Matches />} />
+            </Route>
+
+            {/* ÁREA ADMINISTRATIVA INDIVIDUAL (Esportes como Corrida) */}
+            <Route path="/admin/individual" element={<PrivateRoute />}>
+              <Route element={<IndividualLayout />}>
+                <Route path="championships/:id" element={<IndividualChampionshipDetails />} />
+                <Route path="championships/:id/athletes" element={<IndividualAthleteManager />} />
+                <Route path="championships/:id/results" element={<IndividualResultManager />} />
+                <Route path="championships/:id/arts" element={<IndividualArtManager />} />
+                <Route path="championships/:id/coupons" element={<IndividualCouponManager />} />
+                <Route path="championships/:id/payments" element={<IndividualPaymentManager />} />
+                <Route path="championships/:id/categories" element={<IndividualCategoryManager />} />
+              </Route>
             </Route>
 
             {/* Rotas Fullscreen do Admin (fora do layout) */}

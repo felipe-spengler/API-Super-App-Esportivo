@@ -18,23 +18,26 @@ export function AdminChampionshipDetails() {
     const selectedCategory = categories.find(c => c.id.toString() === selectedCategoryId);
 
     useEffect(() => {
-        loadData();
+        loadChampionship();
     }, [id]);
 
-    async function loadData() {
+    async function loadChampionship() {
         try {
-            const [campRes, catRes] = await Promise.all([
-                api.get(`/championships/${id}`),
-                api.get(`/admin/championships/${id}/categories`).catch(() => ({ data: [] }))
-            ]);
-            setChampionship(campRes.data);
-            setCategories(catRes.data);
+            const response = await api.get(`/championships/${id}`);
+            const data = response.data;
+            setChampionship(data);
 
-            // If there's only one category, auto-select it? 
-            // Maybe better to force standard flow or let user decide.
-            // For now, adhere to explicit selection unless pre-selected.
+            // Redireciona para a nova área individual se for esporte individual ou corrida
+            if (data.registration_type === 'individual' || data.format === 'racing') {
+                navigate(`/admin/individual/championships/${id}`, { replace: true });
+                return;
+            }
+
+            // Se não for individual, carrega as categorias
+            const catRes = await api.get(`/admin/championships/${id}/categories`).catch(() => ({ data: [] }));
+            setCategories(catRes.data);
         } catch (error) {
-            console.error(error);
+            console.error('Erro ao carregar campeonato', error);
         } finally {
             setLoading(false);
         }
