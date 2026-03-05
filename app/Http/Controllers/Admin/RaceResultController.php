@@ -10,6 +10,8 @@ use App\Models\RaceResult;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use App\Models\Category;
 
 class RaceResultController extends Controller
 {
@@ -51,19 +53,78 @@ class RaceResultController extends Controller
     // Adicionar um atleta manualmente (que ainda não estava na lista)
     public function store(Request $request, $championshipId)
     {
-        $race = Race::where('championship_id', $championshipId)->first();
-        if (!$race)
-            return response()->json(['error' => 'Corrida não encontrada'], 404);
-
-        $result = RaceResult::create([
-            'race_id' => $race->id,
-            'name' => $request->name,
-            'bib_number' => $request->bib_number,
-            'category_id' => $request->category_id,
-            'net_time' => $request->net_time,
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'phone' => 'required|string|max:20',
+            'document' => 'required|string|max:20', // CPF ou RG
+            'birth_date' => 'required|date',
+            'gender' => 'required|string|in:M,F,O',
+            'category_id' => 'required|exists:categories,id',
+            'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:4096',
+            'remove_bg' => 'nullable|boolean',
         ]);
 
-        return response()->json($result, 201);
+        $race = Race::where('championship_id', $championshipId)->first();
+        if (!$race) {
+            return response()->json(['error' => 'Corrida não encontrada'], 404);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // 1. Buscar ou criar o usuário pelo documento (CPF/RG)
+            $user = User::where('cpf', $request->document)
+                ->orWhere('rg', $request->document)
+                ->orWhere('document_number', $request->document)
+                ->first();
+
+            if (!$user) {
+                // Tenta limpar o CPF/RG para busca mais robusta se necessário
+                $user = User::create([
+                    'name' => $request->name,
+                    'phone' => $request->phone,
+                    'cpf' => $request->document,
+                    'birth_date' => $request->birth_date,
+                    'gender' => $request->gender,
+                    'club_id' => $race->championship->club_id ?? null,
+                    'password' => bcrypt(Str::random(12)), // Senha aleatória inicial
+                ]);
+            }
+
+            // 2. Upload da Foto se enviada
+            if ($request->hasFile('photo')) {
+                $imageController = new ImageUploadController();
+                $photoRequest = new Request();
+                $photoRequest->files->set('photo', $request->file('photo'));
+                $photoRequest->merge(['remove_bg' => $request->boolean('remove_bg')]);
+
+                // Chamamos o método interno de upload do controller (precisa ser público)
+                $uploadResult = $imageController->uploadPlayerPhoto($photoRequest, $user->id);
+                // O uploadPlayerPhoto já salva o caminho no $user->photos e $user->photo_path
+            }
+
+            // 3. Geração Automática de Número de Peito (Serial para esta corrida)
+            $lastBib = RaceResult::where('race_id', $race->id)->max(DB::raw('CAST(bib_number AS SIGNED)'));
+            $newBib = $lastBib ? $lastBib + 1 : 1;
+
+            // 4. Criar o registro da corrida
+            $result = RaceResult::create([
+                'race_id' => $race->id,
+                'user_id' => $user->id,
+                'name' => $user->name,
+                'bib_number' => (string) $newBib,
+                'category_id' => $request->category_id,
+                // net_time etc ficam nulos até a apuração
+            ]);
+
+            DB::commit();
+            return response()->json($result->load(['user', 'category']), 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error($e);
+            return response()->json(['error' => 'Erro ao registrar atleta: ' . $e->getMessage()], 500);
+        }
     }
 
     // Importar CSV

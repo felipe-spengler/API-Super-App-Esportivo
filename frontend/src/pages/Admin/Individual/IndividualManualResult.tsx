@@ -10,7 +10,7 @@ interface AthleteResult {
     net_time: string;
     position_general: string;
     position_category: string;
-    category?: { name: string };
+    category?: { name: string; parent?: { name: string } };
 }
 
 export function IndividualManualResult() {
@@ -130,8 +130,10 @@ export function IndividualManualResult() {
                         ) : filtered.map(athlete => (
                             <tr key={athlete.id} className="hover:bg-slate-50/50 transition-colors">
                                 <td className="px-6 py-3">
-                                    <p className="font-bold text-slate-900 text-sm">{athlete.name}</p>
-                                    <p className="text-[10px] text-indigo-600 font-black">{athlete.category?.name}</p>
+                                    <p className="font-bold text-slate-900 text-sm uppercase">{athlete.name}</p>
+                                    <p className="text-[10px] text-indigo-600 font-black uppercase">
+                                        {athlete.category?.name} {athlete.category?.parent?.name ? `(${athlete.category.parent.name})` : ''}
+                                    </p>
                                 </td>
                                 <td className="px-6 py-3">
                                     <div className="flex items-center gap-2 px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg">

@@ -11,7 +11,7 @@ interface Result {
     gross_time: string;
     position_general: number;
     position_category: number;
-    category?: { name: string };
+    category?: { name: string; parent?: { name: string } };
 }
 
 export function IndividualResultManager() {
