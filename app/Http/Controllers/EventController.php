@@ -682,6 +682,10 @@ class EventController extends Controller
             $query->wherePivot('category_id', $request->category_id);
         }
 
+        if ($request->has('team_id')) {
+            $query->where('teams.id', $request->team_id);
+        }
+
         if ($request->has('with_players') && $request->with_players == 'true') {
             $query->with([
                 'players' => function ($q) use ($championshipId) {

@@ -82,7 +82,10 @@ export function RaceDetails() {
             <div className="max-w-4xl mx-auto px-4 -mt-8 relative z-10">
                 {/* Actions Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                    <button className="bg-emerald-600 hover:bg-emerald-700 text-white p-4 rounded-xl shadow-lg flex flex-col items-center justify-center gap-2 transition-all active:scale-[0.98]">
+                    <button
+                        onClick={() => navigate(`/races/${id}/register`)}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white p-4 rounded-xl shadow-lg flex flex-col items-center justify-center gap-2 transition-all active:scale-[0.98]"
+                    >
                         <Users className="w-6 h-6" />
                         <span className="font-bold uppercase text-xs tracking-wider">Inscrever-se</span>
                     </button>
@@ -95,9 +98,9 @@ export function RaceDetails() {
                         <span className="font-bold uppercase text-xs tracking-wider">Resultados</span>
                     </button>
 
-                    <button className="bg-gray-800 hover:bg-gray-700 text-white p-4 rounded-xl shadow-lg flex flex-col items-center justify-center gap-2 transition-all active:scale-[0.98]">
+                    <button className="bg-gray-800 hover:bg-gray-700 text-white p-4 rounded-xl shadow-lg flex flex-col items-center justify-center gap-2 transition-all active:scale-[0.98] opacity-50 cursor-not-allowed">
                         <Camera className="w-6 h-6" />
-                        <span className="font-bold uppercase text-xs tracking-wider">Galeria</span>
+                        <span className="font-bold uppercase text-xs tracking-wider">Galeria (Em Breve)</span>
                     </button>
                 </div>
 
@@ -105,37 +108,28 @@ export function RaceDetails() {
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-8">
                     {/* About */}
                     <div>
-                        <h2 className="text-xl font-bold text-gray-800 mb-3">Sobre o Evento</h2>
+                        <h2 className="text-xl font-bold text-gray-800 mb-3 uppercase tracking-tight">Sobre o Evento</h2>
                         <p className="text-gray-600 leading-relaxed">
-                            Prepare-se para o maior desafio do ano! A {champ.name} traz percursos desafiadores e uma estrutura completa para você superar seus limites. Kit atleta completo, hidratação a cada 3km e medalha finisher para todos que completarem a prova.
+                            {champ.description || `Prepare-se para o maior desafio do ano! A ${champ.name} traz uma estrutura completa para você superar seus limites. Kit atleta completo, hidratação e medalha finisher para todos que completarem a prova.`}
                         </p>
                     </div>
 
-                    {/* Map Placeholder */}
-                    <div>
-                        <h2 className="text-xl font-bold text-gray-800 mb-3">Percurso</h2>
-                        <div className="w-full h-64 bg-gray-100 rounded-xl flex flex-col items-center justify-center border border-gray-200 relative overflow-hidden group">
-                            {/* Static Map Image (Mock) */}
-                            <img
-                                src="https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/-53.7431,-24.7259,13,0/600x300?access_token=YOUR_TOKEN"
-                                className="absolute inset-0 w-full h-full object-cover opacity-40 grayscale group-hover:grayscale-0 transition-all"
-                                alt="Map"
-                            />
-                            <div className="relative z-10 flex flex-col items-center bg-white/80 p-4 rounded-xl backdrop-blur-sm">
-                                <MapPin className="w-8 h-8 text-gray-500 mb-2" />
-                                <span className="font-bold text-gray-700">Mapa Interativo (Em Breve)</span>
+                    {/* Organization */}
+                    {champ.club && (
+                        <div className="border-t border-gray-100 pt-6 flex items-center">
+                            <div className="w-12 h-12 bg-slate-100 rounded-full mr-4 shrink-0 flex items-center justify-center border border-slate-200">
+                                {champ.club.logo_url ? (
+                                    <img src={champ.club.logo_url} className="w-full h-full object-cover rounded-full" />
+                                ) : (
+                                    <Users className="text-slate-400" size={20} />
+                                )}
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-gray-800 uppercase text-sm tracking-wide">{champ.club.name}</h3>
+                                <span className="text-[10px] text-indigo-600 font-black uppercase tracking-widest px-2 py-0.5 bg-indigo-50 rounded-lg">Organização Oficial</span>
                             </div>
                         </div>
-                    </div>
-
-                    {/* Organization */}
-                    <div className="border-t border-gray-100 pt-6 flex items-center">
-                        <div className="w-12 h-12 bg-gray-200 rounded-full mr-4 shrink-0"></div>
-                        <div>
-                            <h3 className="font-bold text-gray-800">Run Events Toledo</h3>
-                            <span className="text-xs text-green-600 font-bold uppercase tracking-wide bg-green-50 px-2 py-0.5 rounded-full border border-green-100">Verificado</span>
-                        </div>
-                    </div>
+                    )}
                 </div>
             </div>
         </div>

@@ -13,6 +13,11 @@ interface User {
     photo_path?: string;
     photo_urls?: string[];
     photos?: string[];
+    phone?: string;
+    cpf?: string;
+    rg?: string;
+    birth_date?: string;
+    gender?: string;
 }
 
 interface AuthContextData {

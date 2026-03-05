@@ -61,6 +61,8 @@ import { Wallet } from './pages/Public/Wallet';
 import { Agenda } from './pages/Public/Agenda';
 import { Shop } from './pages/Public/Shop';
 import { RaceDetails } from './pages/Public/RaceDetails';
+import { PublicRaceResults } from './pages/Public/PublicRaceResults';
+import { RaceRegister } from './pages/Public/RaceRegister';
 import { Register } from './pages/Register';
 import { Profile } from './pages/Public/Profile';
 import { MyTeams } from './pages/Public/MyTeams';
@@ -121,7 +123,8 @@ function App() {
             <Route path="/inscription/:id" element={<ChampionshipInscription />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/races/:id" element={<RaceDetails />} />
-            <Route path="/races/:id/results" element={<div className="p-10 text-center">Resultados (Em Breve)</div>} />
+            <Route path="/races/:id/results" element={<PublicRaceResults />} />
+            <Route path="/races/:id/register" element={<RaceRegister />} />
             <Route path="/matches/:id/print" element={<MatchPrintView />} />
             <Route path="/test-upload" element={<TestUpload />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />

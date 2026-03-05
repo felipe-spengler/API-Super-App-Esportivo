@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import api from '../../services/api';
 import { TournamentBracket } from '../../components/TournamentBracket';
 import type { BracketMatch } from '../../components/TournamentBracket';
+import { TeamPlayersModal } from '../../components/TeamPlayersModal';
 
 // Icons/Indicators for top 3
 const getMedalClass = (position: number) => {
@@ -43,6 +44,11 @@ export function EventLeaderboard() {
     const [champ, setChamp] = useState<any>(null);
     const [champName, setChampName] = useState('');
 
+    // Modal State
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedTeam, setSelectedTeam] = useState<any>(null);
+    const [isFetchingTeam, setIsFetchingTeam] = useState(false);
+
     useEffect(() => {
         async function loadData() {
             setLoading(true);
@@ -70,6 +76,27 @@ export function EventLeaderboard() {
         }
         loadData();
     }, [id, categoryId]);
+
+    async function handleTeamClick(teamId: number, teamName: string, teamLogo?: string) {
+        setIsFetchingTeam(true);
+        try {
+            const response = await api.get(`/championships/${id}/teams`, {
+                params: {
+                    team_id: teamId,
+                    with_players: 'true'
+                }
+            });
+
+            if (response.data && response.data.length > 0) {
+                setSelectedTeam(response.data[0]);
+                setIsModalOpen(true);
+            }
+        } catch (error) {
+            console.error("Erro ao carregar modal do time", error);
+        } finally {
+            setIsFetchingTeam(false);
+        }
+    }
 
     const renderLeagueTable = (data: Standing[] = standings) => {
         const sport = champ?.sport?.name?.toLowerCase() || 'futebol';
@@ -111,10 +138,13 @@ export function EventLeaderboard() {
                                         </span>
                                     </td>
                                     <td className="px-4 py-3">
-                                        <div className="flex items-center gap-3">
+                                        <button
+                                            onClick={() => handleTeamClick(team.id, team.team_name, team.team_logo)}
+                                            className="flex items-center gap-3 hover:text-indigo-600 transition-colors text-left"
+                                        >
                                             {team.team_logo && <img src={team.team_logo} alt="" className="w-6 h-6 rounded-full object-cover bg-gray-100" />}
                                             <span className="font-bold text-gray-800">{team.team_name}</span>
-                                        </div>
+                                        </button>
                                     </td>
                                     <td className="px-3 py-3 font-black text-center text-indigo-900">{team.points}</td>
                                     <td className="px-3 py-3 text-center text-gray-600">{team.played}</td>
@@ -169,6 +199,9 @@ export function EventLeaderboard() {
                     <h1 translate="no" className="text-xl font-bold text-gray-800 leading-none">Classificação</h1>
                     <p className="text-xs text-gray-500 mt-1">{champName || 'Carregando...'}</p>
                 </div>
+                {isFetchingTeam && (
+                    <div className="ml-auto animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
+                )}
             </div>
 
             <div className="max-w-6xl mx-auto p-4">
@@ -234,6 +267,15 @@ export function EventLeaderboard() {
                     </>
                 )}
             </div>
+
+            {/* Team Players Modal */}
+            <TeamPlayersModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                teamName={selectedTeam?.name || ''}
+                teamLogo={selectedTeam?.logo_url || selectedTeam?.logo}
+                players={selectedTeam?.players || []}
+            />
         </div>
     );
 }
