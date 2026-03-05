@@ -117,7 +117,7 @@ function App() {
             <Route path="/events/:id/leaderboard" element={<EventLeaderboard />} />
             <Route path="/events/:id/stats" element={<EventStats />} />
             <Route path="/events/:id/mvp" element={<EventMVP />} />
-            <Route path="/events/:id/teams" element={<EventParticipants />} />
+            <Route path="/events/:id/participants" element={<EventParticipants />} />
             <Route path="/events/:id/awards" element={<EventArts />} />
             <Route path="/register" element={<Register />} />
             <Route path="/inscription/:id" element={<ChampionshipInscription />} />
