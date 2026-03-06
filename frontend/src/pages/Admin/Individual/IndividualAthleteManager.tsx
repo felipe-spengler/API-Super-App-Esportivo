@@ -129,12 +129,18 @@ export function IndividualAthleteManager() {
         const data = new FormData();
         data.append('file', file);
         try {
-            await api.post(`/admin/races/${id}/results/import`, data);
+            const res = await api.post(`/admin/races/${id}/results/import`, data);
             setShowImport(false);
             setFile(null);
             loadAthletes();
-        } catch (error) {
-            alert('Erro ao importar CSV');
+
+            let report = `${res.data.success_count} atletas importados com sucesso!`;
+            if (res.data.errors && res.data.errors.length > 0) {
+                report += `\n\nAlgumas linhas foram ignoradas:\n` + res.data.errors.join('\n');
+            }
+            alert(report);
+        } catch (error: any) {
+            alert(error.response?.data?.error || 'Erro ao importar CSV');
         }
     };
 

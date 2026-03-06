@@ -78,8 +78,16 @@ class RaceResultController extends Controller
                 ->orWhere('document_number', $request->document)
                 ->first();
 
-            if (!$user) {
-                // Tenta limpar o CPF/RG para busca mais robusta se necessário
+            if ($user) {
+                // VERIFICAÇÃO DE DUPLICIDADE: Atleta já está nesta corrida?
+                $exists = RaceResult::where('race_id', $race->id)
+                    ->where('user_id', $user->id)
+                    ->exists();
+
+                if ($exists) {
+                    return response()->json(['error' => 'Este atleta já está cadastrado nesta corrida.'], 422);
+                }
+            } else {
                 $user = User::create([
                     'name' => $request->name,
                     'phone' => $request->phone,
@@ -87,7 +95,7 @@ class RaceResultController extends Controller
                     'birth_date' => $request->birth_date,
                     'gender' => $request->gender,
                     'club_id' => $race->championship->club_id ?? null,
-                    'password' => bcrypt(Str::random(12)), // Senha aleatória inicial
+                    'password' => bcrypt(Str::random(12)),
                 ]);
             }
 
@@ -97,24 +105,20 @@ class RaceResultController extends Controller
                 $photoRequest = new Request();
                 $photoRequest->files->set('photo', $request->file('photo'));
                 $photoRequest->merge(['remove_bg' => $request->boolean('remove_bg')]);
-
-                // Chamamos o método interno de upload do controller (precisa ser público)
-                $uploadResult = $imageController->uploadPlayerPhoto($photoRequest, $user->id);
-                // O uploadPlayerPhoto já salva o caminho no $user->photos e $user->photo_path
+                $imageController->uploadPlayerPhoto($photoRequest, $user->id);
             }
 
-            // 3. Geração Automática de Número de Peito (Serial para esta corrida)
+            // 3. Geração de Número de Peito
             $lastBib = RaceResult::where('race_id', $race->id)->max(DB::raw('CAST(bib_number AS SIGNED)'));
             $newBib = $lastBib ? $lastBib + 1 : 1;
 
-            // 4. Criar o registro da corrida
+            // 4. Criar o registro
             $result = RaceResult::create([
                 'race_id' => $race->id,
                 'user_id' => $user->id,
                 'name' => $user->name,
                 'bib_number' => (string) $newBib,
                 'category_id' => $request->category_id,
-                // net_time etc ficam nulos até a apuração
             ]);
 
             DB::commit();
@@ -131,7 +135,7 @@ class RaceResultController extends Controller
     public function uploadCsv(Request $request, $championshipId)
     {
         $request->validate([
-            'file' => 'required|file|mimes:csv,txt,xlsx',
+            'file' => 'required|file|mimes:csv,txt', // Removido xlsx para usar str_getcsv nativo
         ]);
 
         $race = Race::where('championship_id', $championshipId)->first();
@@ -140,34 +144,94 @@ class RaceResultController extends Controller
 
         try {
             DB::beginTransaction();
-
             $file = $request->file('file');
-            $data = array_map('str_getcsv', file($file->getRealPath()));
+            $fileData = file($file->getRealPath());
 
-            $header = array_shift($data); // Remove cabeçalho (assumindo que tem)
+            // Tentar detectar delimitador (vírgula ou ponto-e-vírgula)
+            $firstLine = $fileData[0] ?? '';
+            $delimiter = str_contains($firstLine, ';') ? ';' : ',';
 
-            // Mapeamento simples: assumindo colunas fixas por enquanto ou tentando detectar
-            // Ex esperado: PETO;NOME;TEMPO;CATEGORIA;POS_GERAL
+            $data = array_map(fn($line) => str_getcsv($line, $delimiter), $fileData);
+            $header = array_shift($data);
+
+            // Normalizar cabeçalho para facilitar busca
+            $header = array_map(fn($h) => strtoupper(trim($h)), $header);
+
+            $colBib = array_search('PEITO', $header);
+            if ($colBib === false)
+                $colBib = array_search('NUMERO', $header);
+
+            $colName = array_search('NOME', $header);
+            $colDocument = array_search('CPF', $header);
+            if ($colDocument === false)
+                $colDocument = array_search('DOCUMENTO', $header);
+
+            $colGender = array_search('SEXO', $header);
+            if ($colGender === false)
+                $colGender = array_search('GENERO', $header);
+
+            $colCategory = array_search('CATEGORIA', $header);
 
             $count = 0;
+            $skipped = [];
 
-            foreach ($data as $row) {
-                if (count($row) < 3)
+            foreach ($data as $index => $row) {
+                // Ignorar linhas vazias
+                if (empty($row) || count($row) < 2)
                     continue;
 
-                // Tenta mapear flexivelmente
-                $bib = $row[0] ?? null;
-                $name = $row[1] ?? 'Atleta Desconhecido';
-                $time = $row[2] ?? null; // HH:MM:SS
-                $catName = $row[3] ?? null;
+                $rowNum = $index + 2; // +1 do shift +1 do index 0
 
-                // Busca Categoria ID pelo nome string (se vier no CSV)
-                $catId = null;
-                if ($catName) {
-                    $cat = \App\Models\Category::where('championship_id', $championshipId)
-                        ->where('name', 'like', "%$catName%")
-                        ->first();
-                    $catId = $cat ? $cat->id : null;
+                $name = $colName !== false ? trim($row[$colName] ?? '') : '';
+                $document = $colDocument !== false ? trim($row[$colDocument] ?? '') : '';
+                $gender = $colGender !== false ? strtoupper(trim($row[$colGender] ?? '')) : 'MISTO';
+                $bib = $colBib !== false ? trim($row[$colBib] ?? '') : null;
+                $catName = $colCategory !== false ? trim($row[$colCategory] ?? '') : '';
+
+                // Validação de dados essenciais
+                if (!$name || !$catName) {
+                    $skipped[] = "Linha $rowNum: Nome ou Categoria ausentes.";
+                    continue;
+                }
+
+                // Normalizar Gênero
+                if ($gender === 'MASCULINO')
+                    $gender = 'M';
+                if ($gender === 'FEMININO')
+                    $gender = 'F';
+                if (!in_array($gender, ['M', 'F', 'O', 'MISTO']))
+                    $gender = 'MISTO';
+
+                // Buscar Categoria
+                $cat = Category::where('championship_id', $championshipId)
+                    ->where('name', 'like', "%$catName%")
+                    ->first();
+
+                if (!$cat) {
+                    $skipped[] = "Linha $rowNum: Categoria '$catName' não encontrada no sistema.";
+                    continue;
+                }
+
+                // Buscar ou criar usuário se tiver documento
+                $userId = null;
+                if ($document) {
+                    $user = User::where('cpf', $document)->orWhere('document_number', $document)->first();
+                    if (!$user) {
+                        $user = User::create([
+                            'name' => $name,
+                            'cpf' => $document,
+                            'gender' => $gender,
+                            'club_id' => $race->championship->club_id,
+                            'password' => bcrypt(Str::random(10))
+                        ]);
+                    }
+                    $userId = $user->id;
+                }
+
+                // Se não tiver BIB no CSV, gerar sequencial
+                if (!$bib) {
+                    $lastBib = RaceResult::where('race_id', $race->id)->max(DB::raw('CAST(bib_number AS SIGNED)'));
+                    $bib = (string) ($lastBib ? $lastBib + 1 : 1);
                 }
 
                 RaceResult::updateOrCreate(
@@ -176,17 +240,21 @@ class RaceResultController extends Controller
                         'bib_number' => $bib,
                     ],
                     [
+                        'user_id' => $userId,
                         'name' => $name,
-                        'net_time' => $time,
-                        'category_id' => $catId,
-                        // 'position_general' => $row[4] ?? null,
+                        'category_id' => $cat->id,
                     ]
                 );
                 $count++;
             }
 
             DB::commit();
-            return response()->json(['message' => "$count resultados importados com sucesso!"]);
+
+            return response()->json([
+                'message' => "Importação concluída!",
+                'success_count' => $count,
+                'errors' => $skipped
+            ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
