@@ -23,7 +23,7 @@ class CouponController extends Controller
         $user = $request->user();
         $validated = $request->validate([
             'code' => 'required|string|max:50',
-            'discount_type' => 'required|in:fixed,percentage',
+            'discount_type' => 'required|in:fixed,percent',
             'discount_value' => 'required|numeric|min:0',
             'max_uses' => 'nullable|integer|min:1',
             'expires_at' => 'nullable|date'
@@ -53,7 +53,7 @@ class CouponController extends Controller
 
         $validated = $request->validate([
             'code' => 'sometimes|string|max:50',
-            'discount_type' => 'sometimes|in:fixed,percentage',
+            'discount_type' => 'sometimes|in:fixed,percent',
             'discount_value' => 'sometimes|numeric|min:0',
             'max_uses' => 'nullable|integer|min:1',
             'expires_at' => 'nullable|date'

@@ -157,7 +157,7 @@ export function IndividualCategoryManager() {
                                         <h3 className="font-black text-slate-900 text-lg uppercase tracking-tight">{cat.name}</h3>
                                         <p className="text-slate-500 text-sm font-medium">
                                             {cat.gender === 'mixed' ? 'Misto' : cat.gender === 'male' ? 'Masculino' : 'Feminino'}
-                                            {cat.price > 0 && ` • R$ ${cat.price.toFixed(2).replace('.', ',')}`}
+                                            {Number(cat.price || 0) > 0 && ` • R$ ${Number(cat.price || 0).toFixed(2).replace('.', ',')}`}
                                         </p>
                                     </div>
                                 </div>
@@ -192,6 +192,7 @@ export function IndividualCategoryManager() {
                                                 <p className="font-bold text-slate-800 text-sm">{sub.name}</p>
                                                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
                                                     {sub.min_age || '∞'} - {sub.max_age || '∞'} Anos • {sub.gender === 'mixed' ? 'Misto' : sub.gender === 'male' ? 'Masculino' : 'Feminino'}
+                                                    {Number(sub.price || 0) > 0 && ` • R$ ${Number(sub.price || 0).toFixed(2).replace('.', ',')}`}
                                                 </p>
                                             </div>
                                             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

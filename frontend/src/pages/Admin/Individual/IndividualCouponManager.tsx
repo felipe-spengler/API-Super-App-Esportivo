@@ -6,7 +6,7 @@ import api from '../../../services/api';
 interface Coupon {
     id: number;
     code: string;
-    discount_type: 'fixed' | 'percentage';
+    discount_type: 'fixed' | 'percent';
     discount_value: number;
     max_uses: number | null;
     used_count: number;
@@ -21,7 +21,7 @@ export function IndividualCouponManager() {
     const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
     const [formData, setFormData] = useState({
         code: '',
-        discount_type: 'fixed' as 'fixed' | 'percentage',
+        discount_type: 'fixed' as 'fixed' | 'percent',
         discount_value: '',
         max_uses: '',
         expires_at: ''
@@ -146,7 +146,7 @@ export function IndividualCouponManager() {
                                 </div>
                                 <h3 className="text-2xl font-black text-slate-900 mb-1">{coupon.code}</h3>
                                 <div className="flex items-center gap-2 text-indigo-600 font-black mb-4">
-                                    {coupon.discount_type === 'percentage' ? (
+                                    {coupon.discount_type === 'percent' ? (
                                         <><Percent size={16} /> <span>{Number(coupon.discount_value).toFixed(0)}% de desconto</span></>
                                     ) : (
                                         <span>R$ {Number(coupon.discount_value).toFixed(2).replace('.', ',')} de desconto</span>
@@ -205,7 +205,7 @@ export function IndividualCouponManager() {
                                         onChange={e => setFormData({ ...formData, discount_type: e.target.value as any })}
                                     >
                                         <option value="fixed">Valor Fixo (R$)</option>
-                                        <option value="percentage">Porcentagem (%)</option>
+                                        <option value="percent">Porcentagem (%)</option>
                                     </select>
                                 </div>
                                 <div>
