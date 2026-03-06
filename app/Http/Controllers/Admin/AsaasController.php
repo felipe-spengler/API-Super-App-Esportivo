@@ -8,7 +8,11 @@ use App\Models\Club;
 use App\Models\Order;
 use App\Models\RaceResult;
 use App\Services\AuditLogger;
+use App\Models\SystemSetting;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use App\Models\User;
 
 class AsaasController extends Controller
 {
@@ -65,24 +69,133 @@ class AsaasController extends Controller
             return response()->json(['message' => 'Invalid payload'], 400);
         }
 
-        // Exemplo: PAYMENT_RECEIVED, PAYMENT_CONFIRMED, PAYMENT_OVERDUE, etc.
-        if (in_array($event, ['PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED'])) {
-            $paymentId = $payment['id'];
-            $externalReference = $payment['externalReference'] ?? null; // ID do nosso pedido/resultado
+        // Eventos que indicam sucesso no pagamento
+        $successEvents = ['PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED'];
+        // Eventos que indicam cancelamento ou atraso
+        $failureEvents = ['PAYMENT_OVERDUE', 'PAYMENT_DELETED', 'PAYMENT_REFUNDED'];
 
-            if ($externalReference) {
-                // Se for um RaceResult (Inscrição)
-                if (str_starts_with($externalReference, 'RR_')) {
-                    $resultId = str_replace('RR_', '', $externalReference);
-                    $result = RaceResult::find($resultId);
-                    if ($result) {
-                        $result->update(['status_payment' => 'paid']);
-                        Log::info("RaceResult {$resultId} marked as PAID via Asaas");
-                    }
-                }
+        try {
+            DB::beginTransaction();
+
+            if (in_array($event, $successEvents)) {
+                $this->handlePaymentSuccess($payment);
+            } elseif (in_array($event, $failureEvents)) {
+                $this->handlePaymentFailure($payment);
+            }
+
+            DB::commit();
+            return response()->json(['status' => 'success']);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Asaas Webhook Error: " . $e->getMessage());
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    private function handlePaymentSuccess($payment)
+    {
+        $externalReference = $payment['externalReference'] ?? null;
+        if (!$externalReference)
+            return;
+
+        // Caso 1: Inscrição Individual de Corrida
+        if (str_starts_with($externalReference, 'RR_')) {
+            $id = str_replace('RR_', '', $externalReference);
+            $result = RaceResult::with(['user', 'race.championship'])->find($id);
+            if ($result && $result->status_payment !== 'paid') {
+                $result->update([
+                    'status_payment' => 'paid',
+                    'payment_method' => $payment['billingType'] ?? 'asaas'
+                ]);
+
+                $this->sendInscriptionConfirmation($result);
+
+                Log::info("RaceResult {$id} marked as PAID and confirmation email sent");
             }
         }
+        // Caso 2: Pedido na Loja / Checkout Geral
+        elseif (str_starts_with($externalReference, 'ORD_')) {
+            $id = str_replace('ORD_', '', $externalReference);
+            $order = Order::with('items.product')->find($id);
+            if ($order && $order->status !== 'paid') {
+                $order->update(['status' => 'paid']);
 
-        return response()->json(['status' => 'success']);
+                // Baixa no Estoque (Seguindo a lógica do projeto antigo)
+                foreach ($order->items as $item) {
+                    if ($item->product) {
+                        $item->product->decrement('stock_quantity', $item->quantity);
+                        Log::info("Stock reduced for Product {$item->product_id}: -{$item->quantity}");
+                    }
+
+                    // Se for uma inscrição (category_id), também podemos marcar como pago
+                    // se houver uma tabela separada para isso futuramente.
+                }
+
+                Log::info("Order {$id} marked as PAID and stock updated");
+            }
+        }
+    }
+
+    private function handlePaymentFailure($payment)
+    {
+        $externalReference = $payment['externalReference'] ?? null;
+        if (!$externalReference)
+            return;
+
+        $status = 'cancelled';
+        if ($payment['event'] === 'PAYMENT_REFUNDED')
+            $status = 'refunded';
+
+        if (str_starts_with($externalReference, 'RR_')) {
+            $id = str_replace('RR_', '', $externalReference);
+            RaceResult::where('id', $id)->update(['status_payment' => $status]);
+        } elseif (str_starts_with($externalReference, 'ORD_')) {
+            $id = str_replace('ORD_', '', $externalReference);
+            Order::where('id', $id)->update(['status' => $status]);
+        }
+    }
+
+    private function sendInscriptionConfirmation($result)
+    {
+        if (!$result->user || !$result->user->email)
+            return;
+
+        $user = $result->user;
+        $championship = $result->race->championship;
+
+        try {
+            Mail::send([], [], function ($message) use ($user, $championship) {
+                $message->to($user->email)
+                    ->subject("Inscrição Confirmada: " . $championship->name)
+                    ->html("
+                        <div style='font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;'>
+                            <div style='background: #4f46e5; padding: 30px; text-align: center;'>
+                                <h1 style='color: white; margin: 0; font-size: 24px;'>Inscrição Confirmada!</h1>
+                            </div>
+                            <div style='padding: 30px; color: #1e293b; line-height: 1.6;'>
+                                <p>Olá, <strong>{$user->name}</strong>!</p>
+                                <p>Temos o prazer de informar que seu pagamento foi recebido e sua inscrição no evento <strong>{$championship->name}</strong> está confirmada.</p>
+                                
+                                <div style='background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0;'>
+                                    <p style='margin: 0;'><strong>Evento:</strong> {$championship->name}</p>
+                                    <p style='margin: 5px 0 0 0;'><strong>Status:</strong> Pago / Confirmado</p>
+                                </div>
+
+                                <p>Você já pode acessar sua área do atleta para ver mais detalhes e baixar sua carteirinha digital.</p>
+                                
+                                <div style='text-align: center; margin-top: 30px;'>
+                                    <a href='https://esportivo.techinteligente.site/profile/inscriptions' style='background: #4f46e5; color: white; padding: 14px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;'>Ver Minhas Inscrições</a>
+                                </div>
+                            </div>
+                            <div style='background: #f1f5f9; padding: 20px; text-align: center; font-size: 12px; color: #64748b;'>
+                                <p>© " . date('Y') . " Esportivo. Todos os direitos reservados.</p>
+                            </div>
+                        </div>
+                    ");
+            });
+        } catch (\Exception $e) {
+            Log::error("Erro ao enviar e-mail de confirmação: " . $e->getMessage());
+        }
     }
 }

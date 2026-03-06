@@ -300,16 +300,33 @@ trait ArtCardTrait
             // Or better: pass them as arguments to createCard is not easy now without changing signature.
             // I will use replacements which can be pre-filled.
 
-            // RANK COLOR LOGIC
+            // RANK COLOR & TROPHY LOGIC
             if ($category === 'colocacao' || $templateKey === 'art_layout_individual_placement') {
                 $rankVal = $replacements['{COLOCACAO}'] ?? '';
+                $rankNumeric = (int) preg_replace('/[^0-9]/', '', $rankVal);
+
                 $rankColor = '#E5E4E2'; // Platinum default
-                if ($rankVal == '1' || $rankVal == '1º')
+                $trophyFile = null;
+
+                if ($rankNumeric === 1) {
                     $rankColor = '#FFD700';
-                elseif ($rankVal == '2' || $rankVal == '2º')
+                    $trophyFile = 'trofeu_ouro.png';
+                } elseif ($rankNumeric === 2) {
                     $rankColor = '#C0C0C0';
-                elseif ($rankVal == '3' || $rankVal == '3º')
+                    $trophyFile = 'trofeu_prata.png';
+                } elseif ($rankNumeric === 3) {
                     $rankColor = '#CD7F32';
+                    $trophyFile = 'trofeu_bronze.png';
+                } elseif ($rankNumeric > 3) {
+                    $trophyFile = 'trofeu_azul.png';
+                }
+
+                if ($trophyFile) {
+                    $trophyPath = public_path('assets/templates/' . $trophyFile);
+                    if (file_exists($trophyPath)) {
+                        $replacements['trophy'] = $trophyPath;
+                    }
+                }
 
                 foreach ($elements as &$el) {
                     if (isset($el['id']) && ($el['id'] === 'rank_number' || $el['id'] === 'placement')) {
@@ -597,6 +614,37 @@ trait ArtCardTrait
                 "canvas" => ["width" => 1080, "height" => 1920],
                 "bg_url" => null,
                 "name" => "Confronto"
+            ];
+        }
+
+        if ($key === 'art_layout_individual_placement') {
+            return [
+                "elements" => [
+                    ["id" => "player_photo", "type" => "image", "x" => 540, "y" => 750, "width" => 800, "height" => 800, "label" => "Foto Atleta", "zIndex" => 1, "content" => "player_photo"],
+                    ["id" => "ranking_label", "type" => "text", "x" => 540, "y" => 1350, "fontSize" => 40, "color" => "#FFFFFF", "align" => "center", "label" => "Título Posição", "content" => "VOCÊ FICOU EM", "fontFamily" => "Roboto"],
+                    ["id" => "rank_number", "type" => "text", "x" => 540, "y" => 1480, "fontSize" => 150, "color" => "#FFB700", "align" => "center", "label" => "Posição (Nº)", "content" => "{COLOCACAO}º", "fontFamily" => "Roboto-Bold"],
+                    ["id" => "trophy", "type" => "image", "x" => 540, "y" => 1100, "width" => 400, "height" => 400, "label" => "Troféu", "zIndex" => 2, "content" => "trophy"],
+                    ["id" => "player_name", "type" => "text", "x" => 540, "y" => 1200, "fontSize" => 60, "color" => "#FFFFFF", "align" => "center", "label" => "Nome Atleta", "content" => "{ATLETA}", "fontFamily" => "Roboto-Bold"],
+                    ["id" => "category", "type" => "text", "x" => 540, "y" => 1580, "fontSize" => 40, "color" => "#FFFFFF", "align" => "center", "label" => "Categoria", "content" => "{CATEGORIA}", "fontFamily" => "Roboto"],
+                    ["id" => "championship", "type" => "text", "x" => 540, "y" => 1750, "fontSize" => 35, "color" => "#AAAAAA", "align" => "center", "label" => "Campeonato", "content" => "{CAMPEONATO}"]
+                ],
+                "canvas" => ["width" => 1080, "height" => 1920],
+                "bg_url" => null,
+                "name" => "Colocação do Atleta"
+            ];
+        }
+
+        if ($key === 'art_layout_individual_confirmed') {
+            return [
+                "elements" => [
+                    ["id" => "player_photo", "type" => "image", "x" => 540, "y" => 750, "width" => 850, "height" => 850, "label" => "Foto Atleta", "zIndex" => 1, "content" => "player_photo"],
+                    ["id" => "status", "type" => "text", "x" => 540, "y" => 1300, "fontSize" => 50, "color" => "#FFB700", "align" => "center", "label" => "Status", "content" => "CONFIRMADO", "fontFamily" => "Roboto-Bold"],
+                    ["id" => "player_name", "type" => "text", "x" => 540, "y" => 1400, "fontSize" => 70, "color" => "#FFFFFF", "align" => "center", "label" => "Nome Atleta", "content" => "{ATLETA}", "fontFamily" => "Roboto-Bold"],
+                    ["id" => "championship", "type" => "text", "x" => 540, "y" => 1700, "fontSize" => 40, "color" => "#AAAAAA", "align" => "center", "label" => "Campeonato", "content" => "{CAMPEONATO}"]
+                ],
+                "canvas" => ["width" => 1080, "height" => 1920],
+                "bg_url" => null,
+                "name" => "Atleta Confirmado"
             ];
         }
 

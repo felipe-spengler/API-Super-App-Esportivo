@@ -44,6 +44,7 @@ class AdminClubController extends Controller
             'new_city_state' => 'required_with:new_city_name|nullable|string|size:2',
             'primary_color' => 'nullable|string',
             'secondary_color' => 'nullable|string',
+            'active_modalities' => 'nullable|array',
             // Admin User Data
             'admin_name' => 'required|string',
             'admin_email' => 'required|email|unique:users,email',
@@ -78,10 +79,10 @@ class AdminClubController extends Controller
                 'name' => $request->name,
                 'slug' => $slug,
                 'city_id' => $cityId,
-                'primary_color' => $request->primary_color ?? '#000000',
+                'primary_color' => $request->primary_color ?? '#4f46e5',
                 'secondary_color' => $request->secondary_color ?? '#ffffff',
                 'is_active' => true,
-                'active_modalities' => [] // Pode ser populado depois
+                'active_modalities' => $request->active_modalities ?? []
             ]);
 
             // 2. Criar Usuário Admin vinculado ao Clube

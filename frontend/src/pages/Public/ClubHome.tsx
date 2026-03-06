@@ -60,11 +60,68 @@ export function ClubHome() {
     const primaryColor = club.primary_color || '#4f46e5';
     const secondaryColor = club.secondary_color || '#ffffff';
 
-    console.log('Club Active Modalities:', club.active_modalities);
-    const activeSports = ALL_SPORTS.filter(sport => {
-        const isActive = club.active_modalities?.includes(sport.id);
-        console.log(`Checking sport ${sport.id} (${sport.name}): ${isActive}`);
-        return isActive;
+    // Helper para ícones
+    const getIconForSport = (slug: string, iconName?: string) => {
+        const iconMap: Record<string, string> = {
+            'futebol': 'fluent-emoji:soccer-ball',
+            'volei': 'fluent-emoji:volleyball',
+            'basquete': 'fluent-emoji:basketball',
+            'corrida': 'fluent-emoji:running-shoe',
+            'tenis': 'fluent-emoji:tennis',
+            'lutas': 'fluent-emoji:boxing-glove',
+            'natacao': 'fluent-emoji:swimmer',
+            'padel': 'fluent-emoji:ping-pong',
+            'futebol-7': 'fluent-emoji:soccer-ball',
+            'futsal': 'fluent-emoji:soccer-ball',
+            'handebol': 'fluent-emoji:basketball',
+            'beach-tennis': 'fluent-emoji:tennis',
+            'futevolei': 'fluent-emoji:volleyball',
+        };
+
+        if (iconMap[slug]) return iconMap[slug];
+        if (iconName) {
+            // Se vier do banco algo como 'soccer', tenta mapear
+            const genericMap: Record<string, string> = {
+                'soccer': 'fluent-emoji:soccer-ball',
+                'volleyball': 'fluent-emoji:volleyball',
+                'basketball': 'fluent-emoji:basketball',
+                'run': 'fluent-emoji:running-shoe',
+                'tennis': 'fluent-emoji:tennis',
+            };
+            return genericMap[iconName] || 'fluent-emoji:trophy';
+        }
+        return 'fluent-emoji:trophy';
+    };
+
+    // Combinar modalidades selecionadas manualmente com modalidades que possuem campeonatos
+    const activeSportsSlugs = [
+        ...(Array.isArray(club.active_modalities) ? club.active_modalities : []),
+        ...(club.active_sports_list?.map((s: any) => s.slug) || [])
+    ];
+
+    const uniqueSlugs = Array.from(new Set(activeSportsSlugs.filter(Boolean)));
+
+    const activeSports = uniqueSlugs.map(slug => {
+        // Tenta encontrar nos dados estáticos (para manter as versões ricas de nomes/ícones)
+        const staticSport = ALL_SPORTS.find(s => s.id === slug);
+        if (staticSport) return staticSport;
+
+        // Tenta encontrar nos dados vindos do banco
+        const dbSport = club.active_sports_list?.find((s: any) => s.slug === slug);
+        if (dbSport) {
+            return {
+                id: dbSport.slug,
+                name: dbSport.name,
+                icon: getIconForSport(dbSport.slug, dbSport.icon_name)
+            };
+        }
+
+        // Fallback genérico
+        return {
+            id: slug,
+            name: slug.charAt(0).toUpperCase() + slug.slice(1).replace(/-/g, ' '),
+            icon: getIconForSport(slug)
+        };
     });
 
     return (

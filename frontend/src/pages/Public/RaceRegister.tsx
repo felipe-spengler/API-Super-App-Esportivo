@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-    User, Phone, FileText, Camera, Calendar,
+    User, Phone, FileText, Camera, Calendar, Mail, CreditCard,
     ArrowLeft, ArrowRight, Loader2, CheckCircle2,
     Check
 } from 'lucide-react';
@@ -15,11 +15,13 @@ export function RaceRegister() {
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [registrationData, setRegistrationData] = useState<any>(null);
     const [championship, setChampionship] = useState<any>(null);
     const [step, setStep] = useState(1);
 
     const [formData, setFormData] = useState({
         name: '',
+        email: '',
         phone: '',
         document: '',
         birth_date: '',
@@ -40,6 +42,7 @@ export function RaceRegister() {
             setFormData(prev => ({
                 ...prev,
                 name: user.name || '',
+                email: user.email || '',
                 phone: user.phone || '',
                 document: user.cpf || user.rg || '',
                 birth_date: user.birth_date ? new Date(user.birth_date).toISOString().split('T')[0] : '',
@@ -69,7 +72,7 @@ export function RaceRegister() {
     };
 
     const handleRegister = async () => {
-        if (!formData.category_id || !formData.name || !formData.document || !formData.phone || !formData.birth_date || !formData.gender) {
+        if (!formData.category_id || !formData.name || !formData.email || !formData.document || !formData.phone || !formData.birth_date || !formData.gender) {
             alert('Por favor, preencha todos os campos obrigatórios.');
             return;
         }
@@ -83,6 +86,7 @@ export function RaceRegister() {
             setSaving(true);
             const data = new FormData();
             data.append('name', formData.name);
+            data.append('email', formData.email);
             data.append('phone', formData.phone);
             data.append('document', formData.document);
             data.append('birth_date', formData.birth_date);
@@ -91,10 +95,12 @@ export function RaceRegister() {
             data.append('remove_bg', formData.remove_bg ? '1' : '0');
             data.append('photo', photoFile);
 
-            await api.post(`/races/${id}/results`, data, {
+            const response = await api.post(`/championships/${id}/race/register`, data, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
 
+            // Se a categoria for paga, podemos guardar a info de que precisa pagar
+            setRegistrationData(response.data);
             setStep(3); // Success step
         } catch (error: any) {
             console.error(error);
@@ -139,8 +145,8 @@ export function RaceRegister() {
                                         key={cat.id}
                                         onClick={() => setFormData({ ...formData, category_id: cat.id })}
                                         className={`p-6 rounded-2xl border-2 text-left transition-all relative overflow-hidden ${formData.category_id === cat.id
-                                                ? 'border-indigo-600 bg-indigo-50/50 shadow-md'
-                                                : 'border-slate-100 bg-white hover:border-slate-200'
+                                            ? 'border-indigo-600 bg-indigo-50/50 shadow-md'
+                                            : 'border-slate-100 bg-white hover:border-slate-200'
                                             }`}
                                     >
                                         <div className="flex justify-between items-start">
@@ -213,6 +219,19 @@ export function RaceRegister() {
                                     </div>
                                 </div>
                                 <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block ml-1">E-mail</label>
+                                    <div className="relative">
+                                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                        <input
+                                            type="email"
+                                            className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-sm"
+                                            value={formData.email}
+                                            onChange={e => setFormData({ ...formData, email: e.target.value })}
+                                            placeholder="exemplo@email.com"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
                                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block ml-1">Celular / WhatsApp</label>
                                     <div className="relative">
                                         <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
@@ -256,8 +275,8 @@ export function RaceRegister() {
                                                 key={s}
                                                 onClick={() => setFormData({ ...formData, gender: s })}
                                                 className={`py-3 rounded-xl border-2 font-black text-sm uppercase transition-all ${formData.gender === s
-                                                        ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200'
-                                                        : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'
+                                                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200'
+                                                    : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'
                                                     }`}
                                             >
                                                 {s === 'M' ? 'Masculino' : s === 'F' ? 'Feminino' : 'Outro'}
@@ -297,10 +316,69 @@ export function RaceRegister() {
                             <CheckCircle2 size={48} />
                         </div>
                         <div className="space-y-2">
-                            <h2 className="text-3xl font-black text-slate-900 uppercase italic">Inscrição Confirmada!</h2>
-                            <p className="text-slate-500 font-medium max-w-sm mx-auto">Sua vaga está garantida. Agora é só se preparar para o grande dia!</p>
+                            <h2 className="text-3xl font-black text-slate-900 uppercase italic">
+                                {registrationData?.requires_payment ? 'Quase lá!' : 'Inscrição Confirmada!'}
+                            </h2>
+                            <p className="text-slate-500 font-medium max-w-sm mx-auto">
+                                {registrationData?.requires_payment
+                                    ? `Sua inscrição foi reservada. Para garantir sua vaga, realize o pagamento de R$ ${registrationData.price} via PIX abaixo ou escolha outra forma de pagamento.`
+                                    : 'Sua vaga está garantida. Agora é só se preparar para o grande dia!'}
+                            </p>
                         </div>
+
+                        {registrationData?.payment_data?.pix_qr_code && (
+                            <div className="bg-slate-50 p-6 rounded-3xl border-2 border-dashed border-slate-200 max-w-xs mx-auto animate-in fade-in zoom-in duration-700">
+                                <div className="bg-white p-2 rounded-2xl shadow-inner mb-4">
+                                    <img
+                                        src={`data:image/png;base64,${registrationData.payment_data.pix_qr_code}`}
+                                        alt="PIX QR Code"
+                                        className="w-full aspect-square rounded-xl"
+                                    />
+                                </div>
+                                <div className="space-y-3">
+                                    <button
+                                        onClick={() => {
+                                            if (registrationData?.payment_data?.pix_copy_paste) {
+                                                navigator.clipboard.writeText(registrationData.payment_data.pix_copy_paste);
+                                                alert("Código PIX copiado!");
+                                            }
+                                        }}
+                                        className="w-full py-3 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 flex items-center justify-center gap-2"
+                                    >
+                                        <FileText size={14} />
+                                        Copiar Código PIX
+                                    </button>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter italic">
+                                        Vence em: {new Date(registrationData.payment_data.expiration).toLocaleDateString()}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
                         <div className="pt-8 flex flex-col gap-3 max-w-xs mx-auto">
+                            {registrationData?.requires_payment && (
+                                <>
+                                    {registrationData?.payment_data?.invoice_url && (
+                                        <a
+                                            href={registrationData.payment_data.invoice_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <CreditCard size={20} />
+                                            Pagar com Cartão
+                                        </a>
+                                    )}
+                                    {!registrationData?.payment_data?.invoice_url && (
+                                        <button
+                                            onClick={() => navigate('/profile/inscriptions')}
+                                            className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <CreditCard size={20} />
+                                            Pagar Inscrição
+                                        </button>
+                                    )}
+                                </>
+                            )}
                             <button
                                 onClick={() => navigate('/profile/inscriptions')}
                                 className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-800 shadow-xl transition-all"

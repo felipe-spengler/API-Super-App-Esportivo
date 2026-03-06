@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use App\Models\Category;
+use App\Services\AsaasService;
 
 class RaceResultController extends Controller
 {
@@ -55,6 +56,7 @@ class RaceResultController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
+            'email' => 'nullable|email',
             'phone' => 'required|string|max:20',
             'document' => 'required|string|max:20', // CPF ou RG
             'birth_date' => 'required|date',
@@ -74,11 +76,15 @@ class RaceResultController extends Controller
         try {
             DB::beginTransaction();
 
-            // 1. Buscar ou criar o usuário pelo documento (CPF/RG)
-            $user = User::where('cpf', $request->document)
-                ->orWhere('rg', $request->document)
-                ->orWhere('document_number', $request->document)
-                ->first();
+            // 1. Buscar ou criar o usuário pelo documento (CPF/RG) ou Email
+            $user = User::where(function ($q) use ($request) {
+                $q->where('cpf', $request->document)
+                    ->orWhere('rg', $request->document)
+                    ->orWhere('document_number', $request->document);
+                if ($request->email) {
+                    $q->orWhere('email', $request->email);
+                }
+            })->first();
 
             if ($user) {
                 // VERIFICAÇÃO DE DUPLICIDADE: Atleta já está nesta corrida?
@@ -90,8 +96,12 @@ class RaceResultController extends Controller
                     return response()->json(['error' => 'Este atleta já está cadastrado nesta corrida.'], 422);
                 }
             } else {
+                // Se não tem email, gerar um fictício baseado no documento para não quebrar o banco
+                $email = $request->email ?? (preg_replace('/[^0-9]/', '', $request->document) . '@esportivo.com.br');
+
                 $user = User::create([
                     'name' => $request->name,
+                    'email' => $email,
                     'phone' => $request->phone,
                     'cpf' => $request->document,
                     'birth_date' => $request->birth_date,
@@ -319,5 +329,134 @@ class RaceResultController extends Controller
         };
 
         return response()->stream($callback, 200, $headers);
+    }
+
+    // Listar minhas inscrições (para o app/site)
+    public function myInscriptions(Request $request)
+    {
+        $results = RaceResult::where('user_id', $request->user()->id)
+            ->with(['race.championship', 'category'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json($results);
+    }
+
+    // Registro Público (Site)
+    public function publicRegister(Request $request, $championshipId)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email',
+            'phone' => 'required|string|max:20',
+            'document' => 'required|string|max:20',
+            'birth_date' => 'required|date',
+            'gender' => 'required|string|in:M,F,O',
+            'category_id' => 'required|exists:categories,id',
+            'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:4096',
+        ]);
+
+        $race = Race::where('championship_id', $championshipId)->first();
+        if (!$race)
+            return response()->json(['error' => 'Evento não encontrado'], 404);
+
+        $category = Category::findOrFail($request->category_id);
+
+        try {
+            DB::beginTransaction();
+
+            // 1. Resolver Usuário
+            $user = User::where('cpf', $request->document)
+                ->orWhere('email', $request->email)
+                ->first();
+
+            if ($user) {
+                // Check if already in this race
+                $exists = RaceResult::where('race_id', $race->id)->where('user_id', $user->id)->exists();
+                if ($exists) {
+                    return response()->json(['error' => 'Você já está inscrito neste evento.'], 422);
+                }
+            } else {
+                $user = User::create([
+                    'name' => $request->name,
+                    'email' => $request->email,
+                    'phone' => $request->phone,
+                    'cpf' => $request->document,
+                    'birth_date' => $request->birth_date,
+                    'gender' => $request->gender,
+                    'club_id' => $race->championship->club_id,
+                    'password' => bcrypt(Str::random(12)),
+                ]);
+            }
+
+            // 2. Foto
+            if ($request->hasFile('photo')) {
+                $imageController = new ImageUploadController();
+                $photoRequest = new Request();
+                $photoRequest->files->set('photo', $request->file('photo'));
+                $photoRequest->merge(['remove_bg' => $request->boolean('remove_bg', true)]);
+                $imageController->uploadPlayerPhoto($photoRequest, $user->id);
+            }
+
+            // 3. Race Result
+            $lastBib = RaceResult::where('race_id', $race->id)->max(DB::raw('CAST(bib_number AS SIGNED)'));
+            $newBib = $lastBib ? $lastBib + 1 : 1;
+
+            $status = ($category->price > 0) ? 'pending' : 'paid';
+
+            $result = RaceResult::create([
+                'race_id' => $race->id,
+                'user_id' => $user->id,
+                'name' => $user->name,
+                'bib_number' => (string) $newBib,
+                'category_id' => $category->id,
+                'status_payment' => $status,
+                'payment_method' => $status === 'paid' ? 'free' : null
+            ]);
+
+            $paymentInfo = null;
+            if ($status === 'pending') {
+                try {
+                    $asaas = new AsaasService($race->championship->club);
+                    $payment = $asaas->createPayment(
+                        $user,
+                        $category->price,
+                        "Inscrição: {$race->championship->name} - {$category->name}",
+                        "RR_{$result->id}"
+                    );
+
+                    if (isset($payment['id'])) {
+                        $pix = $asaas->getPixQrCode($payment['id']);
+                        $paymentInfo = [
+                            'asaas_id' => $payment['id'],
+                            'invoice_url' => $payment['invoiceUrl'],
+                            'pix_qr_code' => $pix['encodedImage'] ?? null,
+                            'pix_copy_paste' => $pix['payload'] ?? null,
+                            'expiration' => $payment['dueDate']
+                        ];
+
+                        // Opcional: Salvar ID no resultado para conciliação manual se o webhook falhar
+                        $result->update(['payment_method' => 'asaas']);
+                    }
+                } catch (\Exception $pe) {
+                    Log::error("Erro Asaas ao criar pagamento: " . $pe->getMessage());
+                    // Não trava a inscrição, apenas não retorna dados de pagamento
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Inscrição realizada!',
+                'result' => $result,
+                'requires_payment' => $category->price > 0,
+                'price' => $category->price,
+                'payment_data' => $paymentInfo
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Erro ao processar inscrição: ' . $e->getMessage()], 500);
+        }
     }
 }

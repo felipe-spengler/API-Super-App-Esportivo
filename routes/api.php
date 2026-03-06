@@ -76,6 +76,7 @@ Route::get('/championships/{id}/brackets', [EventController::class, 'brackets'])
 Route::get('/championships/{id}/participants', [EventController::class, 'participants']);
 Route::get('/championships/{id}/race', [EventController::class, 'raceDetails']);
 Route::get('/championships/{id}/race-results', [EventController::class, 'raceResults']);
+Route::post('/championships/{id}/race/register', [\App\Http\Controllers\Admin\RaceResultController::class, 'publicRegister']);
 Route::get('/championships/{id}/mvp', [EventController::class, 'mvp']);
 Route::get('/championships/{id}/teams', [EventController::class, 'teamsList']);
 Route::get('/championships/{id}/h2h', [EventController::class, 'h2h']);
@@ -111,6 +112,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/my-orders', [ShopController::class, 'myOrders']);
 
     // Inscrições (Times e Atletas)
+    Route::get('/my-inscriptions', [\App\Http\Controllers\Admin\RaceResultController::class, 'myInscriptions']);
     Route::post('/inscriptions/team', [InscriptionController::class, 'registerTeam']);
     Route::post('/inscriptions/upload', [InscriptionController::class, 'uploadDocument']);
 

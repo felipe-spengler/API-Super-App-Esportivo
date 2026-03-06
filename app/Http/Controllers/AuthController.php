@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Models\User;
 use App\Http\Resources\UserResource;
+use Illuminate\Support\Facades\Mail;
 
 class AuthController extends Controller
 {
@@ -175,20 +176,29 @@ class AuthController extends Controller
 
         // Envia o e-mail
         try {
-            \Illuminate\Support\Facades\Mail::send([], [], function ($message) use ($user, $token) {
+            Mail::send([], [], function ($message) use ($user, $token) {
                 $message->to($user->email)
                     ->subject('Recuperação de Senha - Esportivo')
                     ->html("
-                        <div style='font-family: sans-serif; max-width: 600px; margin: 0 auto;'>
-                            <h2 style='color: #4f46e5;'>Recuperação de Senha</h2>
-                            <p>Olá, <strong>{$user->name}</strong>!</p>
-                            <p>Você solicitou a recuperação da sua senha no app Esportivo.</p>
-                            <p>Use o código abaixo para redefinir sua senha:</p>
-                            <div style='background: #f3f4f6; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #1f2937; border-radius: 8px;'>
-                                {$token}
+                        <div style='font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;'>
+                            <div style='background: #1f2937; padding: 30px; text-align: center;'>
+                                <h1 style='color: white; margin: 0; font-size: 24px;'>Recuperação de Senha</h1>
                             </div>
-                            <p style='margin-top: 20px; color: #6b7280; font-size: 14px;'>Este código expira em 60 minutos.</p>
-                            <p style='color: #6b7280; font-size: 14px;'>Se você não solicitou isso, ignore este e-mail.</p>
+                            <div style='padding: 30px; color: #1e293b; line-height: 1.6;'>
+                                <p>Olá, <strong>{$user->name}</strong>!</p>
+                                <p>Você solicitou a recuperação da sua senha no sistema <strong>Esportivo</strong>.</p>
+                                <p>Use o código de verificação abaixo:</p>
+                                
+                                <div style='background: #f1f5f9; padding: 24px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #1e293b; border-radius: 8px; margin: 20px 0; border: 1px dashed #cbd5e1;'>
+                                    {$token}
+                                </div>
+
+                                <p style='color: #64748b; font-size: 14px;'>Este código é válido por 60 minutos. Se você não solicitou esta alteração, pode ignorar este e-mail com segurança.</p>
+                            </div>
+                            <div style='background: #f8fafc; padding: 20px; text-align: center; font-size: 11px; color: #94a3b8;'>
+                                <p>Esta é uma mensagem automática, por favor não responda.</p>
+                                <p>© " . date('Y') . " Esportivo.</p>
+                            </div>
                         </div>
                     ");
             });
