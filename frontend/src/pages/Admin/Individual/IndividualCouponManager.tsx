@@ -173,9 +173,9 @@ export function IndividualCouponManager() {
 
             {/* Modal */}
             {showModal && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 flex items-center justify-center p-2 md:p-4 overflow-y-auto">
+                    <div className="bg-white rounded-[24px] md:rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 my-auto max-h-[95vh] flex flex-col">
+                        <div className="p-5 md:p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
                             <h2 className="text-xl font-black text-slate-900">
                                 {editingCoupon ? 'Editar Cupom' : 'Novo Cupom'}
                             </h2>
@@ -183,7 +183,7 @@ export function IndividualCouponManager() {
                                 <X size={20} />
                             </button>
                         </div>
-                        <form onSubmit={handleSave} className="p-6 space-y-4">
+                        <form onSubmit={handleSave} className="p-5 md:p-6 space-y-4 overflow-y-auto">
                             <div>
                                 <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5">Código do Cupom</label>
                                 <input

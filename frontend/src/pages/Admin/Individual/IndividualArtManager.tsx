@@ -133,7 +133,7 @@ export function IndividualArtManager() {
                     Ajustes por Categoria
                 </h2>
 
-                <div className="grid grid-cols-1 md::grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {loading ? (
                         <div className="col-span-full p-12 text-center text-slate-400 font-black uppercase italic">Carregando categorias...</div>
                     ) : categories.length === 0 ? (

@@ -97,19 +97,19 @@ export function IndividualChampionshipDetails() {
                     )}
                 </div>
                 <div className="px-8 pb-8 -mt-12 relative flex flex-col md:flex-row md:items-end justify-between gap-6">
-                    <div className="flex items-end gap-6">
-                        <div className="w-32 h-32 bg-white rounded-2xl shadow-xl p-2 border border-slate-100 shrink-0">
+                    <div className="flex flex-col md:flex-row items-center md:items-end gap-4 md:gap-6 text-center md:text-left">
+                        <div className="w-24 h-24 md:w-32 md:h-32 bg-white rounded-2xl shadow-xl p-2 border border-slate-100 shrink-0">
                             {championship.logo_url ? (
                                 <img src={championship.logo_url} className="w-full h-full object-cover rounded-xl" />
                             ) : (
                                 <div className="w-full h-full bg-slate-50 flex items-center justify-center text-slate-300">
-                                    <Trophy size={48} />
+                                    <Trophy size={40} className="md:w-12 md:h-12" />
                                 </div>
                             )}
                         </div>
                         <div className="pb-2">
-                            <h1 className="text-3xl font-black text-slate-900">{championship.name}</h1>
-                            <p className="text-slate-500 font-medium flex items-center gap-2">
+                            <h1 className="text-2xl md:text-3xl font-black text-slate-900 leading-tight">{championship.name}</h1>
+                            <p className="text-slate-500 font-medium flex items-center justify-center md:justify-start gap-2 mt-1">
                                 <span className="bg-emerald-100 text-emerald-700 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">Evento Individual</span>
                                 • {championship.sport?.name || 'Corrida'}
                             </p>

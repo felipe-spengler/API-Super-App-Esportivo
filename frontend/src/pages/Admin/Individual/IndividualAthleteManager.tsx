@@ -267,23 +267,23 @@ export function IndividualAthleteManager() {
 
             {/* Modal: Add Manual */}
             {showModal && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-[32px] w-full max-w-2xl shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden">
-                        <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 flex items-center justify-center p-2 md:p-4 overflow-y-auto">
+                    <div className="bg-white rounded-[24px] md:rounded-[32px] w-full max-w-2xl shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden my-auto max-h-[95vh] flex flex-col">
+                        <div className="p-5 md:p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
                             <div>
-                                <h2 className="text-2xl font-black text-slate-900 leading-tight">Novo Atleta</h2>
-                                <p className="text-slate-500 font-medium text-sm">Preencha os dados obrigatórios do perfil.</p>
+                                <h2 className="text-xl md:text-2xl font-black text-slate-900 leading-tight">Novo Atleta</h2>
+                                <p className="text-slate-500 font-medium text-xs md:text-sm">Preencha os dados obrigatórios do perfil.</p>
                             </div>
                             <button onClick={() => setShowModal(false)} className="p-2 hover:bg-white hover:shadow-md rounded-full transition-all">
-                                <X size={24} />
+                                <X size={20} className="md:w-6 md:h-6" />
                             </button>
                         </div>
-                        <form onSubmit={handleAddAthlete} className="p-8 space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <form onSubmit={handleAddAthlete} className="p-5 md:p-8 space-y-4 md:space-y-6 overflow-y-auto">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                                 {/* Photo Side */}
                                 <div className="space-y-4">
-                                    <div className="relative group">
-                                        <div className="w-full aspect-square bg-slate-50 rounded-[28px] border-4 border-white shadow-xl overflow-hidden flex items-center justify-center">
+                                    <div className="relative group max-w-[200px] md:max-w-none mx-auto w-full">
+                                        <div className="aspect-square bg-slate-50 rounded-[20px] md:rounded-[28px] border-4 border-white shadow-xl overflow-hidden flex items-center justify-center">
                                             {photoPreview ? (
                                                 <img src={photoPreview} className="w-full h-full object-cover" />
                                             ) : (
@@ -404,13 +404,13 @@ export function IndividualAthleteManager() {
                             <button
                                 type="submit"
                                 disabled={saving}
-                                className="w-full py-5 bg-indigo-600 text-white rounded-3xl font-black text-lg hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                                className="w-full py-4 md:py-5 bg-indigo-600 text-white rounded-2xl md:rounded-3xl font-black text-base md:text-lg hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all flex items-center justify-center gap-3 disabled:opacity-50 mt-4"
                             >
                                 {saving ? (
                                     <>Aguarde, Processando Foto (IA)...</>
                                 ) : (
                                     <>
-                                        <FileCheck size={24} />
+                                        <FileCheck size={20} className="md:w-6 md:h-6" />
                                         Finalizar Cadastro
                                     </>
                                 )}
