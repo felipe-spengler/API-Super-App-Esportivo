@@ -290,6 +290,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/races/{id}/results', [\App\Http\Controllers\Admin\RaceResultController::class, 'store']);
         Route::post('/races/{id}/results/import', [\App\Http\Controllers\Admin\RaceResultController::class, 'uploadCsv']);
         Route::put('/results/{id}', [\App\Http\Controllers\Admin\RaceResultController::class, 'update']);
+        Route::patch('/results/{id}/payment', [\App\Http\Controllers\Admin\RaceResultController::class, 'updatePayment']);
+        Route::get('/championships/{id}/results/export', [\App\Http\Controllers\Admin\RaceResultController::class, 'exportCsv']);
         // Configurações (NEW)
         Route::get('/settings', [\App\Http\Controllers\Admin\AdminSettingController::class, 'show']);
         Route::put('/settings', [\App\Http\Controllers\Admin\AdminSettingController::class, 'update']);

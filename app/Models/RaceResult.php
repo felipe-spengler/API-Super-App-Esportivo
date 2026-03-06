@@ -16,7 +16,9 @@ class RaceResult extends Model
         'gross_time',
         'position_general',
         'position_category',
-        'chip_id'
+        'chip_id',
+        'status_payment',
+        'payment_method'
     ];
 
     public function race()

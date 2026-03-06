@@ -62,6 +62,8 @@ class RaceResultController extends Controller
             'category_id' => 'required|exists:categories,id',
             'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:4096',
             'remove_bg' => 'nullable|boolean',
+            'status_payment' => 'required|string|in:pending,paid,cancelled',
+            'payment_method' => 'nullable|string'
         ]);
 
         $race = Race::where('championship_id', $championshipId)->first();
@@ -119,6 +121,8 @@ class RaceResultController extends Controller
                 'name' => $user->name,
                 'bib_number' => (string) $newBib,
                 'category_id' => $request->category_id,
+                'status_payment' => $request->status_payment ?? 'pending',
+                'payment_method' => $request->payment_method
             ]);
 
             DB::commit();
@@ -261,5 +265,59 @@ class RaceResultController extends Controller
             Log::error($e);
             return response()->json(['error' => 'Erro ao processar CSV: ' . $e->getMessage()], 500);
         }
+    }
+
+    // Atualizar apenas o pagamento
+    public function updatePayment(Request $request, $id)
+    {
+        $request->validate([
+            'status_payment' => 'required|string|in:pending,paid,cancelled',
+            'payment_method' => 'nullable|string'
+        ]);
+
+        $result = RaceResult::findOrFail($id);
+        $result->update([
+            'status_payment' => $request->status_payment,
+            'payment_method' => $request->payment_method
+        ]);
+
+        return response()->json($result->load(['user', 'category']));
+    }
+
+    // Exportar CSV de Atletas
+    public function exportCsv($championshipId)
+    {
+        $race = Race::where('championship_id', $championshipId)->first();
+        if (!$race)
+            return response()->json(['error' => 'Corrida não encontrada'], 404);
+
+        $results = RaceResult::where('race_id', $race->id)
+            ->with(['category', 'user'])
+            ->get();
+
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="inscritos_corrida.csv"',
+        ];
+
+        $callback = function () use ($results) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, ['BIB', 'NOME', 'CATEGORIA', 'DOCUMENTO', 'GENERO', 'STATUS PAGAMENTO', 'METODO']);
+
+            foreach ($results as $row) {
+                fputcsv($file, [
+                    $row->bib_number,
+                    $row->name,
+                    $row->category->name ?? 'Geral',
+                    $row->user->cpf ?? $row->user->document_number ?? '',
+                    $row->user->gender ?? 'MISTO',
+                    $row->status_payment,
+                    $row->payment_method ?? 'N/A'
+                ]);
+            }
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }

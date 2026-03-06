@@ -10,7 +10,8 @@ interface Athlete {
     category_id: number;
     category?: { name: string };
     phone?: string;
-    status_payment?: string;
+    status_payment: 'pending' | 'paid' | 'cancelled';
+    payment_method?: string;
 }
 
 export function IndividualAthleteManager() {
@@ -22,6 +23,7 @@ export function IndividualAthleteManager() {
     const [showImport, setShowImport] = useState(false);
     const [categories, setCategories] = useState<any[]>([]);
     const [file, setFile] = useState<File | null>(null);
+    const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
     const [formData, setFormData] = useState({
         name: '',
@@ -30,7 +32,9 @@ export function IndividualAthleteManager() {
         birth_date: '',
         gender: '',
         category_id: '',
-        remove_bg: true
+        remove_bg: true,
+        status_payment: 'pending',
+        payment_method: 'money'
     });
     const [photoFile, setPhotoFile] = useState<File | null>(null);
     const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -110,7 +114,9 @@ export function IndividualAthleteManager() {
                 birth_date: '',
                 gender: '',
                 category_id: '',
-                remove_bg: true
+                remove_bg: true,
+                status_payment: 'pending',
+                payment_method: 'money'
             });
             setPhotoFile(null);
             setPhotoPreview(null);
@@ -144,11 +150,17 @@ export function IndividualAthleteManager() {
         }
     };
 
-    const filteredAthletes = athletes.filter(a =>
-        (a.name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (a.category?.name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (a.bib_number?.includes(searchTerm))
-    );
+    const handleExportCSV = () => {
+        window.open(`${api.defaults.baseURL}/admin/championships/${id}/results/export`, '_blank');
+    };
+
+    const filteredAthletes = athletes.filter(a => {
+        const matchesSearch = (a.name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (a.category?.name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (a.bib_number?.includes(searchTerm));
+        const matchesCategory = selectedCategory === 'all' || a.category_id?.toString() === selectedCategory;
+        return matchesSearch && matchesCategory;
+    });
 
     return (
         <div className="space-y-6 pb-20">
@@ -157,35 +169,56 @@ export function IndividualAthleteManager() {
                     <h1 className="text-2xl font-black text-slate-900 leading-tight">Gestão de Inscritos</h1>
                     <p className="text-slate-500 font-medium">Gerencie atletas, números de peito e categorias para o pódio.</p>
                 </div>
-                <div className="flex gap-2">
-                    <button
-                        onClick={() => setShowImport(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 font-bold transition-all shadow-sm"
-                    >
-                        <Upload size={18} />
-                        Importar CSV
-                    </button>
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex bg-white rounded-2xl p-1 shadow-sm border border-slate-200">
+                        <button
+                            onClick={() => setShowImport(true)}
+                            className="flex items-center gap-2 px-4 py-2 text-slate-600 hover:bg-slate-50 rounded-xl transition-all font-bold text-sm"
+                        >
+                            <Upload size={18} />
+                            Importar CSV
+                        </button>
+                        <button
+                            onClick={handleExportCSV}
+                            className="flex items-center gap-2 px-4 py-2 text-slate-600 hover:bg-slate-50 rounded-xl transition-all font-bold text-sm border-l border-slate-100"
+                        >
+                            <Download size={18} />
+                            Exportar
+                        </button>
+                    </div>
                     <button
                         onClick={() => setShowModal(true)}
-                        className="flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-bold transition-all shadow-lg"
+                        className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 font-black transition-all shadow-xl uppercase tracking-widest text-xs"
                     >
                         <UserPlus size={18} />
-                        Novo Atleta
+                        Cadastrar Atleta
                     </button>
                 </div>
             </div>
 
-            {/* Filters */}
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4">
-                <div className="flex-1 relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex-1 relative group">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={20} />
                     <input
                         type="text"
-                        placeholder="Buscar por nome, categoria ou peito..."
-                        className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
+                        placeholder="Buscar por nome, número ou categoria..."
+                        className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-[20px] focus:ring-2 focus:ring-indigo-500 outline-none font-bold shadow-sm transition-all"
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
                     />
+                </div>
+                <div className="w-full md:w-64 relative group">
+                    <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={20} />
+                    <select
+                        className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-[20px] focus:ring-2 focus:ring-indigo-500 outline-none font-bold shadow-sm transition-all appearance-none"
+                        value={selectedCategory}
+                        onChange={e => setSelectedCategory(e.target.value)}
+                    >
+                        <option value="all">Todas Categorias</option>
+                        {categories.map(cat => (
+                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                        ))}
+                    </select>
                 </div>
             </div>
 
@@ -206,40 +239,51 @@ export function IndividualAthleteManager() {
                         <table className="w-full text-left">
                             <thead className="bg-slate-50/50 border-b border-slate-200">
                                 <tr>
-                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Atleta / Perfil</th>
-                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Número de Peito</th>
-                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Categoria</th>
-                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Ações</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Atleta / Peito</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Categoria</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Pagamento</th>
+                                    <th className="px-6 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Ações</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100">
+                            <tbody className="divide-y divide-slate-50">
                                 {filteredAthletes.map(athlete => (
-                                    <tr key={athlete.id} className="hover:bg-slate-50/50 transition-colors group">
+                                    <tr key={athlete.id} className="hover:bg-slate-50/50 transition-colors">
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-4">
-                                                <div className="w-11 h-11 rounded-full bg-slate-100 border-2 border-slate-50 overflow-hidden flex items-center justify-center">
-                                                    {(athlete as any).user?.photo_url ? (
-                                                        <img src={(athlete as any).user.photo_url} className="w-full h-full object-cover" />
-                                                    ) : (
-                                                        <span className="font-black text-slate-300 uppercase">{athlete.name?.substring(0, 2)}</span>
-                                                    )}
+                                                <div className="w-12 h-12 bg-slate-100 rounded-xl overflow-hidden border border-slate-200 flex items-center justify-center font-black text-slate-400 text-xs shrink-0 bg-slate-900 text-white">
+                                                    {athlete.bib_number || '--'}
                                                 </div>
                                                 <div>
-                                                    <p className="font-bold text-slate-900 uppercase text-sm leading-tight">{athlete.name}</p>
-                                                    <p className="text-xs text-indigo-500 font-black mt-0.5">{athlete.phone || 'Sem contato'}</p>
+                                                    <p className="font-black text-slate-900 uppercase text-sm leading-tight">{athlete.name}</p>
+                                                    <p className="text-xs text-slate-400 font-medium">#{athlete.id}</p>
                                                 </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-900 rounded-xl text-white">
-                                                <span className="text-[10px] font-black uppercase text-slate-400">BIB</span>
-                                                <span className="text-lg font-black font-mono">{(athlete.bib_number || '---').padStart(3, '0')}</span>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className="px-2.5 py-1 bg-indigo-50 text-indigo-700 text-[10px] font-black rounded-lg uppercase border border-indigo-100/50">
                                                 {athlete.category?.name || 'Geral'}
                                             </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex flex-col gap-1">
+                                                <span className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${athlete.status_payment === 'paid'
+                                                    ? 'bg-emerald-50 text-emerald-600'
+                                                    : athlete.status_payment === 'cancelled'
+                                                        ? 'bg-rose-50 text-rose-600'
+                                                        : 'bg-amber-50 text-amber-600'
+                                                    }`}>
+                                                    <div className={`w-1.5 h-1.5 rounded-full ${athlete.status_payment === 'paid'
+                                                        ? 'bg-emerald-500'
+                                                        : athlete.status_payment === 'cancelled'
+                                                            ? 'bg-rose-500'
+                                                            : 'bg-amber-500'
+                                                        }`} />
+                                                    {athlete.status_payment === 'paid' ? 'Pago' : athlete.status_payment === 'cancelled' ? 'Cancelado' : 'Pendente'}
+                                                </span>
+                                                <span className="text-[9px] text-slate-400 uppercase font-bold px-2 italic">
+                                                    {athlete.payment_method || 'N/A'}
+                                                </span>
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex justify-end gap-1">
@@ -398,6 +442,32 @@ export function IndividualAthleteManager() {
                                                 <option key={cat.id} value={cat.id}>{cat.name}</option>
                                             ))}
                                         </select>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Status Pagto</label>
+                                            <select
+                                                className="w-full px-3 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 transition-all"
+                                                value={formData.status_payment}
+                                                onChange={e => setFormData({ ...formData, status_payment: e.target.value })}
+                                            >
+                                                <option value="pending">Pendente</option>
+                                                <option value="paid">Pago</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Método</label>
+                                            <select
+                                                className="w-full px-3 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 transition-all"
+                                                value={formData.payment_method}
+                                                onChange={e => setFormData({ ...formData, payment_method: e.target.value })}
+                                            >
+                                                <option value="money">Dinheiro</option>
+                                                <option value="pix">Pix Manual</option>
+                                                <option value="credit_card">Cartão</option>
+                                                <option value="courtesy">Cortesia</option>
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
