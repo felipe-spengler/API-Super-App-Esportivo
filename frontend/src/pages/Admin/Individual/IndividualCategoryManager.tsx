@@ -91,9 +91,9 @@ export function IndividualCategoryManager() {
             };
 
             if (editingCategory) {
-                await api.put(`/championships/${id}/categories/${editingCategory.id}`, payload);
+                await api.put(`/admin/championships/${id}/categories/${editingCategory.id}`, payload);
             } else {
-                await api.post(`/championships/${id}/categories-new`, payload);
+                await api.post(`/admin/championships/${id}/categories-new`, payload);
             }
             setShowModal(false);
             loadCategories();
@@ -106,7 +106,7 @@ export function IndividualCategoryManager() {
     const handleDelete = async (catId: number) => {
         if (!confirm('Deseja realmente excluir esta categoria? Subcategorias também serão afetadas.')) return;
         try {
-            await api.delete(`/championships/${id}/categories/${catId}`);
+            await api.delete(`/admin/championships/${id}/categories/${catId}`);
             loadCategories();
         } catch (error) {
             console.error(error);
@@ -224,7 +224,11 @@ export function IndividualCategoryManager() {
                     <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
                         <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                             <h2 className="text-xl font-black text-slate-900">
-                                {editingCategory ? 'Editar Categoria' : formData.parent_id ? 'Nova Subcategoria' : 'Nova Categoria'}
+                                {editingCategory ? (
+                                    formData.parent_id ? 'Editar Subcategoria' : 'Editar Categoria'
+                                ) : (
+                                    formData.parent_id ? 'Nova Subcategoria' : 'Nova Categoria'
+                                )}
                             </h2>
                             <button onClick={() => setShowModal(false)} className="p-2 hover:bg-white rounded-full transition-colors">
                                 <X size={20} />
@@ -232,20 +236,37 @@ export function IndividualCategoryManager() {
                         </div>
                         <form onSubmit={handleSave} className="p-6 space-y-4">
                             <div>
-                                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5">Nome da Categoria</label>
+                                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5">
+                                    {formData.parent_id ? 'Nome da Subcategoria (Ex: 18-29 anos)' : 'Nome da Categoria (Ex: 5km, Kids...)'}
+                                </label>
                                 <input
                                     type="text"
                                     required
                                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-pink-500 outline-none font-bold"
-                                    placeholder="Ex: 5km, Kids, Elite..."
+                                    placeholder={formData.parent_id ? "Ex: Masculino 18 a 29 anos" : "Ex: 5km Geral"}
                                     value={formData.name}
                                     onChange={e => setFormData({ ...formData, name: e.target.value })}
                                 />
                             </div>
 
+                            {!formData.parent_id && (
+                                <div>
+                                    <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5">Descrição Curta / Info</label>
+                                    <input
+                                        type="text"
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-pink-500 outline-none font-medium"
+                                        placeholder="Ex: Largada às 08h, Kit incluso..."
+                                        value={formData.description}
+                                        onChange={e => setFormData({ ...formData, description: e.target.value })}
+                                    />
+                                </div>
+                            )}
+
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5">Preço (R$)</label>
+                                    <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5">
+                                        {formData.parent_id ? 'Preço Específico (R$)' : 'Preço Base (R$)'}
+                                    </label>
                                     <input
                                         type="number"
                                         step="0.01"
@@ -254,6 +275,9 @@ export function IndividualCategoryManager() {
                                         value={formData.price}
                                         onChange={e => setFormData({ ...formData, price: e.target.value })}
                                     />
+                                    <p className="mt-1 text-[9px] text-slate-400 font-bold uppercase italic">
+                                        {formData.parent_id ? 'Se vazio, usa o preço da categoria pai' : 'Preço padrão para as subcategorias'}
+                                    </p>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5">Gênero</label>
@@ -268,6 +292,16 @@ export function IndividualCategoryManager() {
                                     </select>
                                 </div>
                             </div>
+
+                            {formData.parent_id && (
+                                <div className="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 flex items-start gap-3">
+                                    <AlertCircle className="w-5 h-5 text-indigo-500 shrink-0" />
+                                    <p className="text-[10px] text-indigo-700 font-medium">
+                                        <strong>Subcategoria:</strong> Defina abaixo a faixa etária para esta divisão específica.
+                                        Deixe em branco para permitir qualquer idade.
+                                    </p>
+                                </div>
+                            )}
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
