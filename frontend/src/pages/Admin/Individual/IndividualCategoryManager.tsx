@@ -24,7 +24,7 @@ export function IndividualCategoryManager() {
     const [formData, setFormData] = useState({
         name: '',
         description: '',
-        gender: 'mixed',
+        gender: 'MISTO',
         min_age: '',
         max_age: '',
         price: '',
@@ -59,7 +59,7 @@ export function IndividualCategoryManager() {
             setFormData({
                 name: cat.name,
                 description: cat.description || '',
-                gender: cat.gender || 'mixed',
+                gender: cat.gender || 'MISTO',
                 min_age: cat.min_age?.toString() || '',
                 max_age: cat.max_age?.toString() || '',
                 price: cat.price?.toString() || '0',
@@ -70,7 +70,7 @@ export function IndividualCategoryManager() {
             setFormData({
                 name: '',
                 description: '',
-                gender: 'mixed',
+                gender: 'MISTO',
                 min_age: '',
                 max_age: '',
                 price: '',
@@ -156,7 +156,7 @@ export function IndividualCategoryManager() {
                                     <div>
                                         <h3 className="font-black text-slate-900 text-lg uppercase tracking-tight">{cat.name}</h3>
                                         <p className="text-slate-500 text-sm font-medium">
-                                            {cat.gender === 'mixed' ? 'Misto' : cat.gender === 'male' ? 'Masculino' : 'Feminino'}
+                                            {cat.gender === 'MISTO' ? 'Misto' : cat.gender === 'M' ? 'Masculino' : 'Feminino'}
                                             {Number(cat.price || 0) > 0 && ` • R$ ${Number(cat.price || 0).toFixed(2).replace('.', ',')}`}
                                         </p>
                                     </div>
@@ -191,7 +191,7 @@ export function IndividualCategoryManager() {
                                             <div>
                                                 <p className="font-bold text-slate-800 text-sm">{sub.name}</p>
                                                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-                                                    {sub.min_age || '∞'} - {sub.max_age || '∞'} Anos • {sub.gender === 'mixed' ? 'Misto' : sub.gender === 'male' ? 'Masculino' : 'Feminino'}
+                                                    {sub.min_age || '∞'} - {sub.max_age || '∞'} Anos • {sub.gender === 'MISTO' ? 'Misto' : sub.gender === 'M' ? 'Masculino' : 'Feminino'}
                                                     {Number(sub.price || 0) > 0 && ` • R$ ${Number(sub.price || 0).toFixed(2).replace('.', ',')}`}
                                                 </p>
                                             </div>
@@ -286,9 +286,9 @@ export function IndividualCategoryManager() {
                                         value={formData.gender}
                                         onChange={e => setFormData({ ...formData, gender: e.target.value })}
                                     >
-                                        <option value="mixed">Misto</option>
-                                        <option value="male">Masculino</option>
-                                        <option value="female">Feminino</option>
+                                        <option value="MISTO">Misto</option>
+                                        <option value="M">Masculino</option>
+                                        <option value="F">Feminino</option>
                                     </select>
                                 </div>
                             </div>
