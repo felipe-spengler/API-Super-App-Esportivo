@@ -44,7 +44,7 @@ export function IndividualAthleteManager() {
     async function loadAthletes() {
         try {
             setLoading(true);
-            const response = await api.get(`/races/${id}/results`);
+            const response = await api.get(`/admin/races/${id}/results`);
             setAthletes(response.data);
         } catch (error) {
             console.error(error);
@@ -55,9 +55,35 @@ export function IndividualAthleteManager() {
 
     async function loadCategories() {
         try {
-            const response = await api.get(`/championships/${id}/categories-list`);
-            setCategories(response.data);
-        } catch (error) { }
+            const response = await api.get(`/admin/championships/${id}/categories-list`);
+            // Organize hierarchically for the select
+            const all = response.data as any[];
+            const structured: any[] = [];
+            const parents = all.filter(c => !c.parent_id);
+
+            parents.forEach(p => {
+                const children = all.filter(c => c.parent_id === p.id);
+                if (children.length > 0) {
+                    children.forEach(sub => {
+                        structured.push({
+                            id: sub.id,
+                            name: `${p.name} > ${sub.name}`,
+                            gender: sub.gender
+                        });
+                    });
+                } else {
+                    structured.push({
+                        id: p.id,
+                        name: p.name,
+                        gender: p.gender
+                    });
+                }
+            });
+
+            setCategories(structured);
+        } catch (error) {
+            console.error('Erro ao carregar categorias:', error);
+        }
     }
 
     const handleAddAthlete = async (e: React.FormEvent) => {
@@ -72,7 +98,7 @@ export function IndividualAthleteManager() {
                 data.append('photo', photoFile);
             }
 
-            await api.post(`/races/${id}/results`, data, {
+            await api.post(`/admin/races/${id}/results`, data, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
 
@@ -103,7 +129,7 @@ export function IndividualAthleteManager() {
         const data = new FormData();
         data.append('file', file);
         try {
-            await api.post(`/races/${id}/results/import`, data);
+            await api.post(`/admin/races/${id}/results/import`, data);
             setShowImport(false);
             setFile(null);
             loadAthletes();
