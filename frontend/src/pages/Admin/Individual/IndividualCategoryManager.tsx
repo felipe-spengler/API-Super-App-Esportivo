@@ -24,7 +24,7 @@ export function IndividualCategoryManager() {
     const [formData, setFormData] = useState({
         name: '',
         description: '',
-        gender: 'MISTO',
+        gender: 'mixed',
         min_age: '',
         max_age: '',
         price: '',
@@ -59,7 +59,7 @@ export function IndividualCategoryManager() {
             setFormData({
                 name: cat.name,
                 description: cat.description || '',
-                gender: cat.gender || 'MISTO',
+                gender: cat.gender || 'mixed',
                 min_age: cat.min_age?.toString() || '',
                 max_age: cat.max_age?.toString() || '',
                 price: cat.price?.toString() || '0',
@@ -70,7 +70,7 @@ export function IndividualCategoryManager() {
             setFormData({
                 name: '',
                 description: '',
-                gender: 'MISTO',
+                gender: 'mixed',
                 min_age: '',
                 max_age: '',
                 price: '',
@@ -87,7 +87,7 @@ export function IndividualCategoryManager() {
                 ...formData,
                 min_age: formData.min_age ? parseInt(formData.min_age) : null,
                 max_age: formData.max_age ? parseInt(formData.max_age) : null,
-                price: parseFloat(formData.price) || 0
+                price: parseFloat(formData.price.toString().replace(',', '.')) || 0
             };
 
             if (editingCategory) {
@@ -156,7 +156,7 @@ export function IndividualCategoryManager() {
                                     <div>
                                         <h3 className="font-black text-slate-900 text-lg uppercase tracking-tight">{cat.name}</h3>
                                         <p className="text-slate-500 text-sm font-medium">
-                                            {cat.gender === 'MISTO' ? 'Misto' : cat.gender === 'M' ? 'Masculino' : 'Feminino'}
+                                            {cat.gender === 'mixed' || cat.gender === 'MISTO' ? 'Misto' : cat.gender === 'male' || cat.gender === 'M' ? 'Masculino' : 'Feminino'}
                                             {Number(cat.price || 0) > 0 && ` • R$ ${Number(cat.price || 0).toFixed(2).replace('.', ',')}`}
                                         </p>
                                     </div>
@@ -191,7 +191,7 @@ export function IndividualCategoryManager() {
                                             <div>
                                                 <p className="font-bold text-slate-800 text-sm">{sub.name}</p>
                                                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-                                                    {sub.min_age || '∞'} - {sub.max_age || '∞'} Anos • {sub.gender === 'MISTO' ? 'Misto' : sub.gender === 'M' ? 'Masculino' : 'Feminino'}
+                                                    {sub.min_age || '∞'} - {sub.max_age || '∞'} Anos • {sub.gender === 'mixed' || sub.gender === 'MISTO' ? 'Misto' : sub.gender === 'male' || sub.gender === 'M' ? 'Masculino' : 'Feminino'}
                                                     {Number(sub.price || 0) > 0 && ` • R$ ${Number(sub.price || 0).toFixed(2).replace('.', ',')}`}
                                                 </p>
                                             </div>
@@ -286,9 +286,9 @@ export function IndividualCategoryManager() {
                                         value={formData.gender}
                                         onChange={e => setFormData({ ...formData, gender: e.target.value })}
                                     >
-                                        <option value="MISTO">Misto</option>
-                                        <option value="M">Masculino</option>
-                                        <option value="F">Feminino</option>
+                                        <option value="mixed">Misto</option>
+                                        <option value="male">Masculino</option>
+                                        <option value="female">Feminino</option>
                                     </select>
                                 </div>
                             </div>
@@ -303,28 +303,30 @@ export function IndividualCategoryManager() {
                                 </div>
                             )}
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5">Idade Mínima</label>
-                                    <input
-                                        type="number"
-                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-pink-500 outline-none font-bold"
-                                        placeholder="Livre"
-                                        value={formData.min_age}
-                                        onChange={e => setFormData({ ...formData, min_age: e.target.value })}
-                                    />
+                            {formData.parent_id && (
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5">Idade Mínima</label>
+                                        <input
+                                            type="number"
+                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-pink-500 outline-none font-bold"
+                                            placeholder="Livre"
+                                            value={formData.min_age}
+                                            onChange={e => setFormData({ ...formData, min_age: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5">Idade Máxima</label>
+                                        <input
+                                            type="number"
+                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-pink-500 outline-none font-bold"
+                                            placeholder="Livre"
+                                            value={formData.max_age}
+                                            onChange={e => setFormData({ ...formData, max_age: e.target.value })}
+                                        />
+                                    </div>
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5">Idade Máxima</label>
-                                    <input
-                                        type="number"
-                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-pink-500 outline-none font-bold"
-                                        placeholder="Livre"
-                                        value={formData.max_age}
-                                        onChange={e => setFormData({ ...formData, max_age: e.target.value })}
-                                    />
-                                </div>
-                            </div>
+                            )}
 
                             <div className="pt-4 flex gap-3">
                                 <button
