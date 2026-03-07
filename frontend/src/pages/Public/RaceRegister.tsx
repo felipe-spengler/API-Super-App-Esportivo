@@ -33,6 +33,8 @@ export function RaceRegister() {
     const [photoFile, setPhotoFile] = useState<File | null>(null);
     const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
+    const [parentCategoryId, setParentCategoryId] = useState<string | null>(null);
+
     useEffect(() => {
         loadData();
     }, [id]);
@@ -50,6 +52,14 @@ export function RaceRegister() {
             }));
         }
     }, [user]);
+
+    // Filter main categories (no parent)
+    const mainCategories = championship?.categories?.filter((cat: any) => !cat.parent_id) || [];
+
+    // Get subcategories for the selected parent
+    const subCategories = championship?.categories?.filter((cat: any) => cat.parent_id === parentCategoryId) || [];
+
+    const selectedCategory = championship?.categories?.find((cat: any) => cat.id === (formData.category_id || parentCategoryId));
 
     async function loadData() {
         try {
@@ -139,41 +149,92 @@ export function RaceRegister() {
                     <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-6">
                         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
                             <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight mb-6">Selecione sua Categoria</h2>
-                            <div className="grid gap-4">
-                                {championship?.categories?.map((cat: any) => (
-                                    <button
-                                        key={cat.id}
-                                        onClick={() => setFormData({ ...formData, category_id: cat.id })}
-                                        className={`p-6 rounded-2xl border-2 text-left transition-all relative overflow-hidden ${formData.category_id === cat.id
-                                            ? 'border-indigo-600 bg-indigo-50/50 shadow-md'
-                                            : 'border-slate-100 bg-white hover:border-slate-200'
-                                            }`}
-                                    >
-                                        <div className="flex justify-between items-start">
-                                            <div>
-                                                <h3 className="font-black text-slate-900 uppercase text-lg italic">{cat.name}</h3>
-                                                <p className="text-slate-500 text-xs font-medium uppercase mt-1">{cat.description || 'Categoria Oficial'}</p>
-                                            </div>
-                                            <div className="text-right">
-                                                <span className="block font-black text-indigo-600 text-xl italic leading-none">
-                                                    {cat.price ? `R$ ${cat.price}` : 'GRÁTIS'}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        {formData.category_id === cat.id && (
-                                            <div className="absolute top-2 right-2">
-                                                <div className="bg-indigo-600 text-white p-1 rounded-full">
-                                                    <Check size={12} />
+
+                            <div className="space-y-6">
+                                {/* Main Categories */}
+                                <div className="grid gap-4">
+                                    {mainCategories.map((cat: any) => (
+                                        <button
+                                            key={cat.id}
+                                            onClick={() => {
+                                                setParentCategoryId(cat.id);
+                                                // Reset child category selection if parent changes
+                                                setFormData({ ...formData, category_id: '' });
+                                            }}
+                                            className={`p-6 rounded-2xl border-2 text-left transition-all relative overflow-hidden ${parentCategoryId === cat.id
+                                                ? 'border-indigo-600 bg-indigo-50/50 shadow-md'
+                                                : 'border-slate-100 bg-white hover:border-slate-200'
+                                                }`}
+                                        >
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <h3 className="font-black text-slate-900 uppercase text-lg italic">{cat.name}</h3>
+                                                    <p className="text-slate-500 text-xs font-medium uppercase mt-1">{cat.description || 'Categoria Principal'}</p>
                                                 </div>
+                                                {/* Se não tiver filhos, mostra o preço aqui */}
+                                                {!championship?.categories?.some((c: any) => c.parent_id === cat.id) && (
+                                                    <div className="text-right">
+                                                        <span className="block font-black text-indigo-600 text-xl italic leading-none">
+                                                            {cat.price ? `R$ ${cat.price}` : 'GRÁTIS'}
+                                                        </span>
+                                                    </div>
+                                                )}
                                             </div>
-                                        )}
-                                    </button>
-                                ))}
+                                            {parentCategoryId === cat.id && (
+                                                <div className="absolute top-2 right-2">
+                                                    <div className="bg-indigo-600 text-white p-1 rounded-full">
+                                                        <Check size={12} />
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {/* Subcategories (Only if main category has children) */}
+                                {parentCategoryId && subCategories.length > 0 && (
+                                    <div className="animate-in fade-in slide-in-from-top-4 duration-300 space-y-4 pt-4 border-t border-slate-100">
+                                        <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Escolha a Subcategoria</h3>
+                                        <div className="grid gap-3">
+                                            {subCategories.map((sub: any) => (
+                                                <button
+                                                    key={sub.id}
+                                                    onClick={() => setFormData({ ...formData, category_id: sub.id })}
+                                                    className={`p-5 rounded-xl border-2 text-left transition-all flex justify-between items-center ${formData.category_id === sub.id
+                                                        ? 'border-indigo-600 bg-indigo-50'
+                                                        : 'border-slate-100 bg-slate-50/50 hover:bg-slate-50'
+                                                        }`}
+                                                >
+                                                    <div>
+                                                        <span className={`font-bold uppercase text-sm ${formData.category_id === sub.id ? 'text-indigo-600' : 'text-slate-700'}`}>
+                                                            {sub.name}
+                                                        </span>
+                                                        {sub.description && <p className="text-[10px] text-slate-400 uppercase mt-0.5">{sub.description}</p>}
+                                                    </div>
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="font-black text-slate-900 text-sm italic">
+                                                            {sub.price ? `R$ ${sub.price}` : selectedCategory?.price ? `R$ ${selectedCategory.price}` : 'GRÁTIS'}
+                                                        </span>
+                                                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${formData.category_id === sub.id ? 'bg-indigo-600 border-indigo-600' : 'border-slate-200 bg-white'}`}>
+                                                            {formData.category_id === sub.id && <Check size={10} className="text-white" />}
+                                                        </div>
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                         <button
-                            disabled={!formData.category_id}
-                            onClick={() => setStep(2)}
+                            disabled={!formData.category_id && (!parentCategoryId || subCategories.length > 0)}
+                            onClick={() => {
+                                // Se a categoria principal não tiver filhos, salvamos o ID dela como category_id para o próximo passo
+                                if (subCategories.length === 0 && parentCategoryId) {
+                                    setFormData(prev => ({ ...prev, category_id: parentCategoryId.toString() }));
+                                }
+                                setStep(2);
+                            }}
                             className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-800 disabled:opacity-50 shadow-xl flex items-center justify-center gap-3 group transition-all"
                         >
                             Próximo Passo

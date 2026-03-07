@@ -107,12 +107,14 @@ export function RaceDetails() {
                 {/* Content */}
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-8">
                     {/* About */}
-                    <div>
-                        <h2 className="text-xl font-bold text-gray-800 mb-3 uppercase tracking-tight">Sobre o Evento</h2>
-                        <p className="text-gray-600 leading-relaxed">
-                            {champ.description || `Prepare-se para o maior desafio do ano! A ${champ.name} traz uma estrutura completa para você superar seus limites. Kit atleta completo, hidratação e medalha finisher para todos que completarem a prova.`}
-                        </p>
-                    </div>
+                    {champ.description && (
+                        <div>
+                            <h2 className="text-xl font-bold text-gray-800 mb-3 uppercase tracking-tight">Sobre o Evento</h2>
+                            <p className="text-gray-600 leading-relaxed">
+                                {champ.description}
+                            </p>
+                        </div>
+                    )}
 
                     {/* Organization */}
                     {champ.club && (
