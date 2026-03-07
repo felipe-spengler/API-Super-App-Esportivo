@@ -27,7 +27,12 @@ class Championship extends Model
         'art_generator_settings',
         'art_settings',
         'awards',
-        'is_status_auto'
+        'is_status_auto',
+        'has_pcd_discount',
+        'pcd_discount_percentage',
+        'has_elderly_discount',
+        'elderly_discount_percentage',
+        'elderly_minimum_age'
     ];
 
     protected $casts = [
@@ -40,6 +45,11 @@ class Championship extends Model
         'art_settings' => 'array',
         'awards' => 'array',
         'is_status_auto' => 'boolean',
+        'has_pcd_discount' => 'boolean',
+        'pcd_discount_percentage' => 'decimal:2',
+        'has_elderly_discount' => 'boolean',
+        'elderly_discount_percentage' => 'decimal:2',
+        'elderly_minimum_age' => 'integer',
     ];
 
     public function club()

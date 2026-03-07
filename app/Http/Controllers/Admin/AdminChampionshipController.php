@@ -93,6 +93,11 @@ class AdminChampionshipController extends Controller
             'status' => 'nullable|in:draft,registrations_open,in_progress,upcoming,ongoing,finished,scheduled,Agendado',
             'is_active' => 'boolean',
             'art_settings' => 'nullable|array',
+            'has_pcd_discount' => 'nullable|boolean',
+            'pcd_discount_percentage' => 'nullable|numeric|min:0|max:100',
+            'has_elderly_discount' => 'nullable|boolean',
+            'elderly_discount_percentage' => 'nullable|numeric|min:0|max:100',
+            'elderly_minimum_age' => 'nullable|integer|min:0'
         ]);
 
         if (isset($validated['status'])) {

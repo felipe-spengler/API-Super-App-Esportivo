@@ -26,7 +26,12 @@ export function ChampionshipForm() {
         registration_end_date: '',
         registration_type: 'team', // 'individual' | 'team'
         description: '',
-        format: 'league' // Default to league
+        format: 'league', // Default to league
+        has_pcd_discount: false,
+        pcd_discount_percentage: 0,
+        has_elderly_discount: false,
+        elderly_discount_percentage: 0,
+        elderly_minimum_age: 60
     });
 
     const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -75,7 +80,12 @@ export function ChampionshipForm() {
                     registration_end_date: data.registration_end_date ? data.registration_end_date.split('T')[0] : '',
                     registration_type: data.registration_type || 'team',
                     description: data.description || '',
-                    format: data.format || 'league'
+                    format: data.format || 'league',
+                    has_pcd_discount: !!data.has_pcd_discount,
+                    pcd_discount_percentage: data.pcd_discount_percentage || 0,
+                    has_elderly_discount: !!data.has_elderly_discount,
+                    elderly_discount_percentage: data.elderly_discount_percentage || 0,
+                    elderly_minimum_age: data.elderly_minimum_age || 60
                 });
                 setLogoUrl(data.logo_url);
                 setCoverImageUrl(data.cover_image_url);
@@ -455,6 +465,78 @@ export function ChampionshipForm() {
                                 </div>
                             </div>
                         )}
+
+                        {/* 6. Descontos */}
+                        <div className="space-y-4">
+                            <h2 className="text-lg font-semibold text-gray-800 border-b pb-2">6. Descontos de Inscrição</h2>
+                            
+                            {/* PCD */}
+                            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-4">
+                                <label className="flex items-center gap-3 cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={formData.has_pcd_discount}
+                                        onChange={e => setFormData({...formData, has_pcd_discount: e.target.checked})}
+                                        className="w-5 h-5 text-indigo-600 rounded"
+                                    />
+                                    <span className="font-bold text-slate-800">Oferecer desconto para PCD (Pessoa com Deficiência)</span>
+                                </label>
+                                {formData.has_pcd_discount && (
+                                    <div className="pl-8 flex items-center gap-4">
+                                        <div className="w-1/3">
+                                            <label className="text-sm text-slate-500 font-bold mb-1 block">% de Desconto</label>
+                                            <div className="relative">
+                                                <input 
+                                                    type="number" min="0" max="100"
+                                                    value={formData.pcd_discount_percentage}
+                                                    onChange={e => setFormData({...formData, pcd_discount_percentage: Number(e.target.value)})}
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                                                />
+                                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Idoso */}
+                            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-4">
+                                <label className="flex items-center gap-3 cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={formData.has_elderly_discount}
+                                        onChange={e => setFormData({...formData, has_elderly_discount: e.target.checked})}
+                                        className="w-5 h-5 text-indigo-600 rounded"
+                                    />
+                                    <span className="font-bold text-slate-800">Oferecer desconto para Idosos</span>
+                                </label>
+                                {formData.has_elderly_discount && (
+                                    <div className="pl-8 flex flex-wrap gap-4">
+                                        <div className="w-1/3 min-w-[120px]">
+                                            <label className="text-sm text-slate-500 font-bold mb-1 block">% de Desconto</label>
+                                            <div className="relative">
+                                                <input 
+                                                    type="number" min="0" max="100"
+                                                    value={formData.elderly_discount_percentage}
+                                                    onChange={e => setFormData({...formData, elderly_discount_percentage: Number(e.target.value)})}
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                                                />
+                                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">%</span>
+                                            </div>
+                                        </div>
+                                        <div className="w-1/3 min-w-[120px]">
+                                            <label className="text-sm text-slate-500 font-bold mb-1 block">Idade Mínima</label>
+                                            <input 
+                                                type="number" min="0" max="120"
+                                                value={formData.elderly_minimum_age}
+                                                onChange={e => setFormData({...formData, elderly_minimum_age: Number(e.target.value)})}
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
 
                         <div className="pt-6 border-t border-gray-100 flex justify-end">
                             <button

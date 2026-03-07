@@ -27,11 +27,13 @@ export function RaceRegister() {
         birth_date: '',
         gender: '',
         category_id: '',
-        remove_bg: true
+        remove_bg: true,
+        is_pcd: false
     });
 
     const [photoFile, setPhotoFile] = useState<File | null>(null);
     const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+    const [pcdFile, setPcdFile] = useState<File | null>(null);
 
     const [parentCategoryId, setParentCategoryId] = useState<string | null>(null);
 
@@ -92,6 +94,11 @@ export function RaceRegister() {
             return;
         }
 
+        if (formData.is_pcd && !pcdFile) {
+            alert('Você declarou ser PCD. É obrigatório anexar o documento comprobatório para receber o desconto.');
+            return;
+        }
+
         try {
             setSaving(true);
             const data = new FormData();
@@ -104,6 +111,10 @@ export function RaceRegister() {
             data.append('category_id', formData.category_id);
             data.append('remove_bg', formData.remove_bg ? '1' : '0');
             data.append('photo', photoFile);
+            data.append('is_pcd', formData.is_pcd ? '1' : '0');
+            if (formData.is_pcd && pcdFile) {
+                data.append('pcd_document', pcdFile);
+            }
 
             const response = await api.post(`/championships/${id}/race/register`, data, {
                 headers: { 'Content-Type': 'multipart/form-data' }
@@ -345,6 +356,40 @@ export function RaceRegister() {
                                         ))}
                                     </div>
                                 </div>
+
+                                {championship?.has_pcd_discount && (
+                                    <div className="md:col-span-2 space-y-3 pt-6 border-t border-slate-100">
+                                        <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200">
+                                            <label className="flex items-start gap-3 cursor-pointer mb-4">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={formData.is_pcd}
+                                                    onChange={e => setFormData({ ...formData, is_pcd: e.target.checked })}
+                                                    className="w-5 h-5 text-indigo-600 rounded border-slate-300 mt-1"
+                                                />
+                                                <div>
+                                                    <span className="font-black text-slate-800 uppercase block">Sou Pessoa com Deficiência (PCD)</span>
+                                                    <span className="text-xs text-slate-500 font-medium pt-1 block">Marcando esta opção, você pode ter direito a desconto conforme as regras do evento.</span>
+                                                </div>
+                                            </label>
+
+                                            {formData.is_pcd && (
+                                                <div className="pl-8 space-y-2 animate-in fade-in slide-in-from-top-2">
+                                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">Documento Comprobatório (Obrigatório)</label>
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*,.pdf"
+                                                        onChange={e => setPcdFile(e.target.files?.[0] || null)}
+                                                        className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-indigo-50 file:text-indigo-600 hover:file:bg-indigo-100"
+                                                    />
+                                                    <p className="text-[10px] text-slate-400 mt-2 leading-relaxed">
+                                                        ⚠️ Tratamos seus dados de acordo com a LGPD. Seu laudo/documento será utilizado única e exclusivamente para validar seu desconto nesta inscrição, sendo armazenado com privacidade e segurança.
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -381,8 +426,11 @@ export function RaceRegister() {
                                 {registrationData?.requires_payment ? 'Quase lá!' : 'Inscrição Confirmada!'}
                             </h2>
                             <p className="text-slate-500 font-medium max-w-sm mx-auto">
+                                {registrationData?.discount_applied > 0 && (
+                                    <span className="block text-green-600 font-bold mb-2">Desconto de {registrationData.discount_applied}% aplicado com sucesso!</span>
+                                )}
                                 {registrationData?.requires_payment
-                                    ? `Sua inscrição foi reservada. Para garantir sua vaga, realize o pagamento de R$ ${registrationData.price} via PIX abaixo ou escolha outra forma de pagamento.`
+                                    ? `Sua inscrição foi reservada. Para garantir sua vaga, realize o pagamento de R$ ${registrationData.price.toFixed(2)} via PIX abaixo ou escolha outra forma de pagamento.`
                                     : 'Sua vaga está garantida. Agora é só se preparar para o grande dia!'}
                             </p>
                         </div>

@@ -33,6 +33,11 @@ class StoreChampionshipRequest extends FormRequest
             'image' => 'nullable|image|max:2048', // Validação de upload
             'rules' => 'nullable|string',
             'format' => 'required|in:league,knockout,group_knockout,league_playoffs,double_elimination,racing,groups', // Expanded formats
+            'has_pcd_discount' => 'nullable|boolean',
+            'pcd_discount_percentage' => 'nullable|numeric|min:0|max:100',
+            'has_elderly_discount' => 'nullable|boolean',
+            'elderly_discount_percentage' => 'nullable|numeric|min:0|max:100',
+            'elderly_minimum_age' => 'nullable|integer|min:0',
         ];
     }
 

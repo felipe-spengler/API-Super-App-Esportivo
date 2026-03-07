@@ -18,7 +18,13 @@ class RaceResult extends Model
         'position_category',
         'chip_id',
         'status_payment',
-        'payment_method'
+        'payment_method',
+        'is_pcd',
+        'pcd_document_url'
+    ];
+
+    protected $casts = [
+        'is_pcd' => 'boolean',
     ];
 
     public function race()

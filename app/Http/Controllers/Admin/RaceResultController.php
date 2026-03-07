@@ -354,6 +354,8 @@ class RaceResultController extends Controller
             'gender' => 'required|string|in:M,F,O',
             'category_id' => 'required|exists:categories,id',
             'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:4096',
+            'is_pcd' => 'nullable|boolean',
+            'pcd_document' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:4096',
         ]);
 
         $race = Race::where('championship_id', $championshipId)->first();
@@ -398,11 +400,37 @@ class RaceResultController extends Controller
                 $imageController->uploadPlayerPhoto($photoRequest, $user->id);
             }
 
-            // 3. Race Result
+            // 3. Documento PCD
+            $pcdDocumentUrl = null;
+            if ($request->boolean('is_pcd') && $request->hasFile('pcd_document')) {
+                $path = $request->file('pcd_document')->store('pcd_documents', 'public');
+                $pcdDocumentUrl = '/storage/' . $path;
+            }
+
+            // 4. Calcular Descontos (Idoso ou PCD)
+            $championship = $race->championship;
+            $originalPrice = $category->price;
+            $discountPct = 0;
+
+            $age = \Carbon\Carbon::parse($request->birth_date)->age;
+
+            if ($championship->has_elderly_discount && $age >= $championship->elderly_minimum_age) {
+                $discountPct = max($discountPct, $championship->elderly_discount_percentage);
+            }
+
+            if ($request->boolean('is_pcd') && $championship->has_pcd_discount) {
+                $discountPct = max($discountPct, $championship->pcd_discount_percentage);
+            }
+
+            $finalPrice = $originalPrice * (1 - ($discountPct / 100));
+            if ($finalPrice < 0)
+                $finalPrice = 0;
+
+            // 5. Race Result
             $lastBib = RaceResult::where('race_id', $race->id)->max(DB::raw('CAST(bib_number AS SIGNED)'));
             $newBib = $lastBib ? $lastBib + 1 : 1;
 
-            $status = ($category->price > 0) ? 'pending' : 'paid';
+            $status = ($finalPrice > 0) ? 'pending' : 'paid';
 
             $result = RaceResult::create([
                 'race_id' => $race->id,
@@ -411,7 +439,9 @@ class RaceResultController extends Controller
                 'bib_number' => (string) $newBib,
                 'category_id' => $category->id,
                 'status_payment' => $status,
-                'payment_method' => $status === 'paid' ? 'free' : null
+                'payment_method' => $status === 'paid' ? 'free' : null,
+                'is_pcd' => $request->boolean('is_pcd'),
+                'pcd_document_url' => $pcdDocumentUrl
             ]);
 
             $paymentInfo = null;
@@ -420,7 +450,7 @@ class RaceResultController extends Controller
                     $asaas = new AsaasService($race->championship->club);
                     $payment = $asaas->createPayment(
                         $user,
-                        $category->price,
+                        $finalPrice,
                         "Inscrição: {$race->championship->name} - {$category->name}",
                         "RR_{$result->id}"
                     );
@@ -449,8 +479,10 @@ class RaceResultController extends Controller
             return response()->json([
                 'message' => 'Inscrição realizada!',
                 'result' => $result,
-                'requires_payment' => $category->price > 0,
-                'price' => $category->price,
+                'requires_payment' => $finalPrice > 0,
+                'price' => $finalPrice,
+                'original_price' => $originalPrice,
+                'discount_applied' => $discountPct,
                 'payment_data' => $paymentInfo
             ], 201);
 
