@@ -364,6 +364,39 @@ class RaceResultController extends Controller
 
         $category = Category::findOrFail($request->category_id);
 
+        // Validar Idade na data 31/12 do ano do campeonato
+        $eventYear = $race->championship->start_date ? \Carbon\Carbon::parse($race->championship->start_date)->year : date('Y');
+        $referenceDate = \Carbon\Carbon::createFromDate($eventYear, 12, 31);
+        $athleteAge = $referenceDate->diffInYears(\Carbon\Carbon::parse($request->birth_date));
+
+        // Validar Gênero
+        if ($category->gender && $category->gender !== 'mixed') {
+            $catGender = strtolower($category->gender);
+            $userGender = strtolower($request->gender);
+
+            // Map M/F to male/female
+            if ($userGender === 'm')
+                $userGender = 'male';
+            if ($userGender === 'f')
+                $userGender = 'female';
+            if ($catGender === 'm')
+                $catGender = 'male';
+            if ($catGender === 'f')
+                $catGender = 'female';
+
+            if ($catGender !== 'mixed' && $userGender !== $catGender) {
+                return response()->json(['error' => 'Gênero incompatível com a categoria selecionada.'], 422);
+            }
+        }
+
+        // Validar Idade
+        if ($category->min_age && $athleteAge < $category->min_age) {
+            return response()->json(['error' => "Idade não permitida. A categoria exige idade mínima de {$category->min_age} anos em 31/12/{$eventYear}. (Idade calculada: {$athleteAge} anos)"], 422);
+        }
+        if ($category->max_age && $athleteAge > $category->max_age) {
+            return response()->json(['error' => "Idade não permitida. A categoria exige idade máxima de {$category->max_age} anos em 31/12/{$eventYear}. (Idade calculada: {$athleteAge} anos)"], 422);
+        }
+
         try {
             DB::beginTransaction();
 
@@ -412,9 +445,10 @@ class RaceResultController extends Controller
             $originalPrice = $category->price;
             $discountPct = 0;
 
-            $age = \Carbon\Carbon::parse($request->birth_date)->age;
-
-            if ($championship->has_elderly_discount && $age >= $championship->elderly_minimum_age) {
+            // A idade para desconto de idoso pode ser a idade no dia do evento ou a idade atual calculada normalmente (vamos usar a idade do dia do evento/ano)
+            // Se preferir idade exata de hj para desconto (mudar), abaixo mantemos a idade calculada para o fim do ano como padrão.
+            // Mas desconto idoso geralm. é idade na data corrida, usaremos o $athleteAge já calculado acima.
+            if ($championship->has_elderly_discount && $athleteAge >= $championship->elderly_minimum_age) {
                 $discountPct = max($discountPct, $championship->elderly_discount_percentage);
             }
 
