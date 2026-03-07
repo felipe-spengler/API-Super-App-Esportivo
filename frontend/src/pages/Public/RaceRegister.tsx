@@ -262,7 +262,7 @@ export function RaceRegister() {
                             {/* Photo Upload */}
                             <div className="flex flex-col items-center py-4">
                                 <label className="relative group cursor-pointer">
-                                    <div className={`w-36 h-36 rounded-full border-4 ${photoPreview ? 'border-indigo-600' : 'border-slate-200 border-dashed'} overflow-hidden bg-slate-50 flex items-center justify-center transition-all group-hover:border-indigo-400`}>
+                                    <div className={`w-36 h-36 rounded-full border-4 ${photoPreview ? 'border-indigo-600' : 'border-indigo-300 border-dashed'} overflow-hidden bg-slate-50 flex items-center justify-center transition-all`}>
                                         {photoPreview ? (
                                             <img src={photoPreview} className="w-full h-full object-cover" />
                                         ) : (
@@ -357,7 +357,7 @@ export function RaceRegister() {
                                     </div>
                                 </div>
 
-                                {championship?.has_pcd_discount && (
+                                {(championship?.has_pcd_discount == 1 || championship?.has_pcd_discount === true) && (
                                     <div className="md:col-span-2 space-y-3 pt-6 border-t border-slate-100">
                                         <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200">
                                             <label className="flex items-start gap-3 cursor-pointer mb-4">

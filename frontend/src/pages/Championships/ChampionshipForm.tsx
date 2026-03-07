@@ -283,28 +283,35 @@ export function ChampionshipForm() {
                         <div className="space-y-4">
                             <h2 className="text-lg font-semibold text-gray-800 border-b pb-2">3. Configuração de Inscrições</h2>
 
-                            <div className="space-y-3">
-                                <label className="text-sm font-semibold text-gray-700">Tipo de Inscrição</label>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <button
-                                        type="button"
-                                        onClick={() => setFormData({ ...formData, registration_type: 'individual' })}
-                                        className={`p-4 rounded-xl border text-left transition-all ${formData.registration_type === 'individual' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
-                                    >
-                                        <span className={`block font-bold mb-1 ${formData.registration_type === 'individual' ? 'text-indigo-700' : 'text-gray-900'}`}>Individual (Sorteio)</span>
-                                        <span className="text-xs text-gray-500">Atletas se inscrevem individualmente e o sistema sorteia os times.</span>
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        onClick={() => setFormData({ ...formData, registration_type: 'team' })}
-                                        className={`p-4 rounded-xl border text-left transition-all ${formData.registration_type === 'team' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
-                                    >
-                                        <span className={`block font-bold mb-1 ${formData.registration_type === 'team' ? 'text-indigo-700' : 'text-gray-900'}`}>Por Equipes</span>
-                                        <span className="text-xs text-gray-500">Um líder inscreve o time completo.</span>
-                                    </button>
+                            {formData.format === 'racing' ? (
+                                <div className="bg-indigo-50 border border-indigo-200 p-4 rounded-xl">
+                                    <p className="font-bold text-indigo-800">Evento Modalidade: Corrida/Individual</p>
+                                    <p className="text-sm text-indigo-600 mt-1">As inscrições são únicas por atleta e não dependem de times.</p>
                                 </div>
-                            </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    <label className="text-sm font-semibold text-gray-700">Tipo de Inscrição</label>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <button
+                                            type="button"
+                                            onClick={() => setFormData({ ...formData, registration_type: 'individual' })}
+                                            className={`p-4 rounded-xl border text-left transition-all ${formData.registration_type === 'individual' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
+                                        >
+                                            <span className={`block font-bold mb-1 ${formData.registration_type === 'individual' ? 'text-indigo-700' : 'text-gray-900'}`}>Individual (Sorteio)</span>
+                                            <span className="text-xs text-gray-500">Atletas se inscrevem individualmente e o sistema sorteia os times.</span>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => setFormData({ ...formData, registration_type: 'team' })}
+                                            className={`p-4 rounded-xl border text-left transition-all ${formData.registration_type === 'team' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
+                                        >
+                                            <span className={`block font-bold mb-1 ${formData.registration_type === 'team' ? 'text-indigo-700' : 'text-gray-900'}`}>Por Equipes</span>
+                                            <span className="text-xs text-gray-500">Um líder inscreve o time completo.</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
                                 <div className="space-y-2">
@@ -330,55 +337,57 @@ export function ChampionshipForm() {
                         </div>
 
                         {/* 4. Formato */}
-                        <div className="space-y-4">
-                            <h2 className="text-lg font-semibold text-gray-800 border-b pb-2">4. Formato de Disputa</h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                <button
-                                    type="button"
-                                    onClick={() => setFormData({ ...formData, format: 'league' })}
-                                    className={`p-4 rounded-xl border text-left transition-all ${formData.format === 'league' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
-                                >
-                                    <span className={`block font-bold mb-1 ${formData.format === 'league' ? 'text-indigo-700' : 'text-gray-900'}`}>Pontos Corridos</span>
-                                    <span className="text-xs text-gray-500">Todos contra todos. Quem somar mais pontos vence.</span>
-                                </button>
+                        {formData.format !== 'racing' && (
+                            <div className="space-y-4">
+                                <h2 className="text-lg font-semibold text-gray-800 border-b pb-2">4. Formato de Disputa</h2>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData({ ...formData, format: 'league' })}
+                                        className={`p-4 rounded-xl border text-left transition-all ${formData.format === 'league' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
+                                    >
+                                        <span className={`block font-bold mb-1 ${formData.format === 'league' ? 'text-indigo-700' : 'text-gray-900'}`}>Pontos Corridos</span>
+                                        <span className="text-xs text-gray-500">Todos contra todos. Quem somar mais pontos vence.</span>
+                                    </button>
 
-                                <button
-                                    type="button"
-                                    onClick={() => setFormData({ ...formData, format: 'knockout' })}
-                                    className={`p-4 rounded-xl border text-left transition-all ${formData.format === 'knockout' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
-                                >
-                                    <span className={`block font-bold mb-1 ${formData.format === 'knockout' ? 'text-indigo-700' : 'text-gray-900'}`}>Mata-mata</span>
-                                    <span className="text-xs text-gray-500">Eliminatória simples. Perdeu, saiu. (Chaves)</span>
-                                </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData({ ...formData, format: 'knockout' })}
+                                        className={`p-4 rounded-xl border text-left transition-all ${formData.format === 'knockout' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
+                                    >
+                                        <span className={`block font-bold mb-1 ${formData.format === 'knockout' ? 'text-indigo-700' : 'text-gray-900'}`}>Mata-mata</span>
+                                        <span className="text-xs text-gray-500">Eliminatória simples. Perdeu, saiu. (Chaves)</span>
+                                    </button>
 
-                                <button
-                                    type="button"
-                                    onClick={() => setFormData({ ...formData, format: 'group_knockout' })}
-                                    className={`p-4 rounded-xl border text-left transition-all ${formData.format === 'group_knockout' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
-                                >
-                                    <span className={`block font-bold mb-1 ${formData.format === 'group_knockout' ? 'text-indigo-700' : 'text-gray-900'}`}>Grupos + Mata-mata</span>
-                                    <span className="text-xs text-gray-500">Fase de grupos seguida de eliminatórias (Copa do Mundo).</span>
-                                </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData({ ...formData, format: 'group_knockout' })}
+                                        className={`p-4 rounded-xl border text-left transition-all ${formData.format === 'group_knockout' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
+                                    >
+                                        <span className={`block font-bold mb-1 ${formData.format === 'group_knockout' ? 'text-indigo-700' : 'text-gray-900'}`}>Grupos + Mata-mata</span>
+                                        <span className="text-xs text-gray-500">Fase de grupos seguida de eliminatórias (Copa do Mundo).</span>
+                                    </button>
 
-                                <button
-                                    type="button"
-                                    onClick={() => setFormData({ ...formData, format: 'league_playoffs' })}
-                                    className={`p-4 rounded-xl border text-left transition-all ${formData.format === 'league_playoffs' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
-                                >
-                                    <span className={`block font-bold mb-1 ${formData.format === 'league_playoffs' ? 'text-indigo-700' : 'text-gray-900'}`}>Liga + Playoffs</span>
-                                    <span className="text-xs text-gray-500">Temporada regular seguida de finais (NBA/Superliga).</span>
-                                </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData({ ...formData, format: 'league_playoffs' })}
+                                        className={`p-4 rounded-xl border text-left transition-all ${formData.format === 'league_playoffs' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
+                                    >
+                                        <span className={`block font-bold mb-1 ${formData.format === 'league_playoffs' ? 'text-indigo-700' : 'text-gray-900'}`}>Liga + Playoffs</span>
+                                        <span className="text-xs text-gray-500">Temporada regular seguida de finais (NBA/Superliga).</span>
+                                    </button>
 
-                                <button
-                                    type="button"
-                                    onClick={() => setFormData({ ...formData, format: 'double_elimination' })}
-                                    className={`p-4 rounded-xl border text-left transition-all ${formData.format === 'double_elimination' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
-                                >
-                                    <span className={`block font-bold mb-1 ${formData.format === 'double_elimination' ? 'text-indigo-700' : 'text-gray-900'}`}>Dupla Eliminação</span>
-                                    <span className="text-xs text-gray-500">Precisa perder duas vezes para sair. (Winners/Losers)</span>
-                                </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData({ ...formData, format: 'double_elimination' })}
+                                        className={`p-4 rounded-xl border text-left transition-all ${formData.format === 'double_elimination' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
+                                    >
+                                        <span className={`block font-bold mb-1 ${formData.format === 'double_elimination' ? 'text-indigo-700' : 'text-gray-900'}`}>Dupla Eliminação</span>
+                                        <span className="text-xs text-gray-500">Precisa perder duas vezes para sair. (Winners/Losers)</span>
+                                    </button>
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         {/* 5. Identidade Visual */}
                         {isEditing && (
@@ -469,14 +478,14 @@ export function ChampionshipForm() {
                         {/* 6. Descontos */}
                         <div className="space-y-4">
                             <h2 className="text-lg font-semibold text-gray-800 border-b pb-2">6. Descontos de Inscrição</h2>
-                            
+
                             {/* PCD */}
                             <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-4">
                                 <label className="flex items-center gap-3 cursor-pointer">
-                                    <input 
-                                        type="checkbox" 
+                                    <input
+                                        type="checkbox"
                                         checked={formData.has_pcd_discount}
-                                        onChange={e => setFormData({...formData, has_pcd_discount: e.target.checked})}
+                                        onChange={e => setFormData({ ...formData, has_pcd_discount: e.target.checked })}
                                         className="w-5 h-5 text-indigo-600 rounded"
                                     />
                                     <span className="font-bold text-slate-800">Oferecer desconto para PCD (Pessoa com Deficiência)</span>
@@ -486,10 +495,10 @@ export function ChampionshipForm() {
                                         <div className="w-1/3">
                                             <label className="text-sm text-slate-500 font-bold mb-1 block">% de Desconto</label>
                                             <div className="relative">
-                                                <input 
+                                                <input
                                                     type="number" min="0" max="100"
                                                     value={formData.pcd_discount_percentage}
-                                                    onChange={e => setFormData({...formData, pcd_discount_percentage: Number(e.target.value)})}
+                                                    onChange={e => setFormData({ ...formData, pcd_discount_percentage: Number(e.target.value) })}
                                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                                                 />
                                                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">%</span>
@@ -502,10 +511,10 @@ export function ChampionshipForm() {
                             {/* Idoso */}
                             <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-4">
                                 <label className="flex items-center gap-3 cursor-pointer">
-                                    <input 
-                                        type="checkbox" 
+                                    <input
+                                        type="checkbox"
                                         checked={formData.has_elderly_discount}
-                                        onChange={e => setFormData({...formData, has_elderly_discount: e.target.checked})}
+                                        onChange={e => setFormData({ ...formData, has_elderly_discount: e.target.checked })}
                                         className="w-5 h-5 text-indigo-600 rounded"
                                     />
                                     <span className="font-bold text-slate-800">Oferecer desconto para Idosos</span>
@@ -515,10 +524,10 @@ export function ChampionshipForm() {
                                         <div className="w-1/3 min-w-[120px]">
                                             <label className="text-sm text-slate-500 font-bold mb-1 block">% de Desconto</label>
                                             <div className="relative">
-                                                <input 
+                                                <input
                                                     type="number" min="0" max="100"
                                                     value={formData.elderly_discount_percentage}
-                                                    onChange={e => setFormData({...formData, elderly_discount_percentage: Number(e.target.value)})}
+                                                    onChange={e => setFormData({ ...formData, elderly_discount_percentage: Number(e.target.value) })}
                                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                                                 />
                                                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">%</span>
@@ -526,10 +535,10 @@ export function ChampionshipForm() {
                                         </div>
                                         <div className="w-1/3 min-w-[120px]">
                                             <label className="text-sm text-slate-500 font-bold mb-1 block">Idade Mínima</label>
-                                            <input 
+                                            <input
                                                 type="number" min="0" max="120"
                                                 value={formData.elderly_minimum_age}
-                                                onChange={e => setFormData({...formData, elderly_minimum_age: Number(e.target.value)})}
+                                                onChange={e => setFormData({ ...formData, elderly_minimum_age: Number(e.target.value) })}
                                                 className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                                             />
                                         </div>
