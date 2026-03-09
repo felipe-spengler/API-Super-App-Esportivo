@@ -91,7 +91,7 @@ class TeamController extends Controller
     {
         \Log::info("TeamController addPlayer - Request started", [
             'team_id' => $id,
-            'has_files' => $request->allFiles(),
+            'has_files' => count($request->allFiles()) > 0,
             'remove_bg' => $request->boolean('remove_bg')
         ]);
 
@@ -228,7 +228,7 @@ class TeamController extends Controller
                     pclose(popen("start /B " . $cmd, "r"));
                 } else {
                     // Mais agressivo no Linux para desvincular do processo do web server
-                    exec("nohup {$cmd} > /dev/null 2>&1 & disown");
+                    exec("nohup {$cmd} < /dev/null > /dev/null 2>&1 &");
                 }
             } catch (\Throwable $e) {
                 \Log::warning("TeamController AI Background - Could not fire command: " . $e->getMessage());
@@ -303,7 +303,7 @@ class TeamController extends Controller
         \Log::info("TeamController updatePlayer - Request started", [
             'team_id' => $id,
             'player_id' => $playerId,
-            'has_files' => $request->allFiles()
+            'has_files' => count($request->allFiles()) > 0
         ]);
 
         $team = Team::findOrFail($id);
@@ -405,7 +405,7 @@ class TeamController extends Controller
                         if ($isWindows) {
                             pclose(popen("start /B " . $cmd, "r"));
                         } else {
-                            exec("nohup {$cmd} > /dev/null 2>&1 & disown");
+                            exec("nohup {$cmd} < /dev/null > /dev/null 2>&1 &");
                         }
                     } catch (\Throwable $e) {
                         \Log::warning("TeamController AI Update Background - Error: " . $e->getMessage());
