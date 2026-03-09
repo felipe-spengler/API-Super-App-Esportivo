@@ -89,19 +89,24 @@ class TeamController extends Controller
     // 3. Adicionar Jogador (Convite)
     public function addPlayer(Request $request, $id)
     {
-        \Log::info("TeamController addPlayer - Request started", [
-            'team_id' => $id,
-            'has_files' => count($request->allFiles()) > 0,
-            'remove_bg' => $request->boolean('remove_bg')
+        \Log::info("TeamController addPlayer [START] - Team ID: {$id}", [
+            'has_photo_file' => $request->hasFile('photo_file'),
+            'has_photo_file_1' => $request->hasFile('photo_file_1'),
+            'has_photo_file_2' => $request->hasFile('photo_file_2'),
+            'remove_bg' => $request->boolean('remove_bg'),
+            'email' => $request->email,
+            'cpf' => $request->cpf
         ]);
 
         $team = Team::findOrFail($id);
 
         // Check permission (only captain or admin)
         if ($request->user()->id !== $team->captain_id && !$request->user()->is_admin) {
+            \Log::warning("TeamController addPlayer - Unauthorized attempt", ['user_id' => $request->user()->id, 'team_id' => $id]);
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
+        \Log::info("TeamController addPlayer [VALIDATING]");
         $request->validate([
             'name' => 'required|string',
             'position' => 'nullable|string',
@@ -130,17 +135,22 @@ class TeamController extends Controller
             $userData = \App\Models\User::where('cpf', $request->cpf)->first();
         }
 
+        \Log::info("TeamController addPlayer [DOC_STORAGE] - Starting document storage if exists");
         $documentPath = null;
         if ($request->hasFile('document_file')) {
             $documentPath = $request->file('document_file')->store('requests/documents', 'public');
+            \Log::info("TeamController addPlayer [DOC_STORAGE] - Document stored at: {$documentPath}");
         }
 
+        \Log::info("TeamController addPlayer [PHOTO_STORAGE] - Starting photos storage");
         $photoPath = null;
         $photosArray = [];
 
         foreach (['photo_file', 'photo_file_1', 'photo_file_2'] as $index => $fileInput) {
             if ($request->hasFile($fileInput)) {
+                \Log::info("TeamController addPlayer [PHOTO_STORAGE] - Storing {$fileInput}");
                 $pPath = $request->file($fileInput)->store('players/photos', 'public');
+                \Log::info("TeamController addPlayer [PHOTO_STORAGE] - Stored {$fileInput} at {$pPath}");
 
                 $photosArray[$index] = $pPath;
                 if ($index === 0) {
@@ -152,6 +162,7 @@ class TeamController extends Controller
 
         // 3. Create User if not exists (Auto-Registration Logic)
         if (!$userData) {
+            \Log::info("TeamController addPlayer [USER_CREATE] - Creating new user record");
             $tempPassword = $request->cpf ? preg_replace('/[^0-9]/', '', $request->cpf) : 'mudar123';
             // Generate temp email if strict logic requires it, assuming DB requires unique email
             $email = $request->email;
@@ -160,6 +171,7 @@ class TeamController extends Controller
             } else {
                 $exists = \App\Models\User::where('email', $email)->exists();
                 if ($exists) {
+                    \Log::warning("TeamController addPlayer [USER_CREATE] - Email already exists: {$email}");
                     return response()->json(['message' => 'Este e-mail já está em uso por outro atleta no sistema.'], 422);
                 }
             }
@@ -181,7 +193,9 @@ class TeamController extends Controller
                 'photos' => $photosArray,
                 'created_by' => $request->user()->id
             ]);
+            \Log::info("TeamController addPlayer [USER_CREATE] - Successfully created User ID: {$userData->id}");
         } else {
+            \Log::info("TeamController addPlayer [USER_UPDATE] - Updating existing User ID: {$userData->id}");
             // Update existing user with new info if they are blank
             $updateData = [];
             if (!$userData->document_path && $documentPath)
@@ -203,17 +217,15 @@ class TeamController extends Controller
             if (!$userData->birth_date && $request->birth_date)
                 $updateData['birth_date'] = $request->birth_date;
 
-            // Only update email/cpf if they were empty on the user? 
-            // Usually we don't overwrite verified info with potentially partial info unless explicitly requested.
-            // Keeping existing logic of only filling blanks.
-
             if (!empty($updateData)) {
                 $userData->update($updateData);
+                \Log::info("TeamController addPlayer [USER_UPDATE] - User updated with new data");
             }
         }
 
         // TRIGGER BACKGROUND AI PROCESSING
         if (($request->boolean('remove_bg') || $request->input('remove_bg') == '1')) {
+            \Log::info("TeamController addPlayer [BACKGROUND_AI] - Starting background process trigger");
             try {
                 $userId = $userData->id;
                 $isWindows = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
@@ -222,7 +234,7 @@ class TeamController extends Controller
                 $artisan = base_path('artisan');
                 $cmd = "{$php} {$artisan} player:process-photos {$userId}";
 
-                \Log::info("TeamController AI Background - Triggering for User {$userId}. Cmd: {$cmd}");
+                \Log::info("TeamController addPlayer [BACKGROUND_AI] - Triggering for User {$userId}. Cmd: {$cmd}");
 
                 if ($isWindows) {
                     pclose(popen("start /B " . $cmd, "r"));
@@ -230,13 +242,13 @@ class TeamController extends Controller
                     // Mais agressivo no Linux para desvincular do processo do web server
                     exec("nohup {$cmd} < /dev/null > /dev/null 2>&1 &");
                 }
+                \Log::info("TeamController addPlayer [BACKGROUND_AI] - Command fired successfully");
             } catch (\Throwable $e) {
-                \Log::warning("TeamController AI Background - Could not fire command: " . $e->getMessage());
+                \Log::error("TeamController addPlayer [BACKGROUND_AI] [ERROR] - Could not fire command: " . $e->getMessage());
             }
         }
 
-        \Log::info("TeamController addPlayer - Success. About to return response for User {$userData->id}");
-
+        \Log::info("TeamController addPlayer [ELIGIBILITY] - Starting eligibility checks");
         // Add to pivot
         // Validação de elegibilidade se o time já estiver em algum campeonato/categoria
         if ($userData) {
@@ -253,6 +265,7 @@ class TeamController extends Controller
             })->get();
 
             $allCategories = $teamCategories->merge($champCategories);
+            \Log::info("TeamController addPlayer [ELIGIBILITY] - Categories count to check: " . $allCategories->count());
 
             foreach ($allCategories as $category) {
                 // Skip eligibility check if user is admin or club manager
@@ -260,8 +273,10 @@ class TeamController extends Controller
                 $isClubManager = $request->user()->club_id === $team->club_id;
 
                 if (!$isAdmin && !$isClubManager) {
+                    \Log::info("TeamController addPlayer [ELIGIBILITY] - Checking category: {$category->name}");
                     $check = $category->isUserEligible($userData);
                     if (!$check['eligible']) {
+                        \Log::warning("TeamController addPlayer [ELIGIBILITY] [FAILED] - Reason: {$check['reason']}");
                         return response()->json([
                             'message' => 'O atleta não atende aos requisitos desta categoria.',
                             'reason' => $check['reason'],
@@ -272,6 +287,7 @@ class TeamController extends Controller
             }
         }
 
+        \Log::info("TeamController addPlayer [PIVOT] - Attaching player to team");
         $team->players()->attach($userData ? $userData->id : null, [
             'temp_player_name' => $userData ? $userData->name : $request->name,
             'position' => $request->position,
@@ -281,7 +297,9 @@ class TeamController extends Controller
             'championship_id' => $request->championship_id
         ]);
 
+        \Log::info("TeamController addPlayer [SUCCESS] - Returning response for User ID: {$userData->id}");
         return response()->json(['message' => 'Jogador adicionado e vinculado com sucesso!'], 201);
+
     }
 
     // 3.5. Upload Player Photo (Pelo Capitão)
