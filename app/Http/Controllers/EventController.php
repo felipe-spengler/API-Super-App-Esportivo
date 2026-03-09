@@ -71,7 +71,7 @@ class EventController extends Controller
     public function matches(Request $request, $championshipId)
     {
         $query = GameMatch::where('championship_id', $championshipId)
-            ->with(['homeTeam', 'awayTeam'])
+            ->with(['homeTeam', 'awayTeam', 'mvp'])
             ->orderBy('start_time');
 
         if ($request->has('category_id') && $request->category_id != 'null') {
