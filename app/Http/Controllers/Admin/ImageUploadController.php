@@ -145,99 +145,6 @@ class ImageUploadController extends Controller
                 'index' => $index
             ];
 
-            // PROCESSAMENTO DE IA: REMOVER FUNDO
-            if ($request->boolean('remove_bg')) {
-                $startAi = microtime(true);
-                try {
-                    // Check if exec() is available
-                    if (!function_exists('exec')) {
-                        throw new \RuntimeException('exec() esta desabilitado no servidor (disable_functions).');
-                    }
-
-                    $inputAbsPath = storage_path('app/public/' . $path);
-                    // Always output as PNG — RGBA (transparent) cannot be saved as JPEG/JFIF
-                    $filenameNobg = pathinfo($filename, PATHINFO_FILENAME) . '_nobg.png';
-                    $outputAbsPath = storage_path('app/public/players/' . $filenameNobg);
-                    $scriptPath = base_path('scripts/remove_bg.py');
-
-                    // Configurar diretório de cache para modelos de IA (evita erro de permissão home)
-                    $cacheDir = storage_path('app/public/.u2net');
-                    if (!file_exists($cacheDir)) {
-                        @mkdir($cacheDir, 0775, true);
-                    }
-
-                    // Determinar qual binário Python está disponível
-                    $pythonBin = null;
-                    foreach (['python3', 'python', '/usr/bin/python3', '/usr/local/bin/python3'] as $candidate) {
-                        $testOut = [];
-                        $testRet = -1;
-                        @exec("{$candidate} --version 2>&1", $testOut, $testRet);
-                        if ($testRet === 0) {
-                            $pythonBin = $candidate;
-                            break;
-                        }
-                    }
-
-                    if (!$pythonBin) {
-                        throw new \RuntimeException('Python nao encontrado no servidor. Tentados: python3, python.');
-                    }
-
-                    // Comando com variáveis de ambiente para definir home/cache
-                    // Redireciona stderr para stdout (2>&1) para capturar erros do Python
-                    $command = "export U2NET_HOME={$cacheDir} && export NUMBA_CACHE_DIR={$cacheDir} && {$pythonBin} \"{$scriptPath}\" \"{$inputAbsPath}\" \"{$outputAbsPath}\" 2>&1";
-
-                    \Log::info("Lab AI - Python bin: {$pythonBin} | Command: " . $command);
-
-                    $output = [];
-                    $returnVar = 0;
-                    exec($command, $output, $returnVar);
-
-                    $endAi = microtime(true);
-                    $aiDuration = round($endAi - $startAi, 3);
-
-                    // Telemetria básica
-                    $responseData['ai_time'] = $aiDuration . 's';
-                    $responseData['ai_python'] = $pythonBin;
-
-                    if ($returnVar === 0 && file_exists($outputAbsPath)) {
-                        @chmod($outputAbsPath, 0664);
-
-                        $nobgStoragePath = 'players/' . $filenameNobg;
-
-                        // USAR ROTA API (PROXY) COMO PRINCIPAL
-                        // Isso garante visualização mesmo com erro de configuração no Nginx/Storage link
-                        $responseData['photo_nobg_url'] = url('api/storage/' . $nobgStoragePath);
-                        $responseData['photo_nobg_path'] = $nobgStoragePath;
-                        $responseData['ai_processed'] = true;
-
-                        // Also update $path so the DB stores the nobg version
-                        $path = $nobgStoragePath;
-                    } else {
-                        $outputLines = implode(' | ', $output);
-                        \Log::error("Lab AI - Failed. Code: {$returnVar}. Output: " . $outputLines);
-
-                        // Build a meaningful error to show to user
-                        $aiErrorMsg = 'Falha ao remover fundo (codigo ' . $returnVar . ').';
-                        if (!empty($output)) {
-                            $firstLine = trim($output[0] ?? '');
-                            if (str_contains($firstLine, 'No module named')) {
-                                $aiErrorMsg = 'Biblioteca rembg nao instalada no servidor.';
-                            } elseif (str_contains($firstLine, 'ModuleNotFoundError')) {
-                                $aiErrorMsg = 'rembg nao instalado. Execute: pip install rembg';
-                            } elseif ($firstLine) {
-                                $aiErrorMsg = 'Erro IA: ' . mb_substr($firstLine, 0, 200);
-                            }
-                        }
-
-                        $responseData['ai_error'] = $aiErrorMsg;
-                        $responseData['ai_output'] = array_slice($output, 0, 5); // primeiras 5 linhas
-                    }
-                } catch (\Throwable $e) {
-                    \Log::error("Lab AI - Exception: " . $e->getMessage());
-                    $responseData['ai_error'] = 'Erro ao remover fundo: ' . $e->getMessage();
-                }
-            }
-
             // Atualiza array de fotos
             $currentPhotos[$index] = $path;
 
@@ -250,6 +157,18 @@ class ImageUploadController extends Controller
             $player->photo_path = $currentPhotos[0] ?? null;
 
             $player->save();
+
+            // TRIGGER BACKGROUND AI PROCESSING
+            if ($request->boolean('remove_bg')) {
+                $userId = $player->id;
+                $isWindows = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
+                $cmd = "php artisan player:process-photos {$userId}";
+                if ($isWindows) {
+                    pclose(popen("start /B " . $cmd, "r"));
+                } else {
+                    exec($cmd . " > /dev/null 2>&1 &");
+                }
+            }
 
             $responseData['photos'] = $currentPhotos;
 

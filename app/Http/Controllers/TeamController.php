@@ -136,59 +136,6 @@ class TeamController extends Controller
             if ($request->hasFile($fileInput)) {
                 $pPath = $request->file($fileInput)->store('players/photos', 'public');
 
-                // PROCESSAMENTO DE IA: REMOVER FUNDO - Apenas para a foto principal (index 0)
-                if (($request->boolean('remove_bg') || $request->input('remove_bg') == '1') && $index === 0) {
-                    try {
-                        set_time_limit(120); // Aumenta o tempo para processamento de IA
-                        $inputAbsPath = storage_path('app/public/' . $pPath);
-                        $filenameNobg = pathinfo($pPath, PATHINFO_FILENAME) . '_nobg.png';
-                        $outputAbsPath = storage_path('app/public/players/photos/' . $filenameNobg);
-                        $scriptPath = base_path('scripts/remove_bg.py');
-
-                        $cacheDir = storage_path('app/public/.u2net');
-                        if (!file_exists($cacheDir)) {
-                            @mkdir($cacheDir, 0775, true);
-                        }
-
-                        $pythonBin = null;
-                        $isWindows = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
-                        $candidates = $isWindows
-                            ? ['python', 'python3', 'py']
-                            : ['python3', 'python', '/usr/bin/python3', '/usr/local/bin/python3'];
-
-                        foreach ($candidates as $candidate) {
-                            $testOut = [];
-                            $testRet = -1;
-                            $cmdTest = $isWindows ? "{$candidate} --version" : "{$candidate} --version 2>&1";
-                            @exec($cmdTest, $testOut, $testRet);
-                            if ($testRet === 0) {
-                                $pythonBin = $candidate;
-                                break;
-                            }
-                        }
-
-                        if ($pythonBin) {
-                            if ($isWindows) {
-                                $command = "set U2NET_HOME={$cacheDir} && set NUMBA_CACHE_DIR={$cacheDir} && {$pythonBin} \"{$scriptPath}\" \"{$inputAbsPath}\" \"{$outputAbsPath}\" 2>&1";
-                            } else {
-                                $command = "export U2NET_HOME={$cacheDir} && export NUMBA_CACHE_DIR={$cacheDir} && {$pythonBin} \"{$scriptPath}\" \"{$inputAbsPath}\" \"{$outputAbsPath}\" 2>&1";
-                            }
-
-                            \Log::info("TeamController AI - Running: " . $command);
-                            exec($command, $output, $returnVar);
-
-                            if ($returnVar === 0 && file_exists($outputAbsPath)) {
-                                @chmod($outputAbsPath, 0664);
-                                $pPath = 'players/photos/' . $filenameNobg;
-                            } else {
-                                \Log::warning("TeamController AI - Failed with code {$returnVar}. Output: " . implode("\n", $output));
-                            }
-                        }
-                    } catch (\Throwable $e) {
-                        \Log::error("Lab AI TeamController (add) - Exception: " . $e->getMessage());
-                    }
-                }
-
                 $photosArray[$index] = $pPath;
                 if ($index === 0) {
                     $photoPath = $pPath; // Mantém compatibilidade principal
@@ -256,6 +203,18 @@ class TeamController extends Controller
 
             if (!empty($updateData)) {
                 $userData->update($updateData);
+            }
+        }
+
+        // TRIGGER BACKGROUND AI PROCESSING
+        if (($request->boolean('remove_bg') || $request->input('remove_bg') == '1')) {
+            $userId = $userData->id;
+            $isWindows = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
+            $cmd = "php artisan player:process-photos {$userId}";
+            if ($isWindows) {
+                pclose(popen("start /B " . $cmd, "r"));
+            } else {
+                exec($cmd . " > /dev/null 2>&1 &");
             }
         }
 
@@ -385,44 +344,6 @@ class TeamController extends Controller
                     $hasAnyPhoto = true;
                     $pPath = $request->file($fileInput)->store('players/photos', 'public');
 
-                    // PROCESSAMENTO DE IA: REMOVER FUNDO
-                    if ($request->boolean('remove_bg') || $request->input('remove_bg') == '1') {
-                        try {
-                            $inputAbsPath = storage_path('app/public/' . $pPath);
-                            $filenameNobg = pathinfo($pPath, PATHINFO_FILENAME) . '_nobg.png';
-                            $outputAbsPath = storage_path('app/public/players/photos/' . $filenameNobg);
-                            $scriptPath = base_path('scripts/remove_bg.py');
-
-                            $cacheDir = storage_path('app/public/.u2net');
-                            if (!file_exists($cacheDir)) {
-                                @mkdir($cacheDir, 0775, true);
-                            }
-
-                            $pythonBin = null;
-                            foreach (['python3', 'python', '/usr/bin/python3', '/usr/local/bin/python3'] as $candidate) {
-                                $testOut = [];
-                                $testRet = -1;
-                                @exec("{$candidate} --version 2>&1", $testOut, $testRet);
-                                if ($testRet === 0) {
-                                    $pythonBin = $candidate;
-                                    break;
-                                }
-                            }
-
-                            if ($pythonBin) {
-                                $command = "export U2NET_HOME={$cacheDir} && export NUMBA_CACHE_DIR={$cacheDir} && {$pythonBin} \"{$scriptPath}\" \"{$inputAbsPath}\" \"{$outputAbsPath}\" 2>&1";
-                                exec($command, $output, $returnVar);
-
-                                if ($returnVar === 0 && file_exists($outputAbsPath)) {
-                                    @chmod($outputAbsPath, 0664);
-                                    $pPath = 'players/photos/' . $filenameNobg;
-                                }
-                            }
-                        } catch (\Throwable $e) {
-                            \Log::error("Lab AI TeamController (update loop) - Exception: " . $e->getMessage());
-                        }
-                    }
-
                     $photosArray[$index] = $pPath;
                     if ($index === 0) {
                         $photoPath = $pPath; // Mantém compatibilidade principal
@@ -443,6 +364,18 @@ class TeamController extends Controller
                     $updateData['photo_path'] = $photoPath;
                 }
                 $player->update($updateData);
+
+                // TRIGGER BACKGROUND AI PROCESSING
+                if (($request->boolean('remove_bg') || $request->input('remove_bg') == '1')) {
+                    $userId = $player->id;
+                    $isWindows = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
+                    $cmd = "php artisan player:process-photos {$userId}";
+                    if ($isWindows) {
+                        pclose(popen("start /B " . $cmd, "r"));
+                    } else {
+                        exec($cmd . " > /dev/null 2>&1 &");
+                    }
+                }
             }
         }
 
