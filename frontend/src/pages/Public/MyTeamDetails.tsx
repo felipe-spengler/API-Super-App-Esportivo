@@ -147,6 +147,8 @@ export function MyTeamDetails() {
     async function handleSavePlayer(e: React.FormEvent) {
         e.preventDefault();
         setAdding(true);
+        console.log('[MyTeamDetails] Starting handleSavePlayer...');
+
         try {
             const formData = new FormData();
             formData.append('name', newPlayerName);
@@ -159,7 +161,9 @@ export function MyTeamDetails() {
             formData.append('birth_date', newPlayerBirthDate);
             formData.append('gender', newPlayerGender);
             formData.append('address', newPlayerAddress);
+
             if (documentFile) {
+                console.log('[MyTeamDetails] Attaching document:', documentFile.name, documentFile.size, 'bytes');
                 formData.append('document_file', documentFile);
             }
             if (newPlayerPassword) {
@@ -171,27 +175,41 @@ export function MyTeamDetails() {
 
             // Para novos jogadores, enviamos os arquivos selecionados nos slots
             if (!editingPlayer) {
-                if (photoFiles[0]) formData.append('photo_file', photoFiles[0]);
-                if (photoFiles[1]) formData.append('photo_file_1', photoFiles[1]);
-                if (photoFiles[2]) formData.append('photo_file_2', photoFiles[2]);
+                if (photoFiles[0]) {
+                    console.log('[MyTeamDetails] Attaching photo 0:', photoFiles[0].name, photoFiles[0].size, 'bytes');
+                    formData.append('photo_file', photoFiles[0]);
+                }
+                if (photoFiles[1]) {
+                    console.log('[MyTeamDetails] Attaching photo 1:', photoFiles[1].name, photoFiles[1].size, 'bytes');
+                    formData.append('photo_file_1', photoFiles[1]);
+                }
+                if (photoFiles[2]) {
+                    console.log('[MyTeamDetails] Attaching photo 2:', photoFiles[2].name, photoFiles[2].size, 'bytes');
+                    formData.append('photo_file_2', photoFiles[2]);
+                }
             }
 
             if (selectedChampionshipId) {
                 formData.append('championship_id', String(selectedChampionshipId));
             }
 
+            const endpoint = editingPlayer ? `/teams/${id}/players/${editingPlayer.id}` : `/teams/${id}/players`;
+            console.log(`[MyTeamDetails] Sending POST to ${endpoint}...`);
+
             if (editingPlayer) {
                 formData.append('_method', 'PUT');
-                await api.post(`/teams/${id}/players/${editingPlayer.id}`, formData, {
+                const response = await api.post(endpoint, formData, {
                     headers: { 'Content-Type': 'multipart/form-data' },
-                    timeout: 120000 // 2 minutes for AI processing
+                    timeout: 120000
                 });
+                console.log('[MyTeamDetails] Success response:', response.data);
                 alert('Jogador atualizado!');
             } else {
-                await api.post(`/teams/${id}/players`, formData, {
+                const response = await api.post(endpoint, formData, {
                     headers: { 'Content-Type': 'multipart/form-data' },
-                    timeout: 120000 // 2 minutes for AI processing
+                    timeout: 120000
                 });
+                console.log('[MyTeamDetails] Success response:', response.data);
                 alert('Jogador adicionado!');
             }
 
@@ -200,6 +218,9 @@ export function MyTeamDetails() {
             loadTeam();
         } catch (error: any) {
             console.error('[MyTeamDetails] Error saving player:', error);
+            if (error.code === 'ECONNABORTED') {
+                console.error('[MyTeamDetails] REQUEST TIMEOUT EXCEEDED (120s)');
+            }
             const msg = error.response?.data?.message || error.response?.data?.error || 'Erro ao salvar jogador.';
             alert(`❌ ${msg}`);
         } finally {
