@@ -165,14 +165,17 @@ export function MyTeamDetails() {
             if (newPlayerPassword) {
                 formData.append('password', newPlayerPassword);
             }
+            if (removeBg) {
+                formData.append('remove_bg', '1');
+            }
+
+            // Para novos jogadores, enviamos os arquivos selecionados nos slots
             if (!editingPlayer) {
-                if (photoFiles[0]) {
-                    formData.append('photo_file', photoFiles[0]);
-                    if (removeBg) formData.append('remove_bg', '1');
-                }
+                if (photoFiles[0]) formData.append('photo_file', photoFiles[0]);
                 if (photoFiles[1]) formData.append('photo_file_1', photoFiles[1]);
                 if (photoFiles[2]) formData.append('photo_file_2', photoFiles[2]);
             }
+
             if (selectedChampionshipId) {
                 formData.append('championship_id', String(selectedChampionshipId));
             }
@@ -415,32 +418,33 @@ export function MyTeamDetails() {
                         </div>
 
                         <form onSubmit={handleSavePlayer} className="p-6 space-y-6 max-h-[85vh] overflow-y-auto">
-                            {/* Photo Section */}
                             <div className="pb-6 border-b border-gray-100">
-                                {editingPlayer ? (
-                                    <div className="space-y-4">
-                                        <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Fotos do Atleta</h4>
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest">Fotos do Atleta</h4>
+                                        {!editingPlayer && (
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="checkbox"
+                                                    id="removeBgPublic"
+                                                    checked={removeBg}
+                                                    onChange={e => setRemoveBg(e.target.checked)}
+                                                    className="w-3 h-3 text-indigo-600 rounded focus:ring-indigo-500"
+                                                />
+                                                <label htmlFor="removeBgPublic" className="text-[10px] font-bold text-gray-500 cursor-pointer uppercase">
+                                                    Remover fundo (IA)
+                                                </label>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {editingPlayer ? (
                                         <TeamPlayerPhotoUploadSection
                                             playerId={editingPlayer.id.toString()}
                                             teamId={id!}
                                             currentPhotos={editingPlayer.photo_url || (editingPlayer as any)?.photo_urls}
                                         />
-                                    </div>
-                                ) : (
-                                    <div className="space-y-4">
-                                        <div className="flex items-center gap-2 mb-4">
-                                            <input
-                                                type="checkbox"
-                                                id="removeBgPublic"
-                                                checked={removeBg}
-                                                onChange={e => setRemoveBg(e.target.checked)}
-                                                className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
-                                            />
-                                            <label htmlFor="removeBgPublic" className="text-sm font-medium text-gray-700 cursor-pointer">
-                                                Remover fundo com IA (automático na principal ao salvar)
-                                            </label>
-                                        </div>
-
+                                    ) : (
                                         <div className="flex gap-4 flex-wrap">
                                             {[0, 1, 2].map((index) => (
                                                 <div key={index} className="relative w-28 h-28 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden hover:border-indigo-400 transition-colors group">
@@ -465,7 +469,7 @@ export function MyTeamDetails() {
                                                     ) : (
                                                         <label className="cursor-pointer w-full h-full flex flex-col items-center justify-center text-gray-400 hover:text-indigo-600">
                                                             <Plus className="w-6 h-6 mb-1" />
-                                                            <span className="text-[10px] uppercase font-bold">Foto {index + 1}</span>
+                                                            <span className="text-[10px] uppercase font-bold">Slot {index + 1}</span>
                                                             <input
                                                                 type="file"
                                                                 className="hidden"
@@ -493,8 +497,8 @@ export function MyTeamDetails() {
                                                 </div>
                                             ))}
                                         </div>
-                                    </div>
-                                )}
+                                    )}
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-4">
