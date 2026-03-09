@@ -89,13 +89,13 @@ class TeamController extends Controller
     // 3. Adicionar Jogador (Convite)
     public function addPlayer(Request $request, $id)
     {
+        // Debug de pânico: escreve direto no disco para ignorar qualquer problema no Log do Laravel
+        file_put_contents(storage_path('logs/debug_request.log'), "[" . date('Y-m-d H:i:s') . "] Request received for Team {$id}\n", FILE_APPEND);
+
         \Log::info("TeamController addPlayer [START] - Team ID: {$id}", [
             'has_photo_file' => $request->hasFile('photo_file'),
-            'has_photo_file_1' => $request->hasFile('photo_file_1'),
-            'has_photo_file_2' => $request->hasFile('photo_file_2'),
+            'photo_size' => $request->hasFile('photo_file') ? $request->file('photo_file')->getSize() : 0,
             'remove_bg' => $request->boolean('remove_bg'),
-            'email' => $request->email,
-            'cpf' => $request->cpf
         ]);
 
         $team = Team::findOrFail($id);
@@ -118,8 +118,8 @@ class TeamController extends Controller
             'address' => 'nullable|string',
             'birth_date' => 'nullable|date',
             'number' => 'nullable|string',
-            'document_file' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120', // Max 5MB
-            'photo_file' => 'nullable|image|max:4096', // Max 4MB
+            'document_file' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240', // Max 10MB
+            'photo_file' => 'nullable|image|max:10240', // Max 10MB
             'championship_id' => 'nullable|integer|exists:championships,id'
         ]);
 
