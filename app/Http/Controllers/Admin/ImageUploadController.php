@@ -160,15 +160,27 @@ class ImageUploadController extends Controller
 
             // TRIGGER BACKGROUND AI PROCESSING
             if ($request->boolean('remove_bg')) {
-                $userId = $player->id;
-                $isWindows = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
-                $cmd = "php artisan player:process-photos {$userId}";
-                if ($isWindows) {
-                    pclose(popen("start /B " . $cmd, "r"));
-                } else {
-                    exec($cmd . " > /dev/null 2>&1 &");
+                try {
+                    $userId = $player->id;
+                    $isWindows = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
+
+                    $php = PHP_BINARY;
+                    $artisan = base_path('artisan');
+                    $cmd = "{$php} {$artisan} player:process-photos {$userId}";
+
+                    \Log::info("ImageUploadController Background - Triggering AI for User {$userId}. Cmd: {$cmd}");
+
+                    if ($isWindows) {
+                        pclose(popen("start /B " . $cmd, "r"));
+                    } else {
+                        exec("nohup {$cmd} > /dev/null 2>/dev/null &");
+                    }
+                } catch (\Throwable $e) {
+                    \Log::error("ImageUploadController Background Error: " . $e->getMessage());
                 }
             }
+
+            \Log::info("ImageUploadController - Success response for player {$playerId}");
 
             $responseData['photos'] = $currentPhotos;
 

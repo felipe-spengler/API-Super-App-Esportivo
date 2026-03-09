@@ -208,15 +208,28 @@ class TeamController extends Controller
 
         // TRIGGER BACKGROUND AI PROCESSING
         if (($request->boolean('remove_bg') || $request->input('remove_bg') == '1')) {
-            $userId = $userData->id;
-            $isWindows = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
-            $cmd = "php artisan player:process-photos {$userId}";
-            if ($isWindows) {
-                pclose(popen("start /B " . $cmd, "r"));
-            } else {
-                exec($cmd . " > /dev/null 2>&1 &");
+            try {
+                $userId = $userData->id;
+                $isWindows = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
+
+                $php = PHP_BINARY;
+                $artisan = base_path('artisan');
+                $cmd = "{$php} {$artisan} player:process-photos {$userId}";
+
+                \Log::info("TeamController AI Background - Triggering for User {$userId}. Cmd: {$cmd}");
+
+                if ($isWindows) {
+                    pclose(popen("start /B " . $cmd, "r"));
+                } else {
+                    // Detach more aggressively on Linux VPS
+                    exec("nohup {$cmd} > /dev/null 2>/dev/null &");
+                }
+            } catch (\Throwable $e) {
+                \Log::warning("TeamController AI Background - Could not fire command: " . $e->getMessage());
             }
         }
+
+        \Log::info("TeamController addPlayer - Success response sent for user {$userData->id}");
 
         // Add to pivot
         // Validação de elegibilidade se o time já estiver em algum campeonato/categoria
@@ -367,17 +380,29 @@ class TeamController extends Controller
 
                 // TRIGGER BACKGROUND AI PROCESSING
                 if (($request->boolean('remove_bg') || $request->input('remove_bg') == '1')) {
-                    $userId = $player->id;
-                    $isWindows = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
-                    $cmd = "php artisan player:process-photos {$userId}";
-                    if ($isWindows) {
-                        pclose(popen("start /B " . $cmd, "r"));
-                    } else {
-                        exec($cmd . " > /dev/null 2>&1 &");
+                    try {
+                        $userId = $player->id;
+                        $isWindows = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
+
+                        $php = PHP_BINARY;
+                        $artisan = base_path('artisan');
+                        $cmd = "{$php} {$artisan} player:process-photos {$userId}";
+
+                        \Log::info("TeamController AI Update Background - Triggering for User {$userId}. Cmd: {$cmd}");
+
+                        if ($isWindows) {
+                            pclose(popen("start /B " . $cmd, "r"));
+                        } else {
+                            exec("nohup {$cmd} > /dev/null 2>/dev/null &");
+                        }
+                    } catch (\Throwable $e) {
+                        \Log::warning("TeamController AI Update Background - Error: " . $e->getMessage());
                     }
                 }
             }
         }
+
+        \Log::info("TeamController updatePlayer - Success response sent for player {$playerId}");
 
         return response()->json(['message' => 'Atleta atualizado com sucesso!']);
     }
