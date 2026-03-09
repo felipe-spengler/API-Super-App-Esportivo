@@ -173,14 +173,14 @@ class ImageUploadController extends Controller
                     if ($isWindows) {
                         pclose(popen("start /B " . $cmd, "r"));
                     } else {
-                        exec("nohup {$cmd} > /dev/null 2>/dev/null &");
+                        exec("nohup {$cmd} > /dev/null 2>&1 & disown");
                     }
                 } catch (\Throwable $e) {
                     \Log::error("ImageUploadController Background Error: " . $e->getMessage());
                 }
             }
 
-            \Log::info("ImageUploadController - Success response for player {$playerId}");
+            \Log::info("ImageUploadController - Success. About to return response for player {$playerId}");
 
             $responseData['photos'] = $currentPhotos;
 

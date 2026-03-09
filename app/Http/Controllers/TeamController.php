@@ -89,6 +89,12 @@ class TeamController extends Controller
     // 3. Adicionar Jogador (Convite)
     public function addPlayer(Request $request, $id)
     {
+        \Log::info("TeamController addPlayer - Request started", [
+            'team_id' => $id,
+            'has_files' => $request->allFiles(),
+            'remove_bg' => $request->boolean('remove_bg')
+        ]);
+
         $team = Team::findOrFail($id);
 
         // Check permission (only captain or admin)
@@ -221,15 +227,15 @@ class TeamController extends Controller
                 if ($isWindows) {
                     pclose(popen("start /B " . $cmd, "r"));
                 } else {
-                    // Detach more aggressively on Linux VPS
-                    exec("nohup {$cmd} > /dev/null 2>/dev/null &");
+                    // Mais agressivo no Linux para desvincular do processo do web server
+                    exec("nohup {$cmd} > /dev/null 2>&1 & disown");
                 }
             } catch (\Throwable $e) {
                 \Log::warning("TeamController AI Background - Could not fire command: " . $e->getMessage());
             }
         }
 
-        \Log::info("TeamController addPlayer - Success response sent for user {$userData->id}");
+        \Log::info("TeamController addPlayer - Success. About to return response for User {$userData->id}");
 
         // Add to pivot
         // Validação de elegibilidade se o time já estiver em algum campeonato/categoria
@@ -294,6 +300,12 @@ class TeamController extends Controller
     // 4. Editar Jogador (Pelo Capitão)
     public function updatePlayer(Request $request, $id, $playerId)
     {
+        \Log::info("TeamController updatePlayer - Request started", [
+            'team_id' => $id,
+            'player_id' => $playerId,
+            'has_files' => $request->allFiles()
+        ]);
+
         $team = Team::findOrFail($id);
         $user = $request->user();
 
@@ -393,7 +405,7 @@ class TeamController extends Controller
                         if ($isWindows) {
                             pclose(popen("start /B " . $cmd, "r"));
                         } else {
-                            exec("nohup {$cmd} > /dev/null 2>/dev/null &");
+                            exec("nohup {$cmd} > /dev/null 2>&1 & disown");
                         }
                     } catch (\Throwable $e) {
                         \Log::warning("TeamController AI Update Background - Error: " . $e->getMessage());
@@ -402,7 +414,7 @@ class TeamController extends Controller
             }
         }
 
-        \Log::info("TeamController updatePlayer - Success response sent for player {$playerId}");
+        \Log::info("TeamController updatePlayer - Success. About to return response for player {$playerId}");
 
         return response()->json(['message' => 'Atleta atualizado com sucesso!']);
     }
