@@ -419,7 +419,40 @@ class TeamController extends Controller
         return response()->json(['message' => 'Atleta atualizado com sucesso!']);
     }
 
-    // 5. Create Team (For users)
+    // 6. Remover Jogador (Pelo Capitão)
+    public function removePlayer(Request $request, $id, $playerId)
+    {
+        $team = Team::findOrFail($id);
+        $user = auth()->user();
+
+        // Verificar permissão (apenas capitão do time ou admin do clube)
+        $isCaptain = \DB::table('team_championships')
+            ->where('team_id', $id)
+            ->where('captain_id', $user->id)
+            ->exists();
+
+        // Fallback: verificar se é o criador do time ou admin
+        if (!$isCaptain && $team->user_id !== $user->id && !$user->is_admin) {
+            return response()->json(['message' => 'Sem permissão para remover atletas deste time'], 403);
+        }
+
+        $champId = $request->championship_id;
+
+        // Use standard DB logic for pivot to distinguish specific row
+        \DB::table('team_players')
+            ->where('team_id', $id)
+            ->where('user_id', $playerId)
+            ->when($champId, function ($q) use ($champId) {
+                return $q->where('championship_id', $champId);
+            }, function ($q) {
+                return $q->whereNull('championship_id');
+            })
+            ->delete();
+
+        return response()->json(['message' => 'Atleta removido do time com sucesso!']);
+    }
+
+    // 7. Create Team (For users)
     public function store(Request $request)
     {
         $request->validate([

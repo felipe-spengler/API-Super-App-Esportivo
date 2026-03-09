@@ -129,6 +129,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/teams/{id}', [\App\Http\Controllers\TeamController::class, 'show']);
     Route::post('/teams/{id}/players', [\App\Http\Controllers\TeamController::class, 'addPlayer']);
     Route::put('/teams/{id}/players/{playerId}', [\App\Http\Controllers\TeamController::class, 'updatePlayer']);
+    Route::delete('/teams/{id}/players/{playerId}', [\App\Http\Controllers\TeamController::class, 'removePlayer']);
     Route::post('/teams/{id}/upload-player-photo/{playerId}', [\App\Http\Controllers\TeamController::class, 'uploadPlayerPhoto']);
 
     // Área Admin (Web) - Protegido com middleware 'admin' e 'audit'

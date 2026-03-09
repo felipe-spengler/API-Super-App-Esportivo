@@ -198,8 +198,10 @@ export function MyTeamDetails() {
             setShowAddModal(false);
             resetForm();
             loadTeam();
-        } catch (error) {
-            alert('Erro ao salvar jogador.');
+        } catch (error: any) {
+            console.error('[MyTeamDetails] Error saving player:', error);
+            const msg = error.response?.data?.message || error.response?.data?.error || 'Erro ao salvar jogador.';
+            alert(`❌ ${msg}`);
         } finally {
             setAdding(false);
         }
