@@ -263,6 +263,15 @@ trait ArtCardTrait
                 $replacements['{PF}'] = $sA;
                 $replacements['{PC}'] = $sH;
                 $replacements['{PV}'] = $sA;
+
+                if ($match->homeTeam) {
+                    $replacements['{TC}'] = mb_strtoupper($match->homeTeam->name);
+                    $replacements['team_a'] = $this->getTeamLogoPath($match->homeTeam);
+                }
+                if ($match->awayTeam) {
+                    $replacements['{TF}'] = mb_strtoupper($match->awayTeam->name);
+                    $replacements['team_b'] = $this->getTeamLogoPath($match->awayTeam);
+                }
             }
 
             // Player Photo — SEMPRE roda rembg para garantir fundo removido

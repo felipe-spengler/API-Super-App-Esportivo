@@ -290,6 +290,20 @@ class TeamController extends Controller
 
         return response()->json(['message' => 'Jogador adicionado e vinculado com sucesso!'], 201);
     }
+
+    // 3.5. Upload Player Photo (Pelo Capitão)
+    public function uploadPlayerPhoto(Request $request, $id, $playerId)
+    {
+        $team = Team::findOrFail($id);
+        $user = $request->user();
+
+        if ($user->id !== $team->captain_id && !$user->is_admin) {
+            return response()->json(['message' => 'Você não tem permissão para editar as fotos deste time.'], 403);
+        }
+
+        $uploadController = new \App\Http\Controllers\Admin\ImageUploadController();
+        return $uploadController->uploadPlayerPhoto($request, $playerId);
+    }
     // 4. Editar Jogador (Pelo Capitão)
     public function updatePlayer(Request $request, $id, $playerId)
     {
