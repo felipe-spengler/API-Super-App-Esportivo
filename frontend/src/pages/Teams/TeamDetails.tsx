@@ -68,6 +68,8 @@ export function TeamDetails() {
     const [newPlayerAddress, setNewPlayerAddress] = useState('');
     const [documentFile, setDocumentFile] = useState<File | null>(null);
     const [photoFile, setPhotoFile] = useState<File | null>(null);
+    const [photoFiles, setPhotoFiles] = useState<(File | null)[]>([null, null, null]);
+    const [photoPreviews, setPhotoPreviews] = useState<(string | null)[]>([null, null, null]);
     const [removeBg, setRemoveBg] = useState(true);
     const [adding, setAdding] = useState(false);
     const [editingPlayerId, setEditingPlayerId] = useState<number | null>(null);
@@ -119,12 +121,12 @@ export function TeamDetails() {
             if (documentFile) {
                 formData.append('document_file', documentFile);
             }
-            if (photoFile) {
-                formData.append('photo_file', photoFile);
-                if (removeBg) {
-                    formData.append('remove_bg', '1');
-                }
+            if (photoFiles[0]) {
+                formData.append('photo_file', photoFiles[0]);
+                if (removeBg) formData.append('remove_bg', '1');
             }
+            if (photoFiles[1]) formData.append('photo_file_1', photoFiles[1]);
+            if (photoFiles[2]) formData.append('photo_file_2', photoFiles[2]);
 
             if (selectedChampionshipId) {
                 formData.append('championship_id', String(selectedChampionshipId));
@@ -159,6 +161,8 @@ export function TeamDetails() {
         setNewPlayerAddress('');
         setDocumentFile(null);
         setPhotoFile(null);
+        setPhotoFiles([null, null, null]);
+        setPhotoPreviews([null, null, null]);
         setRemoveBg(true);
     }
 
@@ -482,15 +486,83 @@ export function TeamDetails() {
             {
                 showAddModal && (
                     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-                        <div className="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
-                            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                                <h3 className="text-lg font-bold text-gray-900">Adicionar Jogador</h3>
-                                <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
+                        <div className="bg-white w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
+                            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gradient-to-r from-indigo-50 to-purple-50">
+                                <h3 className="text-xl font-bold text-gray-900">Adicionar Jogador</h3>
+                                <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-white/50 rounded-full transition-colors">
                                     <X className="w-5 h-5 text-gray-500" />
                                 </button>
                             </div>
 
-                            <form onSubmit={handleAddPlayer} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+                            <form onSubmit={handleAddPlayer} className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
+                                {/* Photo Boxes Section */}
+                                <div className="space-y-4 pb-6 border-b border-gray-100">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <input
+                                            type="checkbox"
+                                            id="removeBgAdd"
+                                            checked={removeBg}
+                                            onChange={e => setRemoveBg(e.target.checked)}
+                                            className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                                        />
+                                        <label htmlFor="removeBgAdd" className="text-sm font-medium text-gray-700 cursor-pointer">
+                                            Remover fundo com IA (automático na principal ao salvar)
+                                        </label>
+                                    </div>
+
+                                    <div className="flex gap-4 flex-wrap">
+                                        {[0, 1, 2].map((index) => (
+                                            <div key={index} className="relative w-28 h-28 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden hover:border-indigo-400 transition-colors group">
+                                                {photoPreviews[index] ? (
+                                                    <>
+                                                        <img src={photoPreviews[index]!} alt={`Preview ${index}`} className="w-full h-full object-cover" />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const newFiles = [...photoFiles];
+                                                                const newPreviews = [...photoPreviews];
+                                                                newFiles[index] = null;
+                                                                newPreviews[index] = null;
+                                                                setPhotoFiles(newFiles);
+                                                                setPhotoPreviews(newPreviews);
+                                                            }}
+                                                            className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        >
+                                                            <X className="w-3 h-3" />
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <label className="cursor-pointer w-full h-full flex flex-col items-center justify-center text-gray-400 hover:text-indigo-600">
+                                                        <Plus className="w-6 h-6 mb-1" />
+                                                        <span className="text-[10px] uppercase font-bold">Foto {index + 1}</span>
+                                                        <input
+                                                            type="file"
+                                                            className="hidden"
+                                                            accept="image/*"
+                                                            onChange={(e) => {
+                                                                const file = e.target.files?.[0];
+                                                                if (file) {
+                                                                    const newFiles = [...photoFiles];
+                                                                    const newPreviews = [...photoPreviews];
+                                                                    newFiles[index] = file;
+                                                                    setPhotoFiles(newFiles);
+
+                                                                    const reader = new FileReader();
+                                                                    reader.onloadend = () => {
+                                                                        newPreviews[index] = reader.result as string;
+                                                                        setPhotoPreviews(newPreviews);
+                                                                    };
+                                                                    reader.readAsDataURL(file);
+                                                                }
+                                                            }}
+                                                        />
+                                                    </label>
+                                                )}
+                                                {index === 0 && <span className="absolute bottom-0 left-0 right-0 bg-indigo-600 text-white text-[9px] text-center py-0.5">Principal</span>}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="col-span-2">
                                         <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Nome do Atleta</label>
@@ -594,33 +666,8 @@ export function TeamDetails() {
                                             onChange={e => setNewPlayerAddress(e.target.value)}
                                         />
                                     </div>
-                                    <div className="col-span-1">
-                                        <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Foto (Opcional)</label>
-                                        <input
-                                            type="file"
-                                            accept="image/*"
-                                            onChange={e => setPhotoFile(e.target.files?.[0] || null)}
-                                            className="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 mb-2"
-                                        />
-                                        {photoFile && (
-                                            <label className="flex items-center gap-2 mt-2 cursor-pointer group">
-                                                <div className="relative flex items-center justify-center w-5 h-5 rounded border border-gray-300 group-hover:border-indigo-500 bg-white shadow-sm transition-colors">
-                                                    <input
-                                                        type="checkbox"
-                                                        className="peer sr-only"
-                                                        checked={removeBg}
-                                                        onChange={e => setRemoveBg(e.target.checked)}
-                                                    />
-                                                    {removeBg && <CheckCircle className="w-4 h-4 text-indigo-600 absolute" />}
-                                                </div>
-                                                <span className="text-xs font-semibold text-gray-700 group-hover:text-indigo-600 transition-colors">
-                                                    Remover Fundo (IA)
-                                                </span>
-                                            </label>
-                                        )}
-                                    </div>
-                                    <div className="col-span-1">
-                                        <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Doc (PDF/Img)</label>
+                                    <div className="col-span-2">
+                                        <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Documento (Opcional - PDF/Img)</label>
                                         <input
                                             type="file"
                                             accept=".pdf,image/*"

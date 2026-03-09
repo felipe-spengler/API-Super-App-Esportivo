@@ -342,7 +342,14 @@ class TeamController extends Controller
                 'phone' => 'nullable|string',
                 'gender' => 'nullable|string|in:M,F,O',
                 'address' => 'nullable|string|max:500',
+                'password' => 'nullable|string|min:6',
             ]);
+
+            if ($request->filled('password')) {
+                $validated['password'] = \Illuminate\Support\Facades\Hash::make($request->password);
+            } else {
+                unset($validated['password']);
+            }
 
             // Impedir alteração de CPF/Email de jogadores compartilhados para segurança
             if (!$isExclusive && !$user->is_admin) {

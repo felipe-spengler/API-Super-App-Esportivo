@@ -27,6 +27,7 @@ export function PlayerEditModal({ playerId, teamId, championshipId, onClose, onS
     const [address, setAddress] = useState('');
     const [position, setPosition] = useState('');
     const [number, setNumber] = useState('');
+    const [password, setPassword] = useState('');
 
 
     useEffect(() => {
@@ -80,6 +81,7 @@ export function PlayerEditModal({ playerId, teamId, championshipId, onClose, onS
                 address,
                 position,
                 number,
+                password: password || undefined,
                 team_id: teamId,
                 championship_id: championshipId
             });
@@ -254,6 +256,22 @@ export function PlayerEditModal({ playerId, teamId, championshipId, onClose, onS
                                 className="w-full px-4 py-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                                 value={address}
                                 onChange={e => setAddress(e.target.value)}
+                            />
+                        </div>
+                        <div className="col-span-2 text-gray-400 text-[10px] italic border-t border-gray-50 pt-4 mb-2">
+                            Campos de segurança
+                        </div>
+
+                        <div className="col-span-2">
+                            <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wider">
+                                Mudar Senha (deixe em branco para não alterar)
+                            </label>
+                            <input
+                                type="password"
+                                className="w-full px-4 py-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono"
+                                placeholder="Nova senha (mínimo 6 caracteres)"
+                                value={password}
+                                onChange={e => setPassword(e.target.value)}
                             />
                         </div>
                     </div>

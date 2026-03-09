@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Users, Shield, Plus, User, Edit2, MoreHorizontal, Trash2, CheckCircle, Clock, Trophy, Copy, Loader2, ArrowRight } from 'lucide-react';
+import { ArrowLeft, Users, Shield, Plus, User, Edit2, MoreHorizontal, Trash2, CheckCircle, Clock, Trophy, Copy, Loader2, ArrowRight, X } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { TeamPlayerPhotoUploadSection } from './components/TeamPlayerPhotoUploadSection';
@@ -70,8 +70,10 @@ export function MyTeamDetails() {
     const [newPlayerAddress, setNewPlayerAddress] = useState('');
     const [documentFile, setDocumentFile] = useState<File | null>(null);
     const [photoFile, setPhotoFile] = useState<File | null>(null);
-    const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+    const [photoFiles, setPhotoFiles] = useState<(File | null)[]>([null, null, null]);
+    const [photoPreviews, setPhotoPreviews] = useState<(string | null)[]>([null, null, null]);
     const [removeBg, setRemoveBg] = useState(true);
+    const [newPlayerPassword, setNewPlayerPassword] = useState('');
     const [adding, setAdding] = useState(false);
     const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
 
@@ -135,8 +137,10 @@ export function MyTeamDetails() {
         setNewPlayerAddress('');
         setDocumentFile(null);
         setPhotoFile(null);
-        setPhotoPreview(null);
+        setPhotoFiles([null, null, null]);
+        setPhotoPreviews([null, null, null]);
         setRemoveBg(true);
+        setNewPlayerPassword('');
         setShowAddModal(true);
     }
 
@@ -158,11 +162,16 @@ export function MyTeamDetails() {
             if (documentFile) {
                 formData.append('document_file', documentFile);
             }
-            if (photoFile && !editingPlayer) {
-                formData.append('photo_file', photoFile);
+            if (newPlayerPassword) {
+                formData.append('password', newPlayerPassword);
             }
-            if (removeBg && photoFile && !editingPlayer) {
-                formData.append('remove_bg', '1');
+            if (!editingPlayer) {
+                if (photoFiles[0]) {
+                    formData.append('photo_file', photoFiles[0]);
+                    if (removeBg) formData.append('remove_bg', '1');
+                }
+                if (photoFiles[1]) formData.append('photo_file_1', photoFiles[1]);
+                if (photoFiles[2]) formData.append('photo_file_2', photoFiles[2]);
             }
             if (selectedChampionshipId) {
                 formData.append('championship_id', String(selectedChampionshipId));
@@ -217,8 +226,10 @@ export function MyTeamDetails() {
         setNewPlayerAddress('');
         setDocumentFile(null);
         setPhotoFile(null);
-        setPhotoPreview(null);
+        setPhotoFiles([null, null, null]);
+        setPhotoPreviews([null, null, null]);
         setRemoveBg(true);
+        setNewPlayerPassword('');
         setEditingPlayer(null);
     }
 
@@ -392,180 +403,187 @@ export function MyTeamDetails() {
 
             {/* Add/Edit Player Modal */}
             {showAddModal && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4 animate-in fade-in duration-200">
-                    <div className="bg-white w-full max-w-md rounded-2xl p-6 pb-20 space-y-4 max-h-[85vh] overflow-y-auto">
-                        <div className="flex justify-between items-center mb-2">
-                            <h3 className="text-lg font-bold">{editingPlayer ? 'Editar Atleta' : 'Adicionar Jogador'}</h3>
-                            <button onClick={() => { setShowAddModal(false); resetForm(); }} className="text-gray-400 hover:text-gray-600">Fechar</button>
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-white w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gradient-to-r from-indigo-50 to-purple-50">
+                            <h3 className="text-xl font-bold text-gray-900">{editingPlayer ? 'Editar Atleta' : 'Adicionar Jogador'}</h3>
+                            <button onClick={() => { setShowAddModal(false); resetForm(); }} className="p-2 hover:bg-white/50 rounded-full transition-colors">
+                                <X className="w-5 h-5 text-gray-500" />
+                            </button>
                         </div>
 
-                        <form onSubmit={handleSavePlayer} className="space-y-3">
-                            <div>
-                                <label className="block text-xs font-bold text-gray-600 mb-1">Nome do Atleta</label>
-                                <input
-                                    required
-                                    className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500"
-                                    placeholder="Ex: João da Silva"
-                                    value={newPlayerName}
-                                    onChange={e => setNewPlayerName(e.target.value)}
-                                />
+                        <form onSubmit={handleSavePlayer} className="p-6 space-y-6 max-h-[85vh] overflow-y-auto">
+                            {/* Photo Section */}
+                            <div className="pb-6 border-b border-gray-100">
+                                {editingPlayer ? (
+                                    <div className="space-y-4">
+                                        <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Fotos do Atleta</h4>
+                                        <TeamPlayerPhotoUploadSection
+                                            playerId={editingPlayer.id.toString()}
+                                            teamId={id!}
+                                            currentPhotos={editingPlayer.photo_url || (editingPlayer as any)?.photo_urls}
+                                        />
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        <div className="flex items-center gap-2 mb-4">
+                                            <input
+                                                type="checkbox"
+                                                id="removeBgPublic"
+                                                checked={removeBg}
+                                                onChange={e => setRemoveBg(e.target.checked)}
+                                                className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                                            />
+                                            <label htmlFor="removeBgPublic" className="text-sm font-medium text-gray-700 cursor-pointer">
+                                                Remover fundo com IA (automático na principal ao salvar)
+                                            </label>
+                                        </div>
+
+                                        <div className="flex gap-4 flex-wrap">
+                                            {[0, 1, 2].map((index) => (
+                                                <div key={index} className="relative w-28 h-28 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden hover:border-indigo-400 transition-colors group">
+                                                    {photoPreviews[index] ? (
+                                                        <>
+                                                            <img src={photoPreviews[index]!} alt={`Preview ${index}`} className="w-full h-full object-cover" />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const newFiles = [...photoFiles];
+                                                                    const newPreviews = [...photoPreviews];
+                                                                    newFiles[index] = null;
+                                                                    newPreviews[index] = null;
+                                                                    setPhotoFiles(newFiles);
+                                                                    setPhotoPreviews(newPreviews);
+                                                                }}
+                                                                className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            >
+                                                                <X className="w-3 h-3" />
+                                                            </button>
+                                                        </>
+                                                    ) : (
+                                                        <label className="cursor-pointer w-full h-full flex flex-col items-center justify-center text-gray-400 hover:text-indigo-600">
+                                                            <Plus className="w-6 h-6 mb-1" />
+                                                            <span className="text-[10px] uppercase font-bold">Foto {index + 1}</span>
+                                                            <input
+                                                                type="file"
+                                                                className="hidden"
+                                                                accept="image/*"
+                                                                onChange={(e) => {
+                                                                    const file = e.target.files?.[0];
+                                                                    if (file) {
+                                                                        const newFiles = [...photoFiles];
+                                                                        const newPreviews = [...photoPreviews];
+                                                                        newFiles[index] = file;
+                                                                        setPhotoFiles(newFiles);
+
+                                                                        const reader = new FileReader();
+                                                                        reader.onloadend = () => {
+                                                                            newPreviews[index] = reader.result as string;
+                                                                            setPhotoPreviews(newPreviews);
+                                                                        };
+                                                                        reader.readAsDataURL(file);
+                                                                    }
+                                                                }}
+                                                            />
+                                                        </label>
+                                                    )}
+                                                    {index === 0 && <span className="absolute bottom-0 left-0 right-0 bg-indigo-600 text-white text-[9px] text-center py-0.5">Principal</span>}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                            <div className="flex gap-3">
-                                <div className="flex-1">
-                                    <label className="block text-xs font-bold text-gray-600 mb-1">Posição</label>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-4">
+                                <div className="md:col-span-2">
+                                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Nome Completo</label>
                                     <input
                                         required
-                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500"
-                                        placeholder="Ex: Goleiro"
+                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                                        placeholder="Ex: João da Silva"
+                                        value={newPlayerName}
+                                        onChange={e => setNewPlayerName(e.target.value)}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Posição</label>
+                                    <input
+                                        required
+                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                                        placeholder="Ex: Atacante"
                                         value={newPlayerPos}
                                         onChange={e => setNewPlayerPos(e.target.value)}
                                     />
                                 </div>
-                                <div className="w-24">
-                                    <label className="block text-xs font-bold text-gray-600 mb-1">Número</label>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Número (Camisa)</label>
                                     <input
-                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500"
-                                        placeholder="Camisa"
+                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                                        placeholder="Ex: 10"
                                         value={newPlayerNum}
                                         onChange={e => setNewPlayerNum(e.target.value)}
                                     />
                                 </div>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-gray-600 mb-1">CPF (Opcional - Cria usuário automático)</label>
-                                <input
-                                    type="text"
-                                    className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500"
-                                    placeholder="000.000.000-00"
-                                    value={newPlayerCpf}
-                                    onChange={e => setNewPlayerCpf(e.target.value)}
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
-                                    <h2 className="text-sm font-bold text-gray-800 border-b border-gray-200 pb-2 flex items-center gap-2 mb-4">
-                                        <User className="w-4 h-4 text-indigo-500" />
-                                        Fotos do Atleta
-                                    </h2>
-                                    {editingPlayer ? (
-                                        <div className="flex flex-col gap-4 pb-2">
-                                            <TeamPlayerPhotoUploadSection
-                                                playerId={editingPlayer.id.toString()}
-                                                teamId={id!}
-                                                currentPhotos={editingPlayer.photo_url || (editingPlayer.pivot as any)?.photo_urls}
-                                            />
-                                        </div>
-                                    ) : (
-                                        <div className="flex flex-col items-center gap-4 py-2">
-                                            <div className="relative">
-                                                <div className="w-24 h-24 rounded-full overflow-hidden bg-white border-4 border-white shadow-md">
-                                                    {photoPreview ? (
-                                                        <img
-                                                            src={photoPreview}
-                                                            alt="Preview"
-                                                            className="w-full h-full object-cover"
-                                                        />
-                                                    ) : (
-                                                        <div className="w-full h-full flex items-center justify-center">
-                                                            <User className="w-10 h-10 text-gray-300" />
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <label className="absolute bottom-0 right-0 p-2 bg-indigo-600 text-white rounded-full cursor-pointer hover:bg-indigo-700 transition-colors shadow-lg">
-                                                    <input
-                                                        type="file"
-                                                        accept="image/*"
-                                                        onChange={(e) => {
-                                                            const file = e.target.files?.[0];
-                                                            if (file) {
-                                                                setPhotoFile(file);
-                                                                const reader = new FileReader();
-                                                                reader.onloadend = () => {
-                                                                    setPhotoPreview(reader.result as string);
-                                                                };
-                                                                reader.readAsDataURL(file);
-                                                            }
-                                                        }}
-                                                        className="hidden"
-                                                    />
-                                                    <Plus className="w-3 h-3" />
-                                                </label>
-                                            </div>
-                                            <p className="text-[10px] text-gray-500">Clique para adicionar sua foto (ela será a principal)</p>
 
-                                            <div className="flex items-center gap-2 mt-2">
-                                                <input
-                                                    type="checkbox"
-                                                    id="removeBgNew"
-                                                    checked={removeBg}
-                                                    onChange={e => setRemoveBg(e.target.checked)}
-                                                    className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
-                                                />
-                                                <label htmlFor="removeBgNew" className="text-xs font-medium text-gray-700 cursor-pointer">
-                                                    Remover fundo com IA ao salvar
-                                                </label>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-600 mb-1">Documento (Opcional)</label>
+                                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">CPF (Opcional)</label>
                                     <input
-                                        type="file"
-                                        accept=".pdf,image/*"
-                                        onChange={e => setDocumentFile(e.target.files ? e.target.files[0] : null)}
-                                        className="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-gray-50 file:text-gray-700 hover:file:bg-gray-100"
+                                        type="text"
+                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono"
+                                        placeholder="000.000.000-00"
+                                        value={newPlayerCpf}
+                                        onChange={e => setNewPlayerCpf(e.target.value)}
                                     />
-                                    <p className="text-[10px] text-gray-400 mt-1">Para validação (Foto/PDF).</p>
                                 </div>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-gray-600 mb-1">Email (Opcional - p/ vincular login)</label>
-                                <input
-                                    type="email"
-                                    className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500"
-                                    placeholder="email@usuario.com"
-                                    value={newPlayerEmail}
-                                    onChange={e => setNewPlayerEmail(e.target.value)}
-                                />
-                                <p className="text-[10px] text-gray-400 mt-1">Se o email já existir na plataforma, o perfil será vinculado.</p>
-                            </div>
 
-                            <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-600 mb-1">Apelido</label>
+                                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Data de Nascimento</label>
                                     <input
-                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500"
+                                        type="date"
+                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                                        value={newPlayerBirthDate}
+                                        onChange={e => setNewPlayerBirthDate(e.target.value)}
+                                    />
+                                </div>
+
+                                <div className="md:col-span-2">
+                                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Email (Opcional)</label>
+                                    <input
+                                        type="email"
+                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                                        placeholder="atleta@email.com"
+                                        value={newPlayerEmail}
+                                        onChange={e => setNewPlayerEmail(e.target.value)}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Apelido</label>
+                                    <input
+                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                                         placeholder="Ex: Canhotinha"
                                         value={newPlayerNickname}
                                         onChange={e => setNewPlayerNickname(e.target.value)}
                                     />
                                 </div>
+
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-600 mb-1">Telefone</label>
+                                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Telefone</label>
                                     <input
-                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500"
+                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                                         placeholder="(00) 00000-0000"
                                         value={newPlayerPhone}
                                         onChange={e => setNewPlayerPhone(e.target.value)}
                                     />
                                 </div>
-                            </div>
 
-                            <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-600 mb-1">Data de Nascimento</label>
-                                    <input
-                                        type="date"
-                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500"
-                                        value={newPlayerBirthDate}
-                                        onChange={e => setNewPlayerBirthDate(e.target.value)}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-600 mb-1">Gênero</label>
+                                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Gênero</label>
                                     <select
-                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
                                         value={newPlayerGender}
                                         onChange={e => setNewPlayerGender(e.target.value)}
                                     >
@@ -575,24 +593,52 @@ export function MyTeamDetails() {
                                         <option value="O">Outro</option>
                                     </select>
                                 </div>
-                            </div>
 
-                            <div>
-                                <label className="block text-xs font-bold text-gray-600 mb-1">Endereço</label>
-                                <input
-                                    className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500"
-                                    placeholder="Rua, número, bairro..."
-                                    value={newPlayerAddress}
-                                    onChange={e => setNewPlayerAddress(e.target.value)}
-                                />
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Documento (Opcional)</label>
+                                    <input
+                                        type="file"
+                                        accept=".pdf,image/*"
+                                        onChange={e => setDocumentFile(e.target.files ? e.target.files[0] : null)}
+                                        className="w-full text-xs text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-gray-50 file:text-gray-700 hover:file:bg-gray-100"
+                                    />
+                                </div>
+
+                                <div className="md:col-span-2">
+                                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Endereço</label>
+                                    <input
+                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                                        placeholder="Rua, número, bairro..."
+                                        value={newPlayerAddress}
+                                        onChange={e => setNewPlayerAddress(e.target.value)}
+                                    />
+                                </div>
+
+                                {editingPlayer && (
+                                    <div className="md:col-span-2 space-y-2 pt-2 border-t border-gray-50">
+                                        <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider text-indigo-600">Mudar Senha (Opcional)</label>
+                                        <input
+                                            type="password"
+                                            className="w-full px-4 py-2.5 border border-indigo-100 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono"
+                                            placeholder="Nova senha (mínimo 6 caracteres)"
+                                            value={newPlayerPassword}
+                                            onChange={e => setNewPlayerPassword(e.target.value)}
+                                        />
+                                    </div>
+                                )}
                             </div>
 
                             <button
                                 type="submit"
                                 disabled={adding}
-                                className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors mt-4 disabled:opacity-75"
+                                className="w-full py-3.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 disabled:opacity-75 mt-4"
                             >
-                                {adding ? 'Salvando...' : 'Confirmar'}
+                                {adding ? (
+                                    <>
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                        Salvando...
+                                    </>
+                                ) : (editingPlayer ? 'Salvar Alterações' : 'Cadastrar Atleta')}
                             </button>
                         </form>
                     </div>
