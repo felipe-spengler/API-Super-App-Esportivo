@@ -98,7 +98,7 @@ Route::get('/public/products', [ShopController::class, 'allProducts']); // NEW
 Route::get('/products/{id}', [ShopController::class, 'productDetails']);
 
 // Rotas Protegidas (Atleta Logado)
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::put('/me', [AuthController::class, 'update']);
 
@@ -132,8 +132,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/teams/{id}/players/{playerId}', [\App\Http\Controllers\TeamController::class, 'removePlayer']);
     Route::post('/teams/{id}/upload-player-photo/{playerId}', [\App\Http\Controllers\TeamController::class, 'uploadPlayerPhoto']);
 
-    // Área Admin (Web) - Protegido com middleware 'admin' e 'audit'
-    Route::prefix('admin')->middleware(['admin', 'audit'])->group(function () {
+    // Área Admin (Web) - Protegido com middleware 'admin'
+    Route::prefix('admin')->middleware(['admin'])->group(function () {
         Route::get('/dashboard', [\App\Http\Controllers\AdminController::class, 'dashboard']);
         Route::get('/stats', [\App\Http\Controllers\Admin\AdminDashboardController::class, 'index']);
 

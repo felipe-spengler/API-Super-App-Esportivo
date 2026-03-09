@@ -444,13 +444,13 @@ class TeamController extends Controller
         $user = auth()->user();
 
         // Verificar permissão (apenas capitão do time ou admin do clube)
-        $isCaptain = \DB::table('team_championships')
+        $isCaptain = \DB::table('championship_team')
             ->where('team_id', $id)
             ->where('captain_id', $user->id)
             ->exists();
 
-        // Fallback: verificar se é o criador do time ou admin
-        if (!$isCaptain && $team->user_id !== $user->id && !$user->is_admin) {
+        // Fallback: verificar se é o capitão principal do time ou admin
+        if (!$isCaptain && $team->captain_id !== $user->id && !$user->is_admin) {
             return response()->json(['message' => 'Sem permissão para remover atletas deste time'], 403);
         }
 
