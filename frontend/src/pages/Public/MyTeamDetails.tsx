@@ -4,6 +4,7 @@ import { ArrowLeft, Users, Shield, Plus, User, Edit2, MoreHorizontal, Trash2, Ch
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { TeamPlayerPhotoUploadSection } from './components/TeamPlayerPhotoUploadSection';
+import { prepareImageForUpload } from '../../utils/imageCompressor';
 
 interface Player {
     id: number;
@@ -497,20 +498,28 @@ export function MyTeamDetails() {
                                                                 type="file"
                                                                 className="hidden"
                                                                 accept="image/*"
-                                                                onChange={(e) => {
+                                                                onChange={async (e) => {
                                                                     const file = e.target.files?.[0];
                                                                     if (file) {
-                                                                        const newFiles = [...photoFiles];
-                                                                        const newPreviews = [...photoPreviews];
-                                                                        newFiles[index] = file;
-                                                                        setPhotoFiles(newFiles);
+                                                                        try {
+                                                                            // Compress image before saving to state
+                                                                            const compressedFile = await prepareImageForUpload(file, 4 * 1024 * 1024);
 
-                                                                        const reader = new FileReader();
-                                                                        reader.onloadend = () => {
-                                                                            newPreviews[index] = reader.result as string;
-                                                                            setPhotoPreviews(newPreviews);
-                                                                        };
-                                                                        reader.readAsDataURL(file);
+                                                                            const newFiles = [...photoFiles];
+                                                                            const newPreviews = [...photoPreviews];
+                                                                            newFiles[index] = compressedFile;
+                                                                            setPhotoFiles(newFiles);
+
+                                                                            const reader = new FileReader();
+                                                                            reader.onloadend = () => {
+                                                                                newPreviews[index] = reader.result as string;
+                                                                                setPhotoPreviews(newPreviews);
+                                                                            };
+                                                                            reader.readAsDataURL(compressedFile);
+                                                                        } catch (err) {
+                                                                            console.error('[MyTeamDetails] Failed to compress image:', err);
+                                                                            alert('Falha ao processar imagem. Tente outro arquivo.');
+                                                                        }
                                                                     }
                                                                 }}
                                                             />

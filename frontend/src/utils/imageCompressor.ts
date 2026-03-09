@@ -9,12 +9,15 @@
  */
 export async function compressImage(
     file: File,
-    maxSizeBytes = 4 * 1024 * 1024, // 4 MB padrão
-    maxDimension = 2000,             // Máximo de pixels em qualquer lado
-    initialQuality = 0.92            // Qualidade JPEG inicial (0-1)
+    maxSizeBytes = 4 * 1024 * 1024, // 4 MB padrão (ajustado para o limite do servidor)
+    maxDimension = 3840,             // Aumentado para 4K para evitar perda agressiva
+    initialQuality = 0.95            // Qualidade inicial mais alta
 ): Promise<File> {
-    // Já está dentro do limite → retorna sem modificar
-    if (file.size <= maxSizeBytes) return file;
+    // Já está dentro do limite → retorna original sem tocar em nada
+    if (file.size <= maxSizeBytes) {
+        console.log(`[ImageCompressor] File ${file.name} already within limit (${(file.size / 1024).toFixed(1)} KB)`);
+        return file;
+    }
 
     return new Promise((resolve, reject) => {
         const img = new Image();
@@ -23,13 +26,16 @@ export async function compressImage(
         img.onload = () => {
             URL.revokeObjectURL(objectUrl);
 
-            // --- Estágio 1: Redução de resolução ---
-            // Só reduz se a imagem for maior que maxDimension em algum lado
             let { naturalWidth: w, naturalHeight: h } = img;
-            if (w > maxDimension || h > maxDimension) {
-                const ratio = Math.min(maxDimension / w, maxDimension / h);
+
+            // Estágio 1: Só reduz resolução se for ABSURDAMENTE grande (ex: > 4K)
+            // ou se o arquivo for muito pesado (> 8MB)
+            if (w > maxDimension || h > maxDimension || file.size > 8 * 1024 * 1024) {
+                const limit = file.size > 12 * 1024 * 1024 ? 2500 : maxDimension; // Se > 12MB, reduz mais a resolução
+                const ratio = Math.min(limit / w, limit / h);
                 w = Math.round(w * ratio);
                 h = Math.round(h * ratio);
+                console.log(`[ImageCompressor] Resizing from ${img.naturalWidth}x${img.naturalHeight} to ${w}x${h}`);
             }
 
             const canvas = document.createElement('canvas');
@@ -40,9 +46,10 @@ export async function compressImage(
             if (!ctx) return reject(new Error('Canvas não disponível'));
             ctx.drawImage(img, 0, 0, w, h);
 
-            // --- Estágio 2: Compressão progressiva (só se ainda grande) ---
             let quality = initialQuality;
             const isPng = file.type === 'image/png';
+            // Converter PNG pesado para JPEG para economizar muito espaço, mantendo "transparência" via fundo branco se necessário
+            // Mas aqui vamos manter o tipo se possível
             const outputType = isPng ? 'image/png' : 'image/jpeg';
 
             const attempt = () => {
@@ -50,15 +57,16 @@ export async function compressImage(
                     (blob) => {
                         if (!blob) return reject(new Error('Falha ao comprimir imagem'));
 
-                        if (blob.size <= maxSizeBytes || quality <= 0.5 || isPng) {
-                            // Cabe no limite, chegamos no mínimo aceitável, ou é PNG (PNG não tem compressão lossy no toBlob)
+                        // Se coube, ou se a qualidade já está muito baixa, para.
+                        if (blob.size <= maxSizeBytes || quality <= 0.6 || isPng) {
+                            console.log(`[ImageCompressor] Finished: ${(blob.size / 1024).toFixed(1)} KB | Quality: ${quality}`);
                             const compressedFile = new File([blob], file.name, {
                                 type: outputType,
                                 lastModified: Date.now(),
                             });
                             resolve(compressedFile);
                         } else {
-                            // Reduz em passos pequenos (só afeta JPEG/WebP)
+                            // Reduz qualidade em passos pequenos para achar o "ponto ideal"
                             quality -= 0.05;
                             attempt();
                         }
