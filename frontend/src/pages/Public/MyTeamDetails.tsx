@@ -180,12 +180,14 @@ export function MyTeamDetails() {
             if (editingPlayer) {
                 formData.append('_method', 'PUT');
                 await api.post(`/teams/${id}/players/${editingPlayer.id}`, formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                    timeout: 120000 // 2 minutes for AI processing
                 });
                 alert('Jogador atualizado!');
             } else {
                 await api.post(`/teams/${id}/players`, formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                    timeout: 120000 // 2 minutes for AI processing
                 });
                 alert('Jogador adicionado!');
             }

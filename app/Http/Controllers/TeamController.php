@@ -136,9 +136,10 @@ class TeamController extends Controller
             if ($request->hasFile($fileInput)) {
                 $pPath = $request->file($fileInput)->store('players/photos', 'public');
 
-                // PROCESSAMENTO DE IA: REMOVER FUNDO
-                if ($request->boolean('remove_bg') || $request->input('remove_bg') == '1') {
+                // PROCESSAMENTO DE IA: REMOVER FUNDO - Apenas para a foto principal (index 0)
+                if (($request->boolean('remove_bg') || $request->input('remove_bg') == '1') && $index === 0) {
                     try {
+                        set_time_limit(120); // Aumenta o tempo para processamento de IA
                         $inputAbsPath = storage_path('app/public/' . $pPath);
                         $filenameNobg = pathinfo($pPath, PATHINFO_FILENAME) . '_nobg.png';
                         $outputAbsPath = storage_path('app/public/players/photos/' . $filenameNobg);
@@ -150,10 +151,16 @@ class TeamController extends Controller
                         }
 
                         $pythonBin = null;
-                        foreach (['python3', 'python', '/usr/bin/python3', '/usr/local/bin/python3'] as $candidate) {
+                        $isWindows = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
+                        $candidates = $isWindows
+                            ? ['python', 'python3', 'py']
+                            : ['python3', 'python', '/usr/bin/python3', '/usr/local/bin/python3'];
+
+                        foreach ($candidates as $candidate) {
                             $testOut = [];
                             $testRet = -1;
-                            @exec("{$candidate} --version 2>&1", $testOut, $testRet);
+                            $cmdTest = $isWindows ? "{$candidate} --version" : "{$candidate} --version 2>&1";
+                            @exec($cmdTest, $testOut, $testRet);
                             if ($testRet === 0) {
                                 $pythonBin = $candidate;
                                 break;
@@ -161,12 +168,20 @@ class TeamController extends Controller
                         }
 
                         if ($pythonBin) {
-                            $command = "export U2NET_HOME={$cacheDir} && export NUMBA_CACHE_DIR={$cacheDir} && {$pythonBin} \"{$scriptPath}\" \"{$inputAbsPath}\" \"{$outputAbsPath}\" 2>&1";
+                            if ($isWindows) {
+                                $command = "set U2NET_HOME={$cacheDir} && set NUMBA_CACHE_DIR={$cacheDir} && {$pythonBin} \"{$scriptPath}\" \"{$inputAbsPath}\" \"{$outputAbsPath}\" 2>&1";
+                            } else {
+                                $command = "export U2NET_HOME={$cacheDir} && export NUMBA_CACHE_DIR={$cacheDir} && {$pythonBin} \"{$scriptPath}\" \"{$inputAbsPath}\" \"{$outputAbsPath}\" 2>&1";
+                            }
+
+                            \Log::info("TeamController AI - Running: " . $command);
                             exec($command, $output, $returnVar);
 
                             if ($returnVar === 0 && file_exists($outputAbsPath)) {
                                 @chmod($outputAbsPath, 0664);
                                 $pPath = 'players/photos/' . $filenameNobg;
+                            } else {
+                                \Log::warning("TeamController AI - Failed with code {$returnVar}. Output: " . implode("\n", $output));
                             }
                         }
                     } catch (\Throwable $e) {
