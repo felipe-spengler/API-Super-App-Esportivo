@@ -924,7 +924,7 @@ export function AdminMatchManager() {
                                                             {/* Scoreboard */}
                                                             <div className="flex flex-row items-center gap-2 md:gap-4 flex-1 justify-center w-full px-2">
                                                                 {/* Home Team */}
-                                                                <div className="flex flex-col md:flex-row items-center gap-1 md:gap-3 text-center md:text-right flex-1 justify-center md:justify-end">
+                                                                <div className="flex flex-col md:flex-row items-center gap-1 md:gap-3 text-center md:text-right flex-1 justify-center md:justify-end min-w-0">
                                                                     <div className="order-1 md:order-2">
                                                                         {match.home_team?.logo_url ? (
                                                                             <img src={match.home_team.logo_url} className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white shadow-sm border p-0.5" />
@@ -932,7 +932,10 @@ export function AdminMatchManager() {
                                                                             <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-400 border border-dashed">T1</div>
                                                                         )}
                                                                     </div>
-                                                                    <span className="text-[11px] md:text-sm font-bold text-gray-900 order-2 md:order-1 truncate max-w-[80px] md:max-w-none">
+                                                                    <span
+                                                                        className="text-[11px] md:text-sm font-bold text-gray-900 order-2 md:order-1 truncate max-w-[80px] md:max-w-[150px] lg:max-w-[180px]"
+                                                                        title={match.home_team?.name || 'Time A'}
+                                                                    >
                                                                         {match.home_team?.name || 'Time A'}
                                                                     </span>
                                                                 </div>
@@ -962,7 +965,7 @@ export function AdminMatchManager() {
                                                                 </div>
 
                                                                 {/* Away Team */}
-                                                                <div className="flex flex-col md:flex-row items-center gap-1 md:gap-3 text-center md:text-left flex-1 justify-center md:justify-start">
+                                                                <div className="flex flex-col md:flex-row items-center gap-1 md:gap-3 text-center md:text-left flex-1 justify-center md:justify-start min-w-0">
                                                                     <div className="">
                                                                         {match.away_team?.logo_url ? (
                                                                             <img src={match.away_team.logo_url} className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white shadow-sm border p-0.5" />
@@ -970,14 +973,17 @@ export function AdminMatchManager() {
                                                                             <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-400 border border-dashed">T2</div>
                                                                         )}
                                                                     </div>
-                                                                    <span className="text-[11px] md:text-sm font-bold text-gray-900 truncate max-w-[80px] md:max-w-none">
+                                                                    <span
+                                                                        className="text-[11px] md:text-sm font-bold text-gray-900 truncate max-w-[80px] md:max-w-[150px] lg:max-w-[180px]"
+                                                                        title={match.away_team?.name || 'Time B'}
+                                                                    >
                                                                         {match.away_team?.name || 'Time B'}
                                                                     </span>
                                                                 </div>
                                                             </div>
 
                                                             {/* Actions */}
-                                                            <div className="w-full md:w-auto flex justify-around md:justify-end gap-2 border-t md:border-t-0 pt-3 md:pt-0 mt-2 md:mt-0">
+                                                            <div className="w-full md:w-auto flex justify-around md:justify-end gap-2 border-t md:border-t-0 pt-3 md:pt-0 mt-2 md:mt-0 flex-shrink-0 min-w-max">
                                                                 <button
                                                                     onClick={() => openMatchSumula(match)}
                                                                     className={`flex-1 md:flex-none flex items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all border ${match.status === 'finished' ? 'text-green-600 bg-green-50 border-green-100' : 'text-indigo-600 bg-indigo-50 border-indigo-100'}`}
