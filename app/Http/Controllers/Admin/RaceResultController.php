@@ -592,7 +592,9 @@ class RaceResultController extends Controller
                     }
                 } catch (\Exception $pe) {
                     Log::error("Erro Asaas ao criar pagamento: " . $pe->getMessage());
-                    // Não trava a inscrição, apenas não retorna dados de pagamento
+                    // Durante o debug, vamos retornar o erro para o usuário saber o que houve
+                    DB::rollBack();
+                    return response()->json(['error' => 'Erro ao gerar cobrança no Asaas: ' . $pe->getMessage()], 500);
                 }
             }
 

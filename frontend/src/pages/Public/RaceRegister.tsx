@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
     User, Phone, FileText, Camera, Calendar, Mail, CreditCard,
     ArrowLeft, ArrowRight, Loader2, CheckCircle2,
-    Check, Smartphone
+    Check, Smartphone, AlertCircle
 } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -165,12 +165,7 @@ export function RaceRegister() {
             return;
         }
 
-        /* 
-        if (!photoFile) {
-            alert('Por favor, envie uma foto para o seu perfil de atleta.');
-            return;
-        }
-        */
+
 
         if (formData.is_pcd && !pcdFile) {
             alert('Você declarou ser PCD. É obrigatório anexar o documento comprobatório para receber o desconto.');
@@ -521,12 +516,7 @@ export function RaceRegister() {
                                         alert('Por favor, preencha todos os campos obrigatórios.');
                                         return;
                                     }
-                                    /*
-                                    if (!photoFile) {
-                                        alert('Por favor, envie uma foto para o seu perfil de atleta.');
-                                        return;
-                                    }
-                                    */
+
                                     if (formData.is_pcd && !pcdFile) {
                                         alert('Você declarou ser PCD. É obrigatório anexar o documento comprobatório para receber o desconto.');
                                         return;
@@ -1045,6 +1035,14 @@ export function RaceRegister() {
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter italic">
                                         Vence em: {new Date(registrationData.payment_data.expiration).toLocaleDateString()}
                                     </p>
+                                )}
+
+                                {registrationData?.requires_payment && !registrationData?.payment_data && (
+                                    <div className="bg-amber-50 border border-amber-200 p-6 rounded-2xl text-center">
+                                        <AlertCircle className="text-amber-600 mx-auto mb-2" />
+                                        <p className="text-amber-800 font-bold text-sm">Houve um atraso na geração do seu pagamento.</p>
+                                        <p className="text-amber-600 text-[10px] mt-1">Sua inscrição foi reservada. Você receberá os dados de pagamento em seu e-mail em instantes ou pode tentar novamente na área do atleta.</p>
+                                    </div>
                                 )}
                             </div>
                         )}
