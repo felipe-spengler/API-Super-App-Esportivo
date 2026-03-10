@@ -3,7 +3,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Users, Shield, Plus, User, Edit2, MoreHorizontal, Trash2, CheckCircle, Clock, Trophy, Copy, Loader2, ArrowRight, X } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { TeamPlayerPhotoUploadSection } from './components/TeamPlayerPhotoUploadSection';
 import { prepareImageForUpload } from '../../utils/imageCompressor';
 
 interface Player {
@@ -21,6 +20,12 @@ interface Player {
         position?: string;
     };
     photo_url?: string;
+    nickname?: string;
+    cpf?: string;
+    phone?: string;
+    birth_date?: string;
+    gender?: string;
+    address?: string;
 }
 
 interface Championship {
@@ -128,18 +133,23 @@ export function MyTeamDetails() {
         setNewPlayerPos(player.pivot?.position || player.position || '');
         setNewPlayerNum(player.pivot?.number || player.number || '');
         setNewPlayerEmail(player.email || '');
-        // Other fields might not be available directly on the player object returned here
-        // Set them to empty or fetch if needed
-        setNewPlayerCpf('');
-        setNewPlayerNickname('');
-        setNewPlayerPhone('');
-        setNewPlayerBirthDate('');
-        setNewPlayerGender('');
-        setNewPlayerAddress('');
+        setNewPlayerNickname(player.nickname || player.pivot?.temp_player_name || '');
+        setNewPlayerCpf(player.cpf || '');
+        setNewPlayerPhone(player.phone || '');
+        setNewPlayerBirthDate(player.birth_date ? player.birth_date.split('T')[0] : '');
+        setNewPlayerGender(player.gender || '');
+        setNewPlayerAddress(player.address || '');
         setDocumentFile(null);
-        setPhotoFile(null);
+
+        // Populate existing photos as previews
+        const existingPhotos = (player as any).photos || (player.photo_url ? [player.photo_url] : []);
+        const previews = [null, null, null] as (string | null)[];
+        existingPhotos.forEach((p: string, i: number) => {
+            if (i < 3) previews[i] = p.startsWith('http') ? p : `${import.meta.env.VITE_API_URL}/storage/${p}`.replace('/api/storage', '/api/storage');
+        });
+
         setPhotoFiles([null, null, null]);
-        setPhotoPreviews([null, null, null]);
+        setPhotoPreviews(previews);
         setRemoveBg(true);
         setNewPlayerPassword('');
         setShowAddModal(true);
@@ -174,20 +184,18 @@ export function MyTeamDetails() {
                 formData.append('remove_bg', '1');
             }
 
-            // Para novos jogadores, enviamos os arquivos selecionados nos slots
-            if (!editingPlayer) {
-                if (photoFiles[0]) {
-                    console.log('[MyTeamDetails] Attaching photo 0:', photoFiles[0].name, photoFiles[0].size, 'bytes');
-                    formData.append('photo_file', photoFiles[0]);
-                }
-                if (photoFiles[1]) {
-                    console.log('[MyTeamDetails] Attaching photo 1:', photoFiles[1].name, photoFiles[1].size, 'bytes');
-                    formData.append('photo_file_1', photoFiles[1]);
-                }
-                if (photoFiles[2]) {
-                    console.log('[MyTeamDetails] Attaching photo 2:', photoFiles[2].name, photoFiles[2].size, 'bytes');
-                    formData.append('photo_file_2', photoFiles[2]);
-                }
+            // Enviar arquivos dos slots se selecionados (para NOVO ou EDITAR)
+            if (photoFiles[0]) {
+                console.log('[MyTeamDetails] Attaching photo 0:', photoFiles[0].name, photoFiles[0].size, 'bytes');
+                formData.append('photo_file', photoFiles[0]);
+            }
+            if (photoFiles[1]) {
+                console.log('[MyTeamDetails] Attaching photo 1:', photoFiles[1].name, photoFiles[1].size, 'bytes');
+                formData.append('photo_file_1', photoFiles[1]);
+            }
+            if (photoFiles[2]) {
+                console.log('[MyTeamDetails] Attaching photo 2:', photoFiles[2].name, photoFiles[2].size, 'bytes');
+                formData.append('photo_file_2', photoFiles[2]);
             }
 
             if (selectedChampionshipId) {
@@ -442,97 +450,86 @@ export function MyTeamDetails() {
                         </div>
 
                         <form onSubmit={handleSavePlayer} className="p-6 space-y-6 max-h-[85vh] overflow-y-auto">
+                            {/* Photo Boxes Section */}
                             <div className="pb-6 border-b border-gray-100">
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between mb-2">
                                         <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest">Fotos do Atleta</h4>
-                                        {!editingPlayer && (
-                                            <div className="flex items-center gap-2">
-                                                <input
-                                                    type="checkbox"
-                                                    id="removeBgPublic"
-                                                    checked={removeBg}
-                                                    onChange={e => setRemoveBg(e.target.checked)}
-                                                    className="w-3 h-3 text-indigo-600 rounded focus:ring-indigo-500"
-                                                />
-                                                <label htmlFor="removeBgPublic" className="text-[10px] font-bold text-gray-500 cursor-pointer uppercase">
-                                                    Remover fundo (IA)
-                                                </label>
-                                            </div>
-                                        )}
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="checkbox"
+                                                id="removeBgPublic"
+                                                checked={removeBg}
+                                                onChange={e => setRemoveBg(e.target.checked)}
+                                                className="w-3 h-3 text-indigo-600 rounded focus:ring-indigo-500"
+                                            />
+                                            <label htmlFor="removeBgPublic" className="text-[10px] font-bold text-gray-500 cursor-pointer uppercase">
+                                                Remover fundo IA
+                                            </label>
+                                        </div>
                                     </div>
 
-                                    {editingPlayer ? (
-                                        <TeamPlayerPhotoUploadSection
-                                            playerId={editingPlayer.id.toString()}
-                                            teamId={id!}
-                                            currentPhotos={editingPlayer.photo_url || (editingPlayer as any)?.photo_urls}
-                                        />
-                                    ) : (
-                                        <div className="flex gap-4 flex-wrap">
-                                            {[0, 1, 2].map((index) => (
-                                                <div key={index} className="relative w-28 h-28 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden hover:border-indigo-400 transition-colors group">
-                                                    {photoPreviews[index] ? (
-                                                        <>
-                                                            <img src={photoPreviews[index]!} alt={`Preview ${index}`} className="w-full h-full object-cover" />
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    const newFiles = [...photoFiles];
-                                                                    const newPreviews = [...photoPreviews];
-                                                                    newFiles[index] = null;
-                                                                    newPreviews[index] = null;
-                                                                    setPhotoFiles(newFiles);
-                                                                    setPhotoPreviews(newPreviews);
-                                                                }}
-                                                                className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                                                            >
-                                                                <X className="w-3 h-3" />
-                                                            </button>
-                                                        </>
-                                                    ) : (
-                                                        <label className="cursor-pointer w-full h-full flex flex-col items-center justify-center text-gray-400 hover:text-indigo-600">
-                                                            <Plus className="w-6 h-6 mb-1" />
-                                                            <span className="text-[10px] uppercase font-bold">Slot {index + 1}</span>
-                                                            <input
-                                                                type="file"
-                                                                className="hidden"
-                                                                accept="image/*"
-                                                                onChange={async (e) => {
-                                                                    const file = e.target.files?.[0];
-                                                                    if (file) {
-                                                                        try {
-                                                                            // Compress image before saving to state
-                                                                            const compressedFile = await prepareImageForUpload(file, 4 * 1024 * 1024);
-
-                                                                            const newFiles = [...photoFiles];
-                                                                            const newPreviews = [...photoPreviews];
-                                                                            newFiles[index] = compressedFile;
-                                                                            setPhotoFiles(newFiles);
-
-                                                                            const reader = new FileReader();
-                                                                            reader.onloadend = () => {
-                                                                                newPreviews[index] = reader.result as string;
-                                                                                setPhotoPreviews(newPreviews);
-                                                                            };
-                                                                            reader.readAsDataURL(compressedFile);
-                                                                        } catch (err) {
-                                                                            console.error('[MyTeamDetails] Failed to compress image:', err);
-                                                                            alert('Falha ao processar imagem. Tente outro arquivo.');
-                                                                        }
+                                    <div className="flex gap-4 flex-wrap">
+                                        {[0, 1, 2].map((index) => (
+                                            <div key={index} className="relative w-28 h-28 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden hover:border-indigo-400 transition-colors group">
+                                                {photoPreviews[index] ? (
+                                                    <>
+                                                        <img src={photoPreviews[index]!} alt={`Preview ${index}`} className="w-full h-full object-cover" />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const newFiles = [...photoFiles];
+                                                                const newPreviews = [...photoPreviews];
+                                                                newFiles[index] = null;
+                                                                newPreviews[index] = null;
+                                                                setPhotoFiles(newFiles);
+                                                                setPhotoPreviews(newPreviews);
+                                                            }}
+                                                            className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        >
+                                                            <X className="w-3 h-3" />
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <label className="cursor-pointer w-full h-full flex flex-col items-center justify-center text-gray-400 hover:text-indigo-600">
+                                                        <Plus className="w-6 h-6 mb-1" />
+                                                        <span className="text-[10px] uppercase font-bold">Slot {index + 1}</span>
+                                                        <input
+                                                            type="file"
+                                                            className="hidden"
+                                                            accept="image/*"
+                                                            onChange={async (e) => {
+                                                                const file = e.target.files?.[0];
+                                                                if (file) {
+                                                                    try {
+                                                                        const compressedFile = await prepareImageForUpload(file, 4 * 1024 * 1024);
+                                                                        const newFiles = [...photoFiles];
+                                                                        const newPreviews = [...photoPreviews];
+                                                                        newFiles[index] = compressedFile;
+                                                                        setPhotoFiles(newFiles);
+                                                                        const reader = new FileReader();
+                                                                        reader.onloadend = () => {
+                                                                            newPreviews[index] = reader.result as string;
+                                                                            setPhotoPreviews(newPreviews);
+                                                                        };
+                                                                        reader.readAsDataURL(compressedFile);
+                                                                    } catch (err) {
+                                                                        console.error('[MyTeamDetails] Failed to compress image:', err);
+                                                                        alert('Falha ao processar imagem.');
                                                                     }
-                                                                }}
-                                                            />
-                                                        </label>
-                                                    )}
-                                                    {index === 0 && <span className="absolute bottom-0 left-0 right-0 bg-indigo-600 text-white text-[9px] text-center py-0.5">Principal</span>}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
+                                                                }
+                                                            }}
+                                                        />
+                                                    </label>
+                                                )}
+                                                {index === 0 && <span className="absolute bottom-0 left-0 right-0 bg-indigo-600 text-white text-[9px] text-center py-0.5 font-bold uppercase">Principal</span>}
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
 
+                            {/* Form Fields - Following Admin Pattern */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-4">
                                 <div className="md:col-span-2">
                                     <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Nome Completo</label>
@@ -542,6 +539,16 @@ export function MyTeamDetails() {
                                         placeholder="Ex: João da Silva"
                                         value={newPlayerName}
                                         onChange={e => setNewPlayerName(e.target.value)}
+                                    />
+                                </div>
+
+                                <div className="md:col-span-2">
+                                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Apelido (Opcional)</label>
+                                    <input
+                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
+                                        placeholder="Ex: Canhotinha"
+                                        value={newPlayerNickname}
+                                        onChange={e => setNewPlayerNickname(e.target.value)}
                                     />
                                 </div>
 
@@ -559,7 +566,7 @@ export function MyTeamDetails() {
                                 <div>
                                     <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Número (Camisa)</label>
                                     <input
-                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-center"
                                         placeholder="Ex: 10"
                                         value={newPlayerNum}
                                         onChange={e => setNewPlayerNum(e.target.value)}
@@ -567,54 +574,12 @@ export function MyTeamDetails() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">CPF (Opcional)</label>
-                                    <input
-                                        type="text"
-                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono"
-                                        placeholder="000.000.000-00"
-                                        value={newPlayerCpf}
-                                        onChange={e => setNewPlayerCpf(e.target.value)}
-                                    />
-                                </div>
-
-                                <div>
                                     <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Data de Nascimento</label>
                                     <input
                                         type="date"
-                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
                                         value={newPlayerBirthDate}
                                         onChange={e => setNewPlayerBirthDate(e.target.value)}
-                                    />
-                                </div>
-
-                                <div className="md:col-span-2">
-                                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Email (Opcional)</label>
-                                    <input
-                                        type="email"
-                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                                        placeholder="atleta@email.com"
-                                        value={newPlayerEmail}
-                                        onChange={e => setNewPlayerEmail(e.target.value)}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Apelido</label>
-                                    <input
-                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                                        placeholder="Ex: Canhotinha"
-                                        value={newPlayerNickname}
-                                        onChange={e => setNewPlayerNickname(e.target.value)}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Telefone</label>
-                                    <input
-                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                                        placeholder="(00) 00000-0000"
-                                        value={newPlayerPhone}
-                                        onChange={e => setNewPlayerPhone(e.target.value)}
                                     />
                                 </div>
 
@@ -632,8 +597,50 @@ export function MyTeamDetails() {
                                     </select>
                                 </div>
 
+                                <div className="md:col-span-2">
+                                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">CPF</label>
+                                    <input
+                                        type="text"
+                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono"
+                                        placeholder="000.000.000-00"
+                                        value={newPlayerCpf}
+                                        onChange={e => setNewPlayerCpf(e.target.value)}
+                                    />
+                                </div>
+
+                                <div className="md:col-span-2">
+                                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Email</label>
+                                    <input
+                                        type="email"
+                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
+                                        placeholder="atleta@email.com"
+                                        value={newPlayerEmail}
+                                        onChange={e => setNewPlayerEmail(e.target.value)}
+                                    />
+                                </div>
+
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Documento (Opcional)</label>
+                                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Telefone (Opcional)</label>
+                                    <input
+                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                                        placeholder="(00) 00000-0000"
+                                        value={newPlayerPhone}
+                                        onChange={e => setNewPlayerPhone(e.target.value)}
+                                    />
+                                </div>
+
+                                <div className="md:col-span-2">
+                                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Endereço (Opcional)</label>
+                                    <input
+                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
+                                        placeholder="Rua, número, bairro..."
+                                        value={newPlayerAddress}
+                                        onChange={e => setNewPlayerAddress(e.target.value)}
+                                    />
+                                </div>
+
+                                <div className="md:col-span-2">
+                                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Documento (PDF/Img)</label>
                                     <input
                                         type="file"
                                         accept=".pdf,image/*"
@@ -642,28 +649,18 @@ export function MyTeamDetails() {
                                     />
                                 </div>
 
-                                <div className="md:col-span-2">
-                                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Endereço</label>
+                                <div className="md:col-span-2 space-y-2 pt-4 border-t border-gray-100">
+                                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider text-indigo-600">
+                                        {editingPlayer ? 'Mudar Senha (Opcional)' : 'Definir Senha (Se CPF não informado)'}
+                                    </label>
                                     <input
-                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                                        placeholder="Rua, número, bairro..."
-                                        value={newPlayerAddress}
-                                        onChange={e => setNewPlayerAddress(e.target.value)}
+                                        type="password"
+                                        className="w-full px-4 py-2.5 border border-indigo-50 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono"
+                                        placeholder="Min 6 caracteres"
+                                        value={newPlayerPassword}
+                                        onChange={e => setNewPlayerPassword(e.target.value)}
                                     />
                                 </div>
-
-                                {editingPlayer && (
-                                    <div className="md:col-span-2 space-y-2 pt-2 border-t border-gray-50">
-                                        <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider text-indigo-600">Mudar Senha (Opcional)</label>
-                                        <input
-                                            type="password"
-                                            className="w-full px-4 py-2.5 border border-indigo-100 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono"
-                                            placeholder="Nova senha (mínimo 6 caracteres)"
-                                            value={newPlayerPassword}
-                                            onChange={e => setNewPlayerPassword(e.target.value)}
-                                        />
-                                    </div>
-                                )}
                             </div>
 
                             <button
