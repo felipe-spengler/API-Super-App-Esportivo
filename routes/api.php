@@ -127,6 +127,7 @@ Route::get('/art/championship/{championshipId}/award/{category}', [\App\Http\Con
 
 // Loja (Público)
 Route::get('/clubs/{clubId}/products', [ShopController::class, 'products']);
+Route::get('/shop/products/{clubId}', [ShopController::class, 'products']);
 Route::get('/public/products', [ShopController::class, 'allProducts']); // NEW
 Route::get('/products/{id}', [ShopController::class, 'productDetails']);
 
