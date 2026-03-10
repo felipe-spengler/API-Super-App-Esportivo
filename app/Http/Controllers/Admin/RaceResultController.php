@@ -346,6 +346,14 @@ class RaceResultController extends Controller
     // Registro Público (Site)
     public function publicRegister(Request $request, $championshipId)
     {
+        // Decodificar JSON vindo do FormData
+        if (is_string($request->gifts)) {
+            $request->merge(['gifts' => json_decode($request->gifts, true)]);
+        }
+        if (is_string($request->shop_items)) {
+            $request->merge(['shop_items' => json_decode($request->shop_items, true)]);
+        }
+
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email',
