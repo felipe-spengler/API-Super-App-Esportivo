@@ -216,7 +216,8 @@ export function RaceRegister() {
             setStep(7); // Success step
         } catch (error: any) {
             console.error(error);
-            alert(error.response?.data?.message || 'Erro ao realizar inscrição. Verifique os dados e tente novamente.');
+            const errorMsg = error.response?.data?.error || error.response?.data?.message || 'Erro ao realizar inscrição. Verifique os dados e tente novamente.';
+            alert(errorMsg);
         } finally {
             setSaving(false);
         }

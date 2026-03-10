@@ -14,6 +14,7 @@ use Illuminate\Support\Str;
 use App\Models\Category;
 use App\Models\Coupon;
 use App\Services\AsaasService;
+use App\Http\Controllers\ImageUploadController;
 
 class RaceResultController extends Controller
 {
@@ -346,12 +347,14 @@ class RaceResultController extends Controller
     // Registro Público (Site)
     public function publicRegister(Request $request, $championshipId)
     {
-        // Decodificar JSON vindo do FormData
-        if (is_string($request->gifts)) {
-            $request->merge(['gifts' => json_decode($request->gifts, true)]);
+        // Decodificar JSON vindo do FormData (que chega como string)
+        if ($request->has('gifts') && is_string($request->gifts)) {
+            $decoded = json_decode($request->gifts, true);
+            $request->merge(['gifts' => is_array($decoded) ? $decoded : []]);
         }
-        if (is_string($request->shop_items)) {
-            $request->merge(['shop_items' => json_decode($request->shop_items, true)]);
+        if ($request->has('shop_items') && is_string($request->shop_items)) {
+            $decoded = json_decode($request->shop_items, true);
+            $request->merge(['shop_items' => is_array($decoded) ? $decoded : []]);
         }
 
         $request->validate([
