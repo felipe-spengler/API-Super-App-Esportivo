@@ -20,11 +20,14 @@ class RaceResult extends Model
         'status_payment',
         'payment_method',
         'is_pcd',
-        'pcd_document_url'
+        'pcd_document_url',
+        'gifts',
+        'coupon_id'
     ];
 
     protected $casts = [
         'is_pcd' => 'boolean',
+        'gifts' => 'array',
     ];
 
     public function race()

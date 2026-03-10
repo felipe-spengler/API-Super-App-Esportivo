@@ -111,7 +111,7 @@ class AsaasController extends Controller
 
                 // Baixa no Estoque dos Brindes (Produtos Inclusos na Categoria)
                 if ($result->category) {
-                    $included = $result->category->products(); // Usa o helper do model Category
+                    $included = $result->category->products();
                     foreach ($included as $item) {
                         if (isset($item['product']) && $item['product'] instanceof \App\Models\Product) {
                             $qty = $item['quantity'] ?? 1;
@@ -122,31 +122,55 @@ class AsaasController extends Controller
                 }
 
                 $this->sendInscriptionConfirmation($result);
-
                 Log::info("RaceResult {$id} marked as PAID and confirmation email sent");
             }
         }
-        // Caso 2: Pedido na Loja / Checkout Geral
+        // Caso 2: Checkout Geral / Pedido na Loja
         elseif (str_starts_with($externalReference, 'ORD_')) {
             $id = str_replace('ORD_', '', $externalReference);
             $order = Order::with('items.product')->find($id);
             if ($order && $order->status !== 'paid') {
                 $order->update(['status' => 'paid']);
 
-                // Baixa no Estoque (Seguindo a lógica do projeto antigo)
                 foreach ($order->items as $item) {
                     if ($item->product) {
                         $item->product->decrement('stock_quantity', $item->quantity);
                         Log::info("Stock reduced for Product {$item->product_id}: -{$item->quantity}");
                     }
-
-                    // Se for uma inscrição (category_id), também podemos marcar como pago
-                    // se houver uma tabela separada para isso futuramente.
                 }
-
                 Log::info("Order {$id} marked as PAID and stock updated");
             }
         }
+        // Caso 3: Inscrição de Equipe (Championship Team Pivot)
+        elseif (str_starts_with($externalReference, 'CT_')) {
+            $id = str_replace('CT_', '', $externalReference);
+            $pivot = DB::table('championship_team')->where('id', $id)->first();
+            if ($pivot && $pivot->status_payment !== 'paid') {
+                DB::table('championship_team')->where('id', $id)->update([
+                    'status_payment' => 'paid',
+                    'payment_method' => $payment['billingType'] ?? 'asaas',
+                    'updated_at' => now()
+                ]);
+
+                // Baixa no Estoque dos Brindes
+                if ($pivot->category_id) {
+                    $category = \App\Models\Category::find($pivot->category_id);
+                    if ($category) {
+                        $included = $category->products();
+                        foreach ($included as $item) {
+                            if (isset($item['product']) && $item['product'] instanceof \App\Models\Product) {
+                                $qty = $item['quantity'] ?? 1;
+                                $item['product']->decrement('stock_quantity', $qty);
+                                Log::info("Stock reduced for Team Gift/Included Product {$item['product']->id}: -{$qty} (CT {$id})");
+                            }
+                        }
+                    }
+                }
+                Log::info("ChampionshipTeam {$id} marked as PAID");
+            }
+        }
+
+        return;
     }
 
     private function handlePaymentFailure($payment)

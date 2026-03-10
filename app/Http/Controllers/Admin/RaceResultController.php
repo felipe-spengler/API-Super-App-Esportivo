@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use App\Models\Category;
+use App\Models\Coupon;
 use App\Services\AsaasService;
 
 class RaceResultController extends Controller
@@ -356,6 +357,9 @@ class RaceResultController extends Controller
             'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:4096',
             'is_pcd' => 'nullable|boolean',
             'pcd_document' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:4096',
+            'gifts' => 'nullable|array', // [{product_id, variant}]
+            'coupon_code' => 'nullable|string',
+            'payment_method' => 'nullable|string|in:PIX,CREDIT_CARD,BOLETO'
         ]);
 
         $race = Race::where('championship_id', $championshipId)->first();
@@ -457,6 +461,36 @@ class RaceResultController extends Controller
             }
 
             $finalPrice = $originalPrice * (1 - ($discountPct / 100));
+
+            // 4.1 Validar Cupom (se houver)
+            $couponId = null;
+            if ($request->coupon_code) {
+                $coupon = \App\Models\Coupon::where('club_id', $championship->club_id)
+                    ->where('code', $request->coupon_code)
+                    ->first();
+
+                if (!$coupon) {
+                    return response()->json(['error' => 'Cupom inválido.'], 422);
+                }
+
+                if ($coupon->max_uses && $coupon->used_count >= $coupon->max_uses) {
+                    return response()->json(['error' => 'Este cupom atingiu o limite de usos.'], 422);
+                }
+
+                if ($coupon->expires_at && $coupon->expires_at->isPast()) {
+                    return response()->json(['error' => 'Este cupom expirou.'], 422);
+                }
+
+                if ($coupon->discount_type === 'percentage') {
+                    $finalPrice -= $finalPrice * ($coupon->discount_value / 100);
+                } else {
+                    $finalPrice -= $coupon->discount_value;
+                }
+
+                $couponId = $coupon->id;
+                $coupon->increment('used_count');
+            }
+
             if ($finalPrice < 0)
                 $finalPrice = 0;
 
@@ -475,7 +509,9 @@ class RaceResultController extends Controller
                 'status_payment' => $status,
                 'payment_method' => $status === 'paid' ? 'free' : null,
                 'is_pcd' => $request->boolean('is_pcd'),
-                'pcd_document_url' => $pcdDocumentUrl
+                'pcd_document_url' => $pcdDocumentUrl,
+                'gifts' => $request->gifts,
+                'coupon_id' => $couponId
             ]);
 
             $paymentInfo = null;
@@ -486,7 +522,9 @@ class RaceResultController extends Controller
                         $user,
                         $finalPrice,
                         "Inscrição: {$race->championship->name} - {$category->name}",
-                        "RR_{$result->id}"
+                        "RR_{$result->id}",
+                        null,
+                        $request->input('payment_method', 'UNDEFINED')
                     );
 
                     if (isset($payment['id'])) {

@@ -3,44 +3,132 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\Championship;
+use App\Models\Category;
+use App\Models\Team;
+use App\Models\Coupon;
+use App\Services\AsaasService;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class InscriptionController extends Controller
 {
     // 1. Inscrever Time (Capitão)
     public function registerTeam(Request $request)
     {
-        // Validação básica (MVP)
         $validated = $request->validate([
             'championship_id' => 'required|exists:championships,id',
             'category_id' => 'required|exists:categories,id',
             'team_name' => 'required|string',
-            'players' => 'required|array|min:1', // Lista de { name, rg }
+            'gifts' => 'nullable|array',
+            'coupon_code' => 'nullable|string',
+            'payment_method' => 'nullable|string|in:PIX,CREDIT_CARD,BOLETO'
         ]);
 
-        // Validação de elegibilidade do Capitão (Usuário logado)
-        $category = \App\Models\Category::findOrFail($validated['category_id']);
+        $championship = Championship::with('club')->findOrFail($validated['championship_id']);
+        $category = Category::findOrFail($validated['category_id']);
+
+        // Check eligibility (Captain)
         $check = $category->isUserEligible($request->user());
         if (!$check['eligible']) {
-            return response()->json([
-                'message' => 'Você não atende aos requisitos desta categoria.',
-                'reason' => $check['reason']
-            ], 403);
+            return response()->json(['message' => $check['reason']], 403);
         }
 
-        // Mock: Simula o processamento (No futuro, salvaria em team_rosters)
-        // Por enquanto, vamos criar apenas o Time na tabela teams
-        $team = \App\Models\Team::create([
-            'club_id' => 1, // Hardcoded MVP
-            'captain_id' => $request->user()->id,
-            'name' => $validated['team_name'],
-            'primary_color' => '#000000' // Default
-        ]);
+        try {
+            DB::beginTransaction();
 
-        return response()->json([
-            'message' => 'Pré-inscrição realizada com sucesso!',
-            'team_id' => $team->id,
-            'next_step' => 'payment'
-        ], 201);
+            // 1. Resolve/Create Team (Capitão cria o time se não existir ou usa um novo?)
+            // Por simplicidade do fluxo de inscrição, vamos criar um novo time para este campeonato
+            $team = Team::create([
+                'club_id' => $championship->club_id,
+                'captain_id' => $request->user()->id,
+                'name' => $validated['team_name'],
+                'primary_color' => '#4f46e5'
+            ]);
+
+            // 2. Calcular Valor Final
+            $originalPrice = $category->price;
+            $finalPrice = $originalPrice;
+
+            // Cupom
+            $couponId = null;
+            if ($request->coupon_code) {
+                $coupon = Coupon::where('club_id', $championship->club_id)
+                    ->where('code', $request->coupon_code)
+                    ->first();
+
+                if ($coupon && (!$coupon->expires_at || !$coupon->expires_at->isPast()) && (!$coupon->max_uses || $coupon->used_count < $coupon->max_uses)) {
+                    if ($coupon->discount_type === 'percentage') {
+                        $finalPrice -= $finalPrice * ($coupon->discount_value / 100);
+                    } else {
+                        $finalPrice -= $coupon->discount_value;
+                    }
+                    $couponId = $coupon->id;
+                    $coupon->increment('used_count');
+                }
+            }
+
+            if ($finalPrice < 0)
+                $finalPrice = 0;
+
+            $status = ($finalPrice > 0) ? 'pending' : 'paid';
+
+            // 3. Vincular Team ao Championship no Pivot Table
+            $ctId = DB::table('championship_team')->insertGetId([
+                'championship_id' => $championship->id,
+                'team_id' => $team->id,
+                'category_id' => $category->id,
+                'status_payment' => $status,
+                'payment_method' => ($status === 'paid') ? 'free' : null,
+                'coupon_id' => $couponId,
+                'gifts' => $request->gifts ? json_encode($request->gifts) : null,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            // 4. Pagamento
+            $paymentInfo = null;
+            if ($status === 'pending') {
+                try {
+                    $asaas = new AsaasService($championship->club);
+                    $payment = $asaas->createPayment(
+                        $request->user(),
+                        $finalPrice,
+                        "Inscrição Equipe: {$championship->name} - {$team->name}",
+                        "CT_{$ctId}", // Championship Team pivot ID
+                        null,
+                        $request->input('payment_method', 'UNDEFINED')
+                    );
+
+                    if (isset($payment['id'])) {
+                        $pix = $asaas->getPixQrCode($payment['id']);
+                        $paymentInfo = [
+                            'asaas_id' => $payment['id'],
+                            'invoice_url' => $payment['invoiceUrl'],
+                            'pix_qr_code' => $pix['encodedImage'] ?? null,
+                            'pix_copy_paste' => $pix['payload'] ?? null,
+                            'expiration' => $payment['dueDate']
+                        ];
+                    }
+                } catch (\Exception $pe) {
+                    Log::error("Erro Asaas Team Inscription: " . $pe->getMessage());
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Inscrição realizada com sucesso!',
+                'team_id' => $team->id,
+                'requires_payment' => $finalPrice > 0,
+                'price' => $finalPrice,
+                'payment_data' => $paymentInfo
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['message' => 'Erro ao processar inscrição: ' . $e->getMessage()], 500);
+        }
     }
 
     // 2. Upload de Documentos (RG/CPF)

@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Championship;
 use App\Models\GameMatch;
 use App\Models\Team;
+use App\Models\Product;
 
 class EventController extends Controller
 {
@@ -64,6 +65,15 @@ class EventController extends Controller
         $champ = Championship::with(['categories.children', 'sport'])
             ->withCount('teams')
             ->findOrFail($id);
+
+        // Hydrate products for categories
+        foreach ($champ->categories as $category) {
+            if ($category->included_products) {
+                // We add a 'products_details' field to keep it clean
+                $category->products_details = $category->products();
+            }
+        }
+
         return response()->json($champ);
     }
 

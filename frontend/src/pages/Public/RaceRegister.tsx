@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
     User, Phone, FileText, Camera, Calendar, Mail, CreditCard,
     ArrowLeft, ArrowRight, Loader2, CheckCircle2,
-    Check
+    Check, Smartphone
 } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -28,8 +28,17 @@ export function RaceRegister() {
         gender: '',
         category_id: '',
         remove_bg: true,
-        is_pcd: false
+        is_pcd: false,
+        gifts: [] as any[],
+        coupon_code: '',
+        payment_method: 'PIX'
     });
+
+    const [chosenMethod, setChosenMethod] = useState<'PIX' | 'CREDIT_CARD' | 'BOLETO'>('PIX');
+
+    const [giftSelections, setGiftSelections] = useState<Record<number, string>>({});
+    const [couponValidating, setCouponValidating] = useState(false);
+    const [couponInfo, setCouponInfo] = useState<any>(null);
 
     const [photoFile, setPhotoFile] = useState<File | null>(null);
     const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -117,13 +126,25 @@ export function RaceRegister() {
                 data.append('pcd_document', pcdFile);
             }
 
+            // Gifts
+            const selectedGifts = Object.entries(giftSelections).map(([productId, variant]) => ({
+                product_id: productId,
+                variant: variant
+            }));
+            data.append('gifts', JSON.stringify(selectedGifts));
+
+            if (formData.coupon_code) {
+                data.append('coupon_code', formData.coupon_code);
+            }
+            data.append('payment_method', chosenMethod);
+
             const response = await api.post(`/championships/${id}/race/register`, data, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
 
             // Se a categoria for paga, podemos guardar a info de que precisa pagar
             setRegistrationData(response.data);
-            setStep(3); // Success step
+            setStep(6); // Success step
         } catch (error: any) {
             console.error(error);
             alert(error.response?.data?.message || 'Erro ao realizar inscrição. Verifique os dados e tente novamente.');
@@ -148,9 +169,9 @@ export function RaceRegister() {
                             <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">{championship?.name}</p>
                         </div>
                     </div>
-                    {step < 3 && (
+                    {step < 6 && (
                         <div className="text-[10px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">
-                            Passo {step} de 2
+                            Passo {step} de 5
                         </div>
                     )}
                 </div>
@@ -421,19 +442,285 @@ export function RaceRegister() {
                         <div className="flex gap-4">
                             <button onClick={() => setStep(1)} className="px-8 py-5 text-slate-400 font-black uppercase text-xs tracking-widest hover:text-slate-600 transition-colors">Voltar</button>
                             <button
+                                onClick={() => {
+                                    if (!formData.category_id || !formData.name || !formData.email || !formData.document || !formData.phone || !formData.birth_date || !formData.gender) {
+                                        alert('Por favor, preencha todos os campos obrigatórios.');
+                                        return;
+                                    }
+                                    if (!photoFile) {
+                                        alert('Por favor, envie uma foto para o seu perfil de atleta.');
+                                        return;
+                                    }
+                                    if (formData.is_pcd && !pcdFile) {
+                                        alert('Você declarou ser PCD. É obrigatório anexar o documento comprobatório para receber o desconto.');
+                                        return;
+                                    }
+
+                                    // Check if category has gifts
+                                    if (selectedCategory?.products_details?.length > 0) {
+                                        setStep(3);
+                                    } else {
+                                        setStep(4);
+                                    }
+                                }}
+                                className="flex-1 py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-700 disabled:opacity-50 shadow-xl flex items-center justify-center gap-3 transition-all"
+                            >
+                                Próximo Passo
+                                <ArrowRight />
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {step === 3 && (
+                    <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-6">
+                        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+                            <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight mb-2 italic">Escolha seus Brindes</h2>
+                            <p className="text-xs text-slate-500 font-bold uppercase tracking-widest border-b border-slate-100 pb-4">
+                                Estes itens estão inclusos na sua inscrição
+                            </p>
+
+                            <div className="space-y-8">
+                                {selectedCategory?.products_details?.map((item: any) => (
+                                    <div key={item.product.id} className="space-y-4">
+                                        <div className="flex justify-between items-center">
+                                            <div>
+                                                <h3 className="font-black text-slate-900 uppercase text-sm">{item.product.name}</h3>
+                                                <p className="text-[10px] text-slate-500 font-medium uppercase">{item.quantity} unidade(s)</p>
+                                            </div>
+                                            {item.required && <span className="bg-amber-50 text-amber-600 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">Obrigatório</span>}
+                                        </div>
+
+                                        {item.product.variants && item.product.variants.length > 0 && (
+                                            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2">
+                                                {item.product.variants.map((v: string) => (
+                                                    <button
+                                                        key={v}
+                                                        onClick={() => setGiftSelections({ ...giftSelections, [item.product.id]: v })}
+                                                        className={`py-2 px-3 rounded-lg border-2 font-black text-xs uppercase transition-all ${giftSelections[item.product.id] === v
+                                                            ? 'bg-indigo-600 border-indigo-600 text-white shadow-md'
+                                                            : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'
+                                                            }`}
+                                                    >
+                                                        {v}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="flex gap-4">
+                            <button onClick={() => setStep(2)} className="px-8 py-5 text-slate-400 font-black uppercase text-xs tracking-widest hover:text-slate-600 transition-colors">Voltar</button>
+                            <button
+                                onClick={() => {
+                                    // Validar se todos os obrigatórios com variações foram selecionados
+                                    const missing = selectedCategory.products_details.filter((item: any) =>
+                                        item.required &&
+                                        item.product.variants?.length > 0 &&
+                                        !giftSelections[item.product.id]
+                                    );
+
+                                    if (missing.length > 0) {
+                                        alert(`Por favor, selecione o tamanho para: ${missing.map((m: any) => m.product.name).join(', ')}`);
+                                        return;
+                                    }
+                                    setStep(4);
+                                }}
+                                className="flex-1 py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-700 shadow-xl flex items-center justify-center gap-3 transition-all"
+                            >
+                                Próximo Passo
+                                <ArrowRight />
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {step === 4 && (
+                    <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-6">
+                        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+                            <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight mb-2 italic">Cupom de Desconto</h2>
+
+                            <div className="space-y-4">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block ml-1">Tem um cupom?</label>
+                                <div className="flex gap-2">
+                                    <input
+                                        className="flex-1 px-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold uppercase text-sm"
+                                        placeholder="CÓDIGO"
+                                        value={formData.coupon_code}
+                                        onChange={e => {
+                                            setFormData({ ...formData, coupon_code: e.target.value.toUpperCase() });
+                                            setCouponInfo(null);
+                                        }}
+                                        disabled={!!couponInfo}
+                                    />
+                                    {!couponInfo ? (
+                                        <button
+                                            onClick={async () => {
+                                                if (!formData.coupon_code) return;
+                                                try {
+                                                    setCouponValidating(true);
+                                                    const response = await api.post('/cupom/validate', {
+                                                        code: formData.coupon_code,
+                                                        club_id: championship.club_id
+                                                    });
+                                                    setCouponInfo(response.data);
+                                                } catch (err) {
+                                                    alert("Cupom não encontrado ou expirado.");
+                                                } finally {
+                                                    setCouponValidating(false);
+                                                }
+                                            }}
+                                            disabled={couponValidating || !formData.coupon_code}
+                                            className="px-6 py-4 bg-slate-900 text-white rounded-xl font-black uppercase text-xs tracking-widest hover:bg-slate-800 disabled:opacity-50"
+                                        >
+                                            {couponValidating ? <Loader2 className="animate-spin w-4 h-4" /> : 'Aplicar'}
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={() => {
+                                                setCouponInfo(null);
+                                                setFormData({ ...formData, coupon_code: '' });
+                                            }}
+                                            className="px-6 py-4 bg-red-50 text-red-600 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-red-100"
+                                        >
+                                            Remover
+                                        </button>
+                                    )}
+                                </div>
+
+                                {couponInfo && (
+                                    <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl flex items-center gap-3 animate-in slide-in-from-top-2">
+                                        <CheckCircle2 className="text-emerald-600" size={20} />
+                                        <div>
+                                            <p className="text-emerald-800 font-black text-xs uppercase">Cupom Aplicado!</p>
+                                            <p className="text-emerald-600 text-[10px] font-bold">
+                                                -{couponInfo.discount_type === 'percentage' ? `${couponInfo.discount_value}%` : `R$ ${couponInfo.discount_value}`} de desconto.
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="pt-6 border-t border-slate-100 space-y-3">
+                                <h3 className="font-black text-slate-900 uppercase text-xs italic">Resumo do Pedido</h3>
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-slate-500 font-bold uppercase">Inscrição ({selectedCategory?.name})</span>
+                                    <span className="font-black text-slate-900">R$ {Number(selectedCategory?.price || 0).toFixed(2)}</span>
+                                </div>
+                                {couponInfo && (
+                                    <div className="flex justify-between text-sm text-emerald-600">
+                                        <span className="font-bold uppercase">Desconto Cupom</span>
+                                        <span className="font-black italic">
+                                            -{couponInfo.discount_type === 'percentage'
+                                                ? `R$ ${(Number(selectedCategory?.price || 0) * (couponInfo.discount_value / 100)).toFixed(2)}`
+                                                : `R$ ${Number(couponInfo.discount_value).toFixed(2)}`}
+                                        </span>
+                                    </div>
+                                )}
+                                <div className="flex justify-between items-center pt-3 border-t-2 border-slate-900 border-dashed">
+                                    <span className="font-black text-slate-900 uppercase text-lg italic">Total a Pagar</span>
+                                    <span className="font-black text-indigo-600 text-2xl italic">
+                                        R$ {Math.max(0, (
+                                            Number(selectedCategory?.price || 0) -
+                                            (couponInfo ? (couponInfo.discount_type === 'percentage' ? Number(selectedCategory?.price || 0) * (couponInfo.discount_value / 100) : Number(couponInfo.discount_value)) : 0)
+                                        )).toFixed(2)}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-4">
+                            <button onClick={() => selectedCategory?.products_details?.length > 0 ? setStep(3) : setStep(2)} className="px-8 py-5 text-slate-400 font-black uppercase text-xs tracking-widest hover:text-slate-600 transition-colors">Voltar</button>
+                            <button
+                                onClick={() => setStep(5)}
+                                className="flex-1 py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-700 shadow-xl flex items-center justify-center gap-3 transition-all"
+                            >
+                                Revisar Pedido
+                                <ArrowRight />
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {step === 5 && (
+                    <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-6">
+                        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+                            <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight mb-2 italic">Forma de Pagamento</h2>
+
+                            <div className="grid grid-cols-1 gap-3">
+                                <button
+                                    onClick={() => setChosenMethod('PIX')}
+                                    className={`p-4 rounded-2xl border-2 flex items-center gap-4 transition-all ${chosenMethod === 'PIX' ? 'border-indigo-600 bg-indigo-50' : 'border-slate-100 hover:border-slate-200'}`}
+                                >
+                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${chosenMethod === 'PIX' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                                        <Smartphone size={24} />
+                                    </div>
+                                    <div className="text-left">
+                                        <p className="font-black text-slate-900 uppercase text-xs">PIX (Instantâneo)</p>
+                                        <p className="text-[10px] text-slate-500 font-bold uppercase">Liberação imediata da inscrição</p>
+                                    </div>
+                                </button>
+
+                                <button
+                                    onClick={() => setChosenMethod('CREDIT_CARD')}
+                                    className={`p-4 rounded-2xl border-2 flex items-center gap-4 transition-all ${chosenMethod === 'CREDIT_CARD' ? 'border-indigo-600 bg-indigo-50' : 'border-slate-100 hover:border-slate-200'}`}
+                                >
+                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${chosenMethod === 'CREDIT_CARD' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                                        <CreditCard size={24} />
+                                    </div>
+                                    <div className="text-left">
+                                        <p className="font-black text-slate-900 uppercase text-xs">Cartão de Crédito</p>
+                                        <p className="text-[10px] text-slate-500 font-bold uppercase">Parcele sua inscrição em até 12x</p>
+                                    </div>
+                                </button>
+
+                                <button
+                                    onClick={() => setChosenMethod('BOLETO')}
+                                    className={`p-4 rounded-2xl border-2 flex items-center gap-4 transition-all ${chosenMethod === 'BOLETO' ? 'border-indigo-600 bg-indigo-50' : 'border-slate-100 hover:border-slate-200'}`}
+                                >
+                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${chosenMethod === 'BOLETO' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                                        <FileText size={24} />
+                                    </div>
+                                    <div className="text-left">
+                                        <p className="font-black text-slate-900 uppercase text-xs">Boleto Bancário</p>
+                                        <p className="text-[10px] text-slate-500 font-bold uppercase">Liberação em até 2 dias úteis</p>
+                                    </div>
+                                </button>
+                            </div>
+
+                            <div className="pt-6 border-t border-slate-100 space-y-3">
+                                <h3 className="font-black text-slate-900 uppercase text-xs italic">Resumo Final</h3>
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-slate-500 font-bold uppercase">Total Geral</span>
+                                    <span className="font-black text-indigo-600 text-xl italic">
+                                        R$ {Math.max(0, (
+                                            Number(selectedCategory?.price || 0) -
+                                            (couponInfo ? (couponInfo.discount_type === 'percentage' ? Number(selectedCategory?.price || 0) * (couponInfo.discount_value / 100) : Number(couponInfo.discount_value)) : 0)
+                                        )).toFixed(2)}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-4">
+                            <button onClick={() => setStep(4)} className="px-8 py-5 text-slate-400 font-black uppercase text-xs tracking-widest hover:text-slate-600 transition-colors">Voltar</button>
+                            <button
                                 onClick={handleRegister}
-                                disabled={saving}
+                                disabled={saving || !chosenMethod}
                                 className="flex-1 py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-700 disabled:opacity-50 shadow-xl flex items-center justify-center gap-3 transition-all"
                             >
                                 {saving ? (
                                     <>
                                         <Loader2 className="animate-spin" />
-                                        Sincronizando...
+                                        Gerando Cobrança...
                                     </>
                                 ) : (
                                     <>
-                                        Finalizar Inscrição
-                                        <CheckCircle2 />
+                                        {chosenMethod === 'PIX' ? 'Gerar PIX Agora' : 'Finalizar Pedido'}
+                                        <ArrowRight />
                                     </>
                                 )}
                             </button>
@@ -441,7 +728,7 @@ export function RaceRegister() {
                     </div>
                 )}
 
-                {step === 3 && (
+                {step === 6 && (
                     <div className="animate-in zoom-in-95 duration-500 text-center py-12 space-y-6">
                         <div className="w-24 h-24 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-emerald-100/50">
                             <CheckCircle2 size={48} />
@@ -455,64 +742,85 @@ export function RaceRegister() {
                                     <span className="block text-green-600 font-bold mb-2">Desconto de {registrationData.discount_applied}% aplicado com sucesso!</span>
                                 )}
                                 {registrationData?.requires_payment
-                                    ? `Sua inscrição foi reservada. Para garantir sua vaga, realize o pagamento de R$ ${registrationData.price.toFixed(2)} via PIX abaixo ou escolha outra forma de pagamento.`
+                                    ? `Sua inscrição foi reservada. Para garantir sua vaga, realize o pagamento de R$ ${registrationData.price.toFixed(2)} via ${chosenMethod} abaixo.`
                                     : 'Sua vaga está garantida. Agora é só se preparar para o grande dia!'}
                             </p>
                         </div>
 
-                        {registrationData?.payment_data?.pix_qr_code && (
-                            <div className="bg-slate-50 p-6 rounded-3xl border-2 border-dashed border-slate-200 max-w-xs mx-auto animate-in fade-in zoom-in duration-700">
-                                <div className="bg-white p-2 rounded-2xl shadow-inner mb-4">
-                                    <img
-                                        src={`data:image/png;base64,${registrationData.payment_data.pix_qr_code}`}
-                                        alt="PIX QR Code"
-                                        className="w-full aspect-square rounded-xl"
-                                    />
-                                </div>
-                                <div className="space-y-3">
-                                    <button
-                                        onClick={() => {
-                                            if (registrationData?.payment_data?.pix_copy_paste) {
-                                                navigator.clipboard.writeText(registrationData.payment_data.pix_copy_paste);
-                                                alert("Código PIX copiado!");
-                                            }
-                                        }}
-                                        className="w-full py-3 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 flex items-center justify-center gap-2"
-                                    >
-                                        <FileText size={14} />
-                                        Copiar Código PIX
-                                    </button>
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter italic">
-                                        Vence em: {new Date(registrationData.payment_data.expiration).toLocaleDateString()}
-                                    </p>
-                                </div>
-                            </div>
-                        )}
-                        <div className="pt-8 flex flex-col gap-3 max-w-xs mx-auto">
-                            {registrationData?.requires_payment && (
-                                <>
-                                    {registrationData?.payment_data?.invoice_url && (
+                        {registrationData?.requires_payment && (
+                            <div className="max-w-xs mx-auto space-y-4">
+                                {registrationData?.payment_data?.pix_qr_code && chosenMethod === 'PIX' && (
+                                    <div className="bg-slate-50 p-6 rounded-2xl border border-dashed border-slate-200 flex flex-col items-center gap-4">
+                                        <img
+                                            src={`data:image/png;base64,${registrationData.payment_data.pix_qr_code}`}
+                                            alt="PIX QR Code"
+                                            className="w-48 h-48 rounded-lg shadow-sm"
+                                        />
+                                        <div className="w-full space-y-2">
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Código Copia e Cola</p>
+                                            <div className="flex gap-2">
+                                                <input
+                                                    readOnly
+                                                    value={registrationData.payment_data.pix_copy_paste}
+                                                    className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-lg text-[10px] font-mono truncate"
+                                                />
+                                                <button
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(registrationData.payment_data.pix_copy_paste);
+                                                        alert('Código copiado!');
+                                                    }}
+                                                    className="px-3 bg-indigo-600 text-white rounded-lg text-[10px] font-black uppercase"
+                                                >
+                                                    Copiar
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {chosenMethod === 'CREDIT_CARD' && registrationData?.payment_data?.invoice_url && (
+                                    <div className="bg-indigo-50 border border-indigo-100 p-6 rounded-2xl flex flex-col items-center gap-4">
+                                        <CreditCard className="text-indigo-600 w-12 h-12" />
+                                        <div className="text-center">
+                                            <p className="text-indigo-900 font-black text-sm uppercase">Pagamento via Cartão</p>
+                                            <p className="text-indigo-600/70 text-[10px] font-bold uppercase mt-1">Clique no botão abaixo para ir ao checkout seguro</p>
+                                        </div>
                                         <a
                                             href={registrationData.payment_data.invoice_url}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all flex items-center justify-center gap-2"
+                                            className="w-full py-4 bg-indigo-600 text-white rounded-xl font-black uppercase text-xs tracking-widest text-center hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200"
                                         >
-                                            <CreditCard size={20} />
                                             Pagar com Cartão
                                         </a>
-                                    )}
-                                    {!registrationData?.payment_data?.invoice_url && (
-                                        <button
-                                            onClick={() => navigate('/profile/inscriptions')}
-                                            className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all flex items-center justify-center gap-2"
+                                    </div>
+                                )}
+
+                                {chosenMethod === 'BOLETO' && registrationData?.payment_data?.invoice_url && (
+                                    <div className="bg-slate-900 p-6 rounded-2xl flex flex-col items-center gap-4">
+                                        <FileText className="text-white w-12 h-12" />
+                                        <div className="text-center">
+                                            <p className="text-white font-black text-sm uppercase">Pagamento via Boleto</p>
+                                            <p className="text-slate-400 text-[10px] font-bold uppercase mt-1">O boleto foi gerado com sucesso</p>
+                                        </div>
+                                        <a
+                                            href={registrationData.payment_data.invoice_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="w-full py-4 bg-white text-slate-900 rounded-xl font-black uppercase text-xs tracking-widest text-center hover:bg-slate-100 transition-all"
                                         >
-                                            <CreditCard size={20} />
-                                            Pagar Inscrição
-                                        </button>
-                                    )}
-                                </>
-                            )}
+                                            Imprimir Boleto
+                                        </a>
+                                    </div>
+                                )}
+                                {registrationData?.payment_data?.expiration && (
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter italic">
+                                        Vence em: {new Date(registrationData.payment_data.expiration).toLocaleDateString()}
+                                    </p>
+                                )}
+                            </div>
+                        )}
+                        <div className="pt-8 flex flex-col gap-3 max-w-xs mx-auto">
                             <button
                                 onClick={() => navigate('/profile/inscriptions')}
                                 className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-800 shadow-xl transition-all"
@@ -532,3 +840,5 @@ export function RaceRegister() {
         </div>
     );
 }
+
+export default RaceRegister;

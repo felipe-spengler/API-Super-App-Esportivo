@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     CheckCircle, CreditCard, Users, User, Trophy,
-    ArrowRight, ArrowLeft, Upload, Loader2, Tag
+    ArrowRight, ArrowLeft, Upload, Loader2, Tag,
+    FileText, Smartphone
 } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -33,7 +34,10 @@ export function ChampionshipInscription() {
 
     // Product/Variants Data
     const [categoryProducts, setCategoryProducts] = useState<any[]>([]);
-    const [productVariants, setProductVariants] = useState<Record<number, Record<string, string>>>({});
+    const [giftSelections, setGiftSelections] = useState<Record<number, string>>({});
+    const [couponInfo, setCouponInfo] = useState<any>(null);
+    const [chosenMethod, setChosenMethod] = useState<'PIX' | 'CREDIT_CARD' | 'BOLETO'>('PIX');
+    const [registrationData, setRegistrationData] = useState<any>(null);
 
     useEffect(() => {
         loadData();
@@ -44,7 +48,6 @@ export function ChampionshipInscription() {
             loadCategoryProducts();
         } else {
             setCategoryProducts([]);
-            setProductVariants({});
         }
     }, [selectedCategory]);
 
@@ -90,15 +93,7 @@ export function ChampionshipInscription() {
         }
     }
 
-    function setProductVariant(productId: number, variantName: string, value: string) {
-        setProductVariants(prev => ({
-            ...prev,
-            [productId]: {
-                ...(prev[productId] || {}),
-                [variantName]: value
-            }
-        }));
-    }
+
 
     const currentPrice = selectedCategory?.price || 0;
     const finalPrice = Math.max(0, currentPrice - discount);
@@ -137,27 +132,20 @@ export function ChampionshipInscription() {
             const payload = {
                 championship_id: id,
                 category_id: selectedCategory.id,
-                type: inscriptionType,
-                team_name: inscriptionType === 'team' ? teamName : user.name, // If individual, team name matches user? Or we handle differently.
+                team_name: teamName,
                 coupon_code: coupon,
-                product_variants: productVariants // { "1": { "Tamanho": "M" }, "2": { "Cor": "Azul" } }
+                payment_method: chosenMethod,
+                gifts: Object.entries(giftSelections).map(([productId, variant]) => ({
+                    product_id: productId,
+                    variant: variant
+                }))
             };
 
             const response = await api.post('/inscriptions/team', payload); // Reuse existing endpoint or new one
 
             // 2. Mock Payment
-            if (finalPrice > 0) {
-                await new Promise(resolve => setTimeout(resolve, 1500)); // Simulating payment gateway
-            }
-
-            // 3. Success
-            if (inscriptionType === 'team') {
-                navigate(`/profile/teams/${response.data.team_id}`);
-            } else {
-                navigate('/profile/inscriptions');
-            }
-            alert('Inscrição realizada com sucesso!');
-
+            setRegistrationData(response.data);
+            setStep(6);
         } catch (error: any) {
             console.error(error);
             alert(error.response?.data?.message || 'Erro ao realizar inscrição.');
@@ -178,7 +166,7 @@ export function ChampionshipInscription() {
                         <span className="font-bold text-lg text-gray-800">Inscrição</span>
                     </div>
                     <div className="text-sm font-medium text-indigo-600">
-                        Passo {step} de 4
+                        Passo {step} de 5
                     </div>
                 </div>
             </div>
@@ -266,129 +254,282 @@ export function ChampionshipInscription() {
                             </div>
                         )}
 
-                        {/* Produtos Inclusos */}
-                        {categoryProducts.length > 0 && (
-                            <div className="mt-6 space-y-4">
-                                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                                    <Trophy className="w-5 h-5 text-indigo-600" />
-                                    Produtos Inclusos
-                                </h3>
 
-                                {categoryProducts.map((item: any) => {
-                                    const product = item.product;
-                                    if (!product) return null;
-
-                                    return (
-                                        <div key={product.id} className="bg-gradient-to-r from-indigo-50 to-blue-50 p-6 rounded-xl border-2 border-indigo-200">
-                                            <div className="flex items-start justify-between mb-4">
-                                                <div>
-                                                    <h4 className="font-bold text-gray-900 text-lg">{product.name}</h4>
-                                                    <p className="text-sm text-gray-600">
-                                                        Quantidade: {item.quantity} {item.required && <span className="text-red-600 font-bold">*</span>}
-                                                    </p>
-                                                </div>
-                                                {product.image_url && (
-                                                    <img src={product.image_url} alt={product.name} className="w-16 h-16 object-cover rounded-lg" />
-                                                )}
-                                            </div>
-
-                                            {product.variants && product.variants.length > 0 && (
-                                                <div className="space-y-3">
-                                                    {product.variants.map((variant: any) => (
-                                                        <div key={variant.name}>
-                                                            <label className="block text-sm font-bold text-gray-700 mb-2">
-                                                                {variant.name}:
-                                                                {item.required && <span className="text-red-600 ml-1">*</span>}
-                                                            </label>
-                                                            <select
-                                                                value={productVariants[product.id]?.[variant.name] || ''}
-                                                                onChange={e => setProductVariant(product.id, variant.name, e.target.value)}
-                                                                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white font-medium"
-                                                                required={item.required}
-                                                            >
-                                                                <option value="">Selecione...</option>
-                                                                {variant.options.map((opt: string) => (
-                                                                    <option key={opt} value={opt}>{opt}</option>
-                                                                ))}
-                                                            </select>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
 
                         <div className="mt-8 flex justify-between">
                             <button onClick={() => setStep(1)} className="text-gray-500 font-bold hover:text-gray-800">Voltar</button>
                             <button
-                                disabled={inscriptionType === 'team' && !teamName}
-                                onClick={() => setStep(3)}
-                                className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 transition-all"
+                                disabled={!teamName}
+                                onClick={() => {
+                                    if (selectedCategory?.included_products?.length > 0) {
+                                        setStep(3);
+                                    } else {
+                                        setStep(4);
+                                    }
+                                }}
+                                className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 transition-all flex items-center gap-2"
                             >
-                                Ir para Pagamento
+                                Continuar <ArrowRight className="w-5 h-5" />
                             </button>
                         </div>
                     </div>
                 )}
 
-                {/* Step 3: Payment & Coupon */}
+                {/* Step 3: Gifts */}
                 {step === 3 && (
-                    <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                        <h2 className="text-2xl font-bold text-gray-900 mb-6">Pagamento</h2>
-
-                        <div className="bg-white p-6 rounded-xl border border-gray-200 mb-6">
-                            <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
-                                <Tag className="w-5 h-5 text-indigo-600" /> Possui Cupom?
+                    <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-6">
+                        <div className="bg-white p-6 rounded-xl border border-gray-200">
+                            <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2 italic uppercase tracking-tight">
+                                <Trophy className="w-5 h-5 text-indigo-600" /> Escolha seus Brindes
                             </h3>
-                            <div className="flex gap-2">
-                                <input
-                                    value={coupon}
-                                    onChange={e => setCoupon(e.target.value)}
-                                    className="flex-1 px-4 py-2 border border-gray-200 rounded-lg outline-none uppercase"
-                                    placeholder="CÓDIGO"
-                                />
-                                <button
-                                    onClick={validateCoupon}
-                                    disabled={isValidatingCoupon || !coupon}
-                                    className="bg-gray-900 text-white px-4 py-2 rounded-lg font-bold hover:bg-gray-800 disabled:opacity-50"
-                                >
-                                    {isValidatingCoupon ? '...' : 'Aplicar'}
-                                </button>
-                            </div>
-                            {discount > 0 && (
-                                <p className="text-green-600 text-sm font-bold mt-2">Desconto aplicado: R$ {discount.toFixed(2)}</p>
-                            )}
-                        </div>
 
-                        <div className="bg-gray-50 p-6 rounded-xl space-y-3 mb-6">
-                            <div className="flex justify-between text-gray-600">
-                                <span>Inscrição ({selectedCategory.name})</span>
-                                <span>{currentPrice === 0 ? 'Grátis' : `R$ ${currentPrice.toFixed(2)}`}</span>
-                            </div>
-                            {discount > 0 && (
-                                <div className="flex justify-between text-green-600">
-                                    <span>Desconto</span>
-                                    <span>- R$ {discount.toFixed(2)}</span>
-                                </div>
-                            )}
-                            <div className="border-t border-gray-200 pt-3 flex justify-between text-xl font-bold text-gray-900">
-                                <span>Total</span>
-                                <span>{finalPrice === 0 ? 'Grátis' : `R$ ${finalPrice.toFixed(2)}`}</span>
+                            <div className="space-y-8">
+                                {championship.categories?.find((c: any) => c.id === selectedCategory.id)?.products_details?.map((item: any) => (
+                                    <div key={item.product.id} className="space-y-4">
+                                        <div className="flex justify-between items-center bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                            <div>
+                                                <h4 className="font-bold text-gray-900 uppercase text-sm">{item.product.name}</h4>
+                                                <p className="text-[10px] text-gray-500 font-bold uppercase">{item.quantity} unidade(s)</p>
+                                            </div>
+                                            {item.required && <span className="bg-amber-50 text-amber-600 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">Obrigatório</span>}
+                                        </div>
+
+                                        {item.product.variants && (
+                                            <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                                                {item.product.variants.map((v: string) => (
+                                                    <button
+                                                        key={v}
+                                                        onClick={() => setGiftSelections({ ...giftSelections, [item.product.id]: v })}
+                                                        className={`py-2 px-3 rounded-lg border-2 font-bold text-xs uppercase transition-all ${giftSelections[item.product.id] === v
+                                                            ? 'bg-indigo-600 border-indigo-600 text-white shadow-md'
+                                                            : 'bg-white border-gray-100 text-gray-400 hover:border-gray-200'
+                                                            }`}
+                                                    >
+                                                        {v}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
                             </div>
                         </div>
 
                         <div className="flex justify-between">
                             <button onClick={() => setStep(2)} className="text-gray-500 font-bold hover:text-gray-800">Voltar</button>
                             <button
+                                onClick={() => setStep(4)}
+                                className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-indigo-700 transition-all flex items-center gap-2"
+                            >
+                                Continuar <ArrowRight className="w-5 h-5" />
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Step 4: Coupon */}
+                {step === 4 && (
+                    <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+                        <h2 className="text-2xl font-bold text-gray-900 mb-6">Possui um Cupom?</h2>
+
+                        <div className="bg-white p-6 rounded-xl border border-gray-200 mb-6">
+                            <div className="flex gap-2">
+                                <input
+                                    value={coupon}
+                                    onChange={e => {
+                                        setCoupon(e.target.value.toUpperCase());
+                                        setCouponInfo(null);
+                                    }}
+                                    className="flex-1 px-4 py-3 border border-gray-200 rounded-lg outline-none uppercase font-bold"
+                                    placeholder="CÓDIGO"
+                                />
+                                <button
+                                    onClick={async () => {
+                                        setIsValidatingCoupon(true);
+                                        try {
+                                            const res = await api.post('/cupom/validate', { code: coupon, club_id: championship.club_id });
+                                            setCouponInfo(res.data);
+                                        } catch (err) {
+                                            alert("Cupom inválido ou expirado.");
+                                        } finally {
+                                            setIsValidatingCoupon(false);
+                                        }
+                                    }}
+                                    disabled={isValidatingCoupon || !coupon}
+                                    className="bg-gray-900 text-white px-6 py-2 rounded-lg font-bold hover:bg-gray-800 disabled:opacity-50"
+                                >
+                                    {isValidatingCoupon ? <Loader2 className="animate-spin w-4 h-4" /> : 'Aplicar'}
+                                </button>
+                            </div>
+                            {couponInfo && (
+                                <div className="mt-4 p-4 bg-emerald-50 border border-emerald-100 rounded-lg text-emerald-800 flex items-center gap-2">
+                                    <CheckCircle className="w-5 h-5" />
+                                    <span className="text-sm font-bold uppercase transition-all">
+                                        Cupom Ativo: -{couponInfo.discount_type === 'percentage' ? `${couponInfo.discount_value}%` : `R$ ${couponInfo.discount_value}`}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex justify-between">
+                            <button onClick={() => selectedCategory?.included_products?.length > 0 ? setStep(3) : setStep(2)} className="text-gray-500 font-bold hover:text-gray-800">Voltar</button>
+                            <button
+                                onClick={() => setStep(5)}
+                                className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-indigo-700 transition-all flex items-center gap-2"
+                            >
+                                Revisar Pedido <ArrowRight className="w-5 h-5" />
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Step 5: Payment Selection */}
+                {step === 5 && (
+                    <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+                        <h2 className="text-2xl font-bold text-gray-900 mb-6 uppercase italic tracking-tight italic">Forma de Pagamento</h2>
+
+                        <div className="grid gap-3 mb-6">
+                            <button
+                                onClick={() => setChosenMethod('PIX')}
+                                className={`p-4 rounded-xl border-2 flex items-center gap-4 transition-all ${chosenMethod === 'PIX' ? 'border-indigo-600 bg-indigo-50 shadow-sm' : 'border-gray-100 bg-white'}`}
+                            >
+                                <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${chosenMethod === 'PIX' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-400'}`}>
+                                    <Users size={24} />
+                                </div>
+                                <div className="text-left">
+                                    <p className="font-bold text-gray-900 uppercase text-sm italic">PIX Instantâneo</p>
+                                    <p className="text-[10px] text-gray-500 font-bold uppercase">Liberação imediata da inscrição</p>
+                                </div>
+                            </button>
+
+                            <button
+                                onClick={() => setChosenMethod('CREDIT_CARD')}
+                                className={`p-4 rounded-xl border-2 flex items-center gap-4 transition-all ${chosenMethod === 'CREDIT_CARD' ? 'border-indigo-600 bg-indigo-50 shadow-sm' : 'border-gray-100 bg-white'}`}
+                            >
+                                <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${chosenMethod === 'CREDIT_CARD' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-400'}`}>
+                                    <CreditCard size={24} />
+                                </div>
+                                <div className="text-left">
+                                    <p className="font-bold text-gray-900 uppercase text-sm italic">Cartão de Crédito</p>
+                                    <p className="text-[10px] text-gray-500 font-bold uppercase">Parcele em até 12x via Asaas</p>
+                                </div>
+                            </button>
+
+                            <button
+                                onClick={() => setChosenMethod('BOLETO')}
+                                className={`p-4 rounded-xl border-2 flex items-center gap-4 transition-all ${chosenMethod === 'BOLETO' ? 'border-indigo-600 bg-indigo-50 shadow-sm' : 'border-gray-100 bg-white'}`}
+                            >
+                                <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${chosenMethod === 'BOLETO' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-400'}`}>
+                                    <FileText size={24} />
+                                </div>
+                                <div className="text-left">
+                                    <p className="font-bold text-gray-900 uppercase text-sm italic">Boleto Bancário</p>
+                                    <p className="text-[10px] text-gray-500 font-bold uppercase">Liberação em até 2 dias úteis</p>
+                                </div>
+                            </button>
+                        </div>
+
+                        <div className="bg-gray-100 p-6 rounded-xl space-y-3 mb-8">
+                            <div className="flex justify-between text-gray-600 font-medium">
+                                <span className="uppercase text-xs font-bold">Inscrição Sugerida</span>
+                                <span>R$ {Number(selectedCategory.price).toFixed(2)}</span>
+                            </div>
+                            {couponInfo && (
+                                <div className="flex justify-between text-emerald-600 font-bold">
+                                    <span className="uppercase text-xs">Desconto Cupom</span>
+                                    <span>
+                                        -{couponInfo.discount_type === 'percentage'
+                                            ? `R$ ${(Number(selectedCategory.price) * (couponInfo.discount_value / 100)).toFixed(2)}`
+                                            : `R$ ${Number(couponInfo.discount_value).toFixed(2)}`}
+                                    </span>
+                                </div>
+                            )}
+                            <div className="border-t-2 border-dashed border-gray-300 pt-3 flex justify-between items-center">
+                                <span className="font-black text-gray-900 uppercase text-lg italic">Total a Pagar</span>
+                                <span className="font-black text-indigo-600 text-2xl italic tracking-tight">
+                                    R$ {Math.max(0, (
+                                        Number(selectedCategory.price) -
+                                        (couponInfo ? (couponInfo.discount_type === 'percentage' ? Number(selectedCategory.price) * (couponInfo.discount_value / 100) : Number(couponInfo.discount_value)) : 0)
+                                    )).toFixed(2)}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-between">
+                            <button onClick={() => setStep(4)} className="text-gray-500 font-bold hover:text-gray-800">Voltar</button>
+                            <button
                                 onClick={handleSubmit}
                                 disabled={processing}
-                                className="bg-green-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-green-700 disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-green-600/20 transition-all"
+                                className="bg-indigo-600 text-white px-10 py-4 rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 shadow-xl shadow-indigo-100 transition-all"
                             >
-                                {processing ? <Loader2 className="animate-spin" /> : <CreditCard className="w-5 h-5" />}
-                                {finalPrice === 0 ? 'Confirmar Inscrição' : 'Pagar Agora'}
+                                {processing ? <Loader2 className="animate-spin" /> : <CheckCircle className="w-5 h-5" />}
+                                {finalPrice === 0 ? 'Concluir Inscrição' : 'Confirmar e Pagar'}
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Step 6: Success */}
+                {step === 6 && (
+                    <div className="animate-in zoom-in-95 duration-500 text-center py-12 space-y-8">
+                        <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-emerald-50">
+                            <CheckCircle size={40} />
+                        </div>
+                        <div className="space-y-2">
+                            <h2 className="text-3xl font-black text-gray-900 uppercase italic">Inscrição realizada!</h2>
+                            <p className="text-gray-500 font-medium">
+                                {registrationData?.requires_payment
+                                    ? `Equipe reservada. Conclua o pagamento via ${chosenMethod} para oficializar.`
+                                    : 'Parabéns! Sua equipe já está confirmada no campeonato.'}
+                            </p>
+                        </div>
+
+                        {registrationData?.requires_payment && (
+                            <div className="max-w-xs mx-auto space-y-6">
+                                {registrationData?.payment_data?.pix_qr_code && chosenMethod === 'PIX' && (
+                                    <div className="bg-white p-6 rounded-2xl border border-dashed border-gray-200 shadow-sm flex flex-col items-center gap-4">
+                                        <img
+                                            src={`data:image/png;base64,${registrationData.payment_data.pix_qr_code}`}
+                                            alt="PIX QR Code"
+                                            className="w-48 h-48"
+                                        />
+                                        <button
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(registrationData.payment_data.pix_copy_paste);
+                                                alert('Copiado!');
+                                            }}
+                                            className="w-full py-2 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-indigo-100 transition-all"
+                                        >
+                                            Copia e Cola PIX
+                                        </button>
+                                    </div>
+                                )}
+
+                                {registrationData?.payment_data?.invoice_url && (chosenMethod === 'CREDIT_CARD' || chosenMethod === 'BOLETO') && (
+                                    <a
+                                        href={registrationData.payment_data.invoice_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="block w-full py-4 bg-indigo-600 text-white rounded-xl font-bold uppercase text-sm tracking-widest text-center hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all"
+                                    >
+                                        {chosenMethod === 'CREDIT_CARD' ? 'Pagar com Cartão' : 'Ver Boleto'}
+                                    </a>
+                                )}
+                            </div>
+                        )}
+
+                        <div className="pt-8 flex flex-col gap-3">
+                            <button
+                                onClick={() => navigate(`/profile/teams/${registrationData?.team_id}`)}
+                                className="w-full py-4 bg-gray-900 text-white rounded-xl font-bold uppercase text-xs tracking-widest hover:bg-gray-800 transition-all"
+                            >
+                                Gerenciar Meu Time
+                            </button>
+                            <button
+                                onClick={() => navigate('/profile/inscriptions')}
+                                className="w-full py-4 bg-white border border-gray-200 text-gray-500 rounded-xl font-bold uppercase text-xs tracking-widest hover:bg-gray-50 transition-all"
+                            >
+                                Minhas Inscrições
                             </button>
                         </div>
                     </div>
