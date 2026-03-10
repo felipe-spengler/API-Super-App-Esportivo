@@ -31,7 +31,8 @@ class AdminCategoryController extends Controller
             'min_age' => 'nullable|integer',
             'max_age' => 'nullable|integer',
             'gender' => 'nullable|in:male,female,mixed',
-            'price' => 'nullable|numeric'
+            'price' => 'nullable|numeric',
+            'included_products' => 'nullable|array'
         ]);
 
         $category = Category::create($data);
@@ -54,7 +55,8 @@ class AdminCategoryController extends Controller
             'min_age' => 'nullable|integer',
             'max_age' => 'nullable|integer',
             'gender' => 'nullable|in:male,female,mixed',
-            'price' => 'nullable|numeric'
+            'price' => 'nullable|numeric',
+            'included_products' => 'nullable|array'
         ]);
 
         $category->update($data);

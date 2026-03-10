@@ -84,6 +84,13 @@ export function IndividualChampionshipDetails() {
             icon: Layers,
             color: 'text-pink-500',
             link: `/admin/individual/championships/${id}/categories`
+        },
+        {
+            title: 'Produtos / Brindes',
+            desc: 'Gerencie o estoque e vincule produtos (camisetas, kits) às categorias.',
+            icon: ShoppingBag,
+            color: 'text-rose-500',
+            link: `/admin/products?championship_id=${id}`
         }
     ];
 

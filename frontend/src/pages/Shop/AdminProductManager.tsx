@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { Plus, Trash, Edit, Package, DollarSign, Image as ImageIcon, Box } from 'lucide-react';
+import { Plus, Trash, Edit, Package, DollarSign, Image as ImageIcon, Box, X } from 'lucide-react';
 
 interface Product {
     id: number;
@@ -11,6 +11,7 @@ interface Product {
     price: number;
     stock_quantity: number;
     image_url: string | null;
+    variants: string[] | null;
 }
 
 export function AdminProductManager() {
@@ -24,8 +25,10 @@ export function AdminProductManager() {
         description: '',
         price: '',
         stock_quantity: '',
-        image_url: ''
+        image_url: '',
+        variants: [] as string[]
     });
+    const [variantInput, setVariantInput] = useState('');
     const [imageFile, setImageFile] = useState<File | null>(null);
 
     useEffect(() => {
@@ -60,7 +63,8 @@ export function AdminProductManager() {
             description: product.description || '',
             price: product.price.toString(),
             stock_quantity: product.stock_quantity.toString(),
-            image_url: product.image_url || ''
+            image_url: product.image_url || '',
+            variants: product.variants || []
         });
         setShowModal(true);
     };
@@ -72,10 +76,22 @@ export function AdminProductManager() {
             description: '',
             price: '',
             stock_quantity: '',
-            image_url: ''
+            image_url: '',
+            variants: []
         });
         setImageFile(null);
         setShowModal(true);
+    };
+
+    const addVariant = () => {
+        if (!variantInput.trim()) return;
+        if (formData.variants.includes(variantInput.trim())) return;
+        setFormData({ ...formData, variants: [...formData.variants, variantInput.trim()] });
+        setVariantInput('');
+    };
+
+    const removeVariant = (v: string) => {
+        setFormData({ ...formData, variants: formData.variants.filter(item => item !== v) });
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -257,6 +273,37 @@ export function AdminProductManager() {
                                         value={formData.stock_quantity}
                                         onChange={e => setFormData({ ...formData, stock_quantity: e.target.value })}
                                     />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1 uppercase tracking-tighter font-bold">Variações (Tamanhos ex: P, M, G)</label>
+                                <div className="flex gap-2 mb-2">
+                                    <input
+                                        type="text"
+                                        className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                        placeholder="Ex: P"
+                                        value={variantInput}
+                                        onChange={e => setVariantInput(e.target.value)}
+                                        onKeyPress={e => e.key === 'Enter' && (e.preventDefault(), addVariant())}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={addVariant}
+                                        className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 font-bold"
+                                    >
+                                        Add
+                                    </button>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    {formData.variants.map(v => (
+                                        <span key={v} className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-sm font-bold flex items-center gap-1 border border-indigo-100">
+                                            {v}
+                                            <button type="button" onClick={() => removeVariant(v)} className="hover:text-red-500">
+                                                <X size={14} />
+                                            </button>
+                                        </span>
+                                    ))}
                                 </div>
                             </div>
 

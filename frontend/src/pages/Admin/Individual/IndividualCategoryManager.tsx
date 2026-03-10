@@ -3,6 +3,17 @@ import { useParams } from 'react-router-dom';
 import { Layers, Plus, Trash, Edit, Settings2, X, Check, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import api from '../../../services/api';
 
+interface Product {
+    id: number;
+    name: string;
+}
+
+interface IncludedProduct {
+    product_id: number;
+    quantity: number;
+    required: boolean;
+}
+
 interface Category {
     id: number;
     name: string;
@@ -12,12 +23,14 @@ interface Category {
     max_age: number | null;
     price: number;
     parent_id: number | null;
+    included_products: IncludedProduct[] | null;
     children?: Category[];
 }
 
 export function IndividualCategoryManager() {
     const { id } = useParams();
     const [categories, setCategories] = useState<Category[]>([]);
+    const [allProducts, setAllProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -28,12 +41,23 @@ export function IndividualCategoryManager() {
         min_age: '',
         max_age: '',
         price: '',
-        parent_id: null as number | null
+        parent_id: null as number | null,
+        included_products: [] as IncludedProduct[]
     });
 
     useEffect(() => {
         loadCategories();
+        loadClubProducts();
     }, [id]);
+
+    async function loadClubProducts() {
+        try {
+            const response = await api.get('/admin/products-manage');
+            setAllProducts(response.data);
+        } catch (error) {
+            console.error('Erro ao carregar produtos do clube', error);
+        }
+    }
 
     async function loadCategories() {
         try {
@@ -63,7 +87,8 @@ export function IndividualCategoryManager() {
                 min_age: cat.min_age?.toString() || '',
                 max_age: cat.max_age?.toString() || '',
                 price: cat.price?.toString() || '0',
-                parent_id: cat.parent_id
+                parent_id: cat.parent_id,
+                included_products: cat.included_products || []
             });
         } else {
             setEditingCategory(null);
@@ -74,10 +99,35 @@ export function IndividualCategoryManager() {
                 min_age: '',
                 max_age: '',
                 price: '',
-                parent_id: parentId
+                parent_id: parentId,
+                included_products: []
             });
         }
         setShowModal(true);
+    };
+
+    const addIncludedProduct = (productId: number) => {
+        if (formData.included_products.find(p => p.product_id === productId)) return;
+        setFormData({
+            ...formData,
+            included_products: [...formData.included_products, { product_id: productId, quantity: 1, required: true }]
+        });
+    };
+
+    const removeIncludedProduct = (productId: number) => {
+        setFormData({
+            ...formData,
+            included_products: formData.included_products.filter(p => p.product_id !== productId)
+        });
+    };
+
+    const updateIncludedProduct = (productId: number, field: string, value: any) => {
+        setFormData({
+            ...formData,
+            included_products: formData.included_products.map(p =>
+                p.product_id === productId ? { ...p, [field]: value } : p
+            )
+        });
     };
 
     const handleSave = async (e: React.FormEvent) => {
@@ -327,6 +377,63 @@ export function IndividualCategoryManager() {
                                     </div>
                                 </div>
                             )}
+
+                            {/* Produtos Inclusos (Brindes) */}
+                            <div className="pt-4 border-t border-slate-100">
+                                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-3">Produtos Inclusos / Brindes</label>
+
+                                <div className="flex gap-2 mb-4">
+                                    <select
+                                        className="flex-1 px-4 py-2 border border-slate-200 rounded-xl text-sm font-bold bg-slate-50"
+                                        onChange={(e) => e.target.value && addIncludedProduct(parseInt(e.target.value))}
+                                        value=""
+                                    >
+                                        <option value="">+ Selecionar brinde do clube...</option>
+                                        {allProducts.map(p => (
+                                            <option key={p.id} value={p.id}>{p.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="space-y-2">
+                                    {formData.included_products.map(item => {
+                                        const p = allProducts.find(prod => prod.id === item.product_id);
+                                        return (
+                                            <div key={item.product_id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                                <div className="flex-1">
+                                                    <p className="text-xs font-bold text-slate-900">{p?.name || 'Produto'}</p>
+                                                    <div className="flex items-center gap-3 mt-1">
+                                                        <label className="flex items-center gap-1 text-[10px] text-slate-500 font-bold">
+                                                            Qtde:
+                                                            <input
+                                                                type="number"
+                                                                className="w-10 px-1 border border-slate-200 rounded text-center"
+                                                                value={item.quantity}
+                                                                onChange={e => updateIncludedProduct(item.product_id, 'quantity', parseInt(e.target.value) || 1)}
+                                                            />
+                                                        </label>
+                                                        <label className="flex items-center gap-1 text-[10px] text-slate-500 font-bold cursor-pointer">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={item.required}
+                                                                onChange={e => updateIncludedProduct(item.product_id, 'required', e.target.checked)}
+                                                            />
+                                                            Obrigatório
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeIncludedProduct(item.product_id)}
+                                                    className="p-2 text-slate-400 hover:text-red-500 transition-colors"
+                                                >
+                                                    <Trash size={14} />
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
 
                             <div className="pt-4 flex gap-3">
                                 <button

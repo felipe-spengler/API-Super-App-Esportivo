@@ -53,7 +53,8 @@ class AdminProductController extends Controller
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
             'stock_quantity' => 'required|integer|min:0',
-            'image_url' => 'nullable|string' // Pode vir url direta ou path do upload
+            'image_url' => 'nullable|string', // Pode vir url direta ou path do upload
+            'variants' => 'nullable|array'
         ]);
 
         $product = Product::create([
@@ -63,7 +64,7 @@ class AdminProductController extends Controller
             'price' => $validated['price'],
             'stock_quantity' => $validated['stock_quantity'],
             'image_url' => $validated['image_url'] ?? null,
-            'variants' => [] // Pode ser implementado depois
+            'variants' => $validated['variants'] ?? []
         ]);
 
         AuditLogger::log('product.create', "Adicionou o produto '{$product->name}' à loja (ID: {$product->id})", [
@@ -95,7 +96,8 @@ class AdminProductController extends Controller
             'description' => 'nullable|string',
             'price' => 'sometimes|required|numeric|min:0',
             'stock_quantity' => 'sometimes|required|integer|min:0',
-            'image_url' => 'nullable|string'
+            'image_url' => 'nullable|string',
+            'variants' => 'nullable|array'
         ]);
 
         $product->update($validated);

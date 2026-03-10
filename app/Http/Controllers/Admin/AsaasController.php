@@ -102,12 +102,24 @@ class AsaasController extends Controller
         // Caso 1: Inscrição Individual de Corrida
         if (str_starts_with($externalReference, 'RR_')) {
             $id = str_replace('RR_', '', $externalReference);
-            $result = RaceResult::with(['user', 'race.championship'])->find($id);
+            $result = RaceResult::with(['user', 'race.championship', 'category'])->find($id);
             if ($result && $result->status_payment !== 'paid') {
                 $result->update([
                     'status_payment' => 'paid',
                     'payment_method' => $payment['billingType'] ?? 'asaas'
                 ]);
+
+                // Baixa no Estoque dos Brindes (Produtos Inclusos na Categoria)
+                if ($result->category) {
+                    $included = $result->category->products(); // Usa o helper do model Category
+                    foreach ($included as $item) {
+                        if (isset($item['product']) && $item['product'] instanceof \App\Models\Product) {
+                            $qty = $item['quantity'] ?? 1;
+                            $item['product']->decrement('stock_quantity', $qty);
+                            Log::info("Stock reduced for Gift/Included Product {$item['product']->id}: -{$qty} (RaceResult {$id})");
+                        }
+                    }
+                }
 
                 $this->sendInscriptionConfirmation($result);
 
