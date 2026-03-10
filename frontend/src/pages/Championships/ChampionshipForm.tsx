@@ -31,7 +31,8 @@ export function ChampionshipForm() {
         pcd_discount_percentage: 0,
         has_elderly_discount: false,
         elderly_discount_percentage: 0,
-        elderly_minimum_age: 60
+        elderly_minimum_age: 60,
+        allow_shopping_registration: true
     });
 
     const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -85,7 +86,8 @@ export function ChampionshipForm() {
                     pcd_discount_percentage: data.pcd_discount_percentage || 0,
                     has_elderly_discount: !!data.has_elderly_discount,
                     elderly_discount_percentage: data.elderly_discount_percentage || 0,
-                    elderly_minimum_age: data.elderly_minimum_age || 60
+                    elderly_minimum_age: data.elderly_minimum_age || 60,
+                    allow_shopping_registration: data.allow_shopping_registration !== undefined ? !!data.allow_shopping_registration : true,
                 });
                 setLogoUrl(data.logo_url);
                 setCoverImageUrl(data.cover_image_url);
@@ -333,6 +335,20 @@ export function ChampionshipForm() {
                                         className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                                     />
                                 </div>
+                            </div>
+                            <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-xl space-y-3 mt-6">
+                                <label className="flex items-center gap-3 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.allow_shopping_registration}
+                                        onChange={e => setFormData({ ...formData, allow_shopping_registration: e.target.checked })}
+                                        className="w-5 h-5 text-indigo-600 rounded"
+                                    />
+                                    <div>
+                                        <span className="font-bold text-indigo-900 block uppercase text-[10px] tracking-widest">Ativar Passo de "Shopping" na inscrição</span>
+                                        <span className="text-[10px] text-indigo-600 font-medium pt-0.5 block italic">Se ativado, o atleta poderá ver e comprar produtos extras do clube durante o registro.</span>
+                                    </div>
+                                </label>
                             </div>
                         </div>
 

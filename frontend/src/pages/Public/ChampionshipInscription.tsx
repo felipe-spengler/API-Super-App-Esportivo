@@ -271,8 +271,10 @@ export function ChampionshipInscription() {
                                 onClick={() => {
                                     if (selectedCategory?.included_products?.length > 0) {
                                         setStep(3);
-                                    } else {
+                                    } else if (championship.allow_shopping_registration !== false) {
                                         setStep(4);
+                                    } else {
+                                        setStep(5);
                                     }
                                 }}
                                 className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 transition-all flex items-center gap-2"
@@ -326,7 +328,13 @@ export function ChampionshipInscription() {
                         <div className="flex justify-between">
                             <button onClick={() => setStep(2)} className="text-gray-500 font-bold hover:text-gray-800">Voltar</button>
                             <button
-                                onClick={() => setStep(4)}
+                                onClick={() => {
+                                    if (championship.allow_shopping_registration !== false) {
+                                        setStep(4);
+                                    } else {
+                                        setStep(5);
+                                    }
+                                }}
                                 className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-indigo-700 transition-all flex items-center gap-2"
                             >
                                 Continuar <ArrowRight className="w-5 h-5" />
@@ -467,7 +475,16 @@ export function ChampionshipInscription() {
                         </div>
 
                         <div className="flex justify-between">
-                            <button onClick={() => setStep(4)} className="text-gray-500 font-bold hover:text-gray-800">Voltar</button>
+                            <button
+                                onClick={() => {
+                                    if (championship.allow_shopping_registration !== false) setStep(4);
+                                    else if (selectedCategory?.included_products?.length > 0) setStep(3);
+                                    else setStep(2);
+                                }}
+                                className="text-gray-500 font-bold hover:text-gray-800"
+                            >
+                                Voltar
+                            </button>
                             <button
                                 onClick={() => setStep(6)}
                                 className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-indigo-700 transition-all flex items-center gap-2"

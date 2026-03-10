@@ -97,7 +97,8 @@ class AdminChampionshipController extends Controller
             'pcd_discount_percentage' => 'nullable|numeric|min:0|max:100',
             'has_elderly_discount' => 'nullable|boolean',
             'elderly_discount_percentage' => 'nullable|numeric|min:0|max:100',
-            'elderly_minimum_age' => 'nullable|integer|min:0'
+            'elderly_minimum_age' => 'nullable|integer|min:0',
+            'allow_shopping_registration' => 'nullable|boolean'
         ]);
 
         if (isset($validated['status'])) {

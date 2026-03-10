@@ -32,7 +32,8 @@ class Championship extends Model
         'pcd_discount_percentage',
         'has_elderly_discount',
         'elderly_discount_percentage',
-        'elderly_minimum_age'
+        'elderly_minimum_age',
+        'allow_shopping_registration'
     ];
 
     protected $casts = [
@@ -50,6 +51,7 @@ class Championship extends Model
         'has_elderly_discount' => 'boolean',
         'elderly_discount_percentage' => 'decimal:2',
         'elderly_minimum_age' => 'integer',
+        'allow_shopping_registration' => 'boolean',
     ];
 
     public function club()

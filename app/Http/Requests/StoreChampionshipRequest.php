@@ -38,6 +38,7 @@ class StoreChampionshipRequest extends FormRequest
             'has_elderly_discount' => 'nullable|boolean',
             'elderly_discount_percentage' => 'nullable|numeric|min:0|max:100',
             'elderly_minimum_age' => 'nullable|integer|min:0',
+            'allow_shopping_registration' => 'nullable|boolean',
         ];
     }
 
