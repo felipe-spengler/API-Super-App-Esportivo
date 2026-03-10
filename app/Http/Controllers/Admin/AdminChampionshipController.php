@@ -153,11 +153,44 @@ class AdminChampionshipController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $championship->delete();
+        try {
+            \DB::beginTransaction();
 
-        AuditLogger::log('championship.delete', "Excluiu o campeonato '{$championship->name}' (ID: {$id})");
+            // 1. Deletar Corridas (Races) e seus resultados
+            $races = \App\Models\Race::where('championship_id', $id)->get();
+            foreach ($races as $race) {
+                \App\Models\RaceResult::where('race_id', $race->id)->delete();
+                $race->delete();
+            }
 
-        return response()->json(['message' => 'Championship deleted successfully']);
+            // 2. Deletar Partidas (Matches), Sets e Eventos
+            $matches = \App\Models\GameMatch::where('championship_id', $id)->get();
+            foreach ($matches as $match) {
+                \App\Models\MatchSet::where('game_match_id', $match->id)->delete();
+                \App\Models\MatchEvent::where('game_match_id', $match->id)->delete();
+                $match->delete();
+            }
+
+            // 3. Limpar vínculos de times e inscritos (Pivot e Jogadores)
+            \DB::table('championship_team')->where('championship_id', $id)->delete();
+            \DB::table('team_players')->where('championship_id', $id)->delete();
+
+            // 4. Categorias
+            \App\Models\Category::where('championship_id', $id)->delete();
+
+            // 5. O Campeonato em si
+            $championship->delete();
+
+            \DB::commit();
+
+            AuditLogger::log('championship.delete', "Excluiu o campeonato '{$championship->name}' (ID: {$id})");
+
+            return response()->json(['message' => 'Campeonato excluído com sucesso!']);
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error("Erro ao deletar campeonato: " . $e->getMessage());
+            return response()->json(['error' => 'Não foi possível excluir o campeonato. ' . $e->getMessage()], 500);
+        }
     }
 
     // Add category to championship

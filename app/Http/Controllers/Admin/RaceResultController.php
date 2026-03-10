@@ -146,6 +146,17 @@ class RaceResultController extends Controller
         }
     }
 
+    // Excluir inscrição/resultado
+    public function destroy($id)
+    {
+        $result = RaceResult::findOrFail($id);
+        $result->delete();
+
+        Log::info("Inscrição/Resultado removido: ID {$id}");
+
+        return response()->json(['message' => 'Inscrição removida com sucesso!']);
+    }
+
     // Importar CSV
     public function uploadCsv(Request $request, $championshipId)
     {
