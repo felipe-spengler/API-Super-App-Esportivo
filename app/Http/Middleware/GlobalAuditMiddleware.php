@@ -27,8 +27,27 @@ class GlobalAuditMiddleware
 
         // Se for um método de modificação e estiver na área de API (prefixo api/)
         if (in_array($request->method(), $methods) && str_starts_with($path, 'api/')) {
-            // Se o AuditLogger já logou manualmente neste request, pula o log automático do middleware
+            // Se o AuditLogger já logou manualmente neste request, enriquece o log com o status da resposta e pula o log automático
             if (AuditLogger::hasLoggedExternally()) {
+                $lastLogId = AuditLogger::getLastLogId();
+                if ($lastLogId) {
+                    $log = \App\Models\AuditLog::find($lastLogId);
+                    if ($log) {
+                        $meta = $log->metadata ?? [];
+                        $status = $response->getStatusCode();
+                        $meta['response_status'] = $status;
+                        $meta['is_success'] = ($status >= 200 && $status < 300);
+
+                        // Extract response message if available
+                        $content = $response->getContent();
+                        $responseData = json_decode($content, true);
+                        if (json_last_error() === JSON_ERROR_NONE && is_array($responseData)) {
+                            $meta['response_message'] = $responseData['message'] ?? ($responseData['error'] ?? null);
+                        }
+
+                        $log->update(['metadata' => $meta]);
+                    }
+                }
                 return $response;
             }
 
@@ -37,7 +56,21 @@ class GlobalAuditMiddleware
                 return $response;
 
             // Prepare metadata
-            $payload = $request->except(['password', 'password_confirmation', 'current_password', 'token', 'access_token', 'photo_file', 'photo_file_1', 'photo_file_2', 'document_file', '_method']);
+            // Excluir campos que podem conter arquivos binários (evita timeout no db ao logar JSON gigante)
+            $payload = $request->except([
+                'password',
+                'password_confirmation',
+                'current_password',
+                'token',
+                'access_token',
+                'photo',
+                'photo_file',
+                'photo_file_1',
+                'photo_file_2',
+                'document_file',
+                'logo',
+                '_method'
+            ]);
 
             $status = $response->getStatusCode();
             $isSuccess = $status >= 200 && $status < 300;
@@ -66,14 +99,7 @@ class GlobalAuditMiddleware
             $clubId = $user->club_id;
 
             if (str_contains($path, 'teams/')) {
-                // Assuming the team ID is part of the route parameters, e.g., api/teams/{id}
-                // We need to get the ID from the route parameters, not directly from the path string
-                // The route('id') method is more robust for this.
-                $teamId = $request->route('team'); // Assuming route parameter is named 'team' or 'id'
-                if (!$teamId) {
-                    // Fallback if 'team' parameter is not found, try 'id'
-                    $teamId = $request->route('id');
-                }
+                $teamId = $request->route('team') ?? $request->route('id');
 
                 if ($teamId) {
                     $team = Team::find($teamId);

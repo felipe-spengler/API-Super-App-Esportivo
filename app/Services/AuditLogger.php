@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Request;
 class AuditLogger
 {
     private static $hasLogged = false;
+    private static $lastLogId = null;
 
     /**
      * Log a system audit event in the database.
@@ -23,7 +24,12 @@ class AuditLogger
     {
         $user = Auth::user();
 
-        AuditLog::create([
+        // Se o metadata não tiver o referer, tenta pegar do request
+        if (!isset($metadata['referer'])) {
+            $metadata['referer'] = Request::header('referer');
+        }
+
+        $log = AuditLog::create([
             'user_id' => $user ? $user->id : null,
             'club_id' => $clubId ?? ($user ? $user->club_id : null),
             'action' => $action,
@@ -34,10 +40,16 @@ class AuditLogger
         ]);
 
         static::$hasLogged = true;
+        static::$lastLogId = $log->id;
     }
 
     public static function hasLoggedExternally(): bool
     {
         return static::$hasLogged;
+    }
+
+    public static function getLastLogId(): ?int
+    {
+        return static::$lastLogId;
     }
 }

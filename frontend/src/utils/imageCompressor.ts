@@ -9,13 +9,13 @@
  */
 export async function compressImage(
     file: File,
-    maxSizeBytes = 4 * 1024 * 1024, // 4 MB padrão (ajustado para o limite do servidor)
-    maxDimension = 3840,             // Aumentado para 4K para evitar perda agressiva
-    initialQuality = 0.95            // Qualidade inicial mais alta
+    maxSizeBytes = 2 * 1024 * 1024, // 2MB é perfeito para fotos de perfil
+    maxDimension = 2000,             // 2000px é o ideal (HD+)
+    initialQuality = 0.85            // Qualidade em 85% para reduzir peso drastically
 ): Promise<File> {
-    // Já está dentro do limite → retorna original sem tocar em nada
+    // Já está bem pequeno → retorna original
     if (file.size <= maxSizeBytes) {
-        console.log(`[ImageCompressor] File ${file.name} already within limit (${(file.size / 1024).toFixed(1)} KB)`);
+        console.log(`[ImageCompressor] File ${file.name} already small (${(file.size / 1024).toFixed(1)} KB)`);
         return file;
     }
 

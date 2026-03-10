@@ -1,6 +1,5 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CoreController;
 use App\Http\Controllers\AuthController;
@@ -9,6 +8,40 @@ use App\Http\Controllers\ShopController;
 use App\Http\Controllers\InscriptionController;
 use App\Http\Controllers\VoteController;
 use App\Http\Controllers\WalletController;
+use App\Http\Controllers\DocumentOCRController;
+use App\Http\Controllers\MatchOperationController;
+use App\Http\Controllers\TeamController;
+use App\Http\Controllers\Admin\ImageUploadController;
+use App\Http\Controllers\Admin\AdminChampionshipController;
+use App\Http\Controllers\Admin\AdminTeamController;
+use App\Http\Controllers\Admin\AdminPlayerController;
+use App\Http\Controllers\Admin\AdminMatchController;
+use App\Http\Controllers\Admin\AdminVolleyController;
+use App\Http\Controllers\Admin\AdminCategoryController;
+use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\Admin\BracketController;
+use App\Http\Controllers\Admin\StatisticsController;
+use App\Http\Controllers\Admin\QRValidationController;
+use App\Http\Controllers\Admin\NotificationController;
+use App\Http\Controllers\Admin\ExportController;
+use App\Http\Controllers\Admin\ArtGeneratorController;
+use App\Http\Controllers\Admin\VolleyballRotationController;
+use App\Http\Controllers\Admin\AdminProductController;
+use App\Http\Controllers\Admin\RaceWizardController;
+use App\Http\Controllers\Admin\RaceResultController;
+use App\Http\Controllers\Admin\AdminSettingController;
+use App\Http\Controllers\Admin\AdminSystemSettingController;
+use App\Http\Controllers\Admin\CouponController;
+use App\Http\Controllers\Admin\AsaasController;
+use App\Http\Controllers\Admin\TemporaryAccessController;
+use App\Http\Controllers\Admin\AdminClubController;
+use App\Http\Controllers\Admin\AuditController;
+use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\AdminController;
+use App\Http\Controllers\DrawController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\SecurityController;
+use App\Http\Controllers\PaymentWebhookController;
 
 // Serve storage files (necessário para php artisan serve + Coolify proxy)
 Route::get('/storage/{path}', function ($path) {
@@ -49,10 +82,10 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
-Route::post('/ocr/analyze', [App\Http\Controllers\DocumentOCRController::class, 'analyze']);
+Route::post('/ocr/analyze', [DocumentOCRController::class, 'analyze']);
 
 // 🧪 ROTA DE TESTE - Remover em produção ou proteger
-Route::post('/test-remove-bg', [App\Http\Controllers\Admin\ImageUploadController::class, 'testRemoveBg']);
+Route::post('/test-remove-bg', [\App\Http\Controllers\Admin\ImageUploadController::class, 'testRemoveBg']);
 Route::get('/debug/player-art/{playerId}', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'debugPlayerArt']);
 
 
@@ -85,7 +118,7 @@ Route::get('/public/art/match/{matchId}/scheduled', [\App\Http\Controllers\Admin
 Route::get('/public/art/match/{matchId}/faceoff', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'matchFaceoff']);
 Route::get('/public/matches/{id}/pdf', [EventController::class, 'matchPdf']);
 Route::get('/public/matches/{id}', [EventController::class, 'matchDetails']); // NEW Public Match Details
-Route::get('/public/matches/{id}/full-details', [\App\Http\Controllers\MatchOperationController::class, 'show']); // NEW Public Full Details for Print
+Route::get('/public/matches/{id}/full-details', [MatchOperationController::class, 'show']); // NEW Public Full Details for Print
 
 // Public Art Generation Routes (Matching /api/art structure)
 Route::get('/art/match/{matchId}/scheduled', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'downloadScheduledArt']);
@@ -121,113 +154,113 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
 
     // Carteirinha Digital
     Route::get('/wallet/my-card', [WalletController::class, 'getWallet']);
-    Route::get('/wallet/generate-qr', [\App\Http\Controllers\Admin\QRValidationController::class, 'generateWalletQR']);
+    Route::get('/wallet/generate-qr', [QRValidationController::class, 'generateWalletQR']);
 
     // Gestão de Times (Capitão)
-    Route::get('/my-teams', [\App\Http\Controllers\TeamController::class, 'index']);
-    Route::post('/my-teams', [\App\Http\Controllers\TeamController::class, 'store']);
-    Route::get('/teams/{id}', [\App\Http\Controllers\TeamController::class, 'show']);
-    Route::post('/teams/{id}/players', [\App\Http\Controllers\TeamController::class, 'addPlayer']);
-    Route::put('/teams/{id}/players/{playerId}', [\App\Http\Controllers\TeamController::class, 'updatePlayer']);
-    Route::delete('/teams/{id}/players/{playerId}', [\App\Http\Controllers\TeamController::class, 'removePlayer']);
-    Route::post('/teams/{id}/upload-player-photo/{playerId}', [\App\Http\Controllers\TeamController::class, 'uploadPlayerPhoto']);
+    Route::get('/my-teams', [TeamController::class, 'index']);
+    Route::post('/my-teams', [TeamController::class, 'store']);
+    Route::get('/teams/{id}', [TeamController::class, 'show']);
+    Route::post('/teams/{id}/players', [TeamController::class, 'addPlayer']);
+    Route::put('/teams/{id}/players/{playerId}', [TeamController::class, 'updatePlayer']);
+    Route::delete('/teams/{id}/players/{playerId}', [TeamController::class, 'removePlayer']);
+    Route::post('/teams/{id}/upload-player-photo/{playerId}', [TeamController::class, 'uploadPlayerPhoto']);
 
     // Área Admin (Web) - Protegido com middleware 'admin'
     Route::prefix('admin')->middleware(['admin'])->group(function () {
-        Route::get('/dashboard', [\App\Http\Controllers\AdminController::class, 'dashboard']);
-        Route::get('/stats', [\App\Http\Controllers\Admin\AdminDashboardController::class, 'index']);
+        Route::get('/dashboard', [AdminController::class, 'dashboard']);
+        Route::get('/stats', [AdminDashboardController::class, 'index']);
 
 
         // Gestão de Campeonatos (NEW)
-        Route::get('/championships', [\App\Http\Controllers\Admin\AdminChampionshipController::class, 'index']);
-        Route::get('/championships/{id}', [\App\Http\Controllers\Admin\AdminChampionshipController::class, 'show']);
-        Route::post('/championships', [\App\Http\Controllers\Admin\AdminChampionshipController::class, 'store']);
-        Route::put('/championships/{id}', [\App\Http\Controllers\Admin\AdminChampionshipController::class, 'update']);
-        Route::delete('/championships/{id}', [\App\Http\Controllers\Admin\AdminChampionshipController::class, 'destroy']);
-        Route::post('/championships/{id}/categories', [\App\Http\Controllers\Admin\AdminChampionshipController::class, 'addCategory']);
-        Route::get('/championships/{id}/categories', [\App\Http\Controllers\Admin\AdminChampionshipController::class, 'categories']);
-        Route::put('/championships/{id}/awards', [\App\Http\Controllers\Admin\AdminChampionshipController::class, 'updateAwards']);
+        Route::get('/championships', [AdminChampionshipController::class, 'index']);
+        Route::get('/championships/{id}', [AdminChampionshipController::class, 'show']);
+        Route::post('/championships', [AdminChampionshipController::class, 'store']);
+        Route::put('/championships/{id}', [AdminChampionshipController::class, 'update']);
+        Route::delete('/championships/{id}', [AdminChampionshipController::class, 'destroy']);
+        Route::post('/championships/{id}/categories', [AdminChampionshipController::class, 'addCategory']);
+        Route::get('/championships/{id}/categories', [AdminChampionshipController::class, 'categories']);
+        Route::put('/championships/{id}/awards', [AdminChampionshipController::class, 'updateAwards']);
 
         // Gestão de Partidas (NEW)
-        Route::get('/matches', [\App\Http\Controllers\Admin\AdminMatchController::class, 'index']);
-        Route::get('/matches/{id}', [\App\Http\Controllers\Admin\AdminMatchController::class, 'show']);
-        Route::post('/matches', [\App\Http\Controllers\Admin\AdminMatchController::class, 'store']);
-        Route::put('/matches/{id}', [\App\Http\Controllers\Admin\AdminMatchController::class, 'update']);
-        Route::patch('/matches/{id}', [\App\Http\Controllers\Admin\AdminMatchController::class, 'update']);
-        Route::delete('/matches/{id}', [\App\Http\Controllers\Admin\AdminMatchController::class, 'destroy']);
-        Route::post('/matches/{id}/finish', [\App\Http\Controllers\Admin\AdminMatchController::class, 'finish']);
-        Route::post('/matches/{id}/mvp', [\App\Http\Controllers\Admin\AdminMatchController::class, 'setMVP']);
-        Route::post('/matches/{id}/events', [\App\Http\Controllers\Admin\AdminMatchController::class, 'addEvent']);
-        Route::get('/matches/{id}/events', [\App\Http\Controllers\Admin\AdminMatchController::class, 'events']);
-        Route::delete('/matches/{id}/events/{eventId}', [\App\Http\Controllers\Admin\AdminMatchController::class, 'deleteEvent']);
-        Route::put('/matches/{id}/awards', [\App\Http\Controllers\Admin\AdminMatchController::class, 'updateAwards']);
+        Route::get('/matches', [AdminMatchController::class, 'index']);
+        Route::get('/matches/{id}', [AdminMatchController::class, 'show']);
+        Route::post('/matches', [AdminMatchController::class, 'store']);
+        Route::put('/matches/{id}', [AdminMatchController::class, 'update']);
+        Route::patch('/matches/{id}', [AdminMatchController::class, 'update']);
+        Route::delete('/matches/{id}', [AdminMatchController::class, 'destroy']);
+        Route::post('/matches/{id}/finish', [AdminMatchController::class, 'finish']);
+        Route::post('/matches/{id}/mvp', [AdminMatchController::class, 'setMVP']);
+        Route::post('/matches/{id}/events', [AdminMatchController::class, 'addEvent']);
+        Route::get('/matches/{id}/events', [AdminMatchController::class, 'events']);
+        Route::delete('/matches/{id}/events/{eventId}', [AdminMatchController::class, 'deleteEvent']);
+        Route::put('/matches/{id}/awards', [AdminMatchController::class, 'updateAwards']);
 
         // Gestão de Vôlei
-        Route::get('/matches/{id}/volley-state', [\App\Http\Controllers\Admin\AdminVolleyController::class, 'getState']);
-        Route::post('/matches/{id}/volley/point', [\App\Http\Controllers\Admin\AdminVolleyController::class, 'registerPoint']);
-        Route::post('/matches/{id}/volley/set-start', [\App\Http\Controllers\Admin\AdminVolleyController::class, 'startSet']);
-        Route::post('/matches/{id}/volley/set-finish', [\App\Http\Controllers\Admin\AdminVolleyController::class, 'finishSet']);
-        Route::post('/matches/{id}/volley/rotation', [\App\Http\Controllers\Admin\AdminVolleyController::class, 'manualRotation']);
-        Route::post('/matches/{id}/volley/substitution', [\App\Http\Controllers\Admin\AdminVolleyController::class, 'substitutePlayer']);
+        Route::get('/matches/{id}/volley-state', [AdminVolleyController::class, 'getState']);
+        Route::post('/matches/{id}/volley/point', [AdminVolleyController::class, 'registerPoint']);
+        Route::post('/matches/{id}/volley/set-start', [AdminVolleyController::class, 'startSet']);
+        Route::post('/matches/{id}/volley/set-finish', [AdminVolleyController::class, 'finishSet']);
+        Route::post('/matches/{id}/volley/rotation', [AdminVolleyController::class, 'manualRotation']);
+        Route::post('/matches/{id}/volley/substitution', [AdminVolleyController::class, 'substitutePlayer']);
 
         // Gestão de Equipes (NEW)
-        Route::get('/teams', [\App\Http\Controllers\Admin\AdminTeamController::class, 'index']);
-        Route::get('/teams/{id}', [\App\Http\Controllers\Admin\AdminTeamController::class, 'show']);
-        Route::post('/teams', [\App\Http\Controllers\Admin\AdminTeamController::class, 'store']);
-        Route::put('/teams/{id}', [\App\Http\Controllers\Admin\AdminTeamController::class, 'update']);
-        Route::delete('/teams/{id}', [\App\Http\Controllers\Admin\AdminTeamController::class, 'destroy']);
-        Route::post('/teams/{id}/add-to-championship', [\App\Http\Controllers\Admin\AdminTeamController::class, 'addToChampionship']);
-        Route::patch('/teams/{id}/championship-captain', [\App\Http\Controllers\Admin\AdminTeamController::class, 'updateChampionshipCaptain']);
-        Route::post('/teams/{id}/remove-from-championship', [\App\Http\Controllers\Admin\AdminTeamController::class, 'removeFromChampionship']);
-        Route::post('/teams/{id}/copy-roster', [\App\Http\Controllers\Admin\AdminTeamController::class, 'copyRoster']);
-        Route::delete('/teams/{id}/players/{playerId}', [\App\Http\Controllers\Admin\AdminTeamController::class, 'removePlayer']);
+        Route::get('/teams', [AdminTeamController::class, 'index']);
+        Route::get('/teams/{id}', [AdminTeamController::class, 'show']);
+        Route::post('/teams', [AdminTeamController::class, 'store']);
+        Route::put('/teams/{id}', [AdminTeamController::class, 'update']);
+        Route::delete('/teams/{id}', [AdminTeamController::class, 'destroy']);
+        Route::post('/teams/{id}/add-to-championship', [AdminTeamController::class, 'addToChampionship']);
+        Route::patch('/teams/{id}/championship-captain', [AdminTeamController::class, 'updateChampionshipCaptain']);
+        Route::post('/teams/{id}/remove-from-championship', [AdminTeamController::class, 'removeFromChampionship']);
+        Route::post('/teams/{id}/copy-roster', [AdminTeamController::class, 'copyRoster']);
+        Route::delete('/teams/{id}/players/{playerId}', [AdminTeamController::class, 'removePlayer']);
 
         // Gestão de Jogadores (NEW)
-        Route::get('/players', [\App\Http\Controllers\Admin\AdminPlayerController::class, 'index']);
-        Route::get('/players/search', [\App\Http\Controllers\Admin\AdminPlayerController::class, 'search']);
-        Route::get('/players/{id}', [\App\Http\Controllers\Admin\AdminPlayerController::class, 'show']);
-        Route::post('/players', [\App\Http\Controllers\Admin\AdminPlayerController::class, 'store']);
-        Route::put('/players/{id}', [\App\Http\Controllers\Admin\AdminPlayerController::class, 'update']);
-        Route::delete('/players/{id}', [\App\Http\Controllers\Admin\AdminPlayerController::class, 'destroy']);
+        Route::get('/players', [AdminPlayerController::class, 'index']);
+        Route::get('/players/search', [AdminPlayerController::class, 'search']);
+        Route::get('/players/{id}', [AdminPlayerController::class, 'show']);
+        Route::post('/players', [AdminPlayerController::class, 'store']);
+        Route::put('/players/{id}', [AdminPlayerController::class, 'update']);
+        Route::delete('/players/{id}', [AdminPlayerController::class, 'destroy']);
 
-        // Upload de Imagens (NEW)
-        Route::post('/upload/team-logo/{id}', [\App\Http\Controllers\Admin\ImageUploadController::class, 'uploadTeamLogo']);
-        Route::post('/upload/player-photo/{id}', [\App\Http\Controllers\Admin\ImageUploadController::class, 'uploadPlayerPhoto']);
-        Route::post('/upload/championship-image', [\App\Http\Controllers\Admin\ImageUploadController::class, 'uploadChampionshipImage']);
-        Route::post('/upload/championship-logo/{id}', [\App\Http\Controllers\Admin\ImageUploadController::class, 'uploadChampionshipLogo']);
-        Route::post('/upload/championship-banner/{id}', [\App\Http\Controllers\Admin\ImageUploadController::class, 'uploadChampionshipBanner']);
-        // Wait, I saw ImageUploadController content, it had uploadTeamLogo, uploadPlayerPhoto, uploadAwardPhoto, uploadGeneric. 
-        // It DOES NOT have uploadChampionshipImage explicitly named, but has uploadGeneric.
-        // Let's assume uploadGeneric can handle it or use UploadController for championship if distinct.
-        // Given I want to consolidate, I will map the new route listImages.
-        Route::post('/upload/award-photo', [\App\Http\Controllers\Admin\ImageUploadController::class, 'uploadAwardPhoto']);
-        Route::post('/upload/generic', [\App\Http\Controllers\Admin\ImageUploadController::class, 'uploadGeneric']);
-        Route::post('/upload-image', [\App\Http\Controllers\Admin\ImageUploadController::class, 'uploadImage']); // Unified upload
-        Route::get('/upload/list', [\App\Http\Controllers\Admin\ImageUploadController::class, 'listImages']);
-        Route::delete('/upload/delete', [\App\Http\Controllers\Admin\ImageUploadController::class, 'deleteImage']);
-        Route::get('/test-ai-env', [\App\Http\Controllers\Admin\ImageUploadController::class, 'testAiEnv']); // Diagnóstico IA
+        // Upload de Imagens
+        Route::post('/upload/team-logo/{teamId}', [ImageUploadController::class, 'uploadTeamLogo']);
+        Route::post('/upload/player-photo/{playerId}', [ImageUploadController::class, 'uploadPlayerPhoto']);
+        Route::post('/upload/championship-logo/{championshipId}', [ImageUploadController::class, 'uploadChampionshipLogo']);
+        Route::post('/upload/championship-banner/{championshipId}', [ImageUploadController::class, 'uploadChampionshipBanner']);
+        Route::post('/upload/award-photo', [ImageUploadController::class, 'uploadAwardPhoto']);
+        Route::post('/upload/generic', [ImageUploadController::class, 'uploadGeneric']);
+        Route::post('/upload-image', [ImageUploadController::class, 'uploadImage']);
+        Route::get('/upload/list', [ImageUploadController::class, 'listImages']);
+        Route::delete('/upload/delete', [ImageUploadController::class, 'deleteImage']);
+        Route::get('/test-ai-env', [ImageUploadController::class, 'testAiEnv']);
 
+        // Gestão de Categorias
+        Route::get('/categories', [AdminCategoryController::class, 'index']);
+        Route::post('/categories', [AdminCategoryController::class, 'store']);
+        Route::put('/categories/{id}', [AdminCategoryController::class, 'update']);
+        Route::delete('/categories/{id}', [AdminCategoryController::class, 'destroy']);
 
-        // Gestão de Categorias (NEW)
-        Route::get('/championships/{championshipId}/categories-list', [\App\Http\Controllers\Admin\CategoryController::class, 'index']);
-        Route::post('/championships/{championshipId}/categories-new', [\App\Http\Controllers\Admin\CategoryController::class, 'store']);
-        Route::put('/championships/{championshipId}/categories/{categoryId}', [\App\Http\Controllers\Admin\CategoryController::class, 'update']);
-        Route::delete('/championships/{championshipId}/categories/{categoryId}', [\App\Http\Controllers\Admin\CategoryController::class, 'destroy']);
-        Route::post('/championships/{championshipId}/categories/{categoryId}/teams', [\App\Http\Controllers\Admin\CategoryController::class, 'addTeam']);
-        Route::delete('/championships/{championshipId}/categories/{categoryId}/teams/{teamId}', [\App\Http\Controllers\Admin\CategoryController::class, 'removeTeam']);
-        Route::post('/championships/{championshipId}/categories/{categoryId}/art-background', [\App\Http\Controllers\Admin\CategoryController::class, 'updateArtBackground']);
+        // Categorias específicas de Campeonato (Fundo de arte, times)
+        Route::get('/championships/{championshipId}/categories-list', [CategoryController::class, 'index']);
+        Route::post('/championships/{championshipId}/categories-new', [CategoryController::class, 'store']);
+        Route::put('/championships/{championshipId}/categories/{categoryId}', [CategoryController::class, 'update']);
+        Route::delete('/championships/{championshipId}/categories/{categoryId}', [CategoryController::class, 'destroy']);
+        Route::post('/championships/{championshipId}/categories/{categoryId}/teams', [CategoryController::class, 'addTeam']);
+        Route::delete('/championships/{championshipId}/categories/{categoryId}/teams/{teamId}', [CategoryController::class, 'removeTeam']);
+        Route::post('/championships/{championshipId}/categories/{categoryId}/art-background', [CategoryController::class, 'updateArtBackground']);
 
-        // Chaveamento/Sorteio (NEW)
+        // Chaveamento/Sorteio
         Route::post('/championships/{championshipId}/bracket/generate', [\App\Http\Controllers\Admin\BracketController::class, 'generate']);
         Route::post('/championships/{championshipId}/bracket/advance', [\App\Http\Controllers\Admin\BracketController::class, 'advancePhase']);
         Route::post('/championships/{championshipId}/bracket/shuffle', [\App\Http\Controllers\Admin\BracketController::class, 'shuffle']);
         Route::post('/championships/{championshipId}/bracket/generate-from-groups', [\App\Http\Controllers\Admin\BracketController::class, 'generateFromGroups']);
 
-        // Gestão Manual de Grupos (NEW) // Trigger Deploy
+        // Gestão Manual de Grupos
         Route::get('/championships/{championshipId}/groups', [\App\Http\Controllers\Admin\BracketController::class, 'getGroups']);
         Route::post('/championships/{championshipId}/groups', [\App\Http\Controllers\Admin\BracketController::class, 'saveGroups']);
 
-        // Estatísticas e Relatórios (NEW)
+        // Estatísticas e Relatórios
         Route::get('/championships/{championshipId}/stats/goals', [\App\Http\Controllers\Admin\StatisticsController::class, 'goalsByPlayer']);
         Route::get('/championships/{championshipId}/stats/top-scorers', [\App\Http\Controllers\Admin\StatisticsController::class, 'topScorers']);
         Route::get('/championships/{championshipId}/stats/assists', [\App\Http\Controllers\Admin\StatisticsController::class, 'assistsByPlayer']);
@@ -236,24 +269,24 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
         Route::get('/championships/{championshipId}/stats/dashboard', [\App\Http\Controllers\Admin\StatisticsController::class, 'championshipDashboard']);
         Route::get('/players/{playerId}/history', [\App\Http\Controllers\Admin\StatisticsController::class, 'playerHistory']);
 
-        // Scanner QR Code (NEW)
+        // Scanner QR Code
         Route::post('/qr/validate-wallet', [\App\Http\Controllers\Admin\QRValidationController::class, 'validateWallet']);
         Route::post('/qr/check-in', [\App\Http\Controllers\Admin\QRValidationController::class, 'checkInPlayer']);
         Route::post('/qr/validate-ticket', [\App\Http\Controllers\Admin\QRValidationController::class, 'validateTicket']);
 
-        // Notificações (NEW)
+        // Notificações
         Route::post('/notifications/send', [\App\Http\Controllers\Admin\NotificationController::class, 'send']);
         Route::post('/notifications/token', [\App\Http\Controllers\Admin\NotificationController::class, 'storeToken']);
 
-        // Exportação de Dados (NEW)
+        // Exportação de Dados
         Route::get('/export/players', [\App\Http\Controllers\Admin\ExportController::class, 'exportPlayers']);
         Route::get('/export/teams', [\App\Http\Controllers\Admin\ExportController::class, 'exportTeams']);
 
-        // Gerador de Artes Templates (NEW)
+        // Gerador de Artes Templates
         Route::get('/art-templates', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'getTemplate']);
         Route::post('/art-templates', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'saveTemplate']);
 
-        // Gerador de Artes (NEW)
+        // Gerador de Artes
         Route::get('/art/match/{matchId}/faceoff', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'matchFaceoff']);
         Route::get('/art/match/{matchId}/scheduled', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'matchScheduled']);
         Route::get('/art/match/{matchId}/mvp', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'mvpArt']);
@@ -261,20 +294,19 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
         Route::get('/art/championship/{championshipId}/standings', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'standingsArt']);
         Route::get('/art/championship/{championshipId}/individual/{athleteId}/{category}', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'individualAthleteArt']);
 
-        // Rodízio de Vôlei (NEW)
+        // Rodízio de Vôlei
         Route::get('/volleyball/match/{matchId}/positions', [\App\Http\Controllers\Admin\VolleyballRotationController::class, 'getPositions']);
-        Route::post('/volleyball/match/{matchId}/positions', [\App\Http\Controllers\Admin\VolleyballRotationController::class, 'savePositions']); // Para Drag & Drop
+        Route::post('/volleyball/match/{matchId}/positions', [\App\Http\Controllers\Admin\VolleyballRotationController::class, 'savePositions']);
         Route::post('/volleyball/rotate', [\App\Http\Controllers\Admin\VolleyballRotationController::class, 'rotate']);
 
-        // Gestão de Produtos (NEW)
+        // Gestão de Produtos
         Route::get('/products-manage', [\App\Http\Controllers\Admin\AdminProductController::class, 'index']);
         Route::post('/products-manage', [\App\Http\Controllers\Admin\AdminProductController::class, 'store']);
         Route::put('/products-manage/{id}', [\App\Http\Controllers\Admin\AdminProductController::class, 'update']);
         Route::delete('/products-manage/{id}', [\App\Http\Controllers\Admin\AdminProductController::class, 'destroy']);
         Route::post('/products/upload-image', [\App\Http\Controllers\Admin\AdminProductController::class, 'uploadImage']);
 
-        // Legacy routes (manter compatibilidade)
-        Route::post('/championships/{id}/categories', [\App\Http\Controllers\TournamentManagerController::class, 'addCategory']);
+        // Outros/Legados Consolidado
         Route::post('/championships/{id}/draw', [\App\Http\Controllers\DrawController::class, 'generateBracket']);
         Route::get('/reports/finance', [\App\Http\Controllers\ReportController::class, 'financialReport']);
         Route::get('/championships/{id}/export', [\App\Http\Controllers\ReportController::class, 'exportInscriptions']);
@@ -296,7 +328,8 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
         Route::put('/results/{id}', [\App\Http\Controllers\Admin\RaceResultController::class, 'update']);
         Route::patch('/results/{id}/payment', [\App\Http\Controllers\Admin\RaceResultController::class, 'updatePayment']);
         Route::get('/championships/{id}/results/export', [\App\Http\Controllers\Admin\RaceResultController::class, 'exportCsv']);
-        // Configurações (NEW)
+
+        // Configurações
         Route::get('/settings', [\App\Http\Controllers\Admin\AdminSettingController::class, 'show']);
         Route::put('/settings', [\App\Http\Controllers\Admin\AdminSettingController::class, 'update']);
         Route::post('/settings/logo', [\App\Http\Controllers\Admin\AdminSettingController::class, 'uploadLogo']);
@@ -306,18 +339,15 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
         Route::get('/system-settings', [\App\Http\Controllers\Admin\AdminSystemSettingController::class, 'index']);
         Route::put('/system-settings', [\App\Http\Controllers\Admin\AdminSystemSettingController::class, 'update']);
 
-        // Categories
+        // Cupons
         Route::apiResource('/coupons', \App\Http\Controllers\Admin\CouponController::class);
 
         // Asaas
         Route::get('/asaas/settings', [\App\Http\Controllers\Admin\AsaasController::class, 'getSettings']);
         Route::post('/asaas/settings', [\App\Http\Controllers\Admin\AsaasController::class, 'updateSettings']);
-        Route::post('/asaas/webhook', [\App\Http\Controllers\Admin\AsaasController::class, 'webhook'])->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]); // Se tiver CSRF, precisa ignorar no webhook
-        Route::get('/categories', [\App\Http\Controllers\Admin\AdminCategoryController::class, 'index']);
-        Route::post('/categories', [\App\Http\Controllers\Admin\AdminCategoryController::class, 'store']);
-        Route::put('/categories/{id}', [\App\Http\Controllers\Admin\AdminCategoryController::class, 'update']);
-        Route::delete('/categories/{id}', [\App\Http\Controllers\Admin\AdminCategoryController::class, 'destroy']);
-        // Acessos Temporários (NEW)
+        Route::post('/asaas/webhook', [\App\Http\Controllers\Admin\AsaasController::class, 'webhook'])->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
+
+        // Acessos Temporários
         Route::get('/temporary-access', [\App\Http\Controllers\Admin\TemporaryAccessController::class, 'index']);
         Route::post('/temporary-access', [\App\Http\Controllers\Admin\TemporaryAccessController::class, 'store']);
         Route::put('/temporary-access/{id}', [\App\Http\Controllers\Admin\TemporaryAccessController::class, 'update']);
@@ -327,21 +357,14 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
         Route::get('/clubs-manage', [\App\Http\Controllers\Admin\AdminClubController::class, 'index']);
         Route::post('/clubs-manage', [\App\Http\Controllers\Admin\AdminClubController::class, 'store']);
         Route::get('/clubs-manage/{id}', [\App\Http\Controllers\Admin\AdminClubController::class, 'show']);
-        Route::put('/clubs-manage/{id}', [\App\Http\Controllers\Admin\AdminClubController::class, 'update']);
-        Route::delete('/clubs-manage/{id}', [\App\Http\Controllers\Admin\AdminClubController::class, 'destroy']);
-        Route::post('/clubs-manage/{id}/impersonate', [\App\Http\Controllers\Admin\AdminClubController::class, 'impersonate']);
-        // Gestão de Loja/Produtos (NEW)
-        Route::get('/products-manage', [\App\Http\Controllers\Admin\AdminProductController::class, 'index']);
-        Route::post('/products-manage', [\App\Http\Controllers\Admin\AdminProductController::class, 'store']);
-        Route::put('/products-manage/{id}', [\App\Http\Controllers\Admin\AdminProductController::class, 'update']);
-        Route::delete('/products-manage/{id}', [\App\Http\Controllers\Admin\AdminProductController::class, 'destroy']);
-        Route::post('/upload/product-image', [\App\Http\Controllers\Admin\AdminProductController::class, 'uploadImage']);
+        Route::put('/clubs-manage/{id}', [AdminClubController::class, 'update']);
+        Route::delete('/clubs-manage/{id}', [AdminClubController::class, 'destroy']);
+        Route::post('/clubs-manage/{id}/impersonate', [AdminClubController::class, 'impersonate']);
 
-        // Auditoria (NEW)
-        Route::get('/audit-logs', [\App\Http\Controllers\Admin\AuditController::class, 'index']);
+        // Auditoria
+        Route::get('/audit-logs', [AuditController::class, 'index']);
     });
 });
 
-
 // Webhooks (Público)
-Route::post('/webhooks/payment/{gateway}', [\App\Http\Controllers\PaymentWebhookController::class, 'handle']);
+Route::post('/webhooks/payment/{gateway}', [PaymentWebhookController::class, 'handle']);
