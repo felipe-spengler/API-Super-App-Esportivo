@@ -267,11 +267,12 @@ class TeamController extends Controller
             return response()->json(['message' => 'Sem permissão para editar este atleta.'], 403);
         }
 
-        // Se for atleta exclusivo ou admin, pode editar tudo
+        // Se for atleta exclusivo, admin, ou o PRÓPRIO usuário se editando, pode editar tudo
         $isExclusive = ($player->club_id === $team->club_id);
+        $isSelf = ($user->id === $player->id);
 
-        if ($isExclusive || $isAdmin) {
-            $player->update($request->only([
+        if ($isExclusive || $isAdmin || $isSelf) {
+            $data = $request->only([
                 'name',
                 'nickname',
                 'phone',
@@ -279,7 +280,13 @@ class TeamController extends Controller
                 'gender',
                 'address',
                 'cpf'
-            ]));
+            ]);
+
+            if ($request->filled('password')) {
+                $data['password'] = \Hash::make($request->password);
+            }
+
+            $player->update($data);
         }
 
         // Atualiza Pivot

@@ -1,15 +1,57 @@
-import { useState } from 'react';
-import { ArrowLeft, User, Shield, LogOut, Camera, X, Trash2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ArrowLeft, User, Shield, LogOut, Camera, X, Trash2, Loader2, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Icon } from '@iconify/react';
 import { useAuth } from '../../context/AuthContext';
 import { PhotoUploadSection } from '../Players/components/PhotoUploadSection';
+import api from '../../services/api';
 
 
 export function Profile() {
     const navigate = useNavigate();
     const { user, signOut, updateUser } = useAuth();
     const [showEdit, setShowEdit] = useState(false);
+    const [saving, setSaving] = useState(false);
+
+    // Form states
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
+    const [phone, setPhone] = useState('');
+    const [cpf, setCpf] = useState('');
+    const [password, setPassword] = useState('');
+
+    useEffect(() => {
+        if (user) {
+            setName(user.name || '');
+            setEmail(user.email || '');
+            setPhone(user.phone || '');
+            setCpf(user.cpf || '');
+        }
+    }, [user, showEdit]);
+
+    async function handleUpdateProfile(e: React.FormEvent) {
+        e.preventDefault();
+        setSaving(true);
+        try {
+            const response = await api.put('/me', {
+                name,
+                email,
+                phone,
+                cpf,
+                password: password || undefined
+            });
+
+            updateUser(response.data.user);
+            alert('Perfil atualizado com sucesso!');
+            setShowEdit(false);
+            setPassword('');
+        } catch (error: any) {
+            console.error('Error updating profile:', error);
+            alert(error.response?.data?.message || 'Erro ao atualizar perfil.');
+        } finally {
+            setSaving(false);
+        }
+    }
 
     const getImageUrl = (path: string | null | undefined) => {
         if (!path) return '';
@@ -111,6 +153,7 @@ export function Profile() {
 
                     <div className="text-center">
                         <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">{user.name}</h2>
+                        <p className="text-[10px] font-mono text-slate-400 mt-1">ID: {user.id}</p>
                         <div className="flex justify-center mt-2.5">
                             <span className="bg-indigo-50 text-indigo-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border border-indigo-100/50 flex items-center gap-2">
                                 <Shield className="w-3.5 h-3.5" />
@@ -199,21 +242,106 @@ export function Profile() {
             {/* Edit Photo Modal */}
             {showEdit && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
-                        <button
-                            onClick={() => setShowEdit(false)}
-                            className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
-                        >
-                            <X className="w-5 h-5" />
-                        </button>
+                    <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl relative flex flex-col max-h-[90vh]">
+                        <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+                            <h3 className="text-xl font-bold text-gray-900">Meus Dados e Fotos</h3>
+                            <button
+                                onClick={() => setShowEdit(false)}
+                                className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
 
-                        <h3 className="text-xl font-bold text-gray-900 mb-6">Suas Fotos de Perfil</h3>
+                        <div className="flex-1 overflow-y-auto p-6 space-y-8">
+                            {/* Photos Section */}
+                            <div className="space-y-4">
+                                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em]">Fotos de Perfil</h4>
+                                <PhotoUploadSection
+                                    playerId={user.id.toString()}
+                                    currentPhotos={(user as any).photo_urls || (user as any).photo_url}
+                                />
+                            </div>
 
-                        <div className="space-y-6">
-                            <PhotoUploadSection
-                                playerId={user.id.toString()}
-                                currentPhotos={(user as any).photo_urls || (user as any).photo_url}
-                            />
+                            {/* Data Form */}
+                            <form id="profileForm" onSubmit={handleUpdateProfile} className="space-y-4">
+                                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mb-4">Informações Pessoais</h4>
+
+                                <div>
+                                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Nome Completo</label>
+                                    <input
+                                        type="text"
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                        value={name}
+                                        onChange={e => setName(e.target.value)}
+                                        required
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Email</label>
+                                        <input
+                                            type="email"
+                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                            value={email}
+                                            onChange={e => setEmail(e.target.value)}
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">CPF</label>
+                                        <input
+                                            type="text"
+                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-mono"
+                                            value={cpf}
+                                            onChange={e => setCpf(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Celular</label>
+                                    <input
+                                        type="text"
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                        value={phone}
+                                        onChange={e => setPhone(e.target.value)}
+                                    />
+                                </div>
+
+                                <div className="pt-4 border-t border-gray-50">
+                                    <label className="block text-[10px] font-bold text-indigo-600 uppercase mb-1 ml-1">Alterar Senha (Opcional)</label>
+                                    <input
+                                        type="password"
+                                        className="w-full px-4 py-3 bg-indigo-50/30 border border-indigo-100 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-mono"
+                                        placeholder="Deixe em branco para manter a atual"
+                                        value={password}
+                                        onChange={e => setPassword(e.target.value)}
+                                    />
+                                </div>
+                            </form>
+                        </div>
+
+                        <div className="p-6 border-t border-gray-100 bg-gray-50/50 rounded-b-2xl">
+                            <button
+                                type="submit"
+                                form="profileForm"
+                                disabled={saving}
+                                className="w-full py-4 bg-indigo-600 text-white font-bold rounded-2xl shadow-xl shadow-indigo-100 hover:bg-indigo-700 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                                {saving ? (
+                                    <>
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                        Salvando...
+                                    </>
+                                ) : (
+                                    <>
+                                        <CheckCircle className="w-5 h-5" />
+                                        Salvar Alterações
+                                    </>
+                                )}
+                            </button>
                         </div>
                     </div>
                 </div>

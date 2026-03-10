@@ -131,6 +131,8 @@ class AuthController extends Controller
 
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
+            'email' => 'sometimes|string|email|max:255|unique:users,email,' . $user->id,
+            'password' => 'sometimes|nullable|string|min:6',
             'phone' => 'nullable|string',
             'cpf' => 'nullable|string',
             'device_token' => 'nullable|string',
@@ -138,12 +140,21 @@ class AuthController extends Controller
         ]);
 
         if ($request->hasFile('photo')) {
-            // TODO: Deletar foto antiga se existir
             $path = $request->file('photo')->store('players', 'public');
-            $validated['photo_path'] = $path;
+            $user->photo_path = $path;
+
+            // Sync photos array too
+            $photos = $user->photos ?? [];
+            $photos[0] = $path;
+            $user->photos = $photos;
         }
 
-        $user->update($validated);
+        if ($request->filled('password')) {
+            $user->password = Hash::make($request->password);
+        }
+
+        $user->fill($request->only(['name', 'email', 'phone', 'cpf', 'device_token']));
+        $user->save();
 
         return response()->json([
             'message' => 'Perfil atualizado com sucesso!',

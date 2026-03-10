@@ -398,11 +398,14 @@ export function MyTeamDetails() {
                                                 {player.photo_url ? <img src={player.photo_url} className="w-full h-full object-cover" /> : <User className="w-5 h-5" />}
                                             </div>
                                             <div>
-                                                <div className="font-bold text-gray-900 text-sm">
+                                                <div className="font-bold text-gray-900 text-sm flex items-center gap-2">
                                                     {player.pivot?.temp_player_name || player.name}
+                                                    {player.id === user?.id && (
+                                                        <span className="bg-indigo-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded-sm uppercase tracking-tighter">VOCÊ</span>
+                                                    )}
                                                     {player.pivot?.number && <span className="ml-1 text-gray-400">#{player.pivot.number}</span>}
                                                 </div>
-                                                <div className="text-xs text-gray-500">{player.pivot?.position || player.position}</div>
+                                                <div className="text-[10px] text-gray-400 font-mono">ID: {player.id} • {player.pivot?.position || player.position}</div>
                                             </div>
                                         </div>
 
