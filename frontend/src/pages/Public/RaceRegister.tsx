@@ -165,10 +165,12 @@ export function RaceRegister() {
             return;
         }
 
+        /* 
         if (!photoFile) {
             alert('Por favor, envie uma foto para o seu perfil de atleta.');
             return;
         }
+        */
 
         if (formData.is_pcd && !pcdFile) {
             alert('Você declarou ser PCD. É obrigatório anexar o documento comprobatório para receber o desconto.');
@@ -186,7 +188,9 @@ export function RaceRegister() {
             data.append('gender', formData.gender);
             data.append('category_id', formData.category_id);
             data.append('remove_bg', formData.remove_bg ? '1' : '0');
-            data.append('photo', photoFile);
+            if (photoFile) {
+                data.append('photo', photoFile);
+            }
             data.append('is_pcd', formData.is_pcd ? '1' : '0');
             if (formData.is_pcd && pcdFile) {
                 data.append('pcd_document', pcdFile);
@@ -517,10 +521,12 @@ export function RaceRegister() {
                                         alert('Por favor, preencha todos os campos obrigatórios.');
                                         return;
                                     }
+                                    /*
                                     if (!photoFile) {
                                         alert('Por favor, envie uma foto para o seu perfil de atleta.');
                                         return;
                                     }
+                                    */
                                     if (formData.is_pcd && !pcdFile) {
                                         alert('Você declarou ser PCD. É obrigatório anexar o documento comprobatório para receber o desconto.');
                                         return;

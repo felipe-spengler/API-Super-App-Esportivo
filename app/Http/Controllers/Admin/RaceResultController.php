@@ -14,7 +14,6 @@ use Illuminate\Support\Str;
 use App\Models\Category;
 use App\Models\Coupon;
 use App\Services\AsaasService;
-use App\Http\Controllers\ImageUploadController;
 
 class RaceResultController extends Controller
 {
@@ -389,8 +388,8 @@ class RaceResultController extends Controller
         $athleteAge = $referenceDate->diffInYears(\Carbon\Carbon::parse($request->birth_date));
 
         // Validar Gênero
-        if ($category->gender && $category->gender !== 'mixed') {
-            $catGender = strtolower($category->gender);
+        $catGender = strtolower($category->gender ?? '');
+        if ($catGender && $catGender !== 'mixed' && $catGender !== 'misto') {
             $userGender = strtolower($request->gender);
 
             // Map M/F to male/female
@@ -398,12 +397,14 @@ class RaceResultController extends Controller
                 $userGender = 'male';
             if ($userGender === 'f')
                 $userGender = 'female';
-            if ($catGender === 'm')
-                $catGender = 'male';
-            if ($catGender === 'f')
-                $catGender = 'female';
 
-            if ($catGender !== 'mixed' && $userGender !== $catGender) {
+            $normalizedCatGender = $catGender;
+            if ($normalizedCatGender === 'm')
+                $normalizedCatGender = 'male';
+            if ($normalizedCatGender === 'f')
+                $normalizedCatGender = 'female';
+
+            if ($userGender !== $normalizedCatGender) {
                 return response()->json(['error' => 'Gênero incompatível com a categoria selecionada.'], 422);
             }
         }
