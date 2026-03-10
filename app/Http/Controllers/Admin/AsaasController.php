@@ -54,11 +54,17 @@ class AsaasController extends Controller
         return response()->json(['message' => 'Configurações salvas com sucesso!']);
     }
 
-    /**
-     * Webhook para receber notificações do Asaas
-     */
     public function webhook(Request $request)
     {
+        // Validação do Token do Webhook (Segurança)
+        $token = $request->header('asaas-access-token');
+        $expectedToken = config('services.asaas.webhook_token');
+
+        if ($expectedToken && $token !== $expectedToken) {
+            Log::warning("Asaas Webhook: Unauthorized access attempt with invalid token.");
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
         $payload = $request->all();
         $event = $payload['event'] ?? null;
         $payment = $payload['payment'] ?? null;
