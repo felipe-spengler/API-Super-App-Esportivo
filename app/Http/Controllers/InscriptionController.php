@@ -21,6 +21,10 @@ class InscriptionController extends Controller
             'category_id' => 'required|exists:categories,id',
             'team_name' => 'required|string',
             'gifts' => 'nullable|array',
+            'shop_items' => 'nullable|array',
+            'shop_items.*.product_id' => 'required|exists:products,id',
+            'shop_items.*.quantity' => 'required|integer|min:1',
+            'shop_items.*.variant' => 'nullable|string',
             'coupon_code' => 'nullable|string',
             'payment_method' => 'nullable|string|in:PIX,CREDIT_CARD,BOLETO'
         ]);
@@ -47,8 +51,44 @@ class InscriptionController extends Controller
             ]);
 
             // 2. Calcular Valor Final
-            $originalPrice = $category->price;
+            $originalPrice = (float) $category->price;
+
+            // Calcular Acréscimos de Variações nos Brindes
+            if ($request->has('gifts')) {
+                foreach ($request->gifts as $gift) {
+                    $prod = \App\Models\Product::find($gift['product_id']);
+                    if ($prod && is_array($prod->variants)) {
+                        foreach ($prod->variants as $v) {
+                            if (is_array($v) && isset($v['value']) && $v['value'] === $gift['variant']) {
+                                $originalPrice += (float) ($v['surcharge'] ?? 0);
+                            }
+                        }
+                    }
+                }
+            }
+
             $finalPrice = $originalPrice;
+
+            // Calcular Itens Adicionais da Loja
+            $shopTotal = 0;
+            if ($request->has('shop_items')) {
+                foreach ($request->shop_items as $item) {
+                    $prod = \App\Models\Product::find($item['product_id']);
+                    if ($prod) {
+                        $itemPrice = (float) $prod->price;
+                        if (isset($item['variant']) && is_array($prod->variants)) {
+                            foreach ($prod->variants as $v) {
+                                if (is_array($v) && isset($v['value']) && $v['value'] === $item['variant']) {
+                                    $itemPrice += (float) ($v['surcharge'] ?? 0);
+                                }
+                            }
+                        }
+                        $shopTotal += $itemPrice * (int) ($item['quantity'] ?? 1);
+                    }
+                }
+            }
+
+            $finalPrice += $shopTotal;
 
             // Cupom
             $couponId = null;
@@ -82,6 +122,7 @@ class InscriptionController extends Controller
                 'payment_method' => ($status === 'paid') ? 'free' : null,
                 'coupon_id' => $couponId,
                 'gifts' => $request->gifts ? json_encode($request->gifts) : null,
+                'shop_items' => $request->shop_items ? json_encode($request->shop_items) : null,
                 'created_at' => now(),
                 'updated_at' => now()
             ]);

@@ -47,6 +47,9 @@ export function RaceRegister() {
     const [parentCategoryId, setParentCategoryId] = useState<string | null>(null);
     const [selectingSubcategory, setSelectingSubcategory] = useState(false);
 
+    const [shopProducts, setShopProducts] = useState<any[]>([]);
+    const [shopItems, setShopItems] = useState<any[]>([]);
+
     useEffect(() => {
         loadData();
     }, [id]);
@@ -73,10 +76,73 @@ export function RaceRegister() {
 
     const selectedCategory = championship?.categories?.find((cat: any) => cat.id === (formData.category_id || parentCategoryId));
 
+    const getGiftsSurcharge = () => {
+        let surcharges = 0;
+        selectedCategory?.products_details?.forEach((item: any) => {
+            const selectedValue = giftSelections[item.product.id];
+            if (selectedValue && item.product.variants) {
+                const variant = item.product.variants.find((v: any) =>
+                    typeof v === 'object' ? v.value === selectedValue : v === selectedValue
+                );
+                if (variant && typeof variant === 'object' && variant.surcharge) {
+                    surcharges += Number(variant.surcharge);
+                }
+            }
+        });
+        return surcharges;
+    };
+
+    const getShopTotal = () => {
+        let total = 0;
+        shopItems.forEach(item => {
+            const product = shopProducts.find(p => p.id === item.product_id);
+            if (product) {
+                let price = Number(product.price);
+                if (item.variant && product.variants) {
+                    const v = product.variants.find((v: any) => (typeof v === 'object' ? v.value === item.variant : v === item.variant));
+                    if (v && typeof v === 'object' && v.surcharge) {
+                        price += Number(v.surcharge);
+                    }
+                }
+                total += price * item.quantity;
+            }
+        });
+        return total;
+    };
+
+    const calculateTotal = () => {
+        let base = Number(selectedCategory?.price || 0);
+        let surcharge = getGiftsSurcharge();
+
+        let regTotal = base + surcharge;
+
+        if (formData.is_pcd) {
+            regTotal *= 0.5;
+        }
+
+        let shopTotal = getShopTotal();
+        let currentTotal = regTotal + shopTotal;
+
+        if (couponInfo) {
+            if (couponInfo.discount_type === 'percentage') {
+                currentTotal -= currentTotal * (Number(couponInfo.discount_value) / 100);
+            } else {
+                currentTotal -= Number(couponInfo.discount_value);
+            }
+        }
+
+        return Math.max(0, currentTotal);
+    };
+
     async function loadData() {
         try {
             const response = await api.get(`/championships/${id}`);
-            setChampionship(response.data);
+            const champ = response.data;
+            setChampionship(champ);
+
+            // Fetch Club Products
+            const productsRes = await api.get(`/shop/products/${champ.club_id}`);
+            setShopProducts(productsRes.data || []);
         } catch (error) {
             console.error(error);
             alert("Erro ao carregar evento");
@@ -133,6 +199,9 @@ export function RaceRegister() {
             }));
             data.append('gifts', JSON.stringify(selectedGifts));
 
+            // Shop Items
+            data.append('shop_items', JSON.stringify(shopItems));
+
             if (formData.coupon_code) {
                 data.append('coupon_code', formData.coupon_code);
             }
@@ -144,7 +213,7 @@ export function RaceRegister() {
 
             // Se a categoria for paga, podemos guardar a info de que precisa pagar
             setRegistrationData(response.data);
-            setStep(6); // Success step
+            setStep(7); // Success step
         } catch (error: any) {
             console.error(error);
             alert(error.response?.data?.message || 'Erro ao realizar inscrição. Verifique os dados e tente novamente.');
@@ -493,18 +562,27 @@ export function RaceRegister() {
 
                                         {item.product.variants && item.product.variants.length > 0 && (
                                             <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2">
-                                                {item.product.variants.map((v: string) => (
-                                                    <button
-                                                        key={v}
-                                                        onClick={() => setGiftSelections({ ...giftSelections, [item.product.id]: v })}
-                                                        className={`py-2 px-3 rounded-lg border-2 font-black text-xs uppercase transition-all ${giftSelections[item.product.id] === v
-                                                            ? 'bg-indigo-600 border-indigo-600 text-white shadow-md'
-                                                            : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'
-                                                            }`}
-                                                    >
-                                                        {v}
-                                                    </button>
-                                                ))}
+                                                {item.product.variants.map((v: any) => {
+                                                    const val = typeof v === 'object' ? v.value : v;
+                                                    const surcharge = typeof v === 'object' ? v.surcharge : 0;
+                                                    return (
+                                                        <button
+                                                            key={val}
+                                                            onClick={() => setGiftSelections({ ...giftSelections, [item.product.id]: val })}
+                                                            className={`py-2 px-1 rounded-lg border-2 font-black text-[10px] uppercase transition-all flex flex-col items-center justify-center ${giftSelections[item.product.id] === val
+                                                                ? 'bg-indigo-600 border-indigo-600 text-white shadow-md'
+                                                                : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'
+                                                                }`}
+                                                        >
+                                                            <span>{val}</span>
+                                                            {surcharge > 0 && (
+                                                                <span className={giftSelections[item.product.id] === val ? 'text-indigo-200' : 'text-emerald-500'}>
+                                                                    +R$ {surcharge}
+                                                                </span>
+                                                            )}
+                                                        </button>
+                                                    );
+                                                })}
                                             </div>
                                         )}
                                     </div>
@@ -539,6 +617,122 @@ export function RaceRegister() {
                 )}
 
                 {step === 4 && (
+                    <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-6">
+                        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+                            <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight mb-2 italic">Loja do Clube</h2>
+                            <p className="text-xs text-slate-500 font-bold uppercase tracking-widest border-b border-slate-100 pb-4">
+                                Deseja adicionar mais algum item ao seu pedido?
+                            </p>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[400px] overflow-y-auto px-1">
+                                {shopProducts.filter(p => p.stock_quantity === null || p.stock_quantity > 0).map(product => {
+                                    const inCart = shopItems.find(item => item.product_id === product.id);
+                                    return (
+                                        <div key={product.id} className="bg-slate-50 border border-slate-100 rounded-2xl p-4 space-y-3 relative group transition-all hover:border-indigo-100 hover:bg-white overflow-hidden">
+                                            {product.image_url && (
+                                                <img src={product.image_url} alt={product.name} className="w-full h-32 object-contain rounded-xl bg-white p-2" />
+                                            )}
+                                            <div>
+                                                <h3 className="font-black text-slate-900 uppercase text-xs line-clamp-1">{product.name}</h3>
+                                                <p className="text-indigo-600 font-black text-sm mt-1">
+                                                    R$ {Number(product.price).toFixed(2)}
+                                                </p>
+                                            </div>
+
+                                            {product.variants && product.variants.length > 0 && (
+                                                <select
+                                                    className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-[10px] font-bold uppercase outline-none focus:ring-2 focus:ring-indigo-500"
+                                                    value={inCart?.variant || ''}
+                                                    onChange={(e) => {
+                                                        const variant = e.target.value;
+                                                        if (!variant) return;
+                                                        setShopItems(prev => {
+                                                            const exists = prev.find(i => i.product_id === product.id);
+                                                            if (exists) {
+                                                                return prev.map(i => i.product_id === product.id ? { ...i, variant } : i);
+                                                            }
+                                                            return [...prev, { product_id: product.id, variant, quantity: 1 }];
+                                                        });
+                                                    }}
+                                                >
+                                                    <option value="">Selecione Tam.</option>
+                                                    {product.variants.map((v: any) => {
+                                                        const val = typeof v === 'object' ? v.value : v;
+                                                        const sur = typeof v === 'object' ? v.surcharge : 0;
+                                                        return <option key={val} value={val}>{val} {sur > 0 ? `(+R$ ${sur})` : ''}</option>;
+                                                    })}
+                                                </select>
+                                            )}
+
+                                            <div className="flex items-center gap-2">
+                                                <div className="flex bg-white rounded-lg border border-slate-200 overflow-hidden">
+                                                    <button
+                                                        onClick={() => {
+                                                            setShopItems(prev => {
+                                                                const it = prev.find(i => i.product_id === product.id);
+                                                                if (!it) return prev;
+                                                                if (it.quantity === 1) return prev.filter(i => i.product_id !== product.id);
+                                                                return prev.map(i => i.product_id === product.id ? { ...i, quantity: i.quantity - 1 } : i);
+                                                            });
+                                                        }}
+                                                        className="px-2 py-1 hover:bg-slate-100 text-slate-400 font-bold"
+                                                    >-</button>
+                                                    <span className="px-2 py-1 font-black text-[10px] text-slate-900 min-w-[24px] text-center flex items-center justify-center">
+                                                        {inCart?.quantity || 0}
+                                                    </span>
+                                                    <button
+                                                        onClick={() => {
+                                                            setShopItems(prev => {
+                                                                const it = prev.find(i => i.product_id === product.id);
+                                                                if (it) return prev.map(i => i.product_id === product.id ? { ...i, quantity: i.quantity + 1 } : i);
+                                                                return [...prev, { product_id: product.id, variant: product.variants?.[0]?.value || product.variants?.[0] || '', quantity: 1 }];
+                                                            });
+                                                        }}
+                                                        className="px-2 py-1 hover:bg-slate-100 text-slate-400 font-bold"
+                                                    >+</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {shopItems.length > 0 && (
+                                <div className="bg-indigo-50 p-4 rounded-2xl space-y-2">
+                                    <p className="text-[10px] font-black text-indigo-900 uppercase italic">Seu Carrinho</p>
+                                    <div className="space-y-1">
+                                        {shopItems.map(item => {
+                                            const p = shopProducts.find(prod => prod.id === item.product_id);
+                                            return (
+                                                <div key={item.product_id} className="flex justify-between text-[10px] font-bold">
+                                                    <span className="text-slate-600 italic">{item.quantity}x {p?.name} {item.variant}</span>
+                                                    <span className="text-indigo-600">R$ {(item.quantity * Number(p?.price || 0)).toFixed(2)}</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                    <div className="pt-2 border-t border-indigo-100 flex justify-between items-center font-black text-xs text-indigo-900 uppercase">
+                                        <span>Total Adicional</span>
+                                        <span>R$ {getShopTotal().toFixed(2)}</span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex gap-4">
+                            <button onClick={() => selectedCategory?.products_details?.length > 0 ? setStep(3) : setStep(2)} className="px-8 py-5 text-slate-400 font-black uppercase text-xs tracking-widest hover:text-slate-600 transition-colors">Voltar</button>
+                            <button
+                                onClick={() => setStep(5)}
+                                className="flex-1 py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-700 shadow-xl flex items-center justify-center gap-3 transition-all"
+                            >
+                                Próximo Passo
+                                <ArrowRight />
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {step === 5 && (
                     <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-6">
                         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6">
                             <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight mb-2 italic">Cupom de Desconto</h2>
@@ -610,12 +804,30 @@ export function RaceRegister() {
                                     <span className="text-slate-500 font-bold uppercase">Inscrição ({selectedCategory?.name})</span>
                                     <span className="font-black text-slate-900">R$ {Number(selectedCategory?.price || 0).toFixed(2)}</span>
                                 </div>
+                                {getGiftsSurcharge() > 0 && (
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-slate-500 font-bold uppercase italic border-l-2 border-slate-100 pl-2">Adicional Brindes (Variantes)</span>
+                                        <span className="font-black text-slate-900">+ R$ {getGiftsSurcharge().toFixed(2)}</span>
+                                    </div>
+                                )}
+                                {getShopTotal() > 0 && (
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-slate-500 font-bold uppercase italic border-l-2 border-indigo-100 pl-2">Produtos Extra</span>
+                                        <span className="font-black text-indigo-600">+ R$ {getShopTotal().toFixed(2)}</span>
+                                    </div>
+                                )}
+                                {formData.is_pcd && (
+                                    <div className="flex justify-between text-sm text-indigo-600 italic">
+                                        <span className="font-bold uppercase">Desconto PCD (50%)</span>
+                                        <span className="font-black">- R$ {((Number(selectedCategory?.price || 0) + getGiftsSurcharge()) * 0.5).toFixed(2)}</span>
+                                    </div>
+                                )}
                                 {couponInfo && (
                                     <div className="flex justify-between text-sm text-emerald-600">
                                         <span className="font-bold uppercase">Desconto Cupom</span>
                                         <span className="font-black italic">
                                             -{couponInfo.discount_type === 'percentage'
-                                                ? `R$ ${(Number(selectedCategory?.price || 0) * (couponInfo.discount_value / 100)).toFixed(2)}`
+                                                ? `R$ ${(((Number(selectedCategory?.price || 0) + getGiftsSurcharge()) * (formData.is_pcd ? 0.5 : 1) + getShopTotal()) * (couponInfo.discount_value / 100)).toFixed(2)}`
                                                 : `R$ ${Number(couponInfo.discount_value).toFixed(2)}`}
                                         </span>
                                     </div>
@@ -623,19 +835,16 @@ export function RaceRegister() {
                                 <div className="flex justify-between items-center pt-3 border-t-2 border-slate-900 border-dashed">
                                     <span className="font-black text-slate-900 uppercase text-lg italic">Total a Pagar</span>
                                     <span className="font-black text-indigo-600 text-2xl italic">
-                                        R$ {Math.max(0, (
-                                            Number(selectedCategory?.price || 0) -
-                                            (couponInfo ? (couponInfo.discount_type === 'percentage' ? Number(selectedCategory?.price || 0) * (couponInfo.discount_value / 100) : Number(couponInfo.discount_value)) : 0)
-                                        )).toFixed(2)}
+                                        R$ {calculateTotal().toFixed(2)}
                                     </span>
                                 </div>
                             </div>
                         </div>
 
                         <div className="flex gap-4">
-                            <button onClick={() => selectedCategory?.products_details?.length > 0 ? setStep(3) : setStep(2)} className="px-8 py-5 text-slate-400 font-black uppercase text-xs tracking-widest hover:text-slate-600 transition-colors">Voltar</button>
+                            <button onClick={() => setStep(4)} className="px-8 py-5 text-slate-400 font-black uppercase text-xs tracking-widest hover:text-slate-600 transition-colors">Voltar</button>
                             <button
-                                onClick={() => setStep(5)}
+                                onClick={() => setStep(6)}
                                 className="flex-1 py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-700 shadow-xl flex items-center justify-center gap-3 transition-all"
                             >
                                 Revisar Pedido
@@ -645,7 +854,7 @@ export function RaceRegister() {
                     </div>
                 )}
 
-                {step === 5 && (
+                {step === 6 && (
                     <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-6">
                         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6">
                             <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight mb-2 italic">Forma de Pagamento</h2>
@@ -696,17 +905,14 @@ export function RaceRegister() {
                                 <div className="flex justify-between text-sm">
                                     <span className="text-slate-500 font-bold uppercase">Total Geral</span>
                                     <span className="font-black text-indigo-600 text-xl italic">
-                                        R$ {Math.max(0, (
-                                            Number(selectedCategory?.price || 0) -
-                                            (couponInfo ? (couponInfo.discount_type === 'percentage' ? Number(selectedCategory?.price || 0) * (couponInfo.discount_value / 100) : Number(couponInfo.discount_value)) : 0)
-                                        )).toFixed(2)}
+                                        R$ {calculateTotal().toFixed(2)}
                                     </span>
                                 </div>
                             </div>
                         </div>
 
                         <div className="flex gap-4">
-                            <button onClick={() => setStep(4)} className="px-8 py-5 text-slate-400 font-black uppercase text-xs tracking-widest hover:text-slate-600 transition-colors">Voltar</button>
+                            <button onClick={() => setStep(5)} className="px-8 py-5 text-slate-400 font-black uppercase text-xs tracking-widest hover:text-slate-600 transition-colors">Voltar</button>
                             <button
                                 onClick={handleRegister}
                                 disabled={saving || !chosenMethod}
@@ -728,7 +934,7 @@ export function RaceRegister() {
                     </div>
                 )}
 
-                {step === 6 && (
+                {step === 7 && (
                     <div className="animate-in zoom-in-95 duration-500 text-center py-12 space-y-6">
                         <div className="w-24 h-24 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-emerald-100/50">
                             <CheckCircle2 size={48} />

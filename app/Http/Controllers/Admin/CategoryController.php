@@ -105,6 +105,10 @@ class CategoryController extends Controller
             'max_teams' => 'nullable|integer|min:0',
             'parent_id' => 'nullable|exists:categories,id',
             'price' => 'nullable|numeric|min:0',
+            'included_products' => 'nullable|array',
+            'included_products.*.product_id' => 'required|exists:products,id',
+            'included_products.*.quantity' => 'required|integer|min:1',
+            'included_products.*.required' => 'boolean'
         ]);
 
         $category = $championship->categories()->create($validated);
@@ -146,6 +150,10 @@ class CategoryController extends Controller
             'max_teams' => 'nullable|integer|min:0',
             'parent_id' => 'nullable|exists:categories,id',
             'price' => 'nullable|numeric|min:0',
+            'included_products' => 'nullable|array',
+            'included_products.*.product_id' => 'required|exists:products,id',
+            'included_products.*.quantity' => 'required|integer|min:1',
+            'included_products.*.required' => 'boolean'
         ]);
 
         $category->update($validated);

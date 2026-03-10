@@ -39,6 +39,9 @@ export function ChampionshipInscription() {
     const [chosenMethod, setChosenMethod] = useState<'PIX' | 'CREDIT_CARD' | 'BOLETO'>('PIX');
     const [registrationData, setRegistrationData] = useState<any>(null);
 
+    const [shopProducts, setShopProducts] = useState<any[]>([]);
+    const [shopItems, setShopItems] = useState<any[]>([]);
+
     useEffect(() => {
         loadData();
     }, [id]);
@@ -60,6 +63,10 @@ export function ChampionshipInscription() {
             if (response.data.registration_type) {
                 setInscriptionType(response.data.registration_type);
             }
+
+            // Fetch Club Products
+            const productsRes = await api.get(`/shop/products/${response.data.club_id}`);
+            setShopProducts(productsRes.data || []);
         } catch (error) {
             console.error(error);
             alert("Erro ao carregar campeonato");
@@ -138,14 +145,15 @@ export function ChampionshipInscription() {
                 gifts: Object.entries(giftSelections).map(([productId, variant]) => ({
                     product_id: productId,
                     variant: variant
-                }))
+                })),
+                shop_items: shopItems
             };
 
             const response = await api.post('/inscriptions/team', payload); // Reuse existing endpoint or new one
 
             // 2. Mock Payment
             setRegistrationData(response.data);
-            setStep(6);
+            setStep(7);
         } catch (error: any) {
             console.error(error);
             alert(error.response?.data?.message || 'Erro ao realizar inscrição.');
@@ -166,7 +174,7 @@ export function ChampionshipInscription() {
                         <span className="font-bold text-lg text-gray-800">Inscrição</span>
                     </div>
                     <div className="text-sm font-medium text-indigo-600">
-                        Passo {step} de 5
+                        Passo {step} de 6
                     </div>
                 </div>
             </div>
@@ -327,8 +335,95 @@ export function ChampionshipInscription() {
                     </div>
                 )}
 
-                {/* Step 4: Coupon */}
+                {/* Step 4: Shopping */}
                 {step === 4 && (
+                    <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-6">
+                        <div className="bg-white p-6 rounded-xl border border-gray-200">
+                            <h2 className="text-xl font-bold text-gray-900 mb-2">Loja do Clube</h2>
+                            <p className="text-sm text-gray-500 mb-6">Deseja adicionar mais algum item para sua equipe?</p>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[400px] overflow-y-auto pr-1">
+                                {shopProducts.filter(p => p.stock_quantity === null || p.stock_quantity > 0).map(product => {
+                                    const inCart = shopItems.find(item => item.product_id === product.id);
+                                    return (
+                                        <div key={product.id} className="bg-gray-50 border border-gray-100 rounded-xl p-4 flex flex-col gap-3">
+                                            {product.image_url && <img src={product.image_url} className="h-24 object-contain" alt={product.name} />}
+                                            <div className="flex-1">
+                                                <h4 className="font-bold text-gray-900 text-sm">{product.name}</h4>
+                                                <p className="text-indigo-600 font-bold text-xs mt-1">R$ {Number(product.price).toFixed(2)}</p>
+                                            </div>
+
+                                            {product.variants && product.variants.length > 0 && (
+                                                <select
+                                                    className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-[10px] font-bold uppercase outline-none focus:ring-2 focus:ring-indigo-500"
+                                                    value={inCart?.variant || ''}
+                                                    onChange={(e) => {
+                                                        const variant = e.target.value;
+                                                        if (!variant) return;
+                                                        setShopItems(prev => {
+                                                            const exists = prev.find(i => i.product_id === product.id);
+                                                            if (exists) {
+                                                                return prev.map(i => i.product_id === product.id ? { ...i, variant } : i);
+                                                            }
+                                                            return [...prev, { product_id: product.id, variant, quantity: 1 }];
+                                                        });
+                                                    }}
+                                                >
+                                                    <option value="">Selecione Tam.</option>
+                                                    {product.variants.map((v: any) => {
+                                                        const val = typeof v === 'object' ? v.value : v;
+                                                        const sur = typeof v === 'object' ? v.surcharge : 0;
+                                                        return <option key={val} value={val}>{val} {sur > 0 ? `(+R$ ${sur})` : ''}</option>;
+                                                    })}
+                                                </select>
+                                            )}
+
+                                            <div className="flex items-center gap-2">
+                                                <div className="flex bg-white rounded-lg border border-gray-200 overflow-hidden">
+                                                    <button
+                                                        onClick={() => {
+                                                            setShopItems(prev => {
+                                                                const it = prev.find(i => i.product_id === product.id);
+                                                                if (!it) return prev;
+                                                                if (it.quantity === 1) return prev.filter(i => i.product_id !== product.id);
+                                                                return prev.map(i => i.product_id === product.id ? { ...i, quantity: i.quantity - 1 } : i);
+                                                            });
+                                                        }}
+                                                        className="px-2 py-1 hover:bg-gray-100 text-gray-400 font-bold"
+                                                    >-</button>
+                                                    <span className="px-2 py-1 font-bold text-xs text-gray-900 min-w-[24px] text-center">{inCart?.quantity || 0}</span>
+                                                    <button
+                                                        onClick={() => {
+                                                            setShopItems(prev => {
+                                                                const it = prev.find(i => i.product_id === product.id);
+                                                                if (it) return prev.map(i => i.product_id === product.id ? { ...i, quantity: i.quantity + 1 } : i);
+                                                                return [...prev, { product_id: product.id, variant: product.variants?.[0]?.value || product.variants?.[0] || '', quantity: 1 }];
+                                                            });
+                                                        }}
+                                                        className="px-2 py-1 hover:bg-gray-100 text-gray-400 font-bold"
+                                                    >+</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        <div className="flex justify-between">
+                            <button onClick={() => selectedCategory?.included_products?.length > 0 ? setStep(3) : setStep(2)} className="text-gray-500 font-bold hover:text-gray-800">Voltar</button>
+                            <button
+                                onClick={() => setStep(5)}
+                                className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-indigo-700 transition-all flex items-center gap-2"
+                            >
+                                Continuar <ArrowRight className="w-5 h-5" />
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Step 5: Coupon */}
+                {step === 5 && (
                     <div className="animate-in fade-in slide-in-from-right-4 duration-300">
                         <h2 className="text-2xl font-bold text-gray-900 mb-6">Possui um Cupom?</h2>
 
@@ -372,9 +467,9 @@ export function ChampionshipInscription() {
                         </div>
 
                         <div className="flex justify-between">
-                            <button onClick={() => selectedCategory?.included_products?.length > 0 ? setStep(3) : setStep(2)} className="text-gray-500 font-bold hover:text-gray-800">Voltar</button>
+                            <button onClick={() => setStep(4)} className="text-gray-500 font-bold hover:text-gray-800">Voltar</button>
                             <button
-                                onClick={() => setStep(5)}
+                                onClick={() => setStep(6)}
                                 className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-indigo-700 transition-all flex items-center gap-2"
                             >
                                 Revisar Pedido <ArrowRight className="w-5 h-5" />
@@ -383,8 +478,8 @@ export function ChampionshipInscription() {
                     </div>
                 )}
 
-                {/* Step 5: Payment Selection */}
-                {step === 5 && (
+                {/* Step 6: Payment Selection */}
+                {step === 6 && (
                     <div className="animate-in fade-in slide-in-from-right-4 duration-300">
                         <h2 className="text-2xl font-bold text-gray-900 mb-6 uppercase italic tracking-tight italic">Forma de Pagamento</h2>
 
@@ -431,15 +526,37 @@ export function ChampionshipInscription() {
 
                         <div className="bg-gray-100 p-6 rounded-xl space-y-3 mb-8">
                             <div className="flex justify-between text-gray-600 font-medium">
-                                <span className="uppercase text-xs font-bold">Inscrição Sugerida</span>
+                                <span className="uppercase text-xs font-bold">Inscrição base</span>
                                 <span>R$ {Number(selectedCategory.price).toFixed(2)}</span>
                             </div>
+                            {shopItems.length > 0 && shopItems.map(item => {
+                                const p = shopProducts.find(pr => pr.id === item.product_id);
+                                let price = Number(p?.price || 0);
+                                if (item.variant && p?.variants) {
+                                    const v = p.variants.find((v: any) => (typeof v === 'object' ? v.value === item.variant : v === item.variant));
+                                    if (v && typeof v === 'object' && v.surcharge) price += Number(v.surcharge);
+                                }
+                                return (
+                                    <div key={item.product_id} className="flex justify-between text-gray-600 text-xs">
+                                        <span className="italic">{item.quantity}x {p?.name} ({item.variant})</span>
+                                        <span>R$ {(item.quantity * price).toFixed(2)}</span>
+                                    </div>
+                                );
+                            })}
                             {couponInfo && (
                                 <div className="flex justify-between text-emerald-600 font-bold">
                                     <span className="uppercase text-xs">Desconto Cupom</span>
                                     <span>
                                         -{couponInfo.discount_type === 'percentage'
-                                            ? `R$ ${(Number(selectedCategory.price) * (couponInfo.discount_value / 100)).toFixed(2)}`
+                                            ? `R$ ${((Number(selectedCategory.price) + shopItems.reduce((acc, item) => {
+                                                const p = shopProducts.find(pr => pr.id === item.product_id);
+                                                let price = Number(p?.price || 0);
+                                                if (item.variant && p?.variants) {
+                                                    const v = p.variants.find((v: any) => (typeof v === 'object' ? v.value === item.variant : v === item.variant));
+                                                    if (v && typeof v === 'object' && v.surcharge) price += Number(v.surcharge);
+                                                }
+                                                return acc + (price * item.quantity);
+                                            }, 0)) * (couponInfo.discount_value / 100)).toFixed(2)}`
                                             : `R$ ${Number(couponInfo.discount_value).toFixed(2)}`}
                                     </span>
                                 </div>
@@ -448,15 +565,31 @@ export function ChampionshipInscription() {
                                 <span className="font-black text-gray-900 uppercase text-lg italic">Total a Pagar</span>
                                 <span className="font-black text-indigo-600 text-2xl italic tracking-tight">
                                     R$ {Math.max(0, (
-                                        Number(selectedCategory.price) -
-                                        (couponInfo ? (couponInfo.discount_type === 'percentage' ? Number(selectedCategory.price) * (couponInfo.discount_value / 100) : Number(couponInfo.discount_value)) : 0)
+                                        (Number(selectedCategory.price) + shopItems.reduce((acc, item) => {
+                                            const p = shopProducts.find(pr => pr.id === item.product_id);
+                                            let price = Number(p?.price || 0);
+                                            if (item.variant && p?.variants) {
+                                                const v = p.variants.find((v: any) => (typeof v === 'object' ? v.value === item.variant : v === item.variant));
+                                                if (v && typeof v === 'object' && v.surcharge) price += Number(v.surcharge);
+                                            }
+                                            return acc + (price * item.quantity);
+                                        }, 0)) -
+                                        (couponInfo ? (couponInfo.discount_type === 'percentage' ? (Number(selectedCategory.price) + shopItems.reduce((acc, item) => {
+                                            const p = shopProducts.find(pr => pr.id === item.product_id);
+                                            let price = Number(p?.price || 0);
+                                            if (item.variant && p?.variants) {
+                                                const v = p.variants.find((v: any) => (typeof v === 'object' ? v.value === item.variant : v === item.variant));
+                                                if (v && typeof v === 'object' && v.surcharge) price += Number(v.surcharge);
+                                            }
+                                            return acc + (price * item.quantity);
+                                        }, 0)) * (couponInfo.discount_value / 100) : Number(couponInfo.discount_value)) : 0)
                                     )).toFixed(2)}
                                 </span>
                             </div>
                         </div>
 
                         <div className="flex justify-between">
-                            <button onClick={() => setStep(4)} className="text-gray-500 font-bold hover:text-gray-800">Voltar</button>
+                            <button onClick={() => setStep(5)} className="text-gray-500 font-bold hover:text-gray-800">Voltar</button>
                             <button
                                 onClick={handleSubmit}
                                 disabled={processing}
@@ -469,8 +602,8 @@ export function ChampionshipInscription() {
                     </div>
                 )}
 
-                {/* Step 6: Success */}
-                {step === 6 && (
+                {/* Step 7: Success */}
+                {step === 7 && (
                     <div className="animate-in zoom-in-95 duration-500 text-center py-12 space-y-8">
                         <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-emerald-50">
                             <CheckCircle size={40} />

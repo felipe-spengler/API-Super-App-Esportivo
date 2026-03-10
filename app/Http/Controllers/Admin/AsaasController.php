@@ -114,9 +114,22 @@ class AsaasController extends Controller
                     $included = $result->category->products();
                     foreach ($included as $item) {
                         if (isset($item['product']) && $item['product'] instanceof \App\Models\Product) {
-                            $qty = $item['quantity'] ?? 1;
-                            $item['product']->decrement('stock_quantity', $qty);
-                            Log::info("Stock reduced for Gift/Included Product {$item['product']->id}: -{$qty} (RaceResult {$id})");
+                            if ($item['product']->stock_quantity !== null) {
+                                $qty = $item['quantity'] ?? 1;
+                                $item['product']->decrement('stock_quantity', $qty);
+                                Log::info("Stock reduced for Gift/Included Product {$item['product']->id}: -{$qty} (RaceResult {$id})");
+                            }
+                        }
+                    }
+                }
+
+                // Baixa no Estoque dos Itens de Loja Adicionais
+                if ($result->shop_items && is_array($result->shop_items)) {
+                    foreach ($result->shop_items as $item) {
+                        $prod = \App\Models\Product::find($item['product_id']);
+                        if ($prod && $prod->stock_quantity !== null) {
+                            $prod->decrement('stock_quantity', $item['quantity'] ?? 1);
+                            Log::info("Stock reduced for Additional Shop Item {$prod->id}: -" . ($item['quantity'] ?? 1));
                         }
                     }
                 }
@@ -159,13 +172,31 @@ class AsaasController extends Controller
                         $included = $category->products();
                         foreach ($included as $item) {
                             if (isset($item['product']) && $item['product'] instanceof \App\Models\Product) {
-                                $qty = $item['quantity'] ?? 1;
-                                $item['product']->decrement('stock_quantity', $qty);
-                                Log::info("Stock reduced for Team Gift/Included Product {$item['product']->id}: -{$qty} (CT {$id})");
+                                // Only decrement if stock is controlled (not null)
+                                if ($item['product']->stock_quantity !== null) {
+                                    $qty = $item['quantity'] ?? 1;
+                                    $item['product']->decrement('stock_quantity', $qty);
+                                    Log::info("Stock reduced for Team Gift/Included Product {$item['product']->id}: -{$qty} (CT {$id})");
+                                }
                             }
                         }
                     }
                 }
+
+                // Baixa no Estoque dos Itens de Loja Adicionais (Team)
+                if ($pivot->shop_items) {
+                    $shopItems = json_decode($pivot->shop_items, true);
+                    if (is_array($shopItems)) {
+                        foreach ($shopItems as $item) {
+                            $prod = \App\Models\Product::find($item['product_id']);
+                            if ($prod && $prod->stock_quantity !== null) {
+                                $prod->decrement('stock_quantity', $item['quantity'] ?? 1);
+                                Log::info("Stock reduced for Additional Team Shop Item {$prod->id}: -" . ($item['quantity'] ?? 1));
+                            }
+                        }
+                    }
+                }
+
                 Log::info("ChampionshipTeam {$id} marked as PAID");
             }
         }

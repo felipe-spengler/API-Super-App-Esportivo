@@ -4,14 +4,19 @@ import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { Plus, Trash, Edit, Package, DollarSign, Image as ImageIcon, Box, X } from 'lucide-react';
 
+interface Variant {
+    value: string;
+    surcharge: number;
+}
+
 interface Product {
     id: number;
     name: string;
     description: string;
     price: number;
-    stock_quantity: number;
+    stock_quantity: number | null;
     image_url: string | null;
-    variants: string[] | null;
+    variants: (string | Variant)[] | null;
 }
 
 export function AdminProductManager() {
@@ -24,11 +29,12 @@ export function AdminProductManager() {
         name: '',
         description: '',
         price: '',
-        stock_quantity: '',
+        stock_quantity: '' as string | '',
         image_url: '',
-        variants: [] as string[]
+        variants: [] as (string | Variant)[]
     });
     const [variantInput, setVariantInput] = useState('');
+    const [surchargeInput, setSurchargeInput] = useState('');
     const [imageFile, setImageFile] = useState<File | null>(null);
 
     useEffect(() => {
@@ -62,7 +68,7 @@ export function AdminProductManager() {
             name: product.name,
             description: product.description || '',
             price: product.price.toString(),
-            stock_quantity: product.stock_quantity.toString(),
+            stock_quantity: product.stock_quantity !== null ? product.stock_quantity.toString() : '',
             image_url: product.image_url || '',
             variants: product.variants || []
         });
@@ -85,13 +91,29 @@ export function AdminProductManager() {
 
     const addVariant = () => {
         if (!variantInput.trim()) return;
-        if (formData.variants.includes(variantInput.trim())) return;
-        setFormData({ ...formData, variants: [...formData.variants, variantInput.trim()] });
+        const exists = formData.variants.some(v =>
+            typeof v === 'string' ? v === variantInput.trim() : v.value === variantInput.trim()
+        );
+        if (exists) return;
+
+        const surcharge = parseFloat(surchargeInput) || 0;
+        const newVariant = surcharge > 0
+            ? { value: variantInput.trim(), surcharge }
+            : variantInput.trim();
+
+        setFormData({ ...formData, variants: [...formData.variants, newVariant] });
         setVariantInput('');
+        setSurchargeInput('');
     };
 
-    const removeVariant = (v: string) => {
-        setFormData({ ...formData, variants: formData.variants.filter(item => item !== v) });
+    const removeVariant = (v: string | Variant) => {
+        const valToRemove = typeof v === 'string' ? v : v.value;
+        setFormData({
+            ...formData,
+            variants: formData.variants.filter(item =>
+                (typeof item === 'string' ? item : item.value) !== valToRemove
+            )
+        });
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -113,7 +135,7 @@ export function AdminProductManager() {
             const payload = {
                 ...formData,
                 price: parseFloat(formData.price),
-                stock_quantity: parseInt(formData.stock_quantity),
+                stock_quantity: formData.stock_quantity === '' ? null : parseInt(formData.stock_quantity),
                 image_url: finalImageUrl
             };
 
@@ -203,7 +225,7 @@ export function AdminProductManager() {
                                     </span>
                                     <span className="text-xs font-semibold px-2 py-1 bg-gray-100 text-gray-600 rounded-full flex items-center gap-1">
                                         <Box size={12} />
-                                        {product.stock_quantity}
+                                        {product.stock_quantity === null ? '∞' : product.stock_quantity}
                                     </span>
                                 </div>
                             </div>
@@ -263,13 +285,14 @@ export function AdminProductManager() {
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Estoque</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Estoque <span className="text-[10px] text-gray-400 font-normal">(Vazio para ilimitado)</span>
+                                    </label>
                                     <input
                                         type="number"
                                         min="0"
-                                        required
-                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-                                        placeholder="0"
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder:text-gray-300"
+                                        placeholder="Ilimitado"
                                         value={formData.stock_quantity}
                                         onChange={e => setFormData({ ...formData, stock_quantity: e.target.value })}
                                     />
@@ -277,33 +300,59 @@ export function AdminProductManager() {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1 uppercase tracking-tighter font-bold">Variações (Tamanhos ex: P, M, G)</label>
-                                <div className="flex gap-2 mb-2">
-                                    <input
-                                        type="text"
-                                        className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                                        placeholder="Ex: P"
-                                        value={variantInput}
-                                        onChange={e => setVariantInput(e.target.value)}
-                                        onKeyPress={e => e.key === 'Enter' && (e.preventDefault(), addVariant())}
-                                    />
+                                <label className="block text-sm font-medium text-gray-700 mb-1 uppercase tracking-tighter font-bold">
+                                    Variações e Acréscimos (ex: Camiseta G7 + R$ 15)
+                                </label>
+                                <div className="flex gap-2 mb-3">
+                                    <div className="flex-1 flex gap-1">
+                                        <input
+                                            type="text"
+                                            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                                            placeholder="Ex: XL"
+                                            value={variantInput}
+                                            onChange={e => setVariantInput(e.target.value)}
+                                            onKeyPress={e => e.key === 'Enter' && (e.preventDefault(), addVariant())}
+                                        />
+                                        <div className="relative w-28">
+                                            <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                                                <span className="text-gray-400 text-[10px]">R$</span>
+                                            </div>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                className="w-full pl-6 pr-2 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                                                placeholder="Extra"
+                                                value={surchargeInput}
+                                                onChange={e => setSurchargeInput(e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
                                     <button
                                         type="button"
                                         onClick={addVariant}
-                                        className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 font-bold"
+                                        className="px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 font-bold transition-all text-sm"
                                     >
-                                        Add
+                                        +
                                     </button>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
-                                    {formData.variants.map(v => (
-                                        <span key={v} className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-sm font-bold flex items-center gap-1 border border-indigo-100">
-                                            {v}
-                                            <button type="button" onClick={() => removeVariant(v)} className="hover:text-red-500">
-                                                <X size={14} />
-                                            </button>
-                                        </span>
-                                    ))}
+                                    {formData.variants.map((v, idx) => {
+                                        const val = typeof v === 'string' ? v : v.value;
+                                        const sur = typeof v === 'object' ? v.surcharge : 0;
+                                        return (
+                                            <span key={idx} className="px-3 py-1 bg-white border border-gray-200 text-gray-700 rounded-lg text-sm font-bold flex items-center gap-2 shadow-sm transition-all hover:border-indigo-200">
+                                                <span className="text-indigo-600 font-black">{val}</span>
+                                                {sur > 0 && <span className="text-emerald-500 text-[10px]"> (+R$ {sur})</span>}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeVariant(v)}
+                                                    className="ml-1 text-gray-400 hover:text-red-500 transition-colors"
+                                                >
+                                                    <X size={14} />
+                                                </button>
+                                            </span>
+                                        );
+                                    })}
                                 </div>
                             </div>
 

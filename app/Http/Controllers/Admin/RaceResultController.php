@@ -358,6 +358,10 @@ class RaceResultController extends Controller
             'is_pcd' => 'nullable|boolean',
             'pcd_document' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:4096',
             'gifts' => 'nullable|array', // [{product_id, variant}]
+            'shop_items' => 'nullable|array',
+            'shop_items.*.product_id' => 'required|exists:products,id',
+            'shop_items.*.quantity' => 'required|integer|min:1',
+            'shop_items.*.variant' => 'nullable|string',
             'coupon_code' => 'nullable|string',
             'payment_method' => 'nullable|string|in:PIX,CREDIT_CARD,BOLETO'
         ]);
@@ -446,12 +450,23 @@ class RaceResultController extends Controller
 
             // 4. Calcular Descontos (Idoso ou PCD)
             $championship = $race->championship;
-            $originalPrice = $category->price;
-            $discountPct = 0;
+            $originalPrice = (float) $category->price;
 
-            // A idade para desconto de idoso pode ser a idade no dia do evento ou a idade atual calculada normalmente (vamos usar a idade do dia do evento/ano)
-            // Se preferir idade exata de hj para desconto (mudar), abaixo mantemos a idade calculada para o fim do ano como padrão.
-            // Mas desconto idoso geralm. é idade na data corrida, usaremos o $athleteAge já calculado acima.
+            // Calcular Acréscimos de Variações nos Brindes
+            if ($request->has('gifts')) {
+                foreach ($request->gifts as $gift) {
+                    $prod = \App\Models\Product::find($gift['product_id']);
+                    if ($prod && is_array($prod->variants)) {
+                        foreach ($prod->variants as $v) {
+                            if (is_array($v) && isset($v['value']) && $v['value'] === $gift['variant']) {
+                                $originalPrice += (float) ($v['surcharge'] ?? 0);
+                            }
+                        }
+                    }
+                }
+            }
+
+            $discountPct = 0;
             if ($championship->has_elderly_discount && $athleteAge >= $championship->elderly_minimum_age) {
                 $discountPct = max($discountPct, $championship->elderly_discount_percentage);
             }
@@ -460,7 +475,29 @@ class RaceResultController extends Controller
                 $discountPct = max($discountPct, $championship->pcd_discount_percentage);
             }
 
+            // O desconto (PCD/Idoso) aplica apenas na inscrição (originalPrice base)
             $finalPrice = $originalPrice * (1 - ($discountPct / 100));
+
+            // Calcular Itens Adicionais da Loja
+            $shopTotal = 0;
+            if ($request->has('shop_items')) {
+                foreach ($request->shop_items as $item) {
+                    $prod = \App\Models\Product::find($item['product_id']);
+                    if ($prod) {
+                        $itemPrice = (float) $prod->price;
+                        if (isset($item['variant']) && is_array($prod->variants)) {
+                            foreach ($prod->variants as $v) {
+                                if (is_array($v) && isset($v['value']) && $v['value'] === $item['variant']) {
+                                    $itemPrice += (float) ($v['surcharge'] ?? 0);
+                                }
+                            }
+                        }
+                        $shopTotal += $itemPrice * (int) ($item['quantity'] ?? 1);
+                    }
+                }
+            }
+
+            $finalPrice += $shopTotal;
 
             // 4.1 Validar Cupom (se houver)
             $couponId = null;
@@ -511,7 +548,8 @@ class RaceResultController extends Controller
                 'is_pcd' => $request->boolean('is_pcd'),
                 'pcd_document_url' => $pcdDocumentUrl,
                 'gifts' => $request->gifts,
-                'coupon_id' => $couponId
+                'coupon_id' => $couponId,
+                'shop_items' => $request->shop_items
             ]);
 
             $paymentInfo = null;
