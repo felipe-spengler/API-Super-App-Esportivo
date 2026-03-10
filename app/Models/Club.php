@@ -21,12 +21,14 @@ class Club extends Model
         'contact_email',
         'active_modalities',
         'art_settings',
+        'payment_settings',
         'is_active'
     ];
 
     protected $casts = [
         'active_modalities' => 'array',
         'art_settings' => 'array',
+        'payment_settings' => 'array',
         'is_active' => 'boolean',
     ];
 
