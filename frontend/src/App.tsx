@@ -89,6 +89,7 @@ import { ForgotPassword } from './pages/ForgotPassword';
 import { ResetPassword } from './pages/ResetPassword';
 import { PrivacyPolicy } from './pages/Public/PrivacyPolicy';
 import { DeletarConta } from './pages/Public/DeletarConta';
+import { RaceCheckIn } from './pages/Admin/RaceCheckIn';
 
 import { Toaster } from 'react-hot-toast';
 import { ScrollToTop } from './components/ScrollToTop';
@@ -182,6 +183,7 @@ function App() {
               <Route path="art-editor" element={<ArtEditor />} />
 
               <Route path="matches" element={<Matches />} />
+              <Route path="check-in/:id" element={<RaceCheckIn />} />
             </Route>
 
             {/* ÁREA ADMINISTRATIVA INDIVIDUAL (Esportes como Corrida) */}

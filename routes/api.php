@@ -139,6 +139,10 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::delete('/me', [AuthController::class, 'deleteAccount']);
     Route::post('/logout', [AuthController::class, 'logout']);
 
+    // Inscrições e Comprovantes
+    Route::get('/my-inscriptions', [\App\Http\Controllers\Admin\RaceResultController::class, 'myInscriptions']);
+    Route::get('/inscriptions/{id}/receipt', [\App\Http\Controllers\ReceiptController::class, 'download']);
+
     // Checkout e Cupons
     Route::post('/cupom/validate', [ShopController::class, 'validateCoupon']);
     Route::post('/checkout', [ShopController::class, 'dateCheckout']);
@@ -314,6 +318,8 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
         Route::post('/matches/{id}/sets', [\App\Http\Controllers\MatchOperationController::class, 'updateSet']);
         Route::post('/matches/{id}/status', [\App\Http\Controllers\MatchOperationController::class, 'updateStatus']);
         Route::get('/security/validate-player/{code}', [\App\Http\Controllers\SecurityController::class, 'validatePlayer']);
+        Route::get('/security/validate-race-kit/{id}', [\App\Http\Controllers\Admin\QRValidationController::class, 'validateRaceKit']);
+        Route::post('/security/confirm-kit-delivery/{id}', [\App\Http\Controllers\Admin\QRValidationController::class, 'confirmKitDelivery']);
 
         // Reports (NEW)
         Route::get('/reports/dashboard', [\App\Http\Controllers\Admin\AdminReportController::class, 'dashboard']);

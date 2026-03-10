@@ -196,6 +196,61 @@ class QRValidationController extends Controller
     }
 
     /**
+     * Validar entrega de kit de corrida
+     */
+    public function validateRaceKit($id)
+    {
+        try {
+            $result = \App\Models\RaceResult::with(['user', 'race.championship', 'category'])->findOrFail($id);
+
+            // Se for apenas GET, apenas retorna os dados para visualização na tela do Admin
+            return response()->json([
+                'success' => true,
+                'result' => $result
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Inscrição não encontrada.'
+            ], 404);
+        }
+    }
+
+    /**
+     * Confirmar entrega de kit
+     */
+    public function confirmKitDelivery($id)
+    {
+        try {
+            $result = \App\Models\RaceResult::findOrFail($id);
+
+            if ($result->status_payment !== 'paid') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Não é possível entregar o kit: Pagamento pendente.'
+                ], 400);
+            }
+
+            $result->update([
+                'kit_delivered' => true,
+                'kit_delivered_at' => now()
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Kit entregue com sucesso!'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao confirmar entrega.'
+            ], 500);
+        }
+    }
+
+    /**
      * Gerar QR Code para carteirinha (usado pelo mobile)
      */
     public function generateWalletQR(Request $request)

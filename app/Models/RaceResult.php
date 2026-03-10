@@ -23,13 +23,17 @@ class RaceResult extends Model
         'pcd_document_url',
         'gifts',
         'coupon_id',
-        'shop_items'
+        'shop_items',
+        'kit_delivered',
+        'kit_delivered_at'
     ];
 
     protected $casts = [
         'is_pcd' => 'boolean',
         'gifts' => 'array',
         'shop_items' => 'array',
+        'kit_delivered' => 'boolean',
+        'kit_delivered_at' => 'datetime',
     ];
 
     public function race()

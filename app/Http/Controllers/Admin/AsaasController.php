@@ -238,9 +238,17 @@ class AsaasController extends Controller
         $championship = $result->race->championship;
 
         try {
-            Mail::send([], [], function ($message) use ($user, $championship) {
+            // Gerar o PDF
+            $receiptController = new \App\Http\Controllers\ReceiptController();
+            $pdf = $receiptController->generatePdf($result);
+            $pdfContent = $pdf->output();
+
+            Mail::send([], [], function ($message) use ($user, $championship, $pdfContent) {
                 $message->to($user->email)
                     ->subject("Inscrição Confirmada: " . $championship->name)
+                    ->attachData($pdfContent, 'comprovante_inscricao.pdf', [
+                        'mime' => 'application/pdf',
+                    ])
                     ->html("
                         <div style='font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;'>
                             <div style='background: #4f46e5; padding: 30px; text-align: center;'>
@@ -255,7 +263,9 @@ class AsaasController extends Controller
                                     <p style='margin: 5px 0 0 0;'><strong>Status:</strong> Pago / Confirmado</p>
                                 </div>
 
-                                <p>Você já pode acessar sua área do atleta para ver mais detalhes e baixar sua carteirinha digital.</p>
+                                <p><strong>Anexamos o seu comprovante de inscrição a este e-mail.</strong> Ele contém todos os detalhes da sua compra, brindes inclusos e o QR Code necessário para a retirada de kit no local da prova.</p>
+
+                                <p>Você também pode acessar sua área do atleta a qualquer momento para baixar o comprovante novamente ou ver sua carteirinha digital.</p>
                                 
                                 <div style='text-align: center; margin-top: 30px;'>
                                     <a href='https://esportivo.techinteligente.site/profile/inscriptions' style='background: #4f46e5; color: white; padding: 14px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;'>Ver Minhas Inscrições</a>

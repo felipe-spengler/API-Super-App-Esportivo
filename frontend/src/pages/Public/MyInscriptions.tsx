@@ -1,7 +1,8 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Trophy, Calendar, ChevronRight, Loader2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Trophy, Calendar, ChevronRight, Loader2, AlertCircle, FileText } from 'lucide-react';
+import toast from 'react-hot-toast';
 import api from '../../services/api';
 
 export function MyInscriptions() {
@@ -24,6 +25,22 @@ export function MyInscriptions() {
         }
     }
 
+    async function handleDownloadReceipt(e: React.MouseEvent, id: number) {
+        e.stopPropagation();
+        try {
+            const response = await api.get(`/inscriptions/${id}/receipt`, { responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `comprovante_inscricao_${id}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (error) {
+            toast.error('Erro ao baixar comprovante');
+        }
+    }
+
     return (
         <div className="min-h-screen bg-gray-50 pb-20">
             <div className="bg-white p-4 pt-8 shadow-sm flex items-center sticky top-0 z-10 border-b border-gray-100">
@@ -39,15 +56,19 @@ export function MyInscriptions() {
                         <Loader2 className="animate-spin text-indigo-600" />
                     </div>
                 ) : inscriptions.map((ins) => (
-                    <div key={ins.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
-                        <div>
+                    <div
+                        key={ins.id}
+                        onClick={() => !ins.status_payment || ins.status_payment === 'pending' ? navigate(`/public/race-register/${ins.race?.championship_id}`) : null}
+                        className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between cursor-pointer active:bg-gray-50"
+                    >
+                        <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
                                 <Trophy className="w-4 h-4 text-indigo-500" />
                                 <h3 className="font-bold text-gray-900">{ins.race?.championship?.name || 'Evento'}</h3>
                             </div>
                             <p className="text-sm text-gray-500 mb-2">{ins.category?.name || 'Geral'}</p>
 
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-3">
                                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${ins.status_payment === 'paid' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
                                     }`}>
                                     {ins.status_payment === 'paid' ? 'Confirmada' : 'Pendente Pagamento'}
@@ -57,7 +78,17 @@ export function MyInscriptions() {
                                 </span>
                             </div>
 
-                            {ins.status_payment !== 'paid' && (
+                            {ins.status_payment === 'paid' && (
+                                <button
+                                    onClick={(e) => handleDownloadReceipt(e, ins.id)}
+                                    className="mt-3 flex items-center gap-1.5 text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition-colors"
+                                >
+                                    <FileText size={14} />
+                                    Baixar Comprovante (PDF)
+                                </button>
+                            )}
+
+                            {(ins.status_payment !== 'paid') && (
                                 <p className="text-[10px] text-indigo-600 font-bold mt-2 flex items-center gap-1">
                                     <AlertCircle size={10} /> Toque para pagar e confirmar sua vaga
                                 </p>
