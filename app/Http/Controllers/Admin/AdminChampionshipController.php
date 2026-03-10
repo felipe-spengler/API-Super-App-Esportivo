@@ -68,7 +68,20 @@ class AdminChampionshipController extends Controller
             'gender' => 'mixed'
         ]);
 
-        return response()->json($championship->load(['sport', 'club', 'categories']), 201);
+        // Se o formato for corrida (racing), cria automaticamente o registro na tabela 'races'
+        // para que a inscrição pública funcione sem precisar ir no wizard.
+        if ($championship->format === 'racing') {
+            \App\Models\Race::firstOrCreate(
+                ['championship_id' => $championship->id],
+                [
+                    'start_datetime' => $championship->start_date,
+                    'location_name' => 'A definir',
+                    'kits_info' => 'Informações do kit em breve'
+                ]
+            );
+        }
+
+        return response()->json($championship->load(['sport', 'club', 'categories', 'races']), 201);
     }
 
     // Update championship

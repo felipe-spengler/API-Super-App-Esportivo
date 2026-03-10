@@ -388,8 +388,19 @@ class RaceResultController extends Controller
         ]);
 
         $race = Race::where('championship_id', $championshipId)->first();
-        if (!$race)
-            return response()->json(['error' => 'Evento não encontrado'], 404);
+        if (!$race) {
+            $championship = Championship::find($championshipId);
+            if ($championship && $championship->format === 'racing') {
+                $race = Race::create([
+                    'championship_id' => $championshipId,
+                    'start_datetime' => $championship->start_date,
+                    'location_name' => 'A definir',
+                    'kits_info' => 'Informações do kit em breve'
+                ]);
+            } else {
+                return response()->json(['error' => 'Evento não encontrado ou não configurado como corrida.'], 404);
+            }
+        }
 
         $category = Category::findOrFail($request->category_id);
 

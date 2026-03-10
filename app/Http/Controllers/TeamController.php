@@ -202,17 +202,40 @@ class TeamController extends Controller
             $userData->save();
         }
 
-        // Vínculo Pivot
-        $team->players()->attach($userData->id, [
-            'temp_player_name' => $userData->name,
-            'position' => $request->position,
-            'number' => $request->number,
-            'user_id' => $userData->id,
-            'is_approved' => 1,
-            'championship_id' => $request->championship_id
-        ]);
+        // Vínculo Pivot - Apenas nos Campeonatos (conforme solicitado: não vai para a base geral)
+        $championshipIds = \DB::table('championship_team')
+            ->where('team_id', $id)
+            ->pluck('championship_id')
+            ->toArray();
 
-        return response()->json(['message' => 'Jogador adicionado com sucesso!', 'player_id' => $userData->id], 201);
+        // Se veio um específico na request, garantimos na lista
+        if ($request->championship_id && !in_array($request->championship_id, $championshipIds)) {
+            $championshipIds[] = $request->championship_id;
+        }
+
+        if (empty($championshipIds)) {
+            return response()->json(['message' => 'O time precisa estar vinculado a um campeonato para adicionar atletas.'], 422);
+        }
+
+        foreach ($championshipIds as $champId) {
+            \DB::table('team_players')->updateOrInsert(
+                [
+                    'team_id' => $id,
+                    'user_id' => $userData->id,
+                    'championship_id' => $champId
+                ],
+                [
+                    'temp_player_name' => $userData->name,
+                    'position' => $request->position,
+                    'number' => $request->number,
+                    'is_approved' => 1,
+                    'updated_at' => now(),
+                    'created_at' => now(),
+                ]
+            );
+        }
+
+        return response()->json(['message' => 'Jogador adicionado com sucesso aos campeonatos vinculados!', 'player_id' => $userData->id], 201);
     }
 
     // 3.5. Upload Player Photo (Pelo Capitão)
