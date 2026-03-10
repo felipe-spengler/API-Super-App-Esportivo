@@ -59,6 +59,7 @@ export function SumulaFutebol7() {
 
     const [fouls, setFouls] = useState({ home: 0, away: 0 });
     const [penaltyScore, setPenaltyScore] = useState({ home: 0, away: 0 });
+    const [timeouts, setTimeouts] = useState({ home: [], away: [] });
     const [events, setEvents] = useState<any[]>([]);
     const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'error'>('synced');
 
@@ -163,6 +164,10 @@ export function SumulaFutebol7() {
                 const homePenalties = history.filter((e: any) => e.team === 'home' && (e.type === 'shootout_goal' || e.type === 'penalty_goal')).length;
                 const awayPenalties = history.filter((e: any) => e.team === 'away' && (e.type === 'shootout_goal' || e.type === 'penalty_goal')).length;
                 setPenaltyScore({ home: homePenalties, away: awayPenalties });
+
+                const homeTimeouts = history.filter((e: any) => e.type === 'timeout' && e.team === 'home');
+                const awayTimeouts = history.filter((e: any) => e.type === 'timeout' && e.team === 'away');
+                setTimeouts({ home: homeTimeouts, away: awayTimeouts });
             }
         } catch (e) {
             console.error(e);
@@ -382,13 +387,31 @@ export function SumulaFutebol7() {
     const registerSimpleEvent = async (team: 'home' | 'away', type: 'timeout') => {
         if (!isRunning) { alert('Atenção: Inicie o cronômetro para poder lançar eventos!'); return; }
         if (!matchData) return;
+
+        // Controle de Tempo: 1 por período (1º T e 2º T)
+        const per = currentPeriod === '1º Tempo' || currentPeriod === 'Intervalo' ? '1º Tempo' : '2º Tempo';
+        const alreadyTaken = (timeouts as any)[team].some((t: any) => t.period === per);
+
+        if (alreadyTaken) {
+            alert(`Este time já pediu tempo no ${per}. Limite de 1 por tempo.`);
+            return;
+        }
+
+        if (!window.confirm(`Confirmar pedido de tempo para ${team === 'home' ? matchData.home_team?.name : matchData.away_team?.name}?`)) return;
+
         const teamId = team === 'home' ? matchData.home_team_id : matchData.away_team_id;
         const currentTime = formatTime(time);
-        const newEvent = { id: Date.now(), type, team, time: currentTime, period: currentPeriod, player_name: 'Pedido de Tempo' };
+        const newEvent: any = { id: Date.now(), type, team, time: currentTime, period: currentPeriod, player_name: 'Pedido de Tempo' };
+
         setEvents(prev => [newEvent, ...prev]);
+        setTimeouts(prev => ({ ...prev, [team]: [...(prev as any)[team], newEvent] }));
+        setIsRunning(false); // Pausa o cronômetro automaticamente no pedido de tempo
+
         try {
             await apiPost('event', { event_type: type, team_id: teamId, minute: currentTime, period: currentPeriod, metadata: { system_period: currentPeriod } });
-        } catch (e) { console.error(e); }
+        } catch (e) {
+            console.error(e);
+        }
     };
 
     const confirmEvent = async (player: any) => {
@@ -587,7 +610,15 @@ export function SumulaFutebol7() {
                             <div className="text-[10px] font-bold text-yellow-400 mt-0.5 bg-yellow-400/10 px-2 py-0.5 rounded-full">(Pên: {penaltyScore.home})</div>
                         )}
                         <div className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider mt-1.5 truncate max-w-[80px] text-center">{matchData.home_team?.name}</div>
-                        <div className="mt-2"><FoulDots count={fouls.home} /></div>
+                        <div className="mt-1 mb-1"><FoulDots count={fouls.home} /></div>
+                        <div className="flex gap-1 mt-1">
+                            {['1º Tempo', '2º Tempo'].map(p => {
+                                const taken = (timeouts as any).home.some((t: any) => t.period === p);
+                                return (
+                                    <div key={p} className={`w-3 h-1.5 rounded-sm ${taken ? 'bg-yellow-500 shadow-[0_0_4px_rgba(234,179,8,0.6)]' : 'bg-gray-800'}`} title={`Tempo ${p}`} />
+                                );
+                            })}
+                        </div>
                     </div>
 
                     {/* Timer center */}
@@ -609,7 +640,15 @@ export function SumulaFutebol7() {
                             <div className="text-[10px] font-bold text-yellow-400 mt-0.5 bg-yellow-400/10 px-2 py-0.5 rounded-full">(Pên: {penaltyScore.away})</div>
                         )}
                         <div className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider mt-1.5 truncate max-w-[80px] text-center">{matchData.away_team?.name}</div>
-                        <div className="mt-2"><FoulDots count={fouls.away} /></div>
+                        <div className="mt-1 mb-1"><FoulDots count={fouls.away} /></div>
+                        <div className="flex gap-1 mt-1">
+                            {['1º Tempo', '2º Tempo'].map(p => {
+                                const taken = (timeouts as any).away.some((t: any) => t.period === p);
+                                return (
+                                    <div key={p} className={`w-3 h-1.5 rounded-sm ${taken ? 'bg-yellow-500 shadow-[0_0_4px_rgba(234,179,8,0.6)]' : 'bg-gray-800'}`} title={`Tempo ${p}`} />
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -646,6 +685,10 @@ export function SumulaFutebol7() {
                                 className="py-2.5 bg-white/5 hover:bg-white/10 rounded-2xl font-bold text-[11px] border border-white/10 text-gray-300 flex items-center justify-center gap-1">
                                 <Flag size={12} /> Falta
                             </ActionBtn>
+                            <ActionBtn onClick={() => registerSimpleEvent('home', 'timeout')} disabled={!isRunning}
+                                className="py-2.5 bg-yellow-600/20 hover:bg-yellow-600/40 text-yellow-500 rounded-2xl font-bold text-[11px] border border-yellow-500/30 shadow-sm col-span-2">
+                                ⏱️ Pedir Tempo
+                            </ActionBtn>
                         </div>
                     </div>
 
@@ -668,6 +711,10 @@ export function SumulaFutebol7() {
                             <ActionBtn onClick={() => openEventModal('away', 'foul')} disabled={!isRunning}
                                 className="py-2.5 bg-white/5 hover:bg-white/10 rounded-2xl font-bold text-[11px] border border-white/10 text-gray-300 flex items-center justify-center gap-1">
                                 <Flag size={12} /> Falta
+                            </ActionBtn>
+                            <ActionBtn onClick={() => registerSimpleEvent('away', 'timeout')} disabled={!isRunning}
+                                className="py-2.5 bg-yellow-600/20 hover:bg-yellow-600/40 text-yellow-500 rounded-2xl font-bold text-[11px] border border-yellow-500/30 shadow-sm col-span-2">
+                                ⏱️ Pedir Tempo
                             </ActionBtn>
                         </div>
                     </div>
