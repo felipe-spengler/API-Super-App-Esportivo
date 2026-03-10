@@ -187,7 +187,9 @@ class AuthController extends Controller
 
         // Envia o e-mail
         try {
-            Mail::send([], [], function ($message) use ($user, $token) {
+            $resetLink = "https://esportivo.techinteligente.site/reset-password?email=" . urlencode($user->email) . "&token=" . $token;
+
+            Mail::send([], [], function ($message) use ($user, $token, $resetLink) {
                 $message->to($user->email)
                     ->subject('Recuperação de Senha - Esportivo')
                     ->html("
@@ -198,13 +200,19 @@ class AuthController extends Controller
                             <div style='padding: 30px; color: #1e293b; line-height: 1.6;'>
                                 <p>Olá, <strong>{$user->name}</strong>!</p>
                                 <p>Você solicitou a recuperação da sua senha no sistema <strong>Esportivo</strong>.</p>
-                                <p>Use o código de verificação abaixo:</p>
+                                <p>Clique no botão abaixo para redefinir sua senha diretamente:</p>
                                 
-                                <div style='background: #f1f5f9; padding: 24px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #1e293b; border-radius: 8px; margin: 20px 0; border: 1px dashed #cbd5e1;'>
+                                <div style='text-align: center; margin: 30px 0;'>
+                                    <a href='{$resetLink}' style='background: #4f46e5; color: white; padding: 16px 32px; text-decoration: none; border-radius: 12px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);'>Alterar Minha Senha Agora</a>
+                                </div>
+
+                                <p>Ou, se preferir, use o código de verificação abaixo manualmente:</p>
+                                
+                                <div style='background: #f1f5f9; padding: 15px; text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 4px; color: #1e293b; border-radius: 8px; border: 1px dashed #cbd5e1;'>
                                     {$token}
                                 </div>
 
-                                <p style='color: #64748b; font-size: 14px;'>Este código é válido por 60 minutos. Se você não solicitou esta alteração, pode ignorar este e-mail com segurança.</p>
+                                <p style='color: #64748b; font-size: 14px; margin-top: 30px;'>Este link e código são válidos por 60 minutos. Se você não solicitou esta alteração, pode ignorar este e-mail.</p>
                             </div>
                             <div style='background: #f8fafc; padding: 20px; text-align: center; font-size: 11px; color: #94a3b8;'>
                                 <p>Esta é uma mensagem automática, por favor não responda.</p>

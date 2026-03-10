@@ -9,8 +9,10 @@ export function ResetPassword() {
     const location = useLocation();
     const navigate = useNavigate();
 
-    const [email, setEmail] = useState(location.state?.email || '');
-    const [token, setToken] = useState('');
+    const query = new URLSearchParams(location.search);
+
+    const [email, setEmail] = useState(query.get('email') || location.state?.email || '');
+    const [token, setToken] = useState(query.get('token') || '');
     const [password, setPassword] = useState('');
     const [passwordConfirmation, setPasswordConfirmation] = useState('');
 
