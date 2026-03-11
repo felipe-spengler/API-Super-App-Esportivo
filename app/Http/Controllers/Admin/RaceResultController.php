@@ -455,6 +455,21 @@ class RaceResultController extends Controller
                 if ($exists) {
                     return response()->json(['error' => 'Você já está inscrito neste evento.'], 422);
                 }
+
+                // APROVEITAR PARA COMPLETAR O PERFIL SE ESTIVER FALTANDO
+                $updatedFields = [];
+                if (!$user->birth_date && $request->birth_date)
+                    $updatedFields['birth_date'] = $request->birth_date;
+                if (!$user->gender && $request->gender)
+                    $updatedFields['gender'] = $request->gender;
+                if (!$user->phone && $request->phone)
+                    $updatedFields['phone'] = $request->phone;
+                if (!$user->cpf && $request->document)
+                    $updatedFields['cpf'] = $request->document;
+
+                if (!empty($updatedFields)) {
+                    $user->update($updatedFields);
+                }
             } else {
                 $user = User::create([
                     'name' => $request->name,
@@ -762,13 +777,26 @@ class RaceResultController extends Controller
         // Limpar CPF para busca
         $cleanCpf = preg_replace('/[^0-9]/', '', $request->document);
 
-        // Buscar usuário limpando o CPF do banco também para garantir o match
-        $user = User::where(DB::raw("REPLACE(REPLACE(cpf, '.', ''), '-', '')"), $cleanCpf)
-            ->whereDate('birth_date', $request->birth_date)
-            ->first();
+        // 1. Tentar buscar pelo CPF exato (independente da data inicialmente)
+        $user = User::where(DB::raw("REPLACE(REPLACE(cpf, '.', ''), '-', '')"), $cleanCpf)->first();
 
         if (!$user) {
-            return response()->json(['error' => 'Nenhuma inscrição encontrada. Verifique se o CPF e a Data de Nascimento estão corretos e se você concluiu o cadastro.'], 422);
+            return response()->json(['error' => 'Nenhuma inscrição encontrada para este CPF.'], 422);
+        }
+
+        // 2. Se o usuário tem data no banco, ELA DEVE COINCIDIR (Segurança)
+        if ($user->birth_date) {
+            $dbDate = \Carbon\Carbon::parse($user->birth_date)->format('Y-m-d');
+            $reqDate = \Carbon\Carbon::parse($request->birth_date)->format('Y-m-d');
+
+            if ($dbDate !== $reqDate) {
+                return response()->json(['error' => 'Data de nascimento não confere com nossos registros.'], 422);
+            }
+        } else {
+            // 3. Se o usuário NÃO tem data no banco (caso de usuários antigos), cadastramos a data agora
+            // Isso permite que ele entre e já "limpa" o registro dele para o futuro.
+            $user->update(['birth_date' => $request->birth_date]);
+            Log::info("User ID {$user->id} updated birth_date during tracking.");
         }
 
         $registration = RaceResult::where('race_id', $race->id)
