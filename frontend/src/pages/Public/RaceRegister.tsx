@@ -90,6 +90,33 @@ export function RaceRegister() {
         loadData();
     }, [id]);
 
+    // Auto-refresh payment status every 7 seconds
+    useEffect(() => {
+        let interval: NodeJS.Timeout;
+
+        if (step === 7 && registrationData?.requires_payment) {
+            interval = setInterval(async () => {
+                try {
+                    const response = await api.post(`/championships/${id}/race/track`, {
+                        document: formData.document,
+                        birth_date: formData.birth_date
+                    });
+
+                    if (response.data.result.status_payment === 'paid') {
+                        setRegistrationData(response.data);
+                        toast.success('Pagamento confirmado!');
+                    }
+                } catch (error) {
+                    console.error('Erro ao verificar status:', error);
+                }
+            }, 7000);
+        }
+
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [step, registrationData?.requires_payment, id, formData.document, formData.birth_date]);
+
     useEffect(() => {
         if (user) {
             setFormData(prev => ({

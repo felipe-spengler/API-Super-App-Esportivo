@@ -56,6 +56,8 @@ class AsaasController extends Controller
 
     public function webhook(Request $request)
     {
+        Log::debug("Asaas Webhook Headers:", $request->headers->all());
+
         // Validação do Token do Webhook (Segurança)
         $token = $request->header('asaas-access-token');
         $expectedToken = config('services.asaas.webhook_token');
@@ -69,7 +71,7 @@ class AsaasController extends Controller
         $event = $payload['event'] ?? null;
         $payment = $payload['payment'] ?? null;
 
-        Log::info("Asaas Webhook Received: " . ($event ?? 'no event'), ['payload' => $payload]);
+        Log::info("Asaas Webhook Received: {$event}", ['externalReference' => $payment['externalReference'] ?? 'NONE']);
 
         if (!$event || !$payment) {
             return response()->json(['message' => 'Invalid payload'], 400);
@@ -86,7 +88,7 @@ class AsaasController extends Controller
             if (in_array($event, $successEvents)) {
                 $this->handlePaymentSuccess($payment);
             } elseif (in_array($event, $failureEvents)) {
-                $this->handlePaymentFailure($payment);
+                $this->handlePaymentFailure($payment, $event);
             }
 
             DB::commit();
@@ -94,7 +96,7 @@ class AsaasController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("Asaas Webhook Error: " . $e->getMessage());
+            Log::error("Asaas Webhook Error: " . $e->getMessage() . " at " . $e->getFile() . ":" . $e->getLine());
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
@@ -140,8 +142,13 @@ class AsaasController extends Controller
                     }
                 }
 
-                $this->sendInscriptionConfirmation($result);
-                Log::info("RaceResult {$id} marked as PAID and confirmation email sent");
+                try {
+                    $this->sendInscriptionConfirmation($result);
+                } catch (\Exception $mailEx) {
+                    Log::error("Pagamento Confirmado RR {$id}, mas erro ao enviar e-mail: " . $mailEx->getMessage());
+                }
+
+                Log::info("RaceResult {$id} marked as PAID");
             }
         }
         // Caso 2: Checkout Geral / Pedido na Loja
@@ -210,14 +217,14 @@ class AsaasController extends Controller
         return;
     }
 
-    private function handlePaymentFailure($payment)
+    private function handlePaymentFailure($payment, $event)
     {
         $externalReference = $payment['externalReference'] ?? null;
         if (!$externalReference)
             return;
 
         $status = 'cancelled';
-        if ($payment['event'] === 'PAYMENT_REFUNDED')
+        if ($event === 'PAYMENT_REFUNDED')
             $status = 'refunded';
 
         if (str_starts_with($externalReference, 'RR_')) {
