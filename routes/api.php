@@ -133,6 +133,7 @@ Route::get('/shop/products/{clubId}', [ShopController::class, 'products']);
 Route::get('/public/products', [ShopController::class, 'allProducts']); // NEW
 Route::get('/products/{id}', [ShopController::class, 'productDetails']);
 Route::post('/asaas/webhook', [\App\Http\Controllers\Admin\AsaasController::class, 'webhook']);
+Route::post('/admin/asaas/webhook', [\App\Http\Controllers\Admin\AsaasController::class, 'webhook']);
 
 // Rotas Protegidas (Atleta Logado)
 Route::middleware(['auth:sanctum', 'audit'])->group(function () {
