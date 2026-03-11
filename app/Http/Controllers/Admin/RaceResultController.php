@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use App\Models\Category;
 use App\Models\Coupon;
+use App\Models\Team;
 use App\Services\AsaasService;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\InscriptionPaymentMail;
@@ -671,13 +672,47 @@ class RaceResultController extends Controller
     public function recreatePayment(Request $request, $id)
     {
         $request->validate([
-            'payment_method' => 'required|string|in:PIX,CREDIT_CARD,BOLETO,UNDEFINED'
+            'payment_method' => 'required|string|in:PIX,CREDIT_CARD,BOLETO,UNDEFINED',
+            'document' => 'nullable|string',
+            'birth_date' => 'nullable|date',
         ]);
 
         $result = RaceResult::where('id', $id)
-            ->where('user_id', $request->user()->id)
-            ->with(['race.championship.club', 'category'])
-            ->firstOrFail();
+            ->with(['race.championship.club', 'category', 'user'])
+            ->first();
+
+        if (!$result) {
+            // Se não achou em RaceResult, tenta em championship_team (pivot)
+            $pivot = DB::table('championship_team')->where('id', $id)->first();
+            if ($pivot) {
+                return $this->recreateTeamPayment($request, $pivot);
+            }
+            return response()->json(['error' => 'Inscrição não encontrada.'], 404);
+        }
+
+        // VERIFICAÇÃO DE SEGURANÇA
+        $user = auth('sanctum')->user();
+        if ($user) {
+            // Se logado: Dono da inscrição OU Admin
+            if (!$user->is_admin && $user->id !== $result->user_id) {
+                return response()->json(['error' => 'Acesso negado. Esta inscrição pertence a outro atleta.'], 403);
+            }
+        } else {
+            // Se DESLOGADO (fluxo de Acompanhar Inscrição): Exige CPF e Data de Nascimento
+            if (!$request->document || !$request->birth_date) {
+                return response()->json(['error' => 'Autenticação necessária.'], 401);
+            }
+
+            $cleanCpf = preg_replace('/[^0-9]/', '', $request->document);
+            $dbCpf = preg_replace('/[^0-9]/', '', $result->user->cpf ?? '');
+
+            $reqDate = \Carbon\Carbon::parse($request->birth_date)->format('Y-m-d');
+            $dbDate = $result->user->birth_date ? \Carbon\Carbon::parse($result->user->birth_date)->format('Y-m-d') : null;
+
+            if ($cleanCpf !== $dbCpf || $reqDate !== $dbDate) {
+                return response()->json(['error' => 'Dados de verificação não conferem.'], 403);
+            }
+        }
 
         if ($result->status_payment === 'paid') {
             return response()->json(['error' => 'Esta inscrição já está paga.'], 422);
@@ -700,7 +735,7 @@ class RaceResultController extends Controller
             $amount = $result->payment_info['value'] ?? (float) $result->category->price;
 
             $payment = $asaas->createPayment(
-                $request->user(),
+                $result->user, // Usar o usuário da inscrição, não necessariamente o logado
                 $amount,
                 "Inscrição (Renovada): {$result->race->championship->name} - {$result->category->name}",
                 "RR_{$result->id}",
@@ -729,7 +764,7 @@ class RaceResultController extends Controller
 
                 // Re-enviar E-mail
                 try {
-                    Mail::to($request->user()->email)->send(new InscriptionPaymentMail($result, $paymentInfo));
+                    Mail::to($result->user->email)->send(new InscriptionPaymentMail($result, $paymentInfo));
                 } catch (\Exception $me) {
                     Log::error("Erro ao re-enviar e-mail de inscrição: " . $me->getMessage());
                 }
@@ -745,6 +780,92 @@ class RaceResultController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['error' => 'Erro ao recriar pagamento: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Recriar pagamento para Inscrição de Equipe (championship_team)
+     */
+    private function recreateTeamPayment(Request $request, $pivot)
+    {
+        $championship = Championship::with('club')->findOrFail($pivot->championship_id);
+        $team = Team::findOrFail($pivot->team_id);
+        $category = Category::findOrFail($pivot->category_id);
+        $captain = User::findOrFail($team->captain_id);
+
+        // Segurança para Equipes (Apenas Capitão ou Admin)
+        $user = auth('sanctum')->user();
+        if ($user) {
+            if (!$user->is_admin && $user->id !== $captain->id) {
+                return response()->json(['error' => 'Acesso negado. Apenas o capitão ou admin podem alterar o pagamento.'], 403);
+            }
+        } else {
+            // Caso queira permitir via Documento do Capitão
+            if (!$request->document || !$request->birth_date) {
+                return response()->json(['error' => 'Autenticação necessária.'], 401);
+            }
+            $cleanCpf = preg_replace('/[^0-9]/', '', $request->document);
+            $dbCpf = preg_replace('/[^0-9]/', '', $captain->cpf ?? '');
+            if ($cleanCpf !== $dbCpf) {
+                return response()->json(['error' => 'Dados do capitão não conferem.'], 403);
+            }
+        }
+
+        if ($pivot->status_payment === 'paid') {
+            return response()->json(['error' => 'Esta inscrição já está paga.'], 422);
+        }
+
+        try {
+            DB::beginTransaction();
+            $asaas = new AsaasService($championship->club);
+
+            // Carregar info do pagamento antigo do pivot (se existir)
+            $oldInfo = json_decode($pivot->payment_info ?? '[]', true);
+            if (!empty($oldInfo['asaas_id'])) {
+                try {
+                    $asaas->deletePayment($oldInfo['asaas_id']);
+                } catch (\Exception $e) {
+                    Log::warning("Erro cancelamento asaas team: " . $e->getMessage());
+                }
+            }
+
+            // Calcular valor total (simplificado aqui, pegando do pivot ou da categoria)
+            // Idealmente o pivot deveria ter um campo total_price salvo. 
+            // Se não tem, usamos o preço da categoria.
+            $amount = (float) ($oldInfo['value'] ?? $category->price);
+
+            $payment = $asaas->createPayment(
+                $captain,
+                $amount,
+                "Inscrição Equipe (Renovada): {$championship->name} - {$team->name}",
+                "CT_{$pivot->id}",
+                null,
+                $request->payment_method
+            );
+
+            if (isset($payment['id'])) {
+                $pix = ($request->payment_method === 'PIX' || $request->payment_method === 'UNDEFINED') ? $asaas->getPixQrCode($payment['id']) : null;
+                $paymentInfo = [
+                    'asaas_id' => $payment['id'],
+                    'invoice_url' => $payment['invoiceUrl'],
+                    'pix_qr_code' => $pix['encodedImage'] ?? null,
+                    'pix_copy_paste' => $pix['payload'] ?? null,
+                    'expiration' => $payment['dueDate'],
+                    'value' => $amount
+                ];
+
+                DB::table('championship_team')->where('id', $pivot->id)->update([
+                    'payment_method' => 'asaas',
+                    'payment_info' => json_encode($paymentInfo),
+                    'updated_at' => now()
+                ]);
+            }
+
+            DB::commit();
+            return response()->json(['message' => 'Pagamento atualizado!', 'payment_data' => $paymentInfo]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Erro ao recriar pagamento equipe: ' . $e->getMessage()], 500);
         }
     }
 

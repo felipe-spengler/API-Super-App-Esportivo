@@ -111,6 +111,7 @@ Route::get('/championships/{id}/race', [EventController::class, 'raceDetails']);
 Route::get('/championships/{id}/race-results', [EventController::class, 'raceResults']);
 Route::post('/championships/{id}/race/register', [\App\Http\Controllers\Admin\RaceResultController::class, 'publicRegister']);
 Route::post('/championships/{id}/race/track', [\App\Http\Controllers\Admin\RaceResultController::class, 'publicTrackRegistration']);
+Route::post('/inscriptions/{id}/recreate-payment', [\App\Http\Controllers\Admin\RaceResultController::class, 'recreatePayment']);
 Route::get('/championships/{id}/mvp', [EventController::class, 'mvp']);
 Route::get('/championships/{id}/teams', [EventController::class, 'teamsList']);
 Route::get('/championships/{id}/h2h', [EventController::class, 'h2h']);
@@ -143,7 +144,6 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
 
     // Inscrições e Comprovantes
     Route::get('/my-inscriptions', [\App\Http\Controllers\Admin\RaceResultController::class, 'myInscriptions']);
-    Route::post('/inscriptions/{id}/recreate-payment', [\App\Http\Controllers\Admin\RaceResultController::class, 'recreatePayment']);
     Route::get('/inscriptions/{id}/receipt', [\App\Http\Controllers\ReceiptController::class, 'download']);
 
     // Checkout e Cupons

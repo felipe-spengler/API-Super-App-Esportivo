@@ -284,7 +284,9 @@ export function RaceRegister() {
         try {
             setSaving(true);
             const response = await api.post(`/inscriptions/${registrationData.result.id}/recreate-payment`, {
-                payment_method: newMethod
+                payment_method: newMethod,
+                document: formData.document,
+                birth_date: formData.birth_date
             });
             setRegistrationData({
                 ...registrationData,
