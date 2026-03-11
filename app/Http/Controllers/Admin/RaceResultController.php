@@ -736,6 +736,8 @@ class RaceResultController extends Controller
     // Acompanhar Inscrição (Público)
     public function publicTrackRegistration(Request $request, $championshipId)
     {
+        Log::info("Tracking registration for championship: $championshipId", $request->all());
+
         $request->validate([
             'document' => 'required|string',
             'birth_date' => 'required|date'
@@ -743,7 +745,17 @@ class RaceResultController extends Controller
 
         $race = Race::where('championship_id', $championshipId)->first();
         if (!$race) {
-            return response()->json(['error' => 'Evento não encontrado.'], 404);
+            $championship = Championship::find($championshipId);
+            if ($championship && $championship->format === 'racing') {
+                $race = Race::create([
+                    'championship_id' => $championshipId,
+                    'start_datetime' => $championship->start_date,
+                    'location_name' => 'A definir',
+                    'kits_info' => 'Informações do kit em breve'
+                ]);
+            } else {
+                return response()->json(['error' => 'Evento não configurado como corrida.'], 422);
+            }
         }
 
         // Buscar usuário pelo documento e validar com data de nascimento
@@ -752,7 +764,7 @@ class RaceResultController extends Controller
             ->first();
 
         if (!$user) {
-            return response()->json(['error' => 'Nenhuma inscrição encontrada com estes dados.'], 404);
+            return response()->json(['error' => 'Nenhuma inscrição encontrada com estes dados (CPF ou Data Incorretos).'], 422);
         }
 
         $registration = RaceResult::where('race_id', $race->id)
@@ -761,7 +773,7 @@ class RaceResultController extends Controller
             ->first();
 
         if (!$registration) {
-            return response()->json(['error' => 'Você ainda não está inscrito neste evento.'], 404);
+            return response()->json(['error' => 'Você ainda não está inscrito neste evento.'], 422);
         }
 
         return response()->json([
@@ -769,7 +781,7 @@ class RaceResultController extends Controller
             'requires_payment' => $registration->status_payment === 'pending',
             'payment_data' => $registration->payment_info,
             'price' => $registration->payment_info['value'] ?? (float) $registration->category->price,
-            'discount_applied' => $registration->discount_applied ?? 0 // Se tiver salvo
+            'discount_applied' => $registration->discount_applied ?? 0
         ]);
     }
 }
