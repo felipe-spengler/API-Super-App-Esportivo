@@ -14,6 +14,8 @@ use Illuminate\Support\Str;
 use App\Models\Category;
 use App\Models\Coupon;
 use App\Services\AsaasService;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\InscriptionPaymentMail;
 
 class RaceResultController extends Controller
 {
@@ -606,11 +608,23 @@ class RaceResultController extends Controller
                             'invoice_url' => $payment['invoiceUrl'],
                             'pix_qr_code' => $pix['encodedImage'] ?? null,
                             'pix_copy_paste' => $pix['payload'] ?? null,
-                            'expiration' => $payment['dueDate']
+                            'expiration' => $payment['dueDate'],
+                            'value' => $finalPrice
                         ];
 
-                        // Opcional: Salvar ID no resultado para conciliação manual se o webhook falhar
-                        $result->update(['payment_method' => 'asaas']);
+                        // Salvar info no resultado para conciliação e re-exibição
+                        $result->update([
+                            'payment_method' => 'asaas',
+                            'asaas_payment_id' => $payment['id'],
+                            'payment_info' => $paymentInfo
+                        ]);
+
+                        // Enviar E-mail!
+                        try {
+                            Mail::to($user->email)->send(new InscriptionPaymentMail($result, $paymentInfo));
+                        } catch (\Exception $me) {
+                            Log::error("Erro ao enviar e-mail de inscrição: " . $me->getMessage());
+                        }
                     }
                 } catch (\Exception $pe) {
                     Log::error("Erro Asaas ao criar pagamento: " . $pe->getMessage());
@@ -636,5 +650,126 @@ class RaceResultController extends Controller
             DB::rollBack();
             return response()->json(['error' => 'Erro ao processar inscrição: ' . $e->getMessage()], 500);
         }
+    }
+
+    // Recriar Pagamento (Mudar método ou renovar)
+    public function recreatePayment(Request $request, $id)
+    {
+        $request->validate([
+            'payment_method' => 'required|string|in:PIX,CREDIT_CARD,BOLETO,UNDEFINED'
+        ]);
+
+        $result = RaceResult::where('id', $id)
+            ->where('user_id', $request->user()->id)
+            ->with(['race.championship.club', 'category'])
+            ->firstOrFail();
+
+        if ($result->status_payment === 'paid') {
+            return response()->json(['error' => 'Esta inscrição já está paga.'], 422);
+        }
+
+        try {
+            DB::beginTransaction();
+            $asaas = new AsaasService($result->race->championship->club);
+
+            // 1. Tentar cancelar o antigo no Asaas
+            if ($result->asaas_payment_id) {
+                try {
+                    $asaas->deletePayment($result->asaas_payment_id);
+                } catch (\Exception $e) {
+                    Log::warning("Não foi possível cancelar pagamento antigo {$result->asaas_payment_id}: " . $e->getMessage());
+                }
+            }
+
+            // 2. Criar Novo Pagamento
+            $amount = $result->payment_info['value'] ?? (float) $result->category->price;
+
+            $payment = $asaas->createPayment(
+                $request->user(),
+                $amount,
+                "Inscrição (Renovada): {$result->race->championship->name} - {$result->category->name}",
+                "RR_{$result->id}",
+                null,
+                $request->payment_method
+            );
+
+            $paymentInfo = null;
+            if (isset($payment['id'])) {
+                $pix = ($request->payment_method === 'PIX' || $request->payment_method === 'UNDEFINED') ? $asaas->getPixQrCode($payment['id']) : null;
+
+                $paymentInfo = [
+                    'asaas_id' => $payment['id'],
+                    'invoice_url' => $payment['invoiceUrl'],
+                    'pix_qr_code' => $pix['encodedImage'] ?? null,
+                    'pix_copy_paste' => $pix['payload'] ?? null,
+                    'expiration' => $payment['dueDate'],
+                    'value' => $amount
+                ];
+
+                $result->update([
+                    'payment_method' => 'asaas',
+                    'asaas_payment_id' => $payment['id'],
+                    'payment_info' => $paymentInfo
+                ]);
+
+                // Re-enviar E-mail
+                try {
+                    Mail::to($request->user()->email)->send(new InscriptionPaymentMail($result, $paymentInfo));
+                } catch (\Exception $me) {
+                    Log::error("Erro ao re-enviar e-mail de inscrição: " . $me->getMessage());
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Pagamento atualizado!',
+                'payment_data' => $paymentInfo
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Erro ao recriar pagamento: ' . $e->getMessage()], 500);
+        }
+    }
+
+    // Acompanhar Inscrição (Público)
+    public function publicTrackRegistration(Request $request, $championshipId)
+    {
+        $request->validate([
+            'document' => 'required|string',
+            'birth_date' => 'required|date'
+        ]);
+
+        $race = Race::where('championship_id', $championshipId)->first();
+        if (!$race) {
+            return response()->json(['error' => 'Evento não encontrado.'], 404);
+        }
+
+        // Buscar usuário pelo documento e validar com data de nascimento
+        $user = User::where('cpf', $request->document)
+            ->whereDate('birth_date', $request->birth_date)
+            ->first();
+
+        if (!$user) {
+            return response()->json(['error' => 'Nenhuma inscrição encontrada com estes dados.'], 404);
+        }
+
+        $registration = RaceResult::where('race_id', $race->id)
+            ->where('user_id', $user->id)
+            ->with(['category'])
+            ->first();
+
+        if (!$registration) {
+            return response()->json(['error' => 'Você ainda não está inscrito neste evento.'], 404);
+        }
+
+        return response()->json([
+            'result' => $registration,
+            'requires_payment' => $registration->status_payment === 'pending',
+            'payment_data' => $registration->payment_info,
+            'price' => $registration->payment_info['value'] ?? (float) $registration->category->price,
+            'discount_applied' => $registration->discount_applied ?? 0 // Se tiver salvo
+        ]);
     }
 }

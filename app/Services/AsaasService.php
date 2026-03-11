@@ -42,6 +42,8 @@ class AsaasService
             $response = $response->post($url, $data);
         } elseif ($method === 'PUT') {
             $response = $response->put($url, $data);
+        } elseif ($method === 'DELETE') {
+            $response = $response->delete($url, $data);
         } else {
             $response = $response->get($url, $data);
         }
@@ -114,5 +116,13 @@ class AsaasService
     public function getPixQrCode($paymentId)
     {
         return $this->request("/payments/{$paymentId}/pixQrCode");
+    }
+
+    /**
+     * Cancela uma cobrança
+     */
+    public function deletePayment($paymentId)
+    {
+        return $this->request("/payments/{$paymentId}", 'DELETE');
     }
 }

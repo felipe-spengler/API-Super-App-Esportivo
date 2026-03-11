@@ -3,8 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
     User, Phone, FileText, Camera, Calendar, Mail, CreditCard,
     ArrowLeft, ArrowRight, Loader2, CheckCircle2,
-    Check, Smartphone, AlertCircle
+    Check, Smartphone, AlertCircle, RefreshCw, Search, Activity, ShieldQuestion
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
@@ -49,6 +50,41 @@ export function RaceRegister() {
 
     const [shopProducts, setShopProducts] = useState<any[]>([]);
     const [shopItems, setShopItems] = useState<any[]>([]);
+
+    const [trackingCpf, setTrackingCpf] = useState('');
+    const [trackingBirthDate, setTrackingBirthDate] = useState('');
+    const [isTracking, setIsTracking] = useState(false);
+
+    async function handleTrack() {
+        if (!trackingCpf || !trackingBirthDate) {
+            toast.error('Preencha CPF e Data de Nascimento');
+            return;
+        }
+        try {
+            setSaving(true);
+            const response = await api.post(`/championships/${id}/race/track`, {
+                document: trackingCpf,
+                birth_date: trackingBirthDate
+            });
+            setRegistrationData(response.data);
+
+            // Detectar o método anterior
+            if (response.data.payment_data?.pix_qr_code) {
+                setChosenMethod('PIX');
+            } else if (response.data.payment_data?.invoice_url) {
+                // Se só tiver invoice_url, pode ser cartão ou boleto. 
+                // No frontend geralmente o usuário escolhe, mas vamos manter o que estiver
+            }
+
+            setStep(7);
+            toast.success('Inscrição recuperada!');
+            setIsTracking(false);
+        } catch (error: any) {
+            toast.error(error.response?.data?.error || 'Inscrição não encontrada');
+        } finally {
+            setSaving(false);
+        }
+    }
 
     useEffect(() => {
         loadData();
@@ -143,6 +179,28 @@ export function RaceRegister() {
             // Fetch Club Products
             const productsRes = await api.get(`/shop/products/${champ.club_id}`);
             setShopProducts(productsRes.data || []);
+
+            // Verificar se usuário já está inscrito
+            if (user) {
+                const myInscriptions = await api.get('/my-inscriptions');
+                const existing = myInscriptions.data.find((ins: any) => ins.race?.championship_id === Number(id));
+                if (existing) {
+                    setRegistrationData({
+                        result: existing,
+                        requires_payment: existing.status_payment === 'pending',
+                        payment_data: existing.payment_info
+                    });
+
+                    // Tentar determinar o método que estava sendo exibido
+                    if (existing.payment_info?.pix_qr_code) {
+                        setChosenMethod('PIX');
+                    } else if (existing.payment_info?.invoice_url) {
+                        // Poderia ser cartão ou boleto. Vamos deixar como PIX se houver opção ou o que estiver no state
+                    }
+
+                    setStep(7); // Ir direto para a tela de sucesso/pagamento
+                }
+            }
         } catch (error) {
             console.error(error);
             alert("Erro ao carregar evento");
@@ -221,6 +279,26 @@ export function RaceRegister() {
             setSaving(false);
         }
     };
+
+    async function handleRecreatePayment(newMethod: 'PIX' | 'CREDIT_CARD' | 'BOLETO') {
+        try {
+            setSaving(true);
+            const response = await api.post(`/inscriptions/${registrationData.result.id}/recreate-payment`, {
+                payment_method: newMethod
+            });
+            setRegistrationData({
+                ...registrationData,
+                payment_data: response.data.payment_data
+            });
+            setChosenMethod(newMethod);
+            toast.success('Forma de pagamento atualizada!');
+        } catch (error: any) {
+            console.error(error);
+            toast.error(error.response?.data?.error || 'Erro ao atualizar pagamento');
+        } finally {
+            setSaving(false);
+        }
+    }
 
     if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-50"><Loader2 className="animate-spin text-indigo-600" /></div>;
 
@@ -308,6 +386,65 @@ export function RaceRegister() {
                                     Próximo Passo
                                     <ArrowRight className="group-hover:translate-x-1 transition-transform" />
                                 </button>
+
+                                {/* Tracking Section */}
+                                <div className="mt-8 pt-8 border-t border-slate-100">
+                                    {!isTracking ? (
+                                        <button
+                                            onClick={() => setIsTracking(true)}
+                                            className="w-full py-4 bg-indigo-50 text-indigo-600 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-indigo-100 transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <Search size={14} />
+                                            Já se inscreveu? Acompanhe aqui
+                                        </button>
+                                    ) : (
+                                        <div className="space-y-4 animate-in fade-in zoom-in-95 duration-300">
+                                            <div className="flex items-center justify-between">
+                                                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                                    <Activity size={12} className="text-indigo-600" />
+                                                    Consultar Inscrição
+                                                </h3>
+                                                <button onClick={() => setIsTracking(false)} className="text-[10px] font-black text-indigo-600 uppercase">Cancelar</button>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[10px] font-black text-slate-400 uppercase ml-1">CPF do Atleta</label>
+                                                    <div className="relative">
+                                                        <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                                        <input
+                                                            value={trackingCpf}
+                                                            onChange={e => setTrackingCpf(e.target.value)}
+                                                            placeholder="000.000.000-00"
+                                                            className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-transparent focus:border-indigo-600 rounded-2xl text-sm font-bold transition-all outline-none"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Data de Nascimento</label>
+                                                    <div className="relative">
+                                                        <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                                        <input
+                                                            type="date"
+                                                            value={trackingBirthDate}
+                                                            onChange={e => setTrackingBirthDate(e.target.value)}
+                                                            className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-transparent focus:border-indigo-600 rounded-2xl text-sm font-bold transition-all outline-none"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <button
+                                                onClick={handleTrack}
+                                                disabled={saving || !trackingCpf || !trackingBirthDate}
+                                                className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-700 disabled:opacity-50 shadow-lg shadow-indigo-100 flex items-center justify-center gap-3 transition-all"
+                                            >
+                                                {saving ? <Loader2 className="animate-spin" /> : <Search size={18} />}
+                                                Localizar Minha Inscrição
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         ) : (
                             <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
@@ -970,7 +1107,9 @@ export function RaceRegister() {
                                 {registrationData?.payment_data?.pix_qr_code && chosenMethod === 'PIX' && (
                                     <div className="bg-slate-50 p-6 rounded-2xl border border-dashed border-slate-200 flex flex-col items-center gap-4">
                                         <img
-                                            src={`data:image/png;base64,${registrationData.payment_data.pix_qr_code}`}
+                                            src={registrationData.payment_data.pix_qr_code.startsWith('data:')
+                                                ? registrationData.payment_data.pix_qr_code
+                                                : `data:image/png;base64,${registrationData.payment_data.pix_qr_code}`}
                                             alt="PIX QR Code"
                                             className="w-48 h-48 rounded-lg shadow-sm"
                                         />
@@ -1029,6 +1168,46 @@ export function RaceRegister() {
                                         >
                                             Imprimir Boleto
                                         </a>
+                                    </div>
+                                )}
+
+                                {/* Opções de Troca de Método */}
+                                {registrationData?.requires_payment && !saving && (
+                                    <div className="pt-4 border-t border-slate-100">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Alterar forma de pagamento</p>
+                                        <div className="flex justify-center gap-2">
+                                            {chosenMethod !== 'PIX' && (
+                                                <button
+                                                    onClick={() => handleRecreatePayment('PIX')}
+                                                    className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-black uppercase hover:bg-indigo-50 hover:text-indigo-600 transition-all"
+                                                >
+                                                    Pagar via PIX
+                                                </button>
+                                            )}
+                                            {chosenMethod !== 'CREDIT_CARD' && (
+                                                <button
+                                                    onClick={() => handleRecreatePayment('CREDIT_CARD')}
+                                                    className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-black uppercase hover:bg-indigo-50 hover:text-indigo-600 transition-all"
+                                                >
+                                                    Pagar com Cartão
+                                                </button>
+                                            )}
+                                            {chosenMethod !== 'BOLETO' && (
+                                                <button
+                                                    onClick={() => handleRecreatePayment('BOLETO')}
+                                                    className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-black uppercase hover:bg-indigo-50 hover:text-indigo-600 transition-all"
+                                                >
+                                                    Pagar com Boleto
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {saving && (
+                                    <div className="flex items-center justify-center gap-2 py-4">
+                                        <RefreshCw className="w-4 h-4 animate-spin text-indigo-600" />
+                                        <span className="text-[10px] font-black uppercase text-indigo-600">Atualizando forma de pagamento...</span>
                                     </div>
                                 )}
                                 {registrationData?.payment_data?.expiration && (

@@ -23,6 +23,8 @@ class RaceResult extends Model
         'pcd_document_url',
         'gifts',
         'coupon_id',
+        'asaas_payment_id',
+        'payment_info',
         'shop_items',
         'kit_delivered',
         'kit_delivered_at'
@@ -32,6 +34,7 @@ class RaceResult extends Model
         'is_pcd' => 'boolean',
         'gifts' => 'array',
         'shop_items' => 'array',
+        'payment_info' => 'array',
         'kit_delivered' => 'boolean',
         'kit_delivered_at' => 'datetime',
     ];
