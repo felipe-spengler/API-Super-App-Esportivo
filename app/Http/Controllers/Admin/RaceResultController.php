@@ -743,6 +743,7 @@ class RaceResultController extends Controller
             'birth_date' => 'required|date'
         ]);
 
+        // Localizar a Corrida
         $race = Race::where('championship_id', $championshipId)->first();
         if (!$race) {
             $championship = Championship::find($championshipId);
@@ -758,13 +759,16 @@ class RaceResultController extends Controller
             }
         }
 
-        // Buscar usuário pelo documento e validar com data de nascimento
-        $user = User::where('cpf', $request->document)
+        // Limpar CPF para busca
+        $cleanCpf = preg_replace('/[^0-9]/', '', $request->document);
+
+        // Buscar usuário limpando o CPF do banco também para garantir o match
+        $user = User::where(DB::raw("REPLACE(REPLACE(cpf, '.', ''), '-', '')"), $cleanCpf)
             ->whereDate('birth_date', $request->birth_date)
             ->first();
 
         if (!$user) {
-            return response()->json(['error' => 'Nenhuma inscrição encontrada com estes dados (CPF ou Data Incorretos).'], 422);
+            return response()->json(['error' => 'Nenhuma inscrição encontrada. Verifique se o CPF e a Data de Nascimento estão corretos e se você concluiu o cadastro.'], 422);
         }
 
         $registration = RaceResult::where('race_id', $race->id)
