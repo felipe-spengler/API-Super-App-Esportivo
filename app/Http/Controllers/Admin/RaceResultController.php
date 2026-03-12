@@ -61,8 +61,8 @@ class RaceResultController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'nullable|email',
-            'phone' => 'required|string|max:20',
-            'document' => 'required|string|max:20', // CPF ou RG
+            'phone' => 'required|string|max:255',
+            'document' => 'required|string|max:255', // CPF ou RG
             'birth_date' => 'required|date',
             'gender' => 'required|string|in:M,F,O',
             'category_id' => 'required|exists:categories,id',
@@ -373,8 +373,8 @@ class RaceResultController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email',
-            'phone' => 'required|string|max:20',
-            'document' => 'required|string|max:20',
+            'phone' => 'required|string|max:255',
+            'document' => 'required|string|max:255',
             'birth_date' => 'required|date',
             'gender' => 'required|string|in:M,F,O',
             'category_id' => 'required|exists:categories,id',
@@ -410,7 +410,7 @@ class RaceResultController extends Controller
         // Validar Idade na data 31/12 do ano do campeonato
         $eventYear = $race->championship->start_date ? \Carbon\Carbon::parse($race->championship->start_date)->year : date('Y');
         $referenceDate = \Carbon\Carbon::createFromDate($eventYear, 12, 31);
-        $athleteAge = $referenceDate->diffInYears(\Carbon\Carbon::parse($request->birth_date));
+        $athleteAge = (int) $referenceDate->diffInYears(\Carbon\Carbon::parse($request->birth_date), true);
 
         // Validar Gênero
         $catGender = strtolower($category->gender ?? '');
@@ -608,10 +608,11 @@ class RaceResultController extends Controller
             if ($status === 'pending') {
                 try {
                     $asaas = new AsaasService($race->championship->club);
+                    $description = "Inscrição: {$race->championship->name} - {$category->name}";
                     $payment = $asaas->createPayment(
                         $user,
                         $finalPrice,
-                        "Inscrição: {$race->championship->name} - {$category->name}",
+                        substr($description, 0, 250),
                         "RR_{$result->id}",
                         null,
                         $request->input('payment_method', 'UNDEFINED')
@@ -734,10 +735,11 @@ class RaceResultController extends Controller
             // 2. Criar Novo Pagamento
             $amount = $result->payment_info['value'] ?? (float) $result->category->price;
 
+            $description = "Inscrição (Renovada): {$result->race->championship->name} - {$result->category->name}";
             $payment = $asaas->createPayment(
                 $result->user, // Usar o usuário da inscrição, não necessariamente o logado
                 $amount,
-                "Inscrição (Renovada): {$result->race->championship->name} - {$result->category->name}",
+                substr($description, 0, 250),
                 "RR_{$result->id}",
                 null,
                 $request->payment_method
@@ -834,10 +836,11 @@ class RaceResultController extends Controller
             // Se não tem, usamos o preço da categoria.
             $amount = (float) ($oldInfo['value'] ?? $category->price);
 
+            $description = "Inscrição Equipe (Renovada): {$championship->name} - {$team->name}";
             $payment = $asaas->createPayment(
                 $captain,
                 $amount,
-                "Inscrição Equipe (Renovada): {$championship->name} - {$team->name}",
+                substr($description, 0, 250),
                 "CT_{$pivot->id}",
                 null,
                 $request->payment_method
