@@ -99,9 +99,8 @@ export function SumulaTenis() {
         setPointFlow(null);
 
         let winningTeamId = teamId;
-        if (['double_fault', 'forced_error', 'unforced_error', 'foot_fault'].includes(type)) {
-            winningTeamId = teamId === matchData.home_team_id ? matchData.away_team_id : matchData.home_team_id;
-        }
+        // Os tipos 'double_fault' etc agora são considerados "erro do adversário", 
+        // ou seja, quem foi clicado ganha o ponto pelo erro do outro.
 
         await apiCall('tennis_point', `/admin/matches/${id}/tennis/point`, {
             team_id: winningTeamId,
@@ -125,6 +124,7 @@ export function SumulaTenis() {
             await apiCall('tennis_times', `/admin/matches/${id}/tennis/times`, { actual_start_time: tempTime });
         } else {
             await apiCall('tennis_finish', `/admin/matches/${id}/tennis/finish`, { actual_end_time: tempTime });
+            navigate('/admin/matches');
         }
         setTimeModal(null);
     };
@@ -426,9 +426,9 @@ export function SumulaTenis() {
 
             {/* Modal de Seleção de Tipo de Ponto */}
             {pointFlow && (
-                <div className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-950/90 backdrop-blur-sm p-4">
-                    <div className="w-full max-w-md bg-slate-900 rounded-t-[3rem] border-t border-slate-800 p-8 pt-6 animate-in slide-in-from-bottom duration-300">
-                        <div className="w-12 h-1.5 bg-slate-800 rounded-full mx-auto mb-8"></div>
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-sm p-2 sm:p-4">
+                    <div className="w-full max-w-md bg-slate-900 rounded-[2.5rem] border border-slate-800 p-6 sm:p-8 pt-6 animate-in zoom-in duration-300 max-h-[95vh] overflow-y-auto">
+                        <div className="w-12 h-1.5 bg-slate-800 rounded-full mx-auto mb-6"></div>
 
                         <div className="flex items-center justify-between mb-8">
                             <div>

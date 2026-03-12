@@ -80,15 +80,21 @@ class AdminTennisController extends Controller
 
         $details['actual_end_time'] = $request->input('actual_end_time', now()->format('H:i'));
         $match->match_details = $details;
-        $match->status = 'finished';
         $match->save();
 
-        // Call generic finish logic to handle brackets/advancements
+        // 1. First ensure recalculation is done to have correct sets/scores
+        $this->recalculateState($match);
+        $match->refresh();
+
+        // 2. Call generic finish logic to handle brackets/advancements
         $adminMatchController = new AdminMatchController();
-        return $adminMatchController->finish(new Request([
+        $adminMatchController->finish(new Request([
             'home_score' => $match->home_score,
             'away_score' => $match->away_score
         ]), $matchId);
+
+        // 3. Return full state for UI consistency
+        return $this->getState($matchId);
     }
 
     private function recalculateState($match)
@@ -228,6 +234,21 @@ class AdminTennisController extends Controller
                 $state['games_won'][$teamScoreKey]++;
                 $state['is_tiebreak'] = false; // Reset tiebreak flag after game
 
+                // Record Game Won Event
+                DB::table('match_events')->insert([
+                    'game_match_id' => $match->id,
+                    'team_id' => $teamId,
+                    'event_type' => 'game_won',
+                    'period' => "Set {$state['current_set']}",
+                    'game_time' => $gameTime,
+                    'metadata' => json_encode([
+                        'label' => "Game Ganho - " . ($isHome ? $match->homeTeam->name : $match->awayTeam->name),
+                        'system_period' => "Set {$state['current_set']}"
+                    ]),
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+
                 // Toggle server on game end
                 if ($state['serving_team_id']) {
                     $state['serving_team_id'] = ($state['serving_team_id'] == $match->home_team_id) ? $match->away_team_id : $match->home_team_id;
@@ -245,6 +266,21 @@ class AdminTennisController extends Controller
                 }
 
                 if ($setFinished) {
+                    // Record Set Won Event BEFORE state changes to next set
+                    DB::table('match_events')->insert([
+                        'game_match_id' => $match->id,
+                        'team_id' => $teamId,
+                        'event_type' => 'set_won',
+                        'period' => "Set {$state['current_set']}",
+                        'game_time' => $gameTime,
+                        'metadata' => json_encode([
+                            'label' => "Set Ganho - " . ($isHome ? $match->homeTeam->name : $match->awayTeam->name),
+                            'system_period' => "Set {$state['current_set']}"
+                        ]),
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+
                     $this->finishSetInternal($match, $state, $gamesWon);
                 }
             }
@@ -254,7 +290,8 @@ class AdminTennisController extends Controller
             $match->match_details = $details;
             $match->save();
 
-            // 3. Record Event
+            // 3. Record Point Event
+            // Note: teamId is already the winner of the point
             $this->logTennisEvent($match, $teamId, $playerId, $pointType, $gameTime, $state);
 
             return $this->getState($match->id);

@@ -200,7 +200,7 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
         return sorted.filter(event => {
             if (hiddenEvents.includes(event.type)) return false;
 
-            const isUniqSystemEvent = ['match_start', 'match_end', 'period_start', 'period_end'].includes(event.type);
+            const isUniqSystemEvent = ['match_start', 'match_end', 'period_start', 'period_end', 'game_won', 'set_won'].includes(event.type);
             if (!isUniqSystemEvent) return true;
 
             const periodKey = event.period || event.metadata?.system_period || event.metadata?.label || 'no-period';
@@ -421,6 +421,9 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                                         if (event.type === 'match_start') return 'Início da Partida';
                                                         if (event.type === 'match_end') return 'Fim de Jogo';
                                                         if (event.type === 'timeout') return 'Pedido de Tempo';
+                                                        if (event.type === 'game_won') return '🎾 Game Vencido';
+                                                        if (event.type === 'set_won') return '🏆 Set Vencido';
+
                                                         const p = String(event.period || '').toLowerCase();
                                                         const isSet = p.includes('set');
 
@@ -453,7 +456,7 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                                         return '';
                                                     };
 
-                                                    const phrase = getMatchPhrase(event.id ?? idx, event.type);
+                                                    const phrase = event.metadata?.label || getMatchPhrase(event.id ?? idx, event.type);
 
                                                     const pillColor = event.type === 'match_start'
                                                         ? 'bg-green-50 border-green-200'
@@ -463,7 +466,9 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                                                 ? 'bg-blue-50 border-blue-200'
                                                                 : event.type === 'timeout'
                                                                     ? 'bg-yellow-50 border-yellow-200'
-                                                                    : 'bg-orange-50 border-orange-200';
+                                                                    : (event.type === 'game_won' || event.type === 'set_won')
+                                                                        ? 'bg-indigo-50 border-indigo-200'
+                                                                        : 'bg-orange-50 border-orange-200';
 
                                                     const titleColor = event.type === 'match_start'
                                                         ? 'text-green-700'
@@ -473,7 +478,9 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                                                 ? 'text-blue-700'
                                                                 : event.type === 'timeout'
                                                                     ? 'text-yellow-700'
-                                                                    : 'text-orange-700';
+                                                                    : (event.type === 'game_won' || event.type === 'set_won')
+                                                                        ? 'text-indigo-700'
+                                                                        : 'text-orange-700';
 
                                                     return (
                                                         <div key={idx} className="flex items-center justify-center my-5 relative z-10 w-full">
@@ -543,6 +550,12 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                                                                 if (vt === 'erro') return '❌';
                                                                                 return '🏐';
                                                                             }
+                                                                            if (sport.includes('tenis') || sport.includes('tênis') || sport.includes('beach')) {
+                                                                                const tt = event.metadata?.tennis_type || event.type;
+                                                                                if (tt === 'ace') return '🚀';
+                                                                                if (tt === 'double_fault' || tt === 'unforced_error') return '❌';
+                                                                                return '🎾';
+                                                                            }
                                                                             return '🏀';
                                                                         })()}
                                                                         {['takedown', 'jiu_jitsu_2', 'jiu_jitsu_3', 'jiu_jitsu_4'].includes(event.type) && '🥋'}
@@ -589,6 +602,14 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                                                                     free_throw: 'Lance Livre',
                                                                                     '1_point': 'Lance Livre',
                                                                                     game_won: 'Game Vencido',
+                                                                                    set_won: 'Set Vencido',
+                                                                                    ace: 'Ace (Saque)',
+                                                                                    double_fault: 'Dupla Falta',
+                                                                                    unforced_error: 'Erro não forçado (Adv)',
+                                                                                    forced_error: 'Erro forçado (Adv)',
+                                                                                    winner: 'Winner',
+                                                                                    service_winner: 'Saque Vencedor',
+                                                                                    point: 'Ponto',
                                                                                     assist: 'Assistência',
                                                                                     mvp: 'Craque do Jogo',
                                                                                     timeout: 'Tempo Técnico',
@@ -601,11 +622,9 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                                                                     bloqueio: 'Bloqueio',
                                                                                     block: 'Bloqueio',
                                                                                     saque: 'Ace (Saque)',
-                                                                                    ace: 'Ace',
                                                                                     erro: 'Erro',
                                                                                     game: 'Game',
                                                                                     set: 'Set',
-                                                                                    point: 'Ponto',
                                                                                 };
                                                                                 return friendlyMap[event.type] ?? event.type.replace(/_/g, ' ');
                                                                             })()}

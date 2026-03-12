@@ -116,6 +116,7 @@ function App() {
             <Route path="/events/:id" element={<EventDetails />} />
             <Route path="/events/:id/matches" element={<EventMatches />} />
             <Route path="/events/:id/leaderboard" element={<EventLeaderboard />} />
+            <Route path="/events/:id/brackets" element={<EventLeaderboard />} />
             <Route path="/events/:id/stats" element={<EventStats />} />
             <Route path="/events/:id/mvp" element={<EventMVP />} />
             <Route path="/events/:id/participants" element={<EventParticipants />} />
