@@ -99,8 +99,8 @@ export function SumulaTenis() {
         setPointFlow(null);
 
         let winningTeamId = teamId;
-        // Os tipos 'double_fault' etc agora são considerados "erro do adversário", 
-        // ou seja, quem foi clicado ganha o ponto pelo erro do outro.
+        // IMPORTANTE: Quem clicamos na tela é SEMPRE quem ganha o ponto.
+        // Se o usuário clicar em "Time A -> Marcar" e escolher "Erro do Adversário", o Time A ganha o ponto (ID do Time A enviado).
 
         await apiCall('tennis_point', `/admin/matches/${id}/tennis/point`, {
             team_id: winningTeamId,

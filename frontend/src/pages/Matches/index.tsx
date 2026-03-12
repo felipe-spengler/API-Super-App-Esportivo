@@ -327,28 +327,28 @@ export function Matches() {
         <div className="animate-in fade-in duration-500 relative">
             {/* Modal de Arbitragem */}
             {isArbitrationOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                    <form onSubmit={handleConfirmArbitration} className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="bg-indigo-600 p-4 text-white">
-                            <h3 className="font-bold text-lg">Iniciar Súmula</h3>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto">
+                    <form onSubmit={handleConfirmArbitration} className="bg-white rounded-xl shadow-2xl w-full max-w-md my-auto animate-in zoom-in-95 duration-200 overflow-hidden flex flex-col max-h-[95vh]">
+                        <div className="bg-indigo-600 p-4 text-white shrink-0">
+                            <h3 className="font-bold text-lg leading-tight">Iniciar Súmula</h3>
                             <p className="text-indigo-100 text-xs">Informe a equipe de arbitragem</p>
                         </div>
-                        <div className="p-6 space-y-4">
+                        <div className="p-6 space-y-4 overflow-y-auto flex-1 custom-scrollbar">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Árbitro Principal</label>
                                 <input
                                     required
-                                    className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none"
                                     value={arbitrationData.referee}
                                     onChange={e => setArbitrationData({ ...arbitrationData, referee: e.target.value })}
                                     placeholder="Nome do Árbitro"
                                 />
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Assistente 1</label>
                                     <input
-                                        className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none"
                                         value={arbitrationData.assistant1}
                                         onChange={e => setArbitrationData({ ...arbitrationData, assistant1: e.target.value })}
                                         placeholder="Opcional"
@@ -357,7 +357,7 @@ export function Matches() {
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Assistente 2</label>
                                     <input
-                                        className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none"
                                         value={arbitrationData.assistant2}
                                         onChange={e => setArbitrationData({ ...arbitrationData, assistant2: e.target.value })}
                                         placeholder="Opcional"
@@ -365,18 +365,18 @@ export function Matches() {
                                 </div>
                             </div>
                         </div>
-                        <div className="bg-gray-50 p-4 flex justify-end gap-3 border-t border-gray-100">
+                        <div className="bg-gray-50 p-4 flex flex-row justify-end gap-3 border-t border-gray-100 shrink-0">
                             <button
                                 type="button"
                                 onClick={() => setIsArbitrationOpen(false)}
-                                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium transition-colors"
+                                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium transition-colors text-sm"
                             >
                                 Cancelar
                             </button>
                             <button
                                 type="submit"
                                 disabled={saving}
-                                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
+                                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-black transition-colors disabled:opacity-50 flex items-center gap-2 text-sm uppercase tracking-wider"
                             >
                                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                                 Iniciar Partida
