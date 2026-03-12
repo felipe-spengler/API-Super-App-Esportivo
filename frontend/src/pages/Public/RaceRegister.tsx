@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
     User, Phone, FileText, Camera, Calendar, Mail, CreditCard,
     ArrowLeft, ArrowRight, Loader2, CheckCircle2,
-    Check, Smartphone, AlertCircle, RefreshCw, Search, Activity, ShieldQuestion
+    Check, Smartphone, AlertCircle, RefreshCw, Search, Activity, ShieldQuestion, Download, Share2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
@@ -92,7 +92,7 @@ export function RaceRegister() {
 
     // Auto-refresh payment status every 7 seconds
     useEffect(() => {
-        let interval: NodeJS.Timeout;
+        let interval: any;
 
         if (step === 7 && registrationData?.requires_payment) {
             interval = setInterval(async () => {
@@ -1118,21 +1118,77 @@ export function RaceRegister() {
                             <CheckCircle2 size={48} />
                         </div>
                         <div className="space-y-2">
-                            <h2 className="text-3xl font-black text-slate-900 uppercase italic">
-                                {registrationData?.requires_payment ? 'Quase lá!' : 'Inscrição Confirmada!'}
+                            <h2 className="text-4xl font-black text-slate-900 uppercase italic leading-none">
+                                {registrationData?.status_payment === 'paid' ? 'Inscrição Confirmada!' :
+                                    registrationData?.requires_payment ? 'Quase lá!' : 'Inscrição Confirmada!'}
                             </h2>
-                            <p className="text-slate-500 font-medium max-w-sm mx-auto">
+                            <p className="text-slate-500 font-medium max-w-sm mx-auto text-sm">
                                 {registrationData?.discount_applied > 0 && (
                                     <span className="block text-green-600 font-bold mb-2">Desconto de {registrationData.discount_applied}% aplicado com sucesso!</span>
                                 )}
-                                {registrationData?.requires_payment
-                                    ? `Sua inscrição foi reservada. Para garantir sua vaga, realize o pagamento de R$ ${registrationData.price.toFixed(2)} via ${chosenMethod} abaixo.`
-                                    : 'Sua vaga está garantida. Agora é só se preparar para o grande dia!'}
+                                {registrationData?.status_payment === 'paid'
+                                    ? 'Sua vaga está garantida. Agora é só se preparar para o grande dia!'
+                                    : registrationData?.requires_payment
+                                        ? `Sua inscrição foi reservada. Para garantir sua vaga, realize o pagamento de R$ ${registrationData.price.toFixed(2)} via ${chosenMethod} abaixo.`
+                                        : 'Sua vaga está garantida. Agora é só se preparar para o grande dia!'}
                             </p>
                         </div>
 
-                        {registrationData?.requires_payment && (
+                        {registrationData?.status_payment === 'paid' && (
+                            <div className="mt-8 animate-in zoom-in-95 duration-700">
+                                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 italic mb-4">Sua Arte de Confirmado</p>
+                                <div className="max-w-[280px] mx-auto group">
+                                    <div className="aspect-[4/5] bg-slate-50 rounded-[2rem] overflow-hidden border border-slate-100 shadow-2xl shadow-indigo-200/50 relative">
+                                        <img
+                                            src={`${import.meta.env.VITE_API_URL || '/api'}/art/championship/${id}/individual/${registrationData.user_id}/atleta_confirmado`}
+                                            alt="Atleta Confirmado"
+                                            className="w-full h-full object-contain"
+                                        />
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3 mt-6">
+                                        <button
+                                            onClick={async () => {
+                                                const url = `${import.meta.env.VITE_API_URL || '/api'}/art/championship/${id}/individual/${registrationData.user_id}/atleta_confirmado`;
+                                                try {
+                                                    const response = await fetch(url);
+                                                    const blob = await response.blob();
+                                                    const link = document.createElement('a');
+                                                    link.href = window.URL.createObjectURL(blob);
+                                                    link.download = `confirmacao-${registrationData.user_id}.jpg`;
+                                                    link.click();
+                                                } catch (e) { toast.error("Erro ao baixar arte"); }
+                                            }}
+                                            className="py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 active:scale-95"
+                                        >
+                                            <Download size={16} /> Baixar
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                const url = `${import.meta.env.VITE_API_URL || '/api'}/art/championship/${id}/individual/${registrationData.user_id}/atleta_confirmado`;
+                                                if (navigator.share) {
+                                                    navigator.share({
+                                                        title: 'Estou confirmado!',
+                                                        text: `Confirmado no ${championship?.name}!`,
+                                                        url: url
+                                                    });
+                                                } else { window.open(url, '_blank'); }
+                                            }}
+                                            className="py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-black transition-all active:scale-95"
+                                        >
+                                            <Share2 size={16} /> Postar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {registrationData?.status_payment !== 'paid' && registrationData?.requires_payment && (
                             <div className="max-w-xs mx-auto space-y-4">
+                                <div className="bg-amber-50 border border-amber-100 p-4 rounded-xl flex items-center gap-3">
+                                    <div className="animate-pulse bg-amber-400 w-2 h-2 rounded-full"></div>
+                                    <p className="text-amber-800 text-[10px] font-black uppercase italic">Verificando pagamento...</p>
+                                </div>
                                 {registrationData?.payment_data?.pix_qr_code && chosenMethod === 'PIX' && (
                                     <div className="bg-slate-50 p-6 rounded-2xl border border-dashed border-slate-200 flex flex-col items-center gap-4">
                                         <img
