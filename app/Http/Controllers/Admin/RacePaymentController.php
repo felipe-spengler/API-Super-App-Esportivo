@@ -27,8 +27,9 @@ class RacePaymentController extends Controller
         ]);
 
         $result = RaceResult::where('id', $id)
-            ->with(['race.championship.club', 'category', 'user'])
+            ->with(['race.championship.club', 'category.parent', 'user'])
             ->first();
+
 
         if (!$result) {
             $pivot = DB::table('championship_team')->where('id', $id)->first();

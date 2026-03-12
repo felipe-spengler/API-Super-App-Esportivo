@@ -348,15 +348,22 @@ class RaceInscriptionController extends Controller
             return response()->json(['error' => 'Dados não conferem.'], 422);
         }
 
-        $registration = RaceResult::where('race_id', $race->id)->where('user_id', $user->id)->with(['category'])->first();
+        $registration = RaceResult::where('race_id', $race->id)->where('user_id', $user->id)->with(['category.parent'])->first();
         if (!$registration)
             return response()->json(['error' => 'Não inscrito neste evento.'], 422);
+
+        $mainCategory = $registration->category->parent_id ? $registration->category->parent : $registration->category;
+        $fallbackPrice = (float) $mainCategory->price;
+        if ($registration->category_id !== $mainCategory->id) {
+            $fallbackPrice += (float) ($registration->category->price ?? 0);
+        }
 
         return response()->json([
             'result' => $registration,
             'requires_payment' => $registration->status_payment === 'pending',
             'payment_data' => $registration->payment_info,
-            'price' => $registration->payment_info['value'] ?? (float) $registration->category->price,
+            'price' => $registration->payment_info['value'] ?? $fallbackPrice,
         ]);
+
     }
 }
