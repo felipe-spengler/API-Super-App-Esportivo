@@ -218,6 +218,8 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
         Route::post('/matches/{id}/tennis/point', [AdminTennisController::class, 'registerPoint']);
         Route::post('/matches/{id}/tennis/server', [AdminTennisController::class, 'setServer']);
         Route::post('/matches/{id}/tennis/undo', [AdminTennisController::class, 'undoPoint']);
+        Route::post('/matches/{id}/tennis/times', [AdminTennisController::class, 'updateTimes']);
+        Route::post('/matches/{id}/tennis/finish', [AdminTennisController::class, 'finishMatch']);
 
         // Gestão de Equipes (NEW)
         Route::get('/teams', [AdminTeamController::class, 'index']);

@@ -17,6 +17,8 @@ export function SumulaTenis() {
 
     // UI Flow
     const [pointFlow, setPointFlow] = useState<{ teamId: number, playerIndex: number } | null>(null);
+    const [timeModal, setTimeModal] = useState<'start' | 'end' | null>(null);
+    const [tempTime, setTempTime] = useState(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false }));
 
     // 🛡️ Offline Resilience
     const { isOnline, addToQueue, pendingCount, getPendingCount } = useOfflineResilience(id, 'Tênis', async (action, data) => {
@@ -25,7 +27,8 @@ export function SumulaTenis() {
             case 'tennis_point': url = `/admin/matches/${id}/tennis/point`; break;
             case 'tennis_server': url = `/admin/matches/${id}/tennis/server`; break;
             case 'tennis_undo': url = `/admin/matches/${id}/tennis/undo`; break;
-            case 'match_finish': url = `/admin/matches/${id}/finish`; break;
+            case 'tennis_times': url = `/admin/matches/${id}/tennis/times`; break;
+            case 'tennis_finish': url = `/admin/matches/${id}/tennis/finish`; break;
         }
         if (url) return await api.post(url, data);
     });
@@ -53,6 +56,11 @@ export function SumulaTenis() {
             if (!silent) setLoading(true);
             const response = await api.get(`/admin/matches/${id}/tennis-state`);
             processState(response.data);
+
+            // Auto prompt start time if in live match but no actual_start_time
+            if (!silent && response.data.state && !response.data.state.actual_start_time && response.data.match.status !== 'finished') {
+                setTimeModal('start');
+            }
         } catch (e) {
             console.error(e);
             if (!silent) alert('Erro ao carregar dados do tênis.');
@@ -90,10 +98,8 @@ export function SumulaTenis() {
         const player = roster[playerIndex];
         setPointFlow(null);
 
-        // Determinamos quem ganha o ponto baseado no tipo
-        // Se for erro (DF, EF, ENF), o ponto vai para o adversário
         let winningTeamId = teamId;
-        if (['double_fault', 'forced_error', 'unforced_error'].includes(type)) {
+        if (['double_fault', 'forced_error', 'unforced_error', 'foot_fault'].includes(type)) {
             winningTeamId = teamId === matchData.home_team_id ? matchData.away_team_id : matchData.home_team_id;
         }
 
@@ -101,7 +107,7 @@ export function SumulaTenis() {
             team_id: winningTeamId,
             player_id: player?.id,
             point_type: type,
-            game_time: "00:00" // Simplified for now
+            game_time: "00:00"
         });
     };
 
@@ -112,6 +118,15 @@ export function SumulaTenis() {
     const handleUndo = async () => {
         if (!window.confirm("Deseja desfazer o último ponto?")) return;
         await apiCall('tennis_undo', `/admin/matches/${id}/tennis/undo`, {});
+    };
+
+    const handleConfirmTime = async () => {
+        if (timeModal === 'start') {
+            await apiCall('tennis_times', `/admin/matches/${id}/tennis/times`, { actual_start_time: tempTime });
+        } else {
+            await apiCall('tennis_finish', `/admin/matches/${id}/tennis/finish`, { actual_end_time: tempTime });
+        }
+        setTimeModal(null);
     };
 
     const translatePoint = (points: number, isTiebreak: boolean) => {
@@ -161,104 +176,124 @@ export function SumulaTenis() {
                 </div>
             </div>
 
-            <main className="max-w-md mx-auto p-4 space-y-6">
+            <main className="max-w-2xl mx-auto p-2 sm:p-4 space-y-4 sm:space-y-6">
+                {/* Cabeçalho de Horários */}
+                <div className="flex items-center justify-between px-2 text-[10px] font-bold text-slate-500 uppercase tracking-tighter">
+                    <div className="flex items-center gap-2">
+                        <span className="bg-slate-800 px-2 py-0.5 rounded text-slate-400">INÍCIO: {tennisState.actual_start_time || '--:--'}</span>
+                        {matchData.status === 'finished' && (
+                            <span className="bg-emerald-500/10 px-2 py-0.5 rounded text-emerald-400">FIM: {tennisState.actual_end_time || '--:--'}</span>
+                        )}
+                    </div>
+                    {matchData.status !== 'finished' && (
+                        <button
+                            onClick={() => {
+                                setTempTime(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false }));
+                                setTimeModal('end');
+                            }}
+                            className="text-red-400 hover:text-red-300 font-black flex items-center gap-1 border border-red-400/20 px-3 py-1 rounded-full bg-red-400/5 transition-colors"
+                        >
+                            <Trophy size={12} /> ENCERRAR PARTIDA
+                        </button>
+                    )}
+                </div>
+
                 {/* Scoreboard Principal */}
-                <div className="bg-slate-900 rounded-3xl border border-slate-800 overflow-hidden shadow-2xl relative">
+                <div className="bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-800 overflow-hidden shadow-2xl relative">
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-yellow-500 via-yellow-200 to-yellow-500"></div>
 
-                    <div className="p-6 space-y-4">
+                    <div className="p-4 sm:p-6 space-y-4">
                         {/* Team Home */}
-                        <div className="flex items-center justify-between gap-4">
-                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2 sm:gap-4">
+                            <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                                 <button
                                     onClick={() => toggleServer(matchData.home_team_id)}
-                                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${isHomeServing ? 'bg-yellow-400 text-black scale-110 shadow-[0_0_15px_rgba(250,204,21,0.4)]' : 'bg-slate-800 text-slate-600 hover:text-slate-400'}`}
+                                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all ${isHomeServing ? 'bg-yellow-400 text-black scale-110 shadow-[0_0_15px_rgba(250,204,21,0.4)]' : 'bg-slate-800 text-slate-600 hover:text-slate-400'}`}
                                 >
                                     🎾
                                 </button>
                                 <div className="truncate">
-                                    <h2 className="text-lg font-black uppercase tracking-tight truncate leading-tight">{matchData.home_team?.name}</h2>
-                                    <p className="text-[10px] font-bold text-slate-500 uppercase">Mandante</p>
+                                    <h2 className="text-sm sm:text-lg font-black uppercase tracking-tight truncate leading-tight">{matchData.home_team?.name}</h2>
+                                    <p className="text-[8px] sm:text-[10px] font-bold text-slate-500 uppercase">Mandante</p>
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5 sm:gap-2">
                                 {/* Sets Histórico */}
                                 {sets.map((s, idx) => (
-                                    <div key={idx} className="w-8 h-10 bg-slate-800/50 rounded-lg flex items-center justify-center text-sm font-black text-slate-400 border border-slate-700/50">
+                                    <div key={idx} className="w-7 h-9 sm:w-8 sm:h-10 bg-slate-800/50 rounded-lg flex items-center justify-center text-xs sm:text-sm font-black text-slate-400 border border-slate-700/50">
                                         {s.home_score}
                                     </div>
                                 ))}
                                 {/* Game Atual */}
-                                <div className="w-10 h-12 bg-slate-800 rounded-xl border border-slate-700 flex items-center justify-center text-lg font-black text-white shadow-inner">
+                                <div className="w-9 h-11 sm:w-10 sm:h-12 bg-slate-800 rounded-xl border border-slate-700 flex items-center justify-center text-base sm:text-lg font-black text-white shadow-inner">
                                     {tennisState.games_won?.home || 0}
                                 </div>
                                 {/* Pontos no Game */}
-                                <div className="w-14 h-16 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-2xl flex items-center justify-center text-2xl font-black text-black shadow-lg">
+                                <div className="w-12 h-14 sm:w-14 sm:h-16 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-xl sm:rounded-2xl flex items-center justify-center text-xl sm:text-2xl font-black text-black shadow-lg">
                                     {translatePoint(tennisState.game_score?.home || 0, tennisState.is_tiebreak)}
                                 </div>
                             </div>
                         </div>
 
-                        <div className="h-px bg-slate-800/50 mx-4"></div>
+                        <div className="h-px bg-slate-800/50 mx-2 sm:mx-4"></div>
 
                         {/* Team Away */}
-                        <div className="flex items-center justify-between gap-4">
-                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2 sm:gap-4">
+                            <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                                 <button
                                     onClick={() => toggleServer(matchData.away_team_id)}
-                                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${isAwayServing ? 'bg-yellow-400 text-black scale-110 shadow-[0_0_15px_rgba(250,204,21,0.4)]' : 'bg-slate-800 text-slate-600 hover:text-slate-400'}`}
+                                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all ${isAwayServing ? 'bg-yellow-400 text-black scale-110 shadow-[0_0_15px_rgba(250,204,21,0.4)]' : 'bg-slate-800 text-slate-600 hover:text-slate-400'}`}
                                 >
                                     🎾
                                 </button>
                                 <div className="truncate">
-                                    <h2 className="text-lg font-black uppercase tracking-tight truncate leading-tight">{matchData.away_team?.name}</h2>
-                                    <p className="text-[10px] font-bold text-slate-500 uppercase">Visitante</p>
+                                    <h2 className="text-sm sm:text-lg font-black uppercase tracking-tight truncate leading-tight">{matchData.away_team?.name}</h2>
+                                    <p className="text-[8px] sm:text-[10px] font-bold text-slate-500 uppercase">Visitante</p>
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5 sm:gap-2">
                                 {sets.map((s, idx) => (
-                                    <div key={idx} className="w-8 h-10 bg-slate-800/50 rounded-lg flex items-center justify-center text-sm font-black text-slate-400 border border-slate-700/50">
+                                    <div key={idx} className="w-7 h-9 sm:w-8 sm:h-10 bg-slate-800/50 rounded-lg flex items-center justify-center text-xs sm:text-sm font-black text-slate-400 border border-slate-700/50">
                                         {s.away_score}
                                     </div>
                                 ))}
-                                <div className="w-10 h-12 bg-slate-800 rounded-xl border border-slate-700 flex items-center justify-center text-lg font-black text-white shadow-inner">
+                                <div className="w-9 h-11 sm:w-10 sm:h-12 bg-slate-800 rounded-xl border border-slate-700 flex items-center justify-center text-base sm:text-lg font-black text-white shadow-inner">
                                     {tennisState.games_won?.away || 0}
                                 </div>
-                                <div className="w-14 h-16 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-2xl flex items-center justify-center text-2xl font-black text-black shadow-lg">
+                                <div className="w-12 h-14 sm:w-14 sm:h-16 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-xl sm:rounded-2xl flex items-center justify-center text-xl sm:text-2xl font-black text-black shadow-lg">
                                     {translatePoint(tennisState.game_score?.away || 0, tennisState.is_tiebreak)}
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div className="bg-slate-950/50 p-2 text-center">
-                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
-                            {tennisState.is_tiebreak ? '💥 TIE-BREAK EM CURSO 💥' : `${tennisState.current_set}º SET - GAME EM DISPUTA`}
-                        </span>
+                    <div className="bg-slate-950/50 p-2 text-center text-emerald-400 font-bold text-[9px] uppercase tracking-widest">
+                        {matchData.status === 'finished' ? 'PARTIDA ENCERRADA' : (tennisState.is_tiebreak ? '💥 TIE-BREAK EM CURSO 💥' : `${tennisState.current_set}º SET - GAME EM DISPUTA`)}
                     </div>
                 </div>
 
                 {/* Área de Ações (Jogadores) */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
                     {/* Botões Lançamento Mandante */}
                     <div className="space-y-3">
-                        <div className="text-[10px] font-black text-slate-500 uppercase text-center tracking-widest pl-2 flex items-center gap-2">
+                        <div className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase text-center tracking-widest pl-2 flex items-center gap-2">
                             <div className="h-px bg-slate-800 flex-1"></div>
-                            MARCAR PONTO
+                            MARCAR
                             <div className="h-px bg-slate-800 flex-1"></div>
                         </div>
 
                         {(rosters.home.length > 0 ? rosters.home : [{ name: matchData.home_team?.name }]).map((p: any, idx: number) => (
                             <button
                                 key={idx}
+                                disabled={matchData.status === 'finished'}
                                 onClick={() => setPointFlow({ teamId: matchData.home_team_id, playerIndex: idx })}
-                                className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col items-center gap-1 hover:bg-slate-800/80 active:scale-95 transition-all text-blue-400 font-bold"
+                                className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-3 sm:p-4 flex flex-col items-center gap-1 hover:bg-slate-800/80 active:scale-95 transition-all text-blue-400 font-bold disabled:opacity-50 disabled:active:scale-100"
                             >
-                                <span className="text-xs uppercase tracking-tight">{p.nickname || p.name}</span>
-                                <div className="w-10 h-10 bg-blue-500/10 rounded-full flex items-center justify-center text-blue-400">
-                                    <Plus size={24} />
+                                <span className="text-[10px] sm:text-xs uppercase tracking-tight truncate w-full text-center">{p.nickname || p.name}</span>
+                                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-500/10 rounded-full flex items-center justify-center text-blue-400">
+                                    <Plus size={20} />
                                 </div>
                             </button>
                         ))}
@@ -266,21 +301,22 @@ export function SumulaTenis() {
 
                     {/* Botões Lançamento Visitante */}
                     <div className="space-y-3">
-                        <div className="text-[10px] font-black text-slate-500 uppercase text-center tracking-widest flex items-center gap-2 pr-2">
+                        <div className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase text-center tracking-widest flex items-center gap-2 pr-2">
                             <div className="h-px bg-slate-800 flex-1"></div>
-                            MARCAR PONTO
+                            MARCAR
                             <div className="h-px bg-slate-800 flex-1"></div>
                         </div>
 
                         {(rosters.away.length > 0 ? rosters.away : [{ name: matchData.away_team?.name }]).map((p: any, idx: number) => (
                             <button
                                 key={idx}
+                                disabled={matchData.status === 'finished'}
                                 onClick={() => setPointFlow({ teamId: matchData.away_team_id, playerIndex: idx })}
-                                className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col items-center gap-1 hover:bg-slate-800/80 active:scale-95 transition-all text-emerald-400 font-bold"
+                                className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-3 sm:p-4 flex flex-col items-center gap-1 hover:bg-slate-800/80 active:scale-95 transition-all text-emerald-400 font-bold disabled:opacity-50 disabled:active:scale-100"
                             >
-                                <span className="text-xs uppercase tracking-tight">{p.nickname || p.name}</span>
-                                <div className="w-10 h-10 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-400">
-                                    <Plus size={24} />
+                                <span className="text-[10px] sm:text-xs uppercase tracking-tight truncate w-full text-center">{p.nickname || p.name}</span>
+                                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-400">
+                                    <Plus size={20} />
                                 </div>
                             </button>
                         ))}
@@ -329,6 +365,60 @@ export function SumulaTenis() {
                     </div>
                 </div>
             </main>
+
+            {/* Modal de Horário (Início/Fim) */}
+            {timeModal && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4">
+                    <div className="w-full max-w-xs bg-slate-900 border border-slate-800 rounded-[2.5rem] p-8 text-center shadow-2xl animate-in fade-in zoom-in duration-300">
+                        <div className="w-16 h-16 bg-yellow-500/10 rounded-full flex items-center justify-center text-yellow-500 mx-auto mb-6">
+                            <RefreshCw size={32} />
+                        </div>
+                        <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">
+                            {timeModal === 'start' ? 'Início do Jogo' : 'Fim da Partida'}
+                        </h3>
+                        <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mb-8 leading-relaxed">
+                            {timeModal === 'start' ? 'Confirme o horário real de início para controle da organização.' : 'Confirme o horário de encerramento da partida.'}
+                        </p>
+
+                        <div className="relative mb-8 group">
+                            <input
+                                type="time"
+                                value={tempTime}
+                                onChange={(e) => setTempTime(e.target.value)}
+                                className="w-full bg-slate-950 border-2 border-slate-800 rounded-2xl py-4 px-6 text-3xl font-black text-center text-white focus:border-yellow-500 outline-none transition-all appearance-none"
+                            />
+                            <div className="absolute top-0 right-0 h-full flex items-center pr-4 pointer-events-none text-slate-600 group-focus-within:text-yellow-500">
+                                <ChevronRight size={24} />
+                            </div>
+                        </div>
+
+                        <div className="space-y-3">
+                            <button
+                                onClick={handleConfirmTime}
+                                className="w-full bg-yellow-500 py-4 rounded-2xl text-black font-black uppercase tracking-widest hover:bg-yellow-400 active:scale-95 transition-all shadow-lg shadow-yellow-500/20"
+                            >
+                                {timeModal === 'start' ? 'INICIAR JOGO' : 'ENCERRAR JOGO'}
+                            </button>
+                            {timeModal === 'start' && (
+                                <button
+                                    onClick={() => setTimeModal(null)}
+                                    className="w-full py-2 text-[10px] text-slate-500 font-black uppercase hover:text-white transition-colors"
+                                >
+                                    Mais Tarde
+                                </button>
+                            )}
+                            {timeModal === 'end' && (
+                                <button
+                                    onClick={() => setTimeModal(null)}
+                                    className="w-full py-2 text-[10px] text-slate-500 font-black uppercase hover:text-white transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Modal de Seleção de Tipo de Ponto */}
             {pointFlow && (

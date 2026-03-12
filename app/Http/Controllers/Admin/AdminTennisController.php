@@ -32,13 +32,63 @@ class AdminTennisController extends Controller
             'events.player'
         ]);
 
+        $details = $match->match_details ?? [];
+        $tennisState = $details['tennis_state'] ?? [
+            'current_set' => 1,
+            'serving_team_id' => null,
+            'game_score' => ['home' => 0, 'away' => 0],
+            'games_won' => ['home' => 0, 'away' => 0],
+            'match_finished' => false,
+            'is_tiebreak' => false,
+            'actual_start_time' => $details['actual_start_time'] ?? null,
+            'actual_end_time' => $details['actual_end_time'] ?? null
+        ];
+
         $sets = MatchSet::where('game_match_id', $matchId)->orderBy('set_number')->get();
 
         return response()->json([
             'match' => $match,
-            'state' => $state,
+            'state' => $tennisState,
             'sets' => $sets
         ]);
+    }
+
+    public function updateTimes(Request $request, $matchId)
+    {
+        $match = GameMatch::findOrFail($matchId);
+        $details = $match->match_details ?? [];
+
+        if ($request->has('actual_start_time')) {
+            $details['actual_start_time'] = $request->input('actual_start_time');
+            $match->status = 'live';
+        }
+
+        if ($request->has('actual_end_time')) {
+            $details['actual_end_time'] = $request->input('actual_end_time');
+        }
+
+        $match->match_details = $details;
+        $match->save();
+
+        return $this->getState($matchId);
+    }
+
+    public function finishMatch(Request $request, $matchId)
+    {
+        $match = GameMatch::findOrFail($matchId);
+        $details = $match->match_details ?? [];
+
+        $details['actual_end_time'] = $request->input('actual_end_time', now()->format('H:i'));
+        $match->match_details = $details;
+        $match->status = 'finished';
+        $match->save();
+
+        // Call generic finish logic to handle brackets/advancements
+        $adminMatchController = new AdminMatchController();
+        return $adminMatchController->finish(new Request([
+            'home_score' => $match->home_score,
+            'away_score' => $match->away_score
+        ]), $matchId);
     }
 
     private function recalculateState($match)
@@ -49,13 +99,16 @@ class AdminTennisController extends Controller
             ->orderBy('id', 'asc')
             ->get();
 
+        $details = $match->match_details ?? [];
         $state = [
             'current_set' => 1,
-            'serving_team_id' => $match->match_details['tennis_state']['serving_team_id'] ?? null,
+            'serving_team_id' => $details['tennis_state']['serving_team_id'] ?? null,
             'game_score' => ['home' => 0, 'away' => 0],
             'games_won' => ['home' => 0, 'away' => 0],
             'match_finished' => false,
-            'is_tiebreak' => false
+            'is_tiebreak' => false,
+            'actual_start_time' => $details['actual_start_time'] ?? null,
+            'actual_end_time' => $details['actual_end_time'] ?? null
         ];
 
         // Reset Match/Sets score for fresh calculation
