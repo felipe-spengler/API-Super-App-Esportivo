@@ -408,15 +408,35 @@ class RaceResultController extends Controller
             }
         }
 
-        $category = Category::findOrFail($request->category_id);
+        // 1. Carregar Categoria com Parent/Children
+        $category = Category::with(['parent', 'children'])->findOrFail($request->category_id);
+        $mainCategory = $category->parent_id ? $category->parent : $category;
+
 
         // Validar Idade na data 31/12 do ano do campeonato
         $eventYear = $race->championship->start_date ? \Carbon\Carbon::parse($race->championship->start_date)->year : date('Y');
         $referenceDate = \Carbon\Carbon::createFromDate($eventYear, 12, 31);
         $athleteAge = (int) $referenceDate->diffInYears(\Carbon\Carbon::parse($request->birth_date), true);
 
-        // Validar Gênero
-        $catGender = strtolower($category->gender ?? '');
+        // 2026-03-12: A subcategoria deve ser automática conforme idade.
+        // Se a categoria principal tiver filhos (subcategorias), selecionamos o que bate com a idade.
+        if ($mainCategory->children->count() > 0) {
+            $subCategory = $mainCategory->children
+                ->filter(function ($child) use ($athleteAge) {
+                    $min = $child->min_age ?? 0;
+                    $max = $child->max_age ?? 999;
+                    return $athleteAge >= $min && $athleteAge <= $max;
+                })
+                ->first();
+
+            // Se encontrou a subcategoria certa, usamos ela para o registro do resultado
+            if ($subCategory) {
+                $category = $subCategory;
+            }
+        }
+
+        // Validar Gênero (Validamos na categoria final selecionada)
+        $catGender = strtolower($category->gender ?? $mainCategory->gender ?? '');
         if ($catGender && $catGender !== 'mixed' && $catGender !== 'misto') {
             $userGender = strtolower($request->gender);
 
@@ -437,13 +457,14 @@ class RaceResultController extends Controller
             }
         }
 
-        // Validar Idade
+        // Validar Idade (Na categoria final)
         if ($category->min_age && $athleteAge < $category->min_age) {
             return response()->json(['error' => "Idade não permitida. A categoria exige idade mínima de {$category->min_age} anos em 31/12/{$eventYear}. (Idade calculada: {$athleteAge} anos)"], 422);
         }
         if ($category->max_age && $athleteAge > $category->max_age) {
             return response()->json(['error' => "Idade não permitida. A categoria exige idade máxima de {$category->max_age} anos em 31/12/{$eventYear}. (Idade calculada: {$athleteAge} anos)"], 422);
         }
+
 
         try {
             DB::beginTransaction();
@@ -509,7 +530,9 @@ class RaceResultController extends Controller
 
             // 4. Calcular Descontos (Idoso ou PCD)
             $championship = $race->championship;
-            $originalPrice = (float) $category->price;
+            // O valor deve vir da categoria principal, não da subcategoria
+            $originalPrice = (float) $mainCategory->price;
+
 
             // Calcular Acréscimos de Variações nos Brindes
             if ($request->has('gifts')) {
@@ -740,7 +763,9 @@ class RaceResultController extends Controller
             }
 
             // 2. Criar Novo Pagamento
-            $amount = $result->payment_info['value'] ?? (float) $result->category->price;
+            $mainCategory = $result->category->parent_id ? $result->category->parent : $result->category;
+            $amount = $result->payment_info['value'] ?? (float) $mainCategory->price;
+
 
             $description = "Inscrição (Renovada): {$result->race->championship->name} - {$result->category->name}";
             $payment = $asaas->createPayment(
