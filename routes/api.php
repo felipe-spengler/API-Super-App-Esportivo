@@ -30,6 +30,8 @@ use App\Http\Controllers\Admin\VolleyballRotationController;
 use App\Http\Controllers\Admin\AdminProductController;
 use App\Http\Controllers\Admin\RaceWizardController;
 use App\Http\Controllers\Admin\RaceResultController;
+use App\Http\Controllers\Admin\RaceInscriptionController;
+use App\Http\Controllers\Admin\RacePaymentController;
 use App\Http\Controllers\Admin\AdminSettingController;
 use App\Http\Controllers\Admin\AdminSystemSettingController;
 use App\Http\Controllers\Admin\CouponController;
@@ -110,9 +112,9 @@ Route::get('/championships/{id}/brackets', [EventController::class, 'brackets'])
 Route::get('/championships/{id}/participants', [EventController::class, 'participants']);
 Route::get('/championships/{id}/race', [EventController::class, 'raceDetails']);
 Route::get('/championships/{id}/race-results', [EventController::class, 'raceResults']);
-Route::post('/championships/{id}/race/register', [\App\Http\Controllers\Admin\RaceResultController::class, 'publicRegister']);
-Route::post('/championships/{id}/race/track', [\App\Http\Controllers\Admin\RaceResultController::class, 'publicTrackRegistration']);
-Route::post('/inscriptions/{id}/recreate-payment', [\App\Http\Controllers\Admin\RaceResultController::class, 'recreatePayment']);
+Route::post('/championships/{id}/race/register', [RaceInscriptionController::class, 'publicRegister']);
+Route::post('/championships/{id}/race/track', [RaceInscriptionController::class, 'publicTrackRegistration']);
+Route::post('/inscriptions/{id}/recreate-payment', [RacePaymentController::class, 'recreatePayment']);
 Route::get('/championships/{id}/mvp', [EventController::class, 'mvp']);
 Route::get('/championships/{id}/teams', [EventController::class, 'teamsList']);
 Route::get('/championships/{id}/h2h', [EventController::class, 'h2h']);
@@ -146,7 +148,7 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
 
     // Inscrições e Comprovantes
-    Route::get('/my-inscriptions', [\App\Http\Controllers\Admin\RaceResultController::class, 'myInscriptions']);
+    Route::get('/my-inscriptions', [RaceInscriptionController::class, 'myInscriptions']);
     Route::get('/inscriptions/{id}/receipt', [\App\Http\Controllers\ReceiptController::class, 'download']);
 
     // Checkout e Cupons
@@ -155,8 +157,9 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::get('/my-orders', [ShopController::class, 'myOrders']);
 
     // Inscrições (Times e Atletas)
-    Route::get('/my-inscriptions', [\App\Http\Controllers\Admin\RaceResultController::class, 'myInscriptions']);
+    Route::get('/my-inscriptions', [RaceInscriptionController::class, 'myInscriptions']);
     Route::post('/inscriptions/team', [InscriptionController::class, 'registerTeam']);
+
     Route::post('/inscriptions/upload', [InscriptionController::class, 'uploadDocument']);
 
     // Votação (Craque do Jogo)
@@ -342,12 +345,12 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
 
         // Race Wizard & Results
         Route::post('/race-wizard', [\App\Http\Controllers\Admin\RaceWizardController::class, 'store']);
-        Route::get('/races/{id}/results', [\App\Http\Controllers\Admin\RaceResultController::class, 'index']);
-        Route::post('/races/{id}/results', [\App\Http\Controllers\Admin\RaceResultController::class, 'store']);
-        Route::post('/races/{id}/results/import', [\App\Http\Controllers\Admin\RaceResultController::class, 'uploadCsv']);
-        Route::put('/results/{id}', [\App\Http\Controllers\Admin\RaceResultController::class, 'update']);
-        Route::patch('/results/{id}/payment', [\App\Http\Controllers\Admin\RaceResultController::class, 'updatePayment']);
-        Route::get('/championships/{id}/results/export', [\App\Http\Controllers\Admin\RaceResultController::class, 'exportCsv']);
+        Route::get('/races/{id}/results', [RaceResultController::class, 'index']);
+        Route::post('/races/{id}/results', [RaceResultController::class, 'store']);
+        Route::post('/races/{id}/results/import', [RaceResultController::class, 'uploadCsv']);
+        Route::put('/results/{id}', [RaceResultController::class, 'update']);
+        Route::patch('/results/{id}/payment', [RaceResultController::class, 'updatePayment']);
+        Route::get('/championships/{id}/results/export', [RaceResultController::class, 'exportCsv']);
 
         // Configurações
         Route::get('/settings', [\App\Http\Controllers\Admin\AdminSettingController::class, 'show']);

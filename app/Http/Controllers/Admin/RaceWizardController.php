@@ -92,7 +92,8 @@ class RaceWizardController extends Controller
                             'min_age' => $subData['min_age'] ?? null,
                             'max_age' => $subData['max_age'] ?? null,
                             'gender' => $subData['gender'] ?? $parentCat->gender,
-                            'price' => $parentCat->price, // Herda preço se não especificado (simplificação)
+                            'price' => $subData['price'] ?? 0, // Agora a subcategoria é um acréscimo (surcharge)
+
                             'included_products' => $parentCat->included_products, // Herda produtos da categoria pai
                         ]);
                     }
