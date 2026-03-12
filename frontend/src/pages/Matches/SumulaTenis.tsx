@@ -150,11 +150,11 @@ export function SumulaTenis() {
         <div className="min-h-screen bg-slate-950 text-white font-sans selection:bg-yellow-400 selection:text-black">
             {/* Header / Connectivity status */}
             <div className={`sticky top-0 z-50 p-3 flex items-center justify-between border-b transition-colors duration-500 ${isOnline ? 'bg-slate-900/80 border-slate-800' : 'bg-red-950/90 border-red-900'}`}>
-                <div className="flex items-center gap-3">
-                    <button onClick={() => navigate(-1)} className="p-2 hover:bg-white/10 rounded-full transition-colors"><ArrowLeft size={20} /></button>
-                    <div>
-                        <h1 className="text-xs font-black uppercase tracking-widest text-slate-500 leading-none">Súmula Profissional</h1>
-                        <p className="text-sm font-bold text-yellow-500 flex items-center gap-1">TÊNIS <ChevronRight size={14} /> {matchData.championship?.name || 'Torneio'}</p>
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                    <button onClick={() => navigate(-1)} className="p-2 hover:bg-white/10 rounded-full transition-colors flex-shrink-0"><ArrowLeft size={20} /></button>
+                    <div className="min-w-0">
+                        <h1 className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-slate-500 leading-none truncate">Súmula Profissional</h1>
+                        <p className="text-xs sm:text-sm font-bold text-yellow-500 flex items-center gap-1 truncate">TÊNIS <ChevronRight size={14} className="flex-shrink-0" /> <span className="truncate">{matchData.championship?.name || 'Torneio'}</span></p>
                     </div>
                 </div>
 
@@ -176,7 +176,7 @@ export function SumulaTenis() {
                 </div>
             </div>
 
-            <main className="max-w-2xl mx-auto p-2 sm:p-4 space-y-4 sm:space-y-6">
+            <main className="max-w-2xl mx-auto p-1.5 sm:p-4 space-y-4 sm:space-y-6">
                 {/* Cabeçalho de Horários */}
                 <div className="flex items-center justify-between px-2 text-[10px] font-bold text-slate-500 uppercase tracking-tighter">
                     <div className="flex items-center gap-2">
@@ -204,33 +204,35 @@ export function SumulaTenis() {
 
                     <div className="p-4 sm:p-6 space-y-4">
                         {/* Team Home */}
-                        <div className="flex items-center justify-between gap-2 sm:gap-4">
-                            <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-1.5 sm:gap-4">
+                            <div className="flex items-center gap-1.5 sm:gap-3 flex-1 min-w-0">
                                 <button
                                     onClick={() => toggleServer(matchData.home_team_id)}
-                                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all ${isHomeServing ? 'bg-yellow-400 text-black scale-110 shadow-[0_0_15px_rgba(250,204,21,0.4)]' : 'bg-slate-800 text-slate-600 hover:text-slate-400'}`}
+                                    className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex-shrink-0 flex items-center justify-center transition-all ${isHomeServing ? 'bg-yellow-400 text-black scale-110 shadow-[0_0_15px_rgba(250,204,21,0.4)]' : 'bg-slate-800 text-slate-600 hover:text-slate-400'}`}
                                 >
                                     🎾
                                 </button>
                                 <div className="truncate">
-                                    <h2 className="text-sm sm:text-lg font-black uppercase tracking-tight truncate leading-tight">{matchData.home_team?.name}</h2>
-                                    <p className="text-[8px] sm:text-[10px] font-bold text-slate-500 uppercase">Mandante</p>
+                                    <h2 className="text-[13px] sm:text-lg font-black uppercase tracking-tight truncate leading-tight">{matchData.home_team?.name}</h2>
+                                    <p className="text-[7px] sm:text-[10px] font-bold text-slate-500 uppercase">Mandante</p>
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-1.5 sm:gap-2">
+                            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                                 {/* Sets Histórico */}
-                                {sets.map((s, idx) => (
-                                    <div key={idx} className="w-7 h-9 sm:w-8 sm:h-10 bg-slate-800/50 rounded-lg flex items-center justify-center text-xs sm:text-sm font-black text-slate-400 border border-slate-700/50">
-                                        {s.home_score}
-                                    </div>
-                                ))}
+                                <div className="flex items-center gap-1">
+                                    {sets.map((s, idx) => (
+                                        <div key={idx} className="w-6 h-8 sm:w-8 sm:h-10 bg-slate-800/50 rounded-lg flex items-center justify-center text-[10px] sm:text-sm font-black text-slate-400 border border-slate-700/50">
+                                            {s.home_score}
+                                        </div>
+                                    ))}
+                                </div>
                                 {/* Game Atual */}
-                                <div className="w-9 h-11 sm:w-10 sm:h-12 bg-slate-800 rounded-xl border border-slate-700 flex items-center justify-center text-base sm:text-lg font-black text-white shadow-inner">
+                                <div className="w-8 h-10 sm:w-10 sm:h-12 bg-slate-800 rounded-lg sm:rounded-xl border border-slate-700 flex items-center justify-center text-sm sm:text-lg font-black text-white shadow-inner">
                                     {tennisState.games_won?.home || 0}
                                 </div>
                                 {/* Pontos no Game */}
-                                <div className="w-12 h-14 sm:w-14 sm:h-16 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-xl sm:rounded-2xl flex items-center justify-center text-xl sm:text-2xl font-black text-black shadow-lg">
+                                <div className="w-10 h-12 sm:w-14 sm:h-16 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-lg sm:rounded-2xl flex items-center justify-center text-lg sm:text-2xl font-black text-black shadow-lg">
                                     {translatePoint(tennisState.game_score?.home || 0, tennisState.is_tiebreak)}
                                 </div>
                             </div>
@@ -239,30 +241,32 @@ export function SumulaTenis() {
                         <div className="h-px bg-slate-800/50 mx-2 sm:mx-4"></div>
 
                         {/* Team Away */}
-                        <div className="flex items-center justify-between gap-2 sm:gap-4">
-                            <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-1.5 sm:gap-4">
+                            <div className="flex items-center gap-1.5 sm:gap-3 flex-1 min-w-0">
                                 <button
                                     onClick={() => toggleServer(matchData.away_team_id)}
-                                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all ${isAwayServing ? 'bg-yellow-400 text-black scale-110 shadow-[0_0_15px_rgba(250,204,21,0.4)]' : 'bg-slate-800 text-slate-600 hover:text-slate-400'}`}
+                                    className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex-shrink-0 flex items-center justify-center transition-all ${isAwayServing ? 'bg-yellow-400 text-black scale-110 shadow-[0_0_15px_rgba(250,204,21,0.4)]' : 'bg-slate-800 text-slate-600 hover:text-slate-400'}`}
                                 >
                                     🎾
                                 </button>
                                 <div className="truncate">
-                                    <h2 className="text-sm sm:text-lg font-black uppercase tracking-tight truncate leading-tight">{matchData.away_team?.name}</h2>
-                                    <p className="text-[8px] sm:text-[10px] font-bold text-slate-500 uppercase">Visitante</p>
+                                    <h2 className="text-[13px] sm:text-lg font-black uppercase tracking-tight truncate leading-tight">{matchData.away_team?.name}</h2>
+                                    <p className="text-[7px] sm:text-[10px] font-bold text-slate-500 uppercase">Visitante</p>
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-1.5 sm:gap-2">
-                                {sets.map((s, idx) => (
-                                    <div key={idx} className="w-7 h-9 sm:w-8 sm:h-10 bg-slate-800/50 rounded-lg flex items-center justify-center text-xs sm:text-sm font-black text-slate-400 border border-slate-700/50">
-                                        {s.away_score}
-                                    </div>
-                                ))}
-                                <div className="w-9 h-11 sm:w-10 sm:h-12 bg-slate-800 rounded-xl border border-slate-700 flex items-center justify-center text-base sm:text-lg font-black text-white shadow-inner">
+                            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                                <div className="flex items-center gap-1">
+                                    {sets.map((s, idx) => (
+                                        <div key={idx} className="w-6 h-8 sm:w-8 sm:h-10 bg-slate-800/50 rounded-lg flex items-center justify-center text-[10px] sm:text-sm font-black text-slate-400 border border-slate-700/50">
+                                            {s.away_score}
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="w-8 h-10 sm:w-10 sm:h-12 bg-slate-800 rounded-lg sm:rounded-xl border border-slate-700 flex items-center justify-center text-sm sm:text-lg font-black text-white shadow-inner">
                                     {tennisState.games_won?.away || 0}
                                 </div>
-                                <div className="w-12 h-14 sm:w-14 sm:h-16 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-xl sm:rounded-2xl flex items-center justify-center text-xl sm:text-2xl font-black text-black shadow-lg">
+                                <div className="w-10 h-12 sm:w-14 sm:h-16 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-lg sm:rounded-2xl flex items-center justify-center text-lg sm:text-2xl font-black text-black shadow-lg">
                                     {translatePoint(tennisState.game_score?.away || 0, tennisState.is_tiebreak)}
                                 </div>
                             </div>
@@ -275,10 +279,10 @@ export function SumulaTenis() {
                 </div>
 
                 {/* Área de Ações (Jogadores) */}
-                <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                <div className="grid grid-cols-2 gap-2 sm:gap-4">
                     {/* Botões Lançamento Mandante */}
                     <div className="space-y-3">
-                        <div className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase text-center tracking-widest pl-2 flex items-center gap-2">
+                        <div className="text-[8px] sm:text-[10px] font-black text-slate-500 uppercase text-center tracking-widest pl-2 flex items-center gap-1 sm:gap-2">
                             <div className="h-px bg-slate-800 flex-1"></div>
                             MARCAR
                             <div className="h-px bg-slate-800 flex-1"></div>
@@ -289,11 +293,12 @@ export function SumulaTenis() {
                                 key={idx}
                                 disabled={matchData.status === 'finished'}
                                 onClick={() => setPointFlow({ teamId: matchData.home_team_id, playerIndex: idx })}
-                                className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-3 sm:p-4 flex flex-col items-center gap-1 hover:bg-slate-800/80 active:scale-95 transition-all text-blue-400 font-bold disabled:opacity-50 disabled:active:scale-100"
+                                className="w-full bg-slate-900 border border-slate-800 rounded-xl sm:rounded-2xl p-2.5 sm:p-4 flex flex-col items-center gap-1 hover:bg-slate-800/80 active:scale-95 transition-all text-blue-400 font-bold disabled:opacity-50 disabled:active:scale-100"
                             >
-                                <span className="text-[10px] sm:text-xs uppercase tracking-tight truncate w-full text-center">{p.nickname || p.name}</span>
-                                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-500/10 rounded-full flex items-center justify-center text-blue-400">
-                                    <Plus size={20} />
+                                <span className="text-[9px] sm:text-xs uppercase tracking-tight truncate w-full text-center">{p.nickname || p.name}</span>
+                                <div className="w-7 h-7 sm:w-10 sm:h-10 bg-blue-500/10 rounded-full flex items-center justify-center text-blue-400">
+                                    <Plus size={16} className="sm:hidden" />
+                                    <Plus size={20} className="hidden sm:block" />
                                 </div>
                             </button>
                         ))}
@@ -301,7 +306,7 @@ export function SumulaTenis() {
 
                     {/* Botões Lançamento Visitante */}
                     <div className="space-y-3">
-                        <div className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase text-center tracking-widest flex items-center gap-2 pr-2">
+                        <div className="text-[8px] sm:text-[10px] font-black text-slate-500 uppercase text-center tracking-widest flex items-center gap-1 sm:gap-2 pr-2">
                             <div className="h-px bg-slate-800 flex-1"></div>
                             MARCAR
                             <div className="h-px bg-slate-800 flex-1"></div>
@@ -312,11 +317,12 @@ export function SumulaTenis() {
                                 key={idx}
                                 disabled={matchData.status === 'finished'}
                                 onClick={() => setPointFlow({ teamId: matchData.away_team_id, playerIndex: idx })}
-                                className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-3 sm:p-4 flex flex-col items-center gap-1 hover:bg-slate-800/80 active:scale-95 transition-all text-emerald-400 font-bold disabled:opacity-50 disabled:active:scale-100"
+                                className="w-full bg-slate-900 border border-slate-800 rounded-xl sm:rounded-2xl p-2.5 sm:p-4 flex flex-col items-center gap-1 hover:bg-slate-800/80 active:scale-95 transition-all text-emerald-400 font-bold disabled:opacity-50 disabled:active:scale-100"
                             >
                                 <span className="text-[10px] sm:text-xs uppercase tracking-tight truncate w-full text-center">{p.nickname || p.name}</span>
-                                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-400">
-                                    <Plus size={20} />
+                                <div className="w-7 h-7 sm:w-10 sm:h-10 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-400">
+                                    <Plus size={16} className="sm:hidden" />
+                                    <Plus size={20} className="hidden sm:block" />
                                 </div>
                             </button>
                         ))}
@@ -325,27 +331,25 @@ export function SumulaTenis() {
 
                 {/* Histórico Recente de Pontos */}
                 <div className="space-y-2">
-                    <div className="flex items-center justify-between px-2">
-                        <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Últimos Pontos</h4>
-                    </div>
-                    <div className="bg-slate-900/30 rounded-2xl border border-slate-800/50 p-1 space-y-1">
+                    <h4 className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-widest px-2">Últimos Pontos</h4>
+                    <div className="bg-slate-900/30 rounded-xl sm:rounded-2xl border border-slate-800/50 p-1 space-y-1">
                         {matchData.events?.slice(0, 5).map((ev: any, i: number) => (
-                            <div key={i} className="flex items-center justify-between px-4 py-2 rounded-xl bg-slate-900/50 border border-slate-800/30">
-                                <div className="flex items-center gap-3">
-                                    <span className="text-lg">{ev.metadata?.tennis_type === 'ace' ? '⚡' : '🎾'}</span>
-                                    <div>
-                                        <p className="text-[11px] font-black text-white leading-none mb-0.5">{ev.metadata?.label?.split(' - ')[0] || 'Ponto'}</p>
-                                        <p className="text-[9px] font-bold text-slate-500 uppercase leading-none">{ev.metadata?.label?.split(' - ')[1] || '---'}</p>
+                            <div key={i} className="flex items-center justify-between px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-slate-900/50 border border-slate-800/30">
+                                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                                    <span className="text-sm sm:text-lg flex-shrink-0">{ev.metadata?.tennis_type === 'ace' ? '⚡' : '🎾'}</span>
+                                    <div className="truncate">
+                                        <p className="text-[9px] sm:text-[11px] font-black text-white leading-none mb-0.5 truncate">{ev.metadata?.label?.split(' - ')[0] || 'Ponto'}</p>
+                                        <p className="text-[7px] sm:text-[9px] font-bold text-slate-500 uppercase leading-none truncate">{ev.metadata?.label?.split(' - ')[1] || '---'}</p>
                                     </div>
                                 </div>
-                                <div className="text-right">
-                                    <p className="text-[10px] font-black text-yellow-500 leading-none mb-0.5">{ev.metadata?.score || '0-0'}</p>
-                                    <p className="text-[8px] font-bold text-slate-600 uppercase tracking-tighter">{ev.period}</p>
+                                <div className="text-right flex-shrink-0 ml-2">
+                                    <p className="text-[9px] sm:text-[10px] font-black text-yellow-500 leading-none mb-0.5">{ev.metadata?.score || '0-0'}</p>
+                                    <p className="text-[7px] sm:text-[8px] font-bold text-slate-600 uppercase tracking-tighter">{ev.period}</p>
                                 </div>
                             </div>
                         ))}
                         {(!matchData.events || matchData.events.length === 0) && (
-                            <p className="p-4 text-center text-xs font-bold text-slate-600 uppercase tracking-widest">Nenhum ponto registrado</p>
+                            <p className="p-3 text-center text-[9px] sm:text-[10px] font-bold text-slate-600 uppercase tracking-widest">Nenhum ponto registrado</p>
                         )}
                     </div>
                 </div>
