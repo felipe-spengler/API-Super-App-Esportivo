@@ -66,30 +66,31 @@ class EventController extends Controller
             ->withCount('teams')
             ->findOrFail($id);
 
-        // 1. Processar nomes e preços (Soma Categoria + Subcategoria)
-        foreach ($champ->categories as $cat) {
-            if ($cat->parent_id && $cat->parent) {
-                $cat->price = (float) $cat->parent->price + (float) $cat->price;
-                $cat->name = $cat->parent->name . " (" . $cat->name . ")";
+        $allCategories = $champ->categories;
+        $catMap = $allCategories->keyBy('id');
+
+        // Processar nomes e preços (Soma Categoria + Subcategoria)
+        foreach ($allCategories as $cat) {
+            if ($cat->parent_id && isset($catMap[$cat->parent_id])) {
+                $parent = $catMap[$cat->parent_id];
+                // Soma o preço principal + acréscimo da sub
+                $cat->price = (float) $parent->price + (float) $cat->price;
+                // Nome completo: "5KM (25 a 29 anos)"
+                $cat->name = $parent->name . " (" . $cat->name . ")";
             }
         }
 
-        // 2. Hydrate products
-        foreach ($champ->categories as $category) {
+        // Hydrate products
+        foreach ($allCategories as $category) {
             if ($category->included_products) {
                 $category->products_details = $category->products();
             }
         }
 
-        // 3. Filtrar para o frontend ver apenas as Raiz no array principal
-        // Mas mantemos as filhas dentro de cada raiz (já processadas com nome/preço)
-        $rootCategories = $champ->categories->where('parent_id', null)->values();
-
-        // Temporariamente substituímos a collection de categorias no objeto
-        $champ->setRelation('categories', $rootCategories);
-
+        // Retorna a lista completa para o resumo do frontend funcionar
         return response()->json($champ);
     }
+
 
 
     // 3. Tabela de Jogos (Partidas)
