@@ -89,10 +89,10 @@ export function MatchPrintView() {
                                     <th className="border border-black w-8">Nº</th>
                                     <th className="border border-black text-left px-2">Nome</th>
                                     <th className="border border-black w-8">Camisa</th>
-                                    <th className="border border-black w-24">Faltas</th>
-                                    <th className="border border-black w-6">A</th>
-                                    <th className="border border-black w-6">V</th>
-                                    <th className="border border-black w-6">Gols</th>
+                                    <th className="border border-black w-24">{isTennis ? 'Sets' : 'Faltas'}</th>
+                                    <th className="border border-black w-6">{isTennis ? 'Aces' : 'A'}</th>
+                                    <th className="border border-black w-6">{isTennis ? 'Wnr' : 'V'}</th>
+                                    <th className="border border-black w-6">{isTennis ? 'Games' : 'Gols'}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -157,21 +157,23 @@ export function MatchPrintView() {
                         </table>
 
                         {/* Timeouts */}
-                        <table className="w-full text-xs border-collapse border border-black text-center">
-                            <tbody>
-                                <tr>
-                                    <td colSpan={2} className="bg-gray-200 font-bold border border-black">Pedidos de Tempo</td>
-                                </tr>
-                                <tr>
-                                    <td className="border border-black w-1/2">1º P</td>
-                                    <td className="border border-black w-1/2">2º P</td>
-                                </tr>
-                                <tr className="h-6">
-                                    <td className="border border-black"><EditableSpan text=":" /></td>
-                                    <td className="border border-black"><EditableSpan text=":" /></td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        {!isTennis && (
+                            <table className="w-full text-xs border-collapse border border-black text-center">
+                                <tbody>
+                                    <tr>
+                                        <td colSpan={2} className="bg-gray-200 font-bold border border-black">Pedidos de Tempo</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="border border-black w-1/2">1º P</td>
+                                        <td className="border border-black w-1/2">2º P</td>
+                                    </tr>
+                                    <tr className="h-6">
+                                        <td className="border border-black"><EditableSpan text=":" /></td>
+                                        <td className="border border-black"><EditableSpan text=":" /></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        )}
 
                         {/* Substitutions */}
                         <table className="w-full text-xs border-collapse border border-black text-center">
@@ -194,42 +196,47 @@ export function MatchPrintView() {
                         </table>
 
                         {/* Goals Grid - Replicating classic grid look */}
-                        <table className="w-full text-xs border-collapse border border-black text-center">
-                            <tbody>
-                                <tr><td colSpan={5} className="bg-gray-200 font-bold border border-black">GOLS</td></tr>
-                                {Array.from({ length: 4 }).map((_, rowsIs) => (
-                                    <tr key={rowsIs} className="h-8">
-                                        {Array.from({ length: 5 }).map((_, colIdx) => {
-                                            const goalIdx = (rowsIs * 5) + colIdx;
-                                            const goal = teamGoals[goalIdx];
-                                            return (
-                                                <td key={colIdx} className="border border-black relative align-top">
-                                                    <span className="absolute bg-gray-200 text-[8px] top-0 left-0 px-0.5 border-r border-b border-gray-300">
-                                                        {goalIdx + 1}
-                                                    </span>
-                                                    {goal ? (
-                                                        <div className="pt-2">
-                                                            <div className="font-bold text-sm">{goal.player?.number || '#'}</div>
-                                                            <div className="text-[9px] leading-none">{goal.minute}'</div>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="pt-3">
-                                                            <EditableSpan text="" />
-                                                        </div>
-                                                    )}
-                                                </td>
-                                            );
-                                        })}
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                        {!isTennis && (
+                            <table className="w-full text-xs border-collapse border border-black text-center">
+                                <tbody>
+                                    <tr><td colSpan={5} className="bg-gray-200 font-bold border border-black">GOLS</td></tr>
+                                    {Array.from({ length: 4 }).map((_, rowsIs) => (
+                                        <tr key={rowsIs} className="h-8">
+                                            {Array.from({ length: 5 }).map((_, colIdx) => {
+                                                const goalIdx = (rowsIs * 5) + colIdx;
+                                                const goal = teamGoals[goalIdx];
+                                                return (
+                                                    <td key={colIdx} className="border border-black relative align-top">
+                                                        <span className="absolute bg-gray-200 text-[8px] top-0 left-0 px-0.5 border-r border-b border-gray-300">
+                                                            {goalIdx + 1}
+                                                        </span>
+                                                        {goal ? (
+                                                            <div className="pt-2">
+                                                                <div className="font-bold text-sm">{goal.player?.number || '#'}</div>
+                                                                <div className="text-[9px] leading-none">{goal.minute}'</div>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="pt-3">
+                                                                <EditableSpan text="" />
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                );
+                                            })}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
 
                     </div>
                 </div>
             </div>
         );
     };
+
+    const isTennis = match?.championship?.sport?.slug?.includes('tenis');
+    const tennisSets = (match?.match_details?.sets || []).sort((a: any, b: any) => a.set_number - b.set_number);
 
     return (
         <div className="bg-white text-black min-h-screen p-4 font-sans max-w-[210mm] mx-auto print:max-w-none print:m-0 print:p-0">
@@ -280,12 +287,38 @@ export function MatchPrintView() {
                 <table className="w-full text-lg border-collapse border border-black mb-4">
                     <tbody>
                         <tr>
-                            <td className="border border-black p-2 font-bold text-right w-[40%]">{match.home_team?.name}</td>
-                            <td className="border border-black p-2 font-bold text-center w-[10%] text-2xl bg-gray-50">{match.home_score ?? ''}</td>
+                            <td className="border border-black p-2 font-bold text-right w-[40%] flex-col">
+                                <div>{match.home_team?.name}</div>
+                                {isTennis && <div className="text-[10px] text-gray-400 font-normal">Mandante</div>}
+                            </td>
+                            <td className="border border-black p-2 font-bold text-center w-[10%] text-2xl bg-gray-50 flex flex-col items-center">
+                                <div>{match.home_score ?? '0'}</div>
+                                {isTennis && <div className="text-[9px] font-normal uppercase text-blue-600">Sets</div>}
+                            </td>
                             <td className="border border-black p-2 font-bold text-center w-[5%] text-xl">X</td>
-                            <td className="border border-black p-2 font-bold text-center w-[10%] text-2xl bg-gray-50">{match.away_score ?? ''}</td>
-                            <td className="border border-black p-2 font-bold text-left w-[40%]">{match.away_team?.name}</td>
+                            <td className="border border-black p-2 font-bold text-center w-[10%] text-2xl bg-gray-50 flex flex-col items-center">
+                                <div>{match.away_score ?? '0'}</div>
+                                {isTennis && <div className="text-[9px] font-normal uppercase text-blue-600">Sets</div>}
+                            </td>
+                            <td className="border border-black p-2 font-bold text-left w-[40%]">
+                                <div>{match.away_team?.name}</div>
+                                {isTennis && <div className="text-[10px] text-gray-400 font-normal">Visitante</div>}
+                            </td>
                         </tr>
+                        {isTennis && tennisSets.length > 0 && (
+                            <tr>
+                                <td colSpan={5} className="bg-gray-50 p-1 border border-black">
+                                    <div className="flex items-center justify-center gap-4 text-xs font-bold text-gray-600">
+                                        {tennisSets.map((s: any) => (
+                                            <div key={s.id} className="flex gap-2 bg-white px-2 py-0.5 border rounded border-gray-200">
+                                                <span className="text-gray-400">Set {s.set_number}:</span>
+                                                <span>{s.home_score} x {s.away_score}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </td>
+                            </tr>
+                        )}
                     </tbody>
                 </table>
 

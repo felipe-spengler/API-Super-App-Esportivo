@@ -203,6 +203,20 @@ export function SumulaTenis() {
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-yellow-500 via-yellow-200 to-yellow-500"></div>
 
                     <div className="p-4 sm:p-6 space-y-4">
+                        {/* Labels de Coluna */}
+                        <div className="flex justify-end items-center gap-1.5 sm:gap-2 pr-1 sm:pr-2">
+                            <div className="flex-1"></div>
+                            <div className="w-8 sm:w-10 text-[7px] sm:text-[9px] font-black text-blue-500 uppercase text-center tracking-tighter">Sets</div>
+                            <div className="flex gap-1">
+                                {sets.map((_, i) => (
+                                    <div key={i} className="w-6 sm:w-8 text-[6px] sm:text-[8px] font-black text-slate-600 uppercase text-center tracking-tighter">S{i + 1}</div>
+                                ))}
+                                <div className="w-6 sm:w-8 text-[6px] sm:text-[8px] font-black text-slate-400 uppercase text-center tracking-tighter">S{sets.length + 1}</div>
+                            </div>
+                            <div className="w-8 sm:w-10 text-[7px] sm:text-[9px] font-black text-slate-500 uppercase text-center tracking-tighter">Games</div>
+                            <div className="w-10 sm:w-14 text-[7px] sm:text-[9px] font-black text-yellow-500 uppercase text-center tracking-tighter">Pontos</div>
+                        </div>
+
                         {/* Team Home */}
                         <div className="flex items-center justify-between gap-1.5 sm:gap-4">
                             <div className="flex items-center gap-1.5 sm:gap-3 flex-1 min-w-0">
@@ -210,7 +224,7 @@ export function SumulaTenis() {
                                     onClick={() => toggleServer(matchData.home_team_id)}
                                     className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex-shrink-0 flex items-center justify-center transition-all ${isHomeServing ? 'bg-yellow-400 text-black scale-110 shadow-[0_0_15px_rgba(250,204,21,0.4)]' : 'bg-slate-800 text-slate-600 hover:text-slate-400'}`}
                                 >
-                                    🎾
+                                    {isHomeServing ? '🎾' : ''}
                                 </button>
                                 <div className="truncate">
                                     <h2 className="text-[13px] sm:text-lg font-black uppercase tracking-tight truncate leading-tight">{matchData.home_team?.name}</h2>
@@ -219,19 +233,26 @@ export function SumulaTenis() {
                             </div>
 
                             <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-                                {/* Sets Histórico */}
+                                {/* Placar de Sets (Partida) */}
+                                <div className="w-8 h-10 sm:w-10 sm:h-12 bg-blue-600/20 border border-blue-500/30 rounded-lg flex items-center justify-center text-sm sm:text-lg font-black text-blue-400 shadow-inner">
+                                    {matchData.home_score || 0}
+                                </div>
+
+                                {/* Sets Histórico (Games do Set) */}
                                 <div className="flex items-center gap-1">
                                     {sets.map((s, idx) => (
-                                        <div key={idx} className="w-6 h-8 sm:w-8 sm:h-10 bg-slate-800/50 rounded-lg flex items-center justify-center text-[10px] sm:text-sm font-black text-slate-400 border border-slate-700/50">
+                                        <div key={idx} className="w-6 h-8 sm:w-8 sm:h-10 bg-slate-800/50 rounded-lg flex items-center justify-center text-[10px] sm:text-sm font-black text-slate-500 border border-slate-700/30">
                                             {s.home_score}
                                         </div>
                                     ))}
                                 </div>
-                                {/* Game Atual */}
+
+                                {/* Games Won no Set Atual */}
                                 <div className="w-8 h-10 sm:w-10 sm:h-12 bg-slate-800 rounded-lg sm:rounded-xl border border-slate-700 flex items-center justify-center text-sm sm:text-lg font-black text-white shadow-inner">
                                     {tennisState.games_won?.home || 0}
                                 </div>
-                                {/* Pontos no Game */}
+
+                                {/* Pontos no Game Atual */}
                                 <div className="w-10 h-12 sm:w-14 sm:h-16 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-lg sm:rounded-2xl flex items-center justify-center text-lg sm:text-2xl font-black text-black shadow-lg">
                                     {translatePoint(tennisState.game_score?.home || 0, tennisState.is_tiebreak)}
                                 </div>
@@ -247,7 +268,7 @@ export function SumulaTenis() {
                                     onClick={() => toggleServer(matchData.away_team_id)}
                                     className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex-shrink-0 flex items-center justify-center transition-all ${isAwayServing ? 'bg-yellow-400 text-black scale-110 shadow-[0_0_15px_rgba(250,204,21,0.4)]' : 'bg-slate-800 text-slate-600 hover:text-slate-400'}`}
                                 >
-                                    🎾
+                                    {isAwayServing ? '🎾' : ''}
                                 </button>
                                 <div className="truncate">
                                     <h2 className="text-[13px] sm:text-lg font-black uppercase tracking-tight truncate leading-tight">{matchData.away_team?.name}</h2>
@@ -256,9 +277,13 @@ export function SumulaTenis() {
                             </div>
 
                             <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                                <div className="w-8 h-10 sm:w-10 sm:h-12 bg-blue-600/20 border border-blue-500/30 rounded-lg flex items-center justify-center text-sm sm:text-lg font-black text-blue-400 shadow-inner">
+                                    {matchData.away_score || 0}
+                                </div>
+
                                 <div className="flex items-center gap-1">
                                     {sets.map((s, idx) => (
-                                        <div key={idx} className="w-6 h-8 sm:w-8 sm:h-10 bg-slate-800/50 rounded-lg flex items-center justify-center text-[10px] sm:text-sm font-black text-slate-400 border border-slate-700/50">
+                                        <div key={idx} className="w-6 h-8 sm:w-8 sm:h-10 bg-slate-800/50 rounded-lg flex items-center justify-center text-[10px] sm:text-sm font-black text-slate-500 border border-slate-700/30">
                                             {s.away_score}
                                         </div>
                                     ))}
@@ -273,8 +298,8 @@ export function SumulaTenis() {
                         </div>
                     </div>
 
-                    <div className="bg-slate-950/50 p-2 text-center text-emerald-400 font-bold text-[9px] uppercase tracking-widest">
-                        {matchData.status === 'finished' ? 'PARTIDA ENCERRADA' : (tennisState.is_tiebreak ? '💥 TIE-BREAK EM CURSO 💥' : `${tennisState.current_set}º SET - GAME EM DISPUTA`)}
+                    <div className="bg-slate-950/50 p-2 text-center font-bold text-[9px] uppercase tracking-widest flex items-center justify-center gap-4">
+                        <span className="text-slate-500">{matchData.status === 'finished' ? 'PARTIDA ENCERRADA' : (tennisState.is_tiebreak ? '💥 TIE-BREAK EM CURSO 💥' : `${tennisState.current_set}º SET - GAME EM DISPUTA`)}</span>
                     </div>
                 </div>
 
