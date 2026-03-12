@@ -17,6 +17,7 @@ use App\Http\Controllers\Admin\AdminTeamController;
 use App\Http\Controllers\Admin\AdminPlayerController;
 use App\Http\Controllers\Admin\AdminMatchController;
 use App\Http\Controllers\Admin\AdminVolleyController;
+use App\Http\Controllers\Admin\AdminTennisController;
 use App\Http\Controllers\Admin\AdminCategoryController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\BracketController;
@@ -211,6 +212,12 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
         Route::post('/matches/{id}/volley/set-finish', [AdminVolleyController::class, 'finishSet']);
         Route::post('/matches/{id}/volley/rotation', [AdminVolleyController::class, 'manualRotation']);
         Route::post('/matches/{id}/volley/substitution', [AdminVolleyController::class, 'substitutePlayer']);
+
+        // Gestão de Tênis
+        Route::get('/matches/{id}/tennis-state', [AdminTennisController::class, 'getState']);
+        Route::post('/matches/{id}/tennis/point', [AdminTennisController::class, 'registerPoint']);
+        Route::post('/matches/{id}/tennis/server', [AdminTennisController::class, 'setServer']);
+        Route::post('/matches/{id}/tennis/undo', [AdminTennisController::class, 'undoPoint']);
 
         // Gestão de Equipes (NEW)
         Route::get('/teams', [AdminTeamController::class, 'index']);

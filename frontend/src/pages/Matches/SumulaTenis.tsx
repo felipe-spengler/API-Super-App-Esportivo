@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Minus, RotateCcw, Trophy, Activity, X, Wifi, WifiOff } from 'lucide-react';
+import { ArrowLeft, Trophy, Wifi, WifiOff, AlertOctagon, RefreshCw, X, ChevronRight, Check, Plus, Trash2, History } from 'lucide-react';
 import api from '../../services/api';
 import { useOfflineResilience } from '../../hooks/useOfflineResilience';
-import { useCallback } from 'react';
 
 export function SumulaTenis() {
     const { id } = useParams();
@@ -12,673 +11,382 @@ export function SumulaTenis() {
     // State
     const [loading, setLoading] = useState(true);
     const [matchData, setMatchData] = useState<any>(null);
+    const [tennisState, setTennisState] = useState<any>(null);
+    const [sets, setSets] = useState<any[]>([]);
     const [rosters, setRosters] = useState<any>({ home: [], away: [] });
 
-    // Match State
-    const [sets, setSets] = useState<any[]>([]);
-    const [currentSet, setCurrentSet] = useState(1);
-    const [gameScore, setGameScore] = useState({ home: 0, away: 0 }); // Pontos no game atual (0, 1, 2, 3...)
-    const [gamesWon, setGamesWon] = useState({ home: 0, away: 0 }); // Games vencidos no set atual
-    const [matchFinished, setMatchFinished] = useState(false);
-    const [isQuickMode, setIsQuickMode] = useState(false); // Alterna entre marcar pontos ou games direto
-    const [events, setEvents] = useState<any[]>([]);
+    // UI Flow
+    const [pointFlow, setPointFlow] = useState<{ teamId: number, playerIndex: number } | null>(null);
 
     // 🛡️ Offline Resilience
-    const { isOnline, addToQueue, pendingCount , getPendingCount } = useOfflineResilience(id, 'Tenis', async (action, data) => {
+    const { isOnline, addToQueue, pendingCount, getPendingCount } = useOfflineResilience(id, 'Tênis', async (action, data) => {
         let url = '';
         switch (action) {
-            case 'event': url = `/admin/matches/${id}/events`; break;
-            case 'sets': url = `/admin/matches/${id}/sets`; break;
-            case 'finish': url = `/admin/matches/${id}/finish`; break;
-            case 'patch_match': return await api.patch(`/admin/matches/${id}`, data);
+            case 'tennis_point': url = `/admin/matches/${id}/tennis/point`; break;
+            case 'tennis_server': url = `/admin/matches/${id}/tennis/server`; break;
+            case 'tennis_undo': url = `/admin/matches/${id}/tennis/undo`; break;
+            case 'match_finish': url = `/admin/matches/${id}/finish`; break;
         }
         if (url) return await api.post(url, data);
     });
 
-    // Helper: tenta chamada direta; se falhar offline, enfileira
-    const apiPost = useCallback(async (action: 'event' | 'sets' | 'finish' | 'patch_match', data: any) => {
-        if (isOnline) {
+    const apiCall = async (action: string, endpoint: string, data: any) => {
+        if (isOnline && getPendingCount() === 0) {
             try {
-                const url = action === 'event' ? `/admin/matches/${id}/events`
-                    : action === 'sets' ? `/admin/matches/${id}/sets`
-                        : action === 'finish' ? `/admin/matches/${id}/finish` : '';
-
-                if (action === 'patch_match') return await api.patch(`/admin/matches/${id}`, data);
-                return await api.post(url, data);
-            } catch (e: any) {
-                if (!e.response) { addToQueue(action, data); return null; }
-                throw e;
+                const response = await api.post(endpoint, data);
+                if (response.data.match) {
+                    processState(response.data);
+                }
+                return true;
+            } catch (e) {
+                addToQueue(action, data);
+                return false;
             }
         } else {
             addToQueue(action, data);
-            return null;
+            return false;
         }
-    }, [isOnline, id, addToQueue]);
+    };
 
-    const fetchMatchDetails = async (silent = false) => {
+    const fetchState = async (silent = false) => {
         try {
             if (!silent) setLoading(true);
-            const response = await api.get(`/admin/matches/${id}/full-details`);
-            const data = response.data;
-            if (data.match) {
-                setMatchData({
-                    ...data.match,
-                    scoreHome: parseInt(data.match.home_score || 0), // Sets vencidos
-                    scoreAway: parseInt(data.match.away_score || 0)
-                });
-
-                if (data.rosters) setRosters(data.rosters);
-
-                // Recover sets history if exists
-                if (data.details?.sets && data.details.sets.length > 0) {
-                    setSets(data.details.sets);
-                }
-
-                if (data.details?.events) {
-                    const sortedEvents = [...data.details.events].sort((a, b) => b.id - a.id);
-                    setEvents(sortedEvents);
-                }
-
-                // Recover current state from server sync
-                if (data.match.match_details?.sync_state) {
-                    const ss = data.match.match_details.sync_state;
-                    if (ss.gameScore) setGameScore(ss.gameScore);
-                    if (ss.gamesWon) setGamesWon(ss.gamesWon);
-                    if (ss.currentSet) setCurrentSet(ss.currentSet);
-                }
-            }
+            const response = await api.get(`/admin/matches/${id}/tennis-state`);
+            processState(response.data);
         } catch (e) {
             console.error(e);
-            if (!silent) alert('Erro ao carregar jogo.');
+            if (!silent) alert('Erro ao carregar dados do tênis.');
         } finally {
             if (!silent) setLoading(false);
         }
     };
 
-    // --- PERSISTENCE ---
-    const STORAGE_KEY = `match_state_tenis_${id}`;
+    const processState = (data: any) => {
+        setMatchData(data.match);
+        setTennisState(data.state);
+        setSets(data.sets || []);
+        if (data.match.home_team && data.match.away_team) {
+            setRosters({
+                home: data.match.home_team.players || [],
+                away: data.match.away_team.players || []
+            });
+        }
+    };
 
     useEffect(() => {
         if (id) {
-            // Initial Fetch
-            fetchMatchDetails();
-
-            // Sync Interval
-            const syncInterval = setInterval(() => {
-                if (getPendingCount() === 0) fetchMatchDetails(true);
-            }, 2000);
-
-            const saved = localStorage.getItem(STORAGE_KEY);
-            if (saved) {
-                try {
-                    const parsed = JSON.parse(saved);
-                    if (parsed.sets) setSets(parsed.sets);
-                    if (parsed.currentSet) setCurrentSet(parsed.currentSet);
-                    if (parsed.gameScore) setGameScore(parsed.gameScore);
-                    if (parsed.gamesWon) setGamesWon(parsed.gamesWon);
-                    if (parsed.matchFinished) setMatchFinished(parsed.matchFinished);
-                } catch (e) {
-                    console.error("Failed to recover state", e);
-                }
-            }
-            return () => clearInterval(syncInterval);
+            fetchState();
+            const interval = setInterval(() => {
+                if (getPendingCount() === 0) fetchState(true);
+            }, 3000);
+            return () => clearInterval(interval);
         }
     }, [id]);
 
-    useEffect(() => {
-        if (!id || loading) return;
-        const stateToSave = {
-            sets,
-            currentSet,
-            gameScore,
-            gamesWon,
-            matchFinished
-        };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
-    }, [id, loading, sets, currentSet, gameScore, gamesWon, matchFinished]);
+    const handlePointSelection = async (type: string) => {
+        if (!pointFlow) return;
+        const { teamId, playerIndex } = pointFlow;
+        const roster = teamId === matchData.home_team_id ? rosters.home : rosters.away;
+        const player = roster[playerIndex];
+        setPointFlow(null);
 
-    // PING - Sync local state TO server (Every 3 seconds)
-    useEffect(() => {
-        if (!id || matchFinished || loading || !matchData) return;
-
-        const pingInterval = setInterval(async () => {
-            if (!isOnline || getPendingCount() > 0) return;
-            try {
-                await apiPost('patch_match', {
-                    match_details: {
-                        ...matchData.match_details,
-                        sync_state: {
-                            gameScore,
-                            gamesWon,
-                            currentSet,
-                            updated_at: Date.now()
-                        }
-                    }
-                });
-            } catch (e) {
-                console.error("State sync failed", e);
-            }
-        }, 3000);
-
-        return () => clearInterval(pingInterval);
-    }, [id, gameScore, gamesWon, currentSet]);
-
-    // Scoring system: 0, 15, 30, 40, Game
-    const isTiebreak = gamesWon.home === 6 && gamesWon.away === 6;
-    const pointLabels = isTiebreak ? [] : ['0', '15', '30', '40', 'Vant.'];
-
-    const addGame = async (team: 'home' | 'away') => {
-        if (matchFinished) return;
-
-        // If match is still scheduled, try to set to live on first action
-        if (matchData && (matchData.status === 'scheduled' || matchData.status === 'Agendado')) {
-            registerSystemEvent('match_start', 'Início da partida! Placar aberto!');
+        // Determinamos quem ganha o ponto baseado no tipo
+        // Se for erro (DF, EF, ENF), o ponto vai para o adversário
+        let winningTeamId = teamId;
+        if (['double_fault', 'forced_error', 'unforced_error'].includes(type)) {
+            winningTeamId = teamId === matchData.home_team_id ? matchData.away_team_id : matchData.home_team_id;
         }
 
-        const newGames = { ...gamesWon };
-        const opponent = team === 'home' ? 'away' : 'home';
-        newGames[team]++;
-
-        setGamesWon(newGames);
-        setGameScore({ home: 0, away: 0 }); // Limpa pontos se ganhar o game direto
-
-        // Save game event
-        try {
-            const resp = await apiPost('event', {
-                event_type: 'game_won',
-                team_id: team === 'home' ? matchData.home_team_id : matchData.away_team_id,
-                minute: '00:00',
-                period: `Set ${currentSet}`,
-                metadata: {
-                    result: `${newGames.home}-${newGames.away}`,
-                    system_period: `Set ${currentSet}`
-                }
-            });
-            setEvents(prev => [{
-                id: resp?.data?.event?.id || resp?.data?.id || Date.now(),
-                type: 'game_won',
-                team_id: team === 'home' ? matchData.home_team_id : matchData.away_team_id,
-                period: `Set ${currentSet}`,
-                minute: '00:00',
-                metadata: { result: `${newGames.home}-${newGames.away}` }
-            }, ...prev]);
-        } catch (e) {
-            console.error(e);
-        }
-
-        // Check if set won
-        if (newGames[team] >= 6 && newGames[team] >= newGames[opponent] + 2) {
-            await finishSet(newGames);
-        } else if (newGames[team] === 7) {
-            await finishSet(newGames);
-        }
+        await apiCall('tennis_point', `/admin/matches/${id}/tennis/point`, {
+            team_id: winningTeamId,
+            player_id: player?.id,
+            point_type: type,
+            game_time: "00:00" // Simplified for now
+        });
     };
 
-    const addPoint = async (team: 'home' | 'away') => {
-        if (matchFinished) return;
-
-        // If match is still scheduled, try to set to live on first point
-        if (matchData && (matchData.status === 'scheduled' || matchData.status === 'Agendado')) {
-            registerSystemEvent('match_start', 'Saque inicial! Começa o duelo!');
-        }
-
-        const newScore = { ...gameScore };
-        const opponent = team === 'home' ? 'away' : 'home';
-
-        newScore[team]++;
-
-        // Logic for Deuce (40-40)
-        // 0=0, 1=15, 2=30, 3=40
-        // If both are 3 (40-40)
-        // If one reaches 4, they get "Vantagem" if opponent is at 3.
-        // If one is at 4 and other is at 4, it goes back to 3-3 (Deuce).
-        // If one reaches 4 and other is <= 2, Game won.
-
-        let gameWon = false;
-
-        if (isTiebreak) {
-            // Tiebreak logic: First to 7, lead by 2
-            if (newScore[team] >= 7 && newScore[team] >= newScore[opponent] + 2) {
-                gameWon = true;
-            }
-        } else {
-            // Standard game logic (0, 15, 30, 40, Vant)
-            if (newScore[team] >= 4) {
-                if (newScore[team] >= newScore[opponent] + 2) {
-                    gameWon = true;
-                } else if (newScore[team] === 4 && newScore[opponent] === 4) {
-                    // Both reached 4 (V-V), back to deuce (3-3)
-                    newScore.home = 3;
-                    newScore.away = 3;
-                }
-            }
-        }
-
-        if (gameWon) {
-            // Game won
-            const newGames = { ...gamesWon };
-            newGames[team]++;
-            setGamesWon(newGames);
-            setGameScore({ home: 0, away: 0 });
-
-            // Check if set won
-            // Standard: 6 games with lead of 2, OR reaching 7 in any case (7-5 or 7-6 tiebreak)
-            if (newGames[team] >= 6 && newGames[team] >= newGames[opponent] + 2) {
-                await finishSet(newGames);
-            } else if (newGames[team] === 7) {
-                // Won 7-5 or 7-6
-                await finishSet(newGames);
-            } else if (newGames.home === 6 && newGames.away === 6) {
-                registerSystemEvent('period_start', 'Início do Tie-break!');
-            }
-        } else {
-            setGameScore(newScore);
-        }
-
-        // Save point event
-        try {
-            const resp = await apiPost('event', {
-                event_type: 'point',
-                team_id: team === 'home' ? matchData.home_team_id : matchData.away_team_id,
-                minute: '00:00',
-                period: `Set ${currentSet}`,
-                metadata: {
-                    game_score: `${newScore.home}-${newScore.away}`,
-                    system_period: `Set ${currentSet}`
-                }
-            });
-
-            setEvents(prev => [{
-                id: resp?.data?.event?.id || resp?.data?.id || Date.now(),
-                type: 'point',
-                team_id: team === 'home' ? matchData.home_team_id : matchData.away_team_id,
-                period: `Set ${currentSet}`,
-                minute: '00:00',
-                metadata: { game_score: `${newScore.home}-${newScore.away}` }
-            }, ...prev]);
-        } catch (e) {
-            console.error(e);
-        }
+    const toggleServer = async (teamId: number) => {
+        await apiCall('tennis_server', `/admin/matches/${id}/tennis/server`, { teamId });
     };
 
-    const finishSet = async (finalGames: any) => {
-        const setData = {
-            set_number: currentSet,
-            home_games: finalGames.home,
-            away_games: finalGames.away
-        };
-
-        const newSets = [...sets, setData];
-        setSets(newSets);
-
-        // Update match score (sets won)
-        const homeSetsWon = newSets.filter(s => s.home_games > s.away_games).length;
-        const awaySetsWon = newSets.filter(s => s.away_games > s.home_games).length;
-
-        setMatchData((prev: any) => ({
-            ...prev,
-            scoreHome: homeSetsWon,
-            scoreAway: awaySetsWon
-        }));
-
-        // Save set to backend
-        try {
-            await apiPost('sets', {
-                set_number: currentSet,
-                home_score: finalGames.home,
-                away_score: finalGames.away
-            });
-        } catch (e) {
-            console.error(e);
-        }
-
-        // Check if match is finished (best of 3: first to 2 sets)
-        if (homeSetsWon === 2 || awaySetsWon === 2) {
-            setMatchFinished(true);
-            alert(`🏆 Partida encerrada! ${homeSetsWon > awaySetsWon ? matchData.home_team?.name : matchData.away_team?.name} venceu!`);
-            registerSystemEvent('match_end', `Game, Set and Match! Vitória de ${homeSetsWon > awaySetsWon ? matchData.home_team?.name : matchData.away_team?.name}`);
-        } else {
-            // Start new set
-            setCurrentSet(currentSet + 1);
-            setGamesWon({ home: 0, away: 0 });
-            setGameScore({ home: 0, away: 0 });
-            registerSystemEvent('period_start', `Início do ${currentSet + 1}º Set`);
-        }
+    const handleUndo = async () => {
+        if (!window.confirm("Deseja desfazer o último ponto?")) return;
+        await apiCall('tennis_undo', `/admin/matches/${id}/tennis/undo`, {});
     };
 
-    const handleFinish = async () => {
-        if (!window.confirm('Encerrar e salvar partida?')) return;
-        try {
-            await registerSystemEvent('match_end', 'Partida Finalizada. Que jogo!');
-
-            await apiPost('finish', {
-                home_score: matchData.scoreHome,
-                away_score: matchData.scoreAway
-            });
-
-            localStorage.removeItem(STORAGE_KEY);
-            navigate(-1);
-        } catch (e) {
-            console.error(e);
-        }
+    const translatePoint = (points: number, isTiebreak: boolean) => {
+        if (isTiebreak) return points.toString();
+        const map: any = { 0: '0', 1: '15', 2: '30', 3: '40', 4: 'AD' };
+        return map[points] || 'AD';
     };
 
-    const handleDeleteEvent = async (eventId: number) => {
-        const eventToDelete = events.find(e => e.id === eventId);
-        if (!eventToDelete) return;
+    if (loading || !matchData || !tennisState) {
+        return (
+            <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white">
+                <RefreshCw className="animate-spin mr-2" /> Carregando...
+            </div>
+        );
+    }
 
-        if (!window.confirm('Excluir este lançamento e reverter o placar?')) return;
-
-        try {
-            await api.delete(`/admin/matches/${id}/events/${eventId}`);
-
-            // Se o evento deletado for um que finalizou o set, precisamos deletar o set também
-            // (Assumindo que deletar o evento que fecha o jogo/set deve reverter o estado)
-            const isSetFinisher = events.indexOf(eventToDelete) === 0 && sets.length > 0;
-            // No tênis, um point ou game_won pode fechar um set.
-
-            // Recalcular estado local é arriscado só decrementando, então vamos recarregar tudo do zero
-            // Mas primeiro, se deletou um fim de set, deleta o registro do set no backend
-            if (eventToDelete.metadata?.is_set_finisher || (eventToDelete.type === 'game_won' && sets.some(s => s.set_number === currentSet))) {
-                // Tenta achar o set e deletar
-                const lastSet = sets[sets.length - 1];
-                if (lastSet) {
-                    await api.delete(`/admin/matches/${id}/sets/${lastSet.id}`);
-                }
-            }
-
-            // Recarrega tudo do backend para garantir consistência
-            fetchMatchDetails();
-            // Limpa estados locais que não vem do sync se necessário
-            if (sets.length > 0) setSets(sets.filter((_, i) => i !== sets.length - 1));
-
-        } catch (e) {
-            console.error(e);
-            alert('Erro ao excluir evento');
-        }
-    };
-
-    const registerSystemEvent = async (type: string, label: string) => {
-        if (!matchData) return;
-        try {
-            await apiPost('event', {
-                event_type: type,
-                team_id: matchData.home_team_id || matchData.away_team_id,
-                minute: '00:00',
-                period: `Set ${currentSet}`,
-                metadata: {
-                    label,
-                    system_period: `Set ${currentSet}`
-                }
-            });
-
-            // If we successfully started the match, update status locally
-            if (type === 'match_start') {
-                setMatchData((prev: any) => ({ ...prev, status: 'live' }));
-            }
-        } catch (e) {
-            console.error("Erro ao registrar evento de sistema", e);
-            if (type === 'match_start') {
-                alert("Erro de conexão ao iniciar partida no servidor.");
-            }
-        }
-    };
-
-    const resetGame = () => {
-        if (window.confirm('Resetar game atual?')) {
-            setGameScore({ home: 0, away: 0 });
-        }
-    };
-
-    if (loading || !matchData) return <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white"><span className="loading loading-spinner loading-lg"></span></div>;
+    const isHomeServing = tennisState.serving_team_id === matchData.home_team_id;
+    const isAwayServing = tennisState.serving_team_id === matchData.away_team_id;
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-green-800 via-emerald-700 to-lime-600 text-white font-sans pb-20">
-            {/* Header */}
-            <div className="bg-black/20 pb-3 pt-4 sticky top-0 z-10 border-b border-white/10 backdrop-blur-md shadow-2xl">
-                <div className="px-4 flex items-center justify-between mb-2">
-                    <button onClick={() => navigate(-1)} className="p-2 bg-white/10 rounded-full backdrop-blur">
-                        <ArrowLeft className="w-5 h-5" />
-                    </button>
-                    <div className="flex flex-col items-center">
-                        <div className="flex items-center gap-2">
-                            <Activity className="w-5 h-5 text-lime-400" />
-                            <span className="text-[11px] font-bold tracking-widest text-white drop-shadow-lg uppercase">Súmula Tênis</span>
-                        </div>
-                        {matchData.details?.arbitration?.referee && <span className="text-[10px] text-green-100">{matchData.details.arbitration.referee}</span>}
+        <div className="min-h-screen bg-slate-950 text-white font-sans selection:bg-yellow-400 selection:text-black">
+            {/* Header / Connectivity status */}
+            <div className={`sticky top-0 z-50 p-3 flex items-center justify-between border-b transition-colors duration-500 ${isOnline ? 'bg-slate-900/80 border-slate-800' : 'bg-red-950/90 border-red-900'}`}>
+                <div className="flex items-center gap-3">
+                    <button onClick={() => navigate(-1)} className="p-2 hover:bg-white/10 rounded-full transition-colors"><ArrowLeft size={20} /></button>
+                    <div>
+                        <h1 className="text-xs font-black uppercase tracking-widest text-slate-500 leading-none">Súmula Profissional</h1>
+                        <p className="text-sm font-bold text-yellow-500 flex items-center gap-1">TÊNIS <ChevronRight size={14} /> {matchData.championship?.name || 'Torneio'}</p>
                     </div>
-                    <button onClick={resetGame} className="p-2 bg-white/10 rounded-full backdrop-blur hover:bg-white/20">
-                        <RotateCcw className="w-5 h-5" />
-                    </button>
                 </div>
 
-                {/* ── OFFLINE BANNER ── */}
-                {(!isOnline || pendingCount > 0) && (
-                    <div className={`mx-4 mb-3 px-3 py-1.5 rounded-xl flex items-center gap-2 text-[10px] font-bold border ${!isOnline ? 'bg-orange-950/80 border-orange-500/50 text-orange-200' : 'bg-blue-950/80 border-blue-500/50 text-blue-200'
-                        }`}>
-                        {!isOnline ? <WifiOff size={12} /> : <Wifi size={12} />}
-                        {!isOnline ? `Offline — ${pendingCount} evento(s) aguardando` : `Sincronizando ${pendingCount} evento(s)...`}
-                    </div>
-                )}
-
-                {/* Scoreboard */}
-                <div className="px-4 space-y-3">
-                    {/* Sets Won */}
-                    <div className="flex items-center justify-center gap-4">
-                        <div className="text-center flex-1 min-w-0">
-                            <div className="text-6xl font-black font-mono leading-none mb-1 text-white drop-shadow-[0_4px_8px_rgba(0,0,0,0.3)]">{matchData.scoreHome}</div>
-                            <h2 className="font-bold text-sm text-green-100 truncate w-full px-2" title={matchData.home_team?.name}>
-                                {matchData.home_team?.name || 'Jogador 1'}
-                            </h2>
+                <div className="flex items-center gap-2">
+                    <button onClick={handleUndo} className="p-2 bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-full transition-all border border-slate-700/50" title="Desfazer Último Ponto"><History size={18} /></button>
+                    {!isOnline ? (
+                        <div className="flex items-center gap-1.5 px-3 py-1 bg-red-500 text-white rounded-full text-[10px] font-black animate-pulse">
+                            <WifiOff size={12} /> OFFLINE ({pendingCount})
                         </div>
-                        <div className="flex flex-col items-center shrink-0">
-                            <span className="text-[10px] font-bold text-white/50 uppercase">Sets</span>
-                            <div className="h-px w-8 bg-white/20 my-1"></div>
+                    ) : pendingCount > 0 ? (
+                        <div className="flex items-center gap-1.5 px-3 py-1 bg-yellow-500 text-black rounded-full text-[10px] font-black">
+                            <RefreshCw size={12} className="animate-spin" /> SINCRONIZANDO...
                         </div>
-                        <div className="text-center flex-1 min-w-0">
-                            <div className="text-6xl font-black font-mono leading-none mb-1 text-white drop-shadow-[0_4px_8px_rgba(0,0,0,0.3)]">{matchData.scoreAway}</div>
-                            <h2 className="font-bold text-sm text-green-100 truncate w-full px-2" title={matchData.away_team?.name}>
-                                {matchData.away_team?.name || 'Jogador 2'}
-                            </h2>
-                        </div>
-                    </div>
-
-                    {/* Current Set / Games */}
-                    {!matchFinished && (
-                        <div className="bg-white/10 backdrop-blur rounded-2xl p-3 border border-white/10 shadow-lg">
-                            <div className="text-center text-[10px] font-black text-lime-400 mb-2 uppercase tracking-widest">Set {currentSet} - Placar de Games</div>
-                            <div className="flex items-center justify-center gap-6">
-                                <div className="text-4xl font-black text-white">{gamesWon.home}</div>
-                                <div className="text-xl text-white/30 font-light">vs</div>
-                                <div className="text-4xl font-black text-white">{gamesWon.away}</div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Current Game Score */}
-                    {!matchFinished && (
-                        <div className="bg-black/30 backdrop-blur rounded-2xl p-4 border border-lime-500/30 shadow-inner">
-                            <div className="text-center text-[10px] font-black text-white/40 mb-3 uppercase tracking-tighter">
-                                {isTiebreak ? '🔥 PONTOS DO TIE-BREAK 🔥' : 'Pontuação do Game'}
-                            </div>
-                            <div className="flex items-center justify-center gap-10">
-                                <div className="flex flex-col items-center">
-                                    <div className="text-5xl font-black text-white drop-shadow-lg font-mono">
-                                        {isTiebreak ? gameScore.home : (pointLabels[gameScore.home] || gameScore.home)}
-                                    </div>
-                                </div>
-                                <div className="text-2xl text-lime-500/50 font-black">:</div>
-                                <div className="flex flex-col items-center">
-                                    <div className="text-5xl font-black text-white drop-shadow-lg font-mono">
-                                        {isTiebreak ? gameScore.away : (pointLabels[gameScore.away] || gameScore.away)}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {/* Action Selection Toggle */}
-            <div className="px-4 mt-6 max-w-3xl mx-auto flex justify-center">
-                <div className="bg-white/10 p-1 rounded-xl border border-white/20 flex gap-1">
-                    <button
-                        onClick={() => setIsQuickMode(false)}
-                        className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${!isQuickMode ? 'bg-lime-500 text-black' : 'text-white/60 hover:text-white'}`}
-                    >
-                        Ponto a Ponto
-                    </button>
-                    <button
-                        onClick={() => setIsQuickMode(true)}
-                        className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${isQuickMode ? 'bg-lime-500 text-black' : 'text-white/60 hover:text-white'}`}
-                    >
-                        Marcar Games Direto
-                    </button>
-                </div>
-            </div>
-
-            {/* Action Buttons */}
-            {!matchFinished && (
-                <div className="p-4 grid grid-cols-2 gap-4 max-w-3xl mx-auto">
-                    {isQuickMode ? (
-                        <>
-                            <button
-                                onClick={() => addGame('home')}
-                                className="py-16 bg-gradient-to-br from-blue-600 to-blue-800 rounded-3xl font-black text-2xl border-b-8 border-blue-950 active:scale-95 transition-all shadow-2xl hover:from-blue-500 hover:to-blue-700 flex flex-col items-center justify-center gap-2 overflow-hidden px-2"
-                            >
-                                <span className="bg-white/20 px-3 py-1 rounded-full text-xs uppercase tracking-widest text-white shrink-0">+ Game</span>
-                                <div className="text-center w-full leading-tight truncate text-sm uppercase px-1">
-                                    {matchData.home_team?.name || 'Jogador 1'}
-                                </div>
-                            </button>
-                            <button
-                                onClick={() => addGame('away')}
-                                className="py-16 bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-3xl font-black text-2xl border-b-8 border-indigo-950 active:scale-95 transition-all shadow-2xl hover:from-indigo-500 hover:to-indigo-700 flex flex-col items-center justify-center gap-2 overflow-hidden px-2"
-                            >
-                                <span className="bg-white/20 px-3 py-1 rounded-full text-xs uppercase tracking-widest text-white shrink-0">+ Game</span>
-                                <div className="text-center w-full leading-tight truncate text-sm uppercase px-1">
-                                    {matchData.away_team?.name || 'Jogador 2'}
-                                </div>
-                            </button>
-                        </>
                     ) : (
-                        <>
-                            <button
-                                onClick={() => addPoint('home')}
-                                className="py-12 bg-gradient-to-br from-green-600 to-green-800 rounded-3xl font-black text-2xl border-b-8 border-green-950 active:scale-95 transition-all shadow-2xl hover:from-green-500 hover:to-green-700 flex flex-col items-center justify-center gap-2 overflow-hidden px-2"
-                            >
-                                <span className="bg-white/20 px-3 py-1 rounded-full text-xs uppercase tracking-widest text-white shrink-0">+ Ponto</span>
-                                <div className="text-center w-full leading-tight truncate text-sm uppercase px-1">
-                                    {matchData.home_team?.name || 'Jogador 1'}
-                                </div>
-                            </button>
-                            <button
-                                onClick={() => addPoint('away')}
-                                className="py-12 bg-gradient-to-br from-emerald-600 to-emerald-800 rounded-3xl font-black text-2xl border-b-8 border-emerald-950 active:scale-95 transition-all shadow-2xl hover:from-emerald-500 hover:to-emerald-700 flex flex-col items-center justify-center gap-2 overflow-hidden px-2"
-                            >
-                                <span className="bg-white/20 px-3 py-1 rounded-full text-xs uppercase tracking-widest text-white shrink-0">+ Ponto</span>
-                                <div className="text-center w-full leading-tight truncate text-sm uppercase px-1">
-                                    {matchData.away_team?.name || 'Jogador 2'}
-                                </div>
-                            </button>
-                        </>
-                    )}
-                </div>
-            )}
-
-            {/* Event Log / Undo Section */}
-            <div className="px-4 mt-8 max-w-3xl mx-auto">
-                <h3 className="text-xs font-black text-white/50 uppercase mb-4 flex items-center gap-2 tracking-[0.2em]">
-                    <Activity size={14} /> Histórico de Lançamentos
-                </h3>
-                <div className="bg-black/20 rounded-2xl border border-white/5 overflow-hidden">
-                    {events.slice(0, 5).map((ev, i) => (
-                        <div key={ev.id} className="flex items-center justify-between p-3 border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
-                            <div className="flex items-center gap-3">
-                                <span className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold ${ev.team_id === matchData.home_team_id ? 'bg-blue-600' : 'bg-green-600'}`}>
-                                    {ev.team_id === matchData.home_team_id ? matchData.home_team?.name?.substring(0, 2).toUpperCase() : matchData.away_team?.name?.substring(0, 2).toUpperCase()}
-                                </span>
-                                <div className="flex flex-col">
-                                    <span className="text-xs font-bold uppercase">{ev.type === 'point' ? 'Ponto' : ev.type === 'game_won' ? 'Game' : ev.type}</span>
-                                    <span className="text-[10px] text-white/40">{ev.period}</span>
-                                </div>
-                            </div>
-                            <button
-                                onClick={() => handleDeleteEvent(ev.id)}
-                                className="p-2 text-white/20 hover:text-red-400 transition-colors"
-                            >
-                                <X size={16} />
-                            </button>
-                        </div>
-                    ))}
-                    {events.length === 0 && (
-                        <div className="p-8 text-center text-white/20 text-xs font-bold uppercase tracking-widest">
-                            Sem lançamentos recentes
+                        <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full text-[10px] font-black uppercase tracking-wider">
+                            <Wifi size={12} /> Conectado
                         </div>
                     )}
                 </div>
             </div>
 
-            {/* Sets History */}
-            <div className="px-4 mt-4 max-w-3xl mx-auto">
-                <h3 className="text-xs font-black text-white/50 uppercase mb-4 flex items-center gap-2 tracking-[0.2em]">
-                    <Trophy size={14} /> Histórico de Sets
-                </h3>
-                <div className="grid grid-cols-1 gap-3">
-                    {sets.map((set, idx) => (
-                        <div key={idx} className="bg-black/20 backdrop-blur p-5 rounded-2xl border border-white/5 flex items-center justify-between group hover:bg-black/30 transition-colors">
-                            <span className="font-black text-lg text-lime-400">SET {set.set_number}</span>
-                            <div className="flex items-center gap-8">
-                                <div className="flex flex-col items-center">
-                                    <span className={`text-3xl font-black ${set.home_games > set.away_games ? 'text-white' : 'text-white/20'}`}>
-                                        {set.home_games}
-                                    </span>
+            <main className="max-w-md mx-auto p-4 space-y-6">
+                {/* Scoreboard Principal */}
+                <div className="bg-slate-900 rounded-3xl border border-slate-800 overflow-hidden shadow-2xl relative">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-yellow-500 via-yellow-200 to-yellow-500"></div>
+
+                    <div className="p-6 space-y-4">
+                        {/* Team Home */}
+                        <div className="flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                                <button
+                                    onClick={() => toggleServer(matchData.home_team_id)}
+                                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${isHomeServing ? 'bg-yellow-400 text-black scale-110 shadow-[0_0_15px_rgba(250,204,21,0.4)]' : 'bg-slate-800 text-slate-600 hover:text-slate-400'}`}
+                                >
+                                    🎾
+                                </button>
+                                <div className="truncate">
+                                    <h2 className="text-lg font-black uppercase tracking-tight truncate leading-tight">{matchData.home_team?.name}</h2>
+                                    <p className="text-[10px] font-bold text-slate-500 uppercase">Mandante</p>
                                 </div>
-                                <span className="text-white/10 font-light text-2xl">|</span>
-                                <div className="flex flex-col items-center">
-                                    <span className={`text-3xl font-black ${set.away_games > set.home_games ? 'text-white' : 'text-white/20'}`}>
-                                        {set.away_games}
-                                    </span>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                {/* Sets Histórico */}
+                                {sets.map((s, idx) => (
+                                    <div key={idx} className="w-8 h-10 bg-slate-800/50 rounded-lg flex items-center justify-center text-sm font-black text-slate-400 border border-slate-700/50">
+                                        {s.home_score}
+                                    </div>
+                                ))}
+                                {/* Game Atual */}
+                                <div className="w-10 h-12 bg-slate-800 rounded-xl border border-slate-700 flex items-center justify-center text-lg font-black text-white shadow-inner">
+                                    {tennisState.games_won?.home || 0}
+                                </div>
+                                {/* Pontos no Game */}
+                                <div className="w-14 h-16 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-2xl flex items-center justify-center text-2xl font-black text-black shadow-lg">
+                                    {translatePoint(tennisState.game_score?.home || 0, tennisState.is_tiebreak)}
                                 </div>
                             </div>
                         </div>
-                    ))}
-                    {sets.length === 0 && (
-                        <div className="text-center py-10 bg-black/10 rounded-3xl border border-dashed border-white/10">
-                            <p className="text-sm font-bold text-white/20 uppercase tracking-widest">Aguardando fim do set 1</p>
+
+                        <div className="h-px bg-slate-800/50 mx-4"></div>
+
+                        {/* Team Away */}
+                        <div className="flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                                <button
+                                    onClick={() => toggleServer(matchData.away_team_id)}
+                                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${isAwayServing ? 'bg-yellow-400 text-black scale-110 shadow-[0_0_15px_rgba(250,204,21,0.4)]' : 'bg-slate-800 text-slate-600 hover:text-slate-400'}`}
+                                >
+                                    🎾
+                                </button>
+                                <div className="truncate">
+                                    <h2 className="text-lg font-black uppercase tracking-tight truncate leading-tight">{matchData.away_team?.name}</h2>
+                                    <p className="text-[10px] font-bold text-slate-500 uppercase">Visitante</p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                {sets.map((s, idx) => (
+                                    <div key={idx} className="w-8 h-10 bg-slate-800/50 rounded-lg flex items-center justify-center text-sm font-black text-slate-400 border border-slate-700/50">
+                                        {s.away_score}
+                                    </div>
+                                ))}
+                                <div className="w-10 h-12 bg-slate-800 rounded-xl border border-slate-700 flex items-center justify-center text-lg font-black text-white shadow-inner">
+                                    {tennisState.games_won?.away || 0}
+                                </div>
+                                <div className="w-14 h-16 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-2xl flex items-center justify-center text-2xl font-black text-black shadow-lg">
+                                    {translatePoint(tennisState.game_score?.away || 0, tennisState.is_tiebreak)}
+                                </div>
+                            </div>
                         </div>
-                    )}
+                    </div>
+
+                    <div className="bg-slate-950/50 p-2 text-center">
+                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
+                            {tennisState.is_tiebreak ? '💥 TIE-BREAK EM CURSO 💥' : `${tennisState.current_set}º SET - GAME EM DISPUTA`}
+                        </span>
+                    </div>
                 </div>
 
-                {matchFinished && (
-                    <div className="mt-8">
-                        <button onClick={handleFinish} className="w-full py-5 bg-gradient-to-r from-lime-500 to-green-600 text-white font-black text-xl rounded-2xl border-b-4 border-green-800 active:scale-95 transition-all shadow-[0_10px_40px_rgba(101,163,13,0.3)]">
-                            SALVAR RESULTADO FINAL
+                {/* Área de Ações (Jogadores) */}
+                <div className="grid grid-cols-2 gap-4">
+                    {/* Botões Lançamento Mandante */}
+                    <div className="space-y-3">
+                        <div className="text-[10px] font-black text-slate-500 uppercase text-center tracking-widest pl-2 flex items-center gap-2">
+                            <div className="h-px bg-slate-800 flex-1"></div>
+                            MARCAR PONTO
+                            <div className="h-px bg-slate-800 flex-1"></div>
+                        </div>
+
+                        {(rosters.home.length > 0 ? rosters.home : [{ name: matchData.home_team?.name }]).map((p: any, idx: number) => (
+                            <button
+                                key={idx}
+                                onClick={() => setPointFlow({ teamId: matchData.home_team_id, playerIndex: idx })}
+                                className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col items-center gap-1 hover:bg-slate-800/80 active:scale-95 transition-all text-blue-400 font-bold"
+                            >
+                                <span className="text-xs uppercase tracking-tight">{p.nickname || p.name}</span>
+                                <div className="w-10 h-10 bg-blue-500/10 rounded-full flex items-center justify-center text-blue-400">
+                                    <Plus size={24} />
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Botões Lançamento Visitante */}
+                    <div className="space-y-3">
+                        <div className="text-[10px] font-black text-slate-500 uppercase text-center tracking-widest flex items-center gap-2 pr-2">
+                            <div className="h-px bg-slate-800 flex-1"></div>
+                            MARCAR PONTO
+                            <div className="h-px bg-slate-800 flex-1"></div>
+                        </div>
+
+                        {(rosters.away.length > 0 ? rosters.away : [{ name: matchData.away_team?.name }]).map((p: any, idx: number) => (
+                            <button
+                                key={idx}
+                                onClick={() => setPointFlow({ teamId: matchData.away_team_id, playerIndex: idx })}
+                                className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col items-center gap-1 hover:bg-slate-800/80 active:scale-95 transition-all text-emerald-400 font-bold"
+                            >
+                                <span className="text-xs uppercase tracking-tight">{p.nickname || p.name}</span>
+                                <div className="w-10 h-10 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-400">
+                                    <Plus size={24} />
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Histórico Recente de Pontos */}
+                <div className="space-y-2">
+                    <div className="flex items-center justify-between px-2">
+                        <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Últimos Pontos</h4>
+                    </div>
+                    <div className="bg-slate-900/30 rounded-2xl border border-slate-800/50 p-1 space-y-1">
+                        {matchData.events?.slice(0, 5).map((ev: any, i: number) => (
+                            <div key={i} className="flex items-center justify-between px-4 py-2 rounded-xl bg-slate-900/50 border border-slate-800/30">
+                                <div className="flex items-center gap-3">
+                                    <span className="text-lg">{ev.metadata?.tennis_type === 'ace' ? '⚡' : '🎾'}</span>
+                                    <div>
+                                        <p className="text-[11px] font-black text-white leading-none mb-0.5">{ev.metadata?.label?.split(' - ')[0] || 'Ponto'}</p>
+                                        <p className="text-[9px] font-bold text-slate-500 uppercase leading-none">{ev.metadata?.label?.split(' - ')[1] || '---'}</p>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-[10px] font-black text-yellow-500 leading-none mb-0.5">{ev.metadata?.score || '0-0'}</p>
+                                    <p className="text-[8px] font-bold text-slate-600 uppercase tracking-tighter">{ev.period}</p>
+                                </div>
+                            </div>
+                        ))}
+                        {(!matchData.events || matchData.events.length === 0) && (
+                            <p className="p-4 text-center text-xs font-bold text-slate-600 uppercase tracking-widest">Nenhum ponto registrado</p>
+                        )}
+                    </div>
+                </div>
+
+                {/* Informações da Partida */}
+                <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800 flex items-center justify-around">
+                    <div className="text-center">
+                        <p className="text-[10px] font-bold text-slate-500 uppercase leading-none mb-1">Status</p>
+                        <p className={`text-sm font-black uppercase ${matchData.status === 'live' ? 'text-emerald-400 animate-pulse' : 'text-slate-400'}`}>
+                            {matchData.status === 'live' ? 'Ao Vivo' : matchData.status === 'finished' ? 'Finalizado' : 'Aguardando'}
+                        </p>
+                    </div>
+                    <div className="w-px h-8 bg-slate-800"></div>
+                    <div className="text-center">
+                        <p className="text-[10px] font-bold text-slate-500 uppercase leading-none mb-1">Local</p>
+                        <p className="text-sm font-black text-white uppercase">{matchData.location || 'Quadra'}</p>
+                    </div>
+                </div>
+            </main>
+
+            {/* Modal de Seleção de Tipo de Ponto */}
+            {pointFlow && (
+                <div className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-950/90 backdrop-blur-sm p-4">
+                    <div className="w-full max-w-md bg-slate-900 rounded-t-[3rem] border-t border-slate-800 p-8 pt-6 animate-in slide-in-from-bottom duration-300">
+                        <div className="w-12 h-1.5 bg-slate-800 rounded-full mx-auto mb-8"></div>
+
+                        <div className="flex items-center justify-between mb-8">
+                            <div>
+                                <h3 className="text-2xl font-black text-white leading-tight">DETALHAR PONTO</h3>
+                                <p className="text-sm text-yellow-500 font-bold uppercase tracking-widest pl-0.5">
+                                    {pointFlow.teamId === matchData.home_team_id ? matchData.home_team?.name : matchData.away_team?.name}
+                                </p>
+                            </div>
+                            <button onClick={() => setPointFlow(null)} className="p-3 bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors">
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 mb-8">
+                            <h4 className="col-span-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2 pl-1">Ponto de Saque</h4>
+                            <PointOption label="Ace (A)" type="ace" icon="⚡" onClick={handlePointSelection} />
+                            <PointOption label="Saque Vencedor" type="service_winner" icon="🎯" onClick={handlePointSelection} />
+
+                            <h4 className="col-span-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mt-4 mb-2 pl-1">Erro do Adversário</h4>
+                            <PointOption label="Dupla Falta" type="double_fault" icon="💥" onClick={handlePointSelection} />
+                            <PointOption label="Falta de pé" type="foot_fault" icon="🦶" onClick={handlePointSelection} />
+                            <PointOption label="Erro Adversário" type="unforced_error" icon="⚠️" onClick={handlePointSelection} />
+
+                            <h4 className="col-span-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mt-4 mb-2 pl-1">Troca de Bolas</h4>
+                            <PointOption label="Ponto Normal" type="point" icon="🎾" onClick={handlePointSelection} />
+                            <PointOption label="Winner (W)" type="winner" icon="🌟" onClick={handlePointSelection} />
+                        </div>
+
+                        <button
+                            onClick={() => setPointFlow(null)}
+                            className="w-full bg-slate-800 py-4 rounded-2xl text-slate-400 font-black uppercase tracking-widest hover:bg-slate-700 transition-colors"
+                        >
+                            Fechar
                         </button>
                     </div>
-                )}
-            </div>
-
-            {/* Tennis Rules Hint */}
-            <div className="px-4 mt-8 max-w-3xl mx-auto mb-10">
-                <div className="bg-white/5 rounded-2xl p-5 border border-white/5">
-                    <h4 className="font-black text-xs text-lime-300 mb-3 uppercase tracking-wider">ℹ️ Sistema de Pontuação</h4>
-                    <div className="grid grid-cols-2 gap-4 text-[10px] text-white/50 font-bold uppercase">
-                        <div>
-                            <p className="text-white mb-1">Pontos do Game</p>
-                            <p>0, 15, 30, 40, Vantagem</p>
-                        </div>
-                        <div>
-                            <p className="text-white mb-1">Formato do Set</p>
-                            <p>Melhor de 6 games (margem 2)</p>
-                        </div>
-                        <div className="col-span-2 pt-2 border-t border-white/5">
-                            <p className="text-white mb-1">Formato da Partida</p>
-                            <p>Melhor de 3 sets (vence quem fizer 2)</p>
-                        </div>
-                    </div>
                 </div>
-            </div>
+            )}
         </div>
+    );
+}
+
+function PointOption({ label, type, icon, onClick, danger = false }: any) {
+    return (
+        <button
+            onClick={() => onClick(type)}
+            className={`flex items-center gap-3 p-4 rounded-2xl border transition-all active:scale-95 text-left ${danger
+                ? 'bg-red-500/5 border-red-500/20 hover:bg-red-500/10 text-red-400'
+                : 'bg-slate-800/50 border-slate-700 hover:bg-slate-800 text-slate-200'
+                }`}
+        >
+            <span className="text-2xl">{icon}</span>
+            <span className="text-sm font-bold uppercase tracking-tight">{label}</span>
+        </button>
     );
 }
