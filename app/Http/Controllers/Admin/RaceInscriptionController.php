@@ -81,16 +81,21 @@ class RaceInscriptionController extends Controller
             }
         }
 
-        // 1. Carregar Categoria com Parent/Children
-        $category = Category::with(['parent', 'children'])->findOrFail($request->category_id);
-        $mainCategory = $category->parent_id ? $category->parent : $category;
+        // 1. Carregar Categoria Enviada e Identificar a Principal (Pai)
+        // Mesmo que o frontend envie uma subcategoria, o preço base vem da pai.
+        $selectedCategory = Category::with(['parent', 'children'])->findOrFail($request->category_id);
+        $mainCategory = $selectedCategory->parent_id ? $selectedCategory->parent : $selectedCategory;
+
+        // A categoria final de registro (inicialmente a selecionada, 
+        // mas pode mudar via automatização de idade)
+        $category = $selectedCategory;
 
         // Validar Idade na data 31/12 do ano do campeonato
         $eventYear = $race->championship->start_date ? \Carbon\Carbon::parse($race->championship->start_date)->year : date('Y');
         $referenceDate = \Carbon\Carbon::createFromDate($eventYear, 12, 31);
         $athleteAge = (int) $referenceDate->diffInYears(\Carbon\Carbon::parse($request->birth_date), true);
 
-        // A subcategoria deve ser automática conforme idade.
+        // A subcategoria deve ser automática conforme idade se a categoria principal tiver filhos.
         if ($mainCategory->children->count() > 0) {
             $subCategory = $mainCategory->children
                 ->filter(function ($child) use ($athleteAge) {
@@ -99,6 +104,7 @@ class RaceInscriptionController extends Controller
                     return $athleteAge >= $min && $athleteAge <= $max;
                 })
                 ->first();
+
 
             if ($subCategory) {
                 $category = $subCategory;
@@ -182,14 +188,18 @@ class RaceInscriptionController extends Controller
                 $pcdDocumentUrl = '/storage/' . $path;
             }
 
-            // 4. Calcular Preço (SOMA CATEGORIA + SUBCATEGORIA)
+            // 4. Calcular Preço (SOMA CATEGORIA PRINCIPAL + SUBCATEGORIA SELECIONADA)
             $championship = $race->championship;
+
+            // O preço base vem SEMPRE da categoria que o usuário clicou (mainCategory)
             $originalPrice = (float) $mainCategory->price;
 
-            // Se for uma subcategoria, SOMAR o valor da subcategoria (que pode ser zero ou acréscimo)
+            // Se o sistema encontrou uma subcategoria específica via idade, e ela for DIFERENTE da clicada,
+            // somamos o valor dela (que pode ser um acréscimo configurado)
             if ($category->id !== $mainCategory->id) {
                 $originalPrice += (float) ($category->price ?? 0);
             }
+
 
             // Calcular Acréscimos de Variações nos Brindes
             if ($request->has('gifts')) {
