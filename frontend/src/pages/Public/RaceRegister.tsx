@@ -28,7 +28,7 @@ export function RaceRegister() {
         birth_date: '',
         gender: '',
         category_id: '',
-        remove_bg: true,
+        remove_bg: false,
         is_pcd: false,
         gifts: [] as any[],
         coupon_code: '',

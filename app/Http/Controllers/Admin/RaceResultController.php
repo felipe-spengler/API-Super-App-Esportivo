@@ -117,11 +117,14 @@ class RaceResultController extends Controller
 
             // 2. Upload da Foto se enviada
             if ($request->hasFile('photo')) {
+                Log::info("RaceResultController: Iniciando upload de foto para usuário {$user->id}");
+                set_time_limit(300);
                 $imageController = new ImageUploadController();
                 $photoRequest = new Request();
                 $photoRequest->files->set('photo', $request->file('photo'));
-                $photoRequest->merge(['remove_bg' => $request->boolean('remove_bg')]);
+                $photoRequest->merge(['remove_bg' => false]);
                 $imageController->uploadPlayerPhoto($photoRequest, $user->id);
+                Log::info("RaceResultController: Upload de foto concluído");
             }
 
             // 3. Geração de Número de Peito
@@ -486,11 +489,15 @@ class RaceResultController extends Controller
 
             // 2. Foto
             if ($request->hasFile('photo')) {
+                Log::info("RaceResultController (Public): Upload de foto para usuário {$user->id}");
+                set_time_limit(300);
                 $imageController = new ImageUploadController();
                 $photoRequest = new Request();
                 $photoRequest->files->set('photo', $request->file('photo'));
-                $photoRequest->merge(['remove_bg' => $request->boolean('remove_bg', true)]);
+                // Forçar remove_bg como false por enquanto conforme solicitado
+                $photoRequest->merge(['remove_bg' => false]);
                 $imageController->uploadPlayerPhoto($photoRequest, $user->id);
+                Log::info("RaceResultController (Public): Foto processada");
             }
 
             // 3. Documento PCD
