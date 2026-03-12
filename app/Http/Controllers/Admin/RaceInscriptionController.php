@@ -287,8 +287,15 @@ class RaceInscriptionController extends Controller
             if ($status === 'pending') {
                 try {
                     $asaas = new AsaasService($race->championship->club);
-                    $description = "Inscrição: {$race->championship->name} - {$category->name}";
+
+                    $catName = $mainCategory->name;
+                    if ($category->id !== $mainCategory->id) {
+                        $catName .= " (" . $category->name . ")";
+                    }
+
+                    $description = "Inscrição: {$race->championship->name} - {$catName}";
                     $payment = $asaas->createPayment($user, $finalPrice, substr($description, 0, 250), "RR_{$result->id}", null, $request->input('payment_method', 'UNDEFINED'));
+
 
                     if (isset($payment['id'])) {
                         $pix = $asaas->getPixQrCode($payment['id']);
@@ -319,9 +326,12 @@ class RaceInscriptionController extends Controller
                 'result' => $result,
                 'requires_payment' => $finalPrice > 0,
                 'price' => $finalPrice,
+                'category_name' => $mainCategory->name,
+                'subcategory_name' => ($category->id !== $mainCategory->id) ? $category->name : null,
                 'original_price' => $originalPrice,
                 'payment_data' => $paymentInfo
             ], 201);
+
 
         } catch (\Exception $e) {
             DB::rollBack();

@@ -62,21 +62,35 @@ class EventController extends Controller
     // 2. Detalhes do Campeonato (com Categorias)
     public function championshipDetails($id)
     {
-        $champ = Championship::with(['categories.children', 'sport'])
+        $champ = Championship::with(['categories.children', 'categories.parent', 'sport'])
             ->withCount('teams')
             ->findOrFail($id);
 
+        // 1. Processar nomes e preços (Soma Categoria + Subcategoria)
+        foreach ($champ->categories as $cat) {
+            if ($cat->parent_id && $cat->parent) {
+                $cat->price = (float) $cat->parent->price + (float) $cat->price;
+                $cat->name = $cat->parent->name . " (" . $cat->name . ")";
+            }
+        }
 
-        // Hydrate products for categories
+        // 2. Hydrate products
         foreach ($champ->categories as $category) {
             if ($category->included_products) {
-                // We add a 'products_details' field to keep it clean
                 $category->products_details = $category->products();
             }
         }
 
+        // 3. Filtrar para o frontend ver apenas as Raiz no array principal
+        // Mas mantemos as filhas dentro de cada raiz (já processadas com nome/preço)
+        $rootCategories = $champ->categories->where('parent_id', null)->values();
+
+        // Temporariamente substituímos a collection de categorias no objeto
+        $champ->setRelation('categories', $rootCategories);
+
         return response()->json($champ);
     }
+
 
     // 3. Tabela de Jogos (Partidas)
     public function matches(Request $request, $championshipId)
