@@ -50,7 +50,8 @@ WORKDIR /var/www
 # 7. Copiar arquivos
 COPY . .
 
-# 8. Instalar dependências do Composer
+# 8. Instalar dependências do Composer (incluindo dompdf para geração de PDF)
+RUN composer require barryvdh/laravel-dompdf --no-interaction --no-scripts
 RUN composer install --no-interaction --optimize-autoloader
 
 # 9. Ajustar permissões
