@@ -98,7 +98,7 @@ class AsaasController extends Controller
             DB::commit();
             return response()->json(['status' => 'success']);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
             Log::error("Asaas Webhook Error: " . $e->getMessage() . " at " . $e->getFile() . ":" . $e->getLine());
             return response()->json(['error' => $e->getMessage()], 500);
@@ -123,15 +123,19 @@ class AsaasController extends Controller
 
                 // Baixa no Estoque dos Brindes (Produtos Inclusos na Categoria)
                 if ($result->category) {
-                    $included = $result->category->products();
-                    foreach ($included as $item) {
-                        if (isset($item['product']) && $item['product'] instanceof \App\Models\Product) {
-                            if ($item['product']->stock_quantity !== null) {
-                                $qty = $item['quantity'] ?? 1;
-                                $item['product']->decrement('stock_quantity', $qty);
-                                Log::info("Stock reduced for Gift/Included Product {$item['product']->id}: -{$qty} (RaceResult {$id})");
+                    try {
+                        $included = $result->category->products;
+                        if ($included && $included->count() > 0) {
+                            foreach ($included as $product) {
+                                if ($product->stock_quantity !== null) {
+                                    $qty = $product->pivot->quantity ?? 1;
+                                    $product->decrement('stock_quantity', $qty);
+                                    Log::info("Stock reduced for Gift Product {$product->id}: -{$qty} (RaceResult {$id})");
+                                }
                             }
                         }
+                    } catch (\Throwable $stockEx) {
+                        Log::error("Erro ao baixar estoque de brindes RR {$id}: " . $stockEx->getMessage());
                     }
                 }
 
@@ -148,7 +152,7 @@ class AsaasController extends Controller
 
                 try {
                     $this->sendInscriptionConfirmation($result);
-                } catch (\Exception $mailEx) {
+                } catch (\Throwable $mailEx) {
                     Log::error("Pagamento Confirmado RR {$id}, mas erro ao enviar e-mail: " . $mailEx->getMessage());
                 }
 
@@ -186,16 +190,19 @@ class AsaasController extends Controller
                 if ($pivot->category_id) {
                     $category = \App\Models\Category::find($pivot->category_id);
                     if ($category) {
-                        $included = $category->products();
-                        foreach ($included as $item) {
-                            if (isset($item['product']) && $item['product'] instanceof \App\Models\Product) {
-                                // Only decrement if stock is controlled (not null)
-                                if ($item['product']->stock_quantity !== null) {
-                                    $qty = $item['quantity'] ?? 1;
-                                    $item['product']->decrement('stock_quantity', $qty);
-                                    Log::info("Stock reduced for Team Gift/Included Product {$item['product']->id}: -{$qty} (CT {$id})");
+                        try {
+                            $included = $category->products;
+                            if ($included && $included->count() > 0) {
+                                foreach ($included as $product) {
+                                    if ($product->stock_quantity !== null) {
+                                        $qty = $product->pivot->quantity ?? 1;
+                                        $product->decrement('stock_quantity', $qty);
+                                        Log::info("Stock reduced for Team Gift Product {$product->id}: -{$qty} (CT {$id})");
+                                    }
                                 }
                             }
+                        } catch (\Throwable $stockEx) {
+                            Log::error("Erro ao baixar estoque de brindes CT {$id}: " . $stockEx->getMessage());
                         }
                     }
                 }
