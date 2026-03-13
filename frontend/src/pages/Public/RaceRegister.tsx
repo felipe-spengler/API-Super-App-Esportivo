@@ -173,10 +173,49 @@ export function RaceRegister() {
         return total;
     };
 
+    const getAutoSubcategory = () => {
+        if (!parentCategoryId || !formData.birth_date || !formData.gender) return null;
+
+        const mainCat = championship?.categories?.find((c: any) => c.id === Number(parentCategoryId));
+        if (!mainCat || !championship.categories) return null;
+
+        const children = championship.categories.filter((c: any) => c.parent_id === mainCat.id);
+        if (children.length === 0) return null;
+
+        // Calcular idade em 31/12 do ano do campeonato (igual ao backend)
+        const eventDate = championship.start_date ? new Date(championship.start_date) : new Date();
+        const eventYear = eventDate.getFullYear();
+        const birthDate = new Date(formData.birth_date);
+        
+        // Simples cálculo de ano
+        let age = eventYear - birthDate.getFullYear();
+
+        return children.find((child: any) => {
+            const min = child.min_age ?? 0;
+            const max = child.max_age ?? 999;
+            if (age < min || age > max) return false;
+
+            // Gênero
+            const childGen = (child.gender || '').toLowerCase();
+            if (childGen && childGen !== 'mixed' && childGen !== 'misto') {
+                const userGen = (formData.gender === 'M' ? 'male' : formData.gender === 'F' ? 'female' : 'other');
+                const normChildGen = (childGen === 'm' ? 'male' : childGen === 'f' ? 'female' : childGen);
+                if (userGen !== normChildGen) return false;
+            }
+            return true;
+        });
+    };
+
     const calculateTotal = () => {
         let base = Number(selectedCategory?.price || 0);
-        let surcharge = getGiftsSurcharge();
+        
+        // Se a categoria selecionada for pai e houver subcategoria automática, soma o preço dela
+        const autoSub = getAutoSubcategory();
+        if (autoSub && autoSub.id !== selectedCategory?.id) {
+            base += Number(autoSub.price || 0);
+        }
 
+        let surcharge = getGiftsSurcharge();
         let regTotal = base + surcharge;
 
         if (formData.is_pcd) {
@@ -973,6 +1012,12 @@ export function RaceRegister() {
                                     <span className="text-slate-500 font-bold uppercase">Inscrição ({selectedCategory?.name})</span>
                                     <span className="font-black text-slate-900">R$ {Number(selectedCategory?.price || 0).toFixed(2)}</span>
                                 </div>
+                                {getAutoSubcategory() && (
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-slate-500 font-bold uppercase italic border-l-2 border-slate-100 pl-2">Subcategoria ({getAutoSubcategory()?.name})</span>
+                                        <span className="font-black text-slate-900 font-medium">+ R$ {Number(getAutoSubcategory()?.price || 0).toFixed(2)}</span>
+                                    </div>
+                                )}
                                 {getGiftsSurcharge() > 0 && (
                                     <div className="flex justify-between text-sm">
                                         <span className="text-slate-500 font-bold uppercase italic border-l-2 border-slate-100 pl-2">Adicional Brindes (Variantes)</span>
@@ -988,7 +1033,7 @@ export function RaceRegister() {
                                 {formData.is_pcd && (
                                     <div className="flex justify-between text-sm text-indigo-600 italic">
                                         <span className="font-bold uppercase">Desconto PCD (50%)</span>
-                                        <span className="font-black">- R$ {((Number(selectedCategory?.price || 0) + getGiftsSurcharge()) * 0.5).toFixed(2)}</span>
+                                        <span className="font-black">- R$ {((Number(selectedCategory?.price || 0) + (Number(getAutoSubcategory()?.price || 0)) + getGiftsSurcharge()) * 0.5).toFixed(2)}</span>
                                     </div>
                                 )}
                                 {couponInfo && (

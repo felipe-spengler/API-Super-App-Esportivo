@@ -95,16 +95,36 @@ class RaceInscriptionController extends Controller
         $referenceDate = \Carbon\Carbon::createFromDate($eventYear, 12, 31);
         $athleteAge = (int) $referenceDate->diffInYears(\Carbon\Carbon::parse($request->birth_date), true);
 
-        // A subcategoria deve ser automática conforme idade se a categoria principal tiver filhos.
+        // A subcategoria deve ser automática conforme idade e gênero se a categoria principal tiver filhos.
         if ($mainCategory->children->count() > 0) {
             $subCategory = $mainCategory->children
-                ->filter(function ($child) use ($athleteAge) {
+                ->filter(function ($child) use ($athleteAge, $request) {
+                    // Validar Idade
                     $min = $child->min_age ?? 0;
                     $max = $child->max_age ?? 999;
-                    return $athleteAge >= $min && $athleteAge <= $max;
+                    if ($athleteAge < $min || $athleteAge > $max) {
+                        return false;
+                    }
+
+                    // Validar Gênero (se a subcategoria tiver gênero específico)
+                    $childGender = strtolower($child->gender ?? '');
+                    if ($childGender && $childGender !== 'mixed' && $childGender !== 'misto') {
+                        $userGender = strtolower($request->gender);
+                        if ($userGender === 'm') $userGender = 'male';
+                        if ($userGender === 'f') $userGender = 'female';
+
+                        $normalizedChildGender = $childGender;
+                        if ($normalizedChildGender === 'm') $normalizedChildGender = 'male';
+                        if ($normalizedChildGender === 'f') $normalizedChildGender = 'female';
+
+                        if ($userGender !== $normalizedChildGender) {
+                            return false;
+                        }
+                    }
+
+                    return true;
                 })
                 ->first();
-
 
             if ($subCategory) {
                 $category = $subCategory;

@@ -72,7 +72,7 @@ class RacePaymentController extends Controller
             $mainCategory = $result->category->parent_id ? $result->category->parent : $result->category;
             $amount = $result->payment_info['value'] ?? (float) $mainCategory->price;
 
-            // Se for subcategoria e não tiver o valor salvo, soma
+            // Se for subcategoria e não tiver o valor salvo em payment_info, PRECISAMOS somar o adicional da subcategoria
             if (!isset($result->payment_info['value']) && $result->category->id !== $mainCategory->id) {
                 $amount += (float) ($result->category->price ?? 0);
             }
