@@ -107,7 +107,7 @@ export function RaceRegister() {
                     });
 
                     if (response.data.result?.status_payment === 'paid') {
-                        setRegistrationData({ ...response.data, requires_payment: false });
+                        setRegistrationData(response.data.result);
                         clearInterval(interval);
                         toast.success('Pagamento confirmado! 🎉');
                     }

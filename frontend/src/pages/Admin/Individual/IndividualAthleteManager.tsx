@@ -288,7 +288,7 @@ export function IndividualAthleteManager() {
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex justify-end gap-1">
                                                 <a
-                                                    href={`${api.defaults.baseURL}/admin/art/championship/${id}/individual/${athlete.id}/atleta_confirmado?category_name=${athlete.category?.name || ''}`}
+                                                    href={`${import.meta.env.VITE_API_URL || '/api'}/art/championship/${id}/individual/${athlete.id}/atleta_confirmado?category_name=${athlete.category?.name || ''}`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="p-2.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
