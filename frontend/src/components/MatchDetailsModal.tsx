@@ -179,17 +179,20 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
         const isVolei = sport.includes('volei') || sport.includes('vôlei');
         const isBasquete = sport.includes('basquete');
 
-        // 1. Sort events by time (descending)
+        // Sort events by ID descending to ensure true chronological insertion order (newest first)
+        // This avoids issues with inconsistent minute strings or multi-period games
         const sorted = [...details.events].sort((a, b) => {
-            if (isVolei || isBasquete) {
-                // Return by ID descending representing true chronological insertion order
-                return (b.id || 0) - (a.id || 0);
+            // Priority 1: ID descending (True chronological entry)
+            if (a.id && b.id) {
+                return b.id - a.id;
             }
 
+            // Fallback for legacy JSON events without IDs
             const timeA = parseInt(String(a.minute).replace(/\D/g, '')) || 0;
             const timeB = parseInt(String(b.minute).replace(/\D/g, '')) || 0;
             if (timeA !== timeB) return timeB - timeA;
-            // secondary sort by ID if available to keep order consistent
+            
+            // Secondary sort by ID if available
             return (b.id || 0) - (a.id || 0);
         });
 

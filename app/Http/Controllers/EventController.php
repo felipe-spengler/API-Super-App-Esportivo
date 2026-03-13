@@ -871,6 +871,7 @@ class EventController extends Controller
 
         if ($match->events->count() > 0) {
             $tableEvents = $match->events
+                ->sortByDesc('id')
                 ->filter(fn($e) => !in_array($e->event_type, $auditTypes))
                 ->map(function ($e) use ($eventLabels, $match) {
                     $metadata = is_string($e->metadata) ? json_decode($e->metadata, true) : (array) $e->metadata;
