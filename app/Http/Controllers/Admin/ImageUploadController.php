@@ -87,9 +87,8 @@ class ImageUploadController extends Controller
             $player = User::findOrFail($playerId);
 
             // Verifica permissão de clube
-            // Verifica permissão de clube
             $user = $request->user();
-            if ($user->club_id !== null && $player->club_id !== $user->club_id && $user->id !== $player->id) {
+            if ($user && $user->club_id !== null && $player->club_id !== $user->club_id && $user->id !== $player->id) {
                 // Se o player não tem clube, verifica se pertence a algum time do clube do admin
                 $belongsToClubTeam = false;
                 if ($player->club_id === null) {

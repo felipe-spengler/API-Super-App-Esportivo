@@ -193,12 +193,21 @@ class RaceInscriptionController extends Controller
 
             // 2. Foto
             if ($request->hasFile('photo')) {
-                set_time_limit(300);
-                $imageController = new ImageUploadController();
-                $photoRequest = new Request();
-                $photoRequest->files->set('photo', $request->file('photo'));
-                $photoRequest->merge(['remove_bg' => false]);
-                $imageController->uploadPlayerPhoto($photoRequest, $user->id);
+                try {
+                    set_time_limit(300);
+                    $imageController = new ImageUploadController();
+                    $photoRequest = new Request();
+                    $photoRequest->files->set('photo', $request->file('photo'));
+                    $photoRequest->merge(['remove_bg' => false]);
+                    // Passa o user resolver para o photoRequest (se autenticado)
+                    if ($request->getUserResolver()) {
+                        $photoRequest->setUserResolver($request->getUserResolver());
+                    }
+                    $imageController->uploadPlayerPhoto($photoRequest, $user->id);
+                } catch (\Exception $photoEx) {
+                    Log::error("Erro ao fazer upload de foto na inscrição: " . $photoEx->getMessage());
+                    // Não cancela a inscrição por falha no upload de foto
+                }
             }
 
             // 3. Documento PCD

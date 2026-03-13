@@ -94,17 +94,22 @@ export function RaceRegister() {
     useEffect(() => {
         let interval: any;
 
-        if (step === 7 && registrationData?.requires_payment) {
+        // Only poll if we're on the final step, payment is pending and we have credentials to check
+        const docToCheck = formData.document || trackingCpf;
+        const birthToCheck = formData.birth_date || trackingBirthDate;
+
+        if (step === 7 && registrationData?.requires_payment && docToCheck && birthToCheck) {
             interval = setInterval(async () => {
                 try {
                     const response = await api.post(`/championships/${id}/race/track`, {
-                        document: formData.document,
-                        birth_date: formData.birth_date
+                        document: docToCheck,
+                        birth_date: birthToCheck
                     });
 
-                    if (response.data.result.status_payment === 'paid') {
-                        setRegistrationData(response.data);
-                        toast.success('Pagamento confirmado!');
+                    if (response.data.result?.status_payment === 'paid') {
+                        setRegistrationData({ ...response.data, requires_payment: false });
+                        clearInterval(interval);
+                        toast.success('Pagamento confirmado! 🎉');
                     }
                 } catch (error) {
                     console.error('Erro ao verificar status:', error);
@@ -115,7 +120,7 @@ export function RaceRegister() {
         return () => {
             if (interval) clearInterval(interval);
         };
-    }, [step, registrationData?.requires_payment, id, formData.document, formData.birth_date]);
+    }, [step, registrationData?.requires_payment, id, formData.document, formData.birth_date, trackingCpf, trackingBirthDate]);
 
     useEffect(() => {
         if (user) {
