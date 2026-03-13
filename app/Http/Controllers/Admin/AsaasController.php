@@ -83,10 +83,10 @@ class AsaasController extends Controller
 
         // Eventos que indicam sucesso no pagamento
         $successEvents = ['PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED'];
-        // Eventos que indicam cancelamento ou atraso
         $failureEvents = ['PAYMENT_OVERDUE', 'PAYMENT_DELETED', 'PAYMENT_REFUNDED'];
 
         try {
+            // ✅ TRANSAÇÃO CRÍTICA: apenas atualiza status no banco
             DB::beginTransaction();
 
             if (in_array($event, $successEvents)) {
@@ -96,13 +96,17 @@ class AsaasController extends Controller
             }
 
             DB::commit();
-            return response()->json(['status' => 'success']);
 
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error("Asaas Webhook Error: " . $e->getMessage() . " at " . $e->getFile() . ":" . $e->getLine());
+            Log::error("Asaas Webhook CRITICAL Error: " . $e->getMessage() . " at " . $e->getFile() . ":" . $e->getLine());
+            // Retorna 500 SOMENTE se a atualização crítica do banco falhar
             return response()->json(['error' => $e->getMessage()], 500);
         }
+
+        // ✅ Retorna 200 ao Asaas IMEDIATAMENTE após o commit do banco
+        // Estoque e e-mail são operações secundárias — falhas deles não afetam a resposta
+        return response()->json(['status' => 'success']);
     }
 
     private function handlePaymentSuccess($payment)
@@ -140,14 +144,18 @@ class AsaasController extends Controller
                 }
 
                 // Baixa no Estoque dos Itens de Loja Adicionais
-                if ($result->shop_items && is_array($result->shop_items)) {
-                    foreach ($result->shop_items as $item) {
-                        $prod = \App\Models\Product::find($item['product_id']);
-                        if ($prod && $prod->stock_quantity !== null) {
-                            $prod->decrement('stock_quantity', $item['quantity'] ?? 1);
-                            Log::info("Stock reduced for Additional Shop Item {$prod->id}: -" . ($item['quantity'] ?? 1));
+                try {
+                    if ($result->shop_items && is_array($result->shop_items)) {
+                        foreach ($result->shop_items as $item) {
+                            $prod = \App\Models\Product::find($item['product_id']);
+                            if ($prod && $prod->stock_quantity !== null) {
+                                $prod->decrement('stock_quantity', $item['quantity'] ?? 1);
+                                Log::info("Stock reduced for Additional Shop Item {$prod->id}: -" . ($item['quantity'] ?? 1));
+                            }
                         }
                     }
+                } catch (\Throwable $stockEx) {
+                    Log::error("Erro ao baixar estoque de loja RR {$id}: " . $stockEx->getMessage());
                 }
 
                 try {
