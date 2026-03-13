@@ -135,9 +135,18 @@ export function RaceRegister() {
     const mainCategories = championship?.categories?.filter((cat: any) => !cat.parent_id) || [];
 
     // Get subcategories for the selected parent
-    const subCategories = championship?.categories?.filter((cat: any) => cat.parent_id === parentCategoryId) || [];
+    const subCategories = championship?.categories?.filter(
+        (cat: any) => String(cat.parent_id) === String(parentCategoryId)
+    ) || [];
 
-    const selectedCategory = championship?.categories?.find((cat: any) => cat.id === (formData.category_id || parentCategoryId));
+    // selectedCategory: subcategoria se escolhida manualmente, senão a categoria pai selecionada
+    const selectedCategory = championship?.categories?.find(
+        (cat: any) => formData.category_id
+            ? String(cat.id) === String(formData.category_id)
+            : parentCategoryId
+                ? String(cat.id) === String(parentCategoryId)
+                : false
+    );
 
     const getGiftsSurcharge = () => {
         let surcharges = 0;
@@ -174,49 +183,70 @@ export function RaceRegister() {
     };
 
     const getAutoSubcategory = () => {
-        if (!parentCategoryId || !formData.birth_date || !formData.gender) return null;
+        if (!parentCategoryId || !formData.birth_date || !formData.gender) {
+            console.log('[AutoSub] Faltando dados:', { parentCategoryId, birth_date: formData.birth_date, gender: formData.gender });
+            return null;
+        }
 
-        const mainCat = championship?.categories?.find((c: any) => c.id === Number(parentCategoryId));
-        if (!mainCat || !championship.categories) return null;
+        const mainCat = championship?.categories?.find((c: any) => String(c.id) === String(parentCategoryId));
+        if (!mainCat || !championship.categories) {
+            console.log('[AutoSub] Categoria pai não encontrada. parentCategoryId:', parentCategoryId, 'categorias:', championship?.categories?.map((c: any) => c.id));
+            return null;
+        }
 
-        const children = championship.categories.filter((c: any) => c.parent_id === mainCat.id);
-        if (children.length === 0) return null;
+        const children = championship.categories.filter((c: any) => String(c.parent_id) === String(mainCat.id));
+        console.log('[AutoSub] Filhos encontrados:', children.map((c: any) => ({ id: c.id, name: c.name, min_age: c.min_age, max_age: c.max_age, gender: c.gender, price: c.price })));
+
+        if (children.length === 0) {
+            console.log('[AutoSub] Nenhum filho. Sem subcategoria automática.');
+            return null;
+        }
 
         // Calcular idade em 31/12 do ano do campeonato (igual ao backend)
         const eventDate = championship.start_date ? new Date(championship.start_date) : new Date();
         const eventYear = eventDate.getFullYear();
         const birthDate = new Date(formData.birth_date);
-        
-        // Simples cálculo de ano
-        let age = eventYear - birthDate.getFullYear();
+        const age = eventYear - birthDate.getFullYear();
+        console.log('[AutoSub] Idade calculada:', age, 'ano evento:', eventYear, 'nasc:', formData.birth_date);
 
-        return children.find((child: any) => {
+        const found = children.find((child: any) => {
             const min = child.min_age ?? 0;
             const max = child.max_age ?? 999;
-            if (age < min || age > max) return false;
+            if (age < min || age > max) {
+                console.log(`[AutoSub] Filho ${child.name} rejeitado por idade: ${age} fora de [${min}, ${max}]`);
+                return false;
+            }
 
             // Gênero
             const childGen = (child.gender || '').toLowerCase();
             if (childGen && childGen !== 'mixed' && childGen !== 'misto') {
                 const userGen = (formData.gender === 'M' ? 'male' : formData.gender === 'F' ? 'female' : 'other');
                 const normChildGen = (childGen === 'm' ? 'male' : childGen === 'f' ? 'female' : childGen);
-                if (userGen !== normChildGen) return false;
+                if (userGen !== normChildGen) {
+                    console.log(`[AutoSub] Filho ${child.name} rejeitado por gênero: atleta=${userGen} cat=${normChildGen}`);
+                    return false;
+                }
             }
             return true;
         });
+
+        console.log('[AutoSub] Subcategoria automática encontrada:', found ? { id: found.id, name: found.name, price: found.price } : null);
+        return found || null;
     };
 
     const calculateTotal = () => {
-        let base = Number(selectedCategory?.price || 0);
-        
-        // Se a categoria selecionada for pai e houver subcategoria automática, soma o preço dela
+        const mainCat = championship?.categories?.find((c: any) => String(c.id) === String(parentCategoryId));
         const autoSub = getAutoSubcategory();
-        if (autoSub && autoSub.id !== selectedCategory?.id) {
-            base += Number(autoSub.price || 0);
-        }
+
+        // Preço base vem SEMPRE da categoria PAI
+        const basePrice = Number(mainCat?.price || selectedCategory?.price || 0);
+        // Adicional da subcategoria (se houver automática)
+        const subPrice = (autoSub && String(autoSub.id) !== String(parentCategoryId)) ? Number(autoSub.price || 0) : 0;
+
+        console.log('[CalcTotal] basePrice:', basePrice, 'subPrice:', subPrice, 'mainCat:', mainCat?.name, 'autoSub:', autoSub?.name);
 
         let surcharge = getGiftsSurcharge();
-        let regTotal = base + surcharge;
+        let regTotal = basePrice + subPrice + surcharge;
 
         if (formData.is_pcd) {
             regTotal *= 0.5;
@@ -233,7 +263,9 @@ export function RaceRegister() {
             }
         }
 
-        return Math.max(0, currentTotal);
+        const result = Math.max(0, currentTotal);
+        console.log('[CalcTotal] TOTAL FINAL:', result);
+        return result;
     };
 
     async function loadData() {
@@ -1009,13 +1041,13 @@ export function RaceRegister() {
                             <div className="pt-6 border-t border-slate-100 space-y-3">
                                 <h3 className="font-black text-slate-900 uppercase text-xs italic">Resumo do Pedido</h3>
                                 <div className="flex justify-between text-sm">
-                                    <span className="text-slate-500 font-bold uppercase">Inscrição ({selectedCategory?.name})</span>
-                                    <span className="font-black text-slate-900">R$ {Number(selectedCategory?.price || 0).toFixed(2)}</span>
+                                    <span className="text-slate-500 font-bold uppercase">Inscrição ({(championship?.categories?.find((c: any) => String(c.id) === String(parentCategoryId)))?.name || selectedCategory?.name || '---'})</span>
+                                    <span className="font-black text-slate-900">R$ {Number((championship?.categories?.find((c: any) => String(c.id) === String(parentCategoryId)))?.price || selectedCategory?.price || 0).toFixed(2)}</span>
                                 </div>
                                 {getAutoSubcategory() && (
                                     <div className="flex justify-between text-sm">
                                         <span className="text-slate-500 font-bold uppercase italic border-l-2 border-slate-100 pl-2">Subcategoria ({getAutoSubcategory()?.name})</span>
-                                        <span className="font-black text-slate-900 font-medium">+ R$ {Number(getAutoSubcategory()?.price || 0).toFixed(2)}</span>
+                                        <span className="font-black text-slate-700 font-medium">+ R$ {Number(getAutoSubcategory()?.price || 0).toFixed(2)}</span>
                                     </div>
                                 )}
                                 {getGiftsSurcharge() > 0 && (
@@ -1033,7 +1065,11 @@ export function RaceRegister() {
                                 {formData.is_pcd && (
                                     <div className="flex justify-between text-sm text-indigo-600 italic">
                                         <span className="font-bold uppercase">Desconto PCD (50%)</span>
-                                        <span className="font-black">- R$ {((Number(selectedCategory?.price || 0) + (Number(getAutoSubcategory()?.price || 0)) + getGiftsSurcharge()) * 0.5).toFixed(2)}</span>
+                                        <span className="font-black">- R$ {((
+                                            Number((championship?.categories?.find((c: any) => String(c.id) === String(parentCategoryId)))?.price || selectedCategory?.price || 0)
+                                            + Number(getAutoSubcategory()?.price || 0)
+                                            + getGiftsSurcharge()
+                                        ) * 0.5).toFixed(2)}</span>
                                     </div>
                                 )}
                                 {couponInfo && (
