@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Users, Search, Filter, Download, UserPlus, FileCheck, Mail, Wand2, X, Table, Upload, AlertCircle } from 'lucide-react';
 import api from '../../../services/api';
+import { compressImage } from '../../../utils/imageCompressor';
+import toast from 'react-hot-toast';
 
 interface Athlete {
     id: number;
@@ -99,7 +101,8 @@ export function IndividualAthleteManager() {
                 data.append(key, value.toString());
             });
             if (photoFile) {
-                data.append('photo', photoFile);
+                const compressed = await compressImage(photoFile, 2 * 1024 * 1024); // 2MB for athlete photos
+                data.append('photo', compressed);
             }
 
             await api.post(`/admin/races/${id}/results`, data, {

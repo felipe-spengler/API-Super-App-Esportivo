@@ -40,7 +40,10 @@ class ShopController extends Controller
 
         $coupon = \App\Models\Coupon::where('club_id', $request->club_id)
             ->where('code', $request->code)
-            // ->whereDate('expires_at', '>=', now()) // TODO: Descomentar em produção
+            ->where(function($q) {
+                $q->whereNull('expires_at')
+                  ->orWhere('expires_at', '>=', now()->startOfDay());
+            })
             ->first();
 
         if (!$coupon) {

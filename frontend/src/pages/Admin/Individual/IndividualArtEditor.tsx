@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import api from '../../../services/api';
 import toast from 'react-hot-toast';
+import { compressImage } from '../../../utils/imageCompressor';
 
 // Default canvas size (Stories 9:16)
 const CANVAS_WIDTH = 1080;
@@ -121,12 +122,15 @@ export function IndividualArtEditor() {
     const handleBgUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files || e.target.files.length === 0) return;
         const file = e.target.files[0];
-        const formData = new FormData();
-        formData.append('image', file);
-        formData.append('folder', 'art-backgrounds');
-
-        const toastId = toast.loading('Enviando fundo...');
+        const toastId = toast.loading('Processando e enviando fundo...');
         try {
+            // Comprime a imagem se necessário (5MB limit)
+            const compressed = await compressImage(file, 5 * 1024 * 1024, 3000, 0.9);
+            
+            const formData = new FormData();
+            formData.append('image', compressed);
+            formData.append('folder', 'art-backgrounds');
+
             const res = await api.post('/admin/upload/generic', formData);
             if (res.data && res.data.url) {
                 setBgImage(res.data.url);

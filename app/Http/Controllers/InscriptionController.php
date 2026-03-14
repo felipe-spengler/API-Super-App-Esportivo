@@ -97,7 +97,7 @@ class InscriptionController extends Controller
                     ->where('code', $request->coupon_code)
                     ->first();
 
-                if ($coupon && (!$coupon->expires_at || !$coupon->expires_at->isPast()) && (!$coupon->max_uses || $coupon->used_count < $coupon->max_uses)) {
+                if ($coupon && (!$coupon->expires_at || !$coupon->expires_at->endOfDay()->isPast()) && (!$coupon->max_uses || $coupon->used_count < $coupon->max_uses)) {
                     if ($coupon->discount_type === 'percentage') {
                         $finalPrice -= $finalPrice * ($coupon->discount_value / 100);
                     } else {

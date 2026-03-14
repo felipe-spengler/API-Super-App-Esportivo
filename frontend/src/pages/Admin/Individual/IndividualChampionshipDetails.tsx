@@ -39,7 +39,7 @@ export function IndividualChampionshipDetails() {
     const stats = [
         { label: 'Inscritos', value: '0', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
         { label: 'Confirmados', value: '0', icon: CreditCard, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-        { label: 'Categorias', value: categories.length, icon: Layers, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+        { label: 'Categorias', value: categories.filter(c => !c.parent_id).length, icon: Layers, color: 'text-indigo-600', bg: 'bg-indigo-50' },
     ];
 
     const cards = [

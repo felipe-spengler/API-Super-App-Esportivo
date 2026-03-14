@@ -313,6 +313,10 @@ class ImageUploadController extends Controller
     public function uploadGeneric(Request $request)
     {
         try {
+            if (!$request->hasFile('image')) {
+                return response()->json(['message' => 'Nenhum arquivo enviado.'], 400);
+            }
+
             $request->validate([
                 'image' => 'required|image|mimes:jpeg,png,jpg,webp|max:5120',
                 'folder' => 'nullable|string',
@@ -323,19 +327,32 @@ class ImageUploadController extends Controller
 
             // Prevent path traversal
             if (str_contains($folder, '..')) {
-                throw new \Exception("Invalid folder path");
+                return response()->json(['message' => 'Caminho de pasta inválido.'], 400);
             }
 
-            $filename = $folder . '/' . Str::random(20) . '-' . time() . '.' . $file->getClientOriginalExtension();
-            $path = $file->storeAs($folder, basename($filename), 'public');
+            // Garante que a pasta não comece com /
+            $folder = ltrim($folder, '/');
+
+            $filename = Str::random(20) . '-' . time() . '.' . $file->getClientOriginalExtension();
+            $path = $file->storeAs($folder, $filename, 'public');
+
+            if (!$path) {
+                throw new \Exception("Falha ao salvar o arquivo no disco.");
+            }
+
+            $url = rtrim(config('app.url'), '/') . '/api/storage/' . $path;
 
             return response()->json([
                 'message' => 'Imagem enviada com sucesso!',
-                'url' => '/storage/' . $path,
+                'url' => $url,
                 'path' => $path
             ]);
         } catch (\Exception $e) {
-            \Log::error("Upload Generic Error: " . $e->getMessage());
+            \Log::error("Upload Generic Error: " . $e->getMessage(), [
+                'exception' => $e,
+                'input' => $request->all(),
+                'files' => $request->allFiles()
+            ]);
             return response()->json(['message' => 'Erro ao fazer upload da imagem: ' . $e->getMessage()], 500);
         }
     }
