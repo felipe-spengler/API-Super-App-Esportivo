@@ -11,6 +11,7 @@ export function IndividualArtManager() {
     const [uploadingId, setUploadingId] = useState<number | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [selectedCategory, setSelectedCategory] = useState<any>(null);
+    const [championship, setChampionship] = useState<any>(null);
 
     useEffect(() => {
         loadData();
@@ -19,15 +20,32 @@ export function IndividualArtManager() {
     async function loadData() {
         try {
             setLoading(true);
-            // standardized endpoint
-            const response = await api.get(`/admin/championships/${id}/categories-list`);
-            setCategories(response.data);
+            const [categoriesRes, champRes] = await Promise.all([
+                api.get(`/admin/championships/${id}/categories-list`),
+                api.get(`/admin/championships/${id}`)
+            ]);
+            setCategories(categoriesRes.data);
+            setChampionship(champRes.data);
         } catch (error) {
             console.error(error);
         } finally {
             setLoading(false);
         }
     }
+
+    const handleToggleRemoveBg = async () => {
+        const newValue = !championship.remove_bg_on_art;
+        const toastId = toast.loading('Atualizando configuração...');
+        try {
+            await api.put(`/admin/championships/${id}`, {
+                remove_bg_on_art: newValue
+            });
+            setChampionship({ ...championship, remove_bg_on_art: newValue });
+            toast.success(`Remoção de fundo ${newValue ? 'ativada' : 'desativada'}!`, { id: toastId });
+        } catch (error) {
+            toast.error('Erro ao atualizar configuração.', { id: toastId });
+        }
+    };
 
     const handleUploadClick = (category: any) => {
         setSelectedCategory(category);
@@ -83,6 +101,36 @@ export function IndividualArtManager() {
                         <Layout size={18} />
                         Editor de Templates
                     </Link>
+                </div>
+            </div>
+
+            {/* AI Settings Section */}
+            <div className="bg-gradient-to-br from-indigo-50 to-white p-6 rounded-3xl border border-indigo-100 shadow-sm">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 bg-indigo-600 text-white rounded-2xl shadow-lg shadow-indigo-200">
+                            <Wand2 size={24} />
+                        </div>
+                        <div>
+                            <h3 className="font-black text-slate-900 uppercase">Inteligência Artificial</h3>
+                            <p className="text-xs text-slate-500 font-bold uppercase italic">Otimize as fotos dos atletas automaticamente</p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-4 bg-white p-3 rounded-2xl border border-indigo-50 shadow-sm">
+                        <div className="flex flex-col">
+                            <span className="text-xs font-black text-slate-900 uppercase">Remover Fundo Automatizado</span>
+                            <span className="text-[10px] text-slate-400 font-bold uppercase">Melhora a estética das artes</span>
+                        </div>
+                        <button
+                            onClick={handleToggleRemoveBg}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${championship?.remove_bg_on_art ? 'bg-indigo-600' : 'bg-slate-200'}`}
+                        >
+                            <span
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${championship?.remove_bg_on_art ? 'translate-x-6' : 'translate-x-1'}`}
+                            />
+                        </button>
+                    </div>
                 </div>
             </div>
 

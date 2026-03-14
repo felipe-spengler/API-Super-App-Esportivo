@@ -1,6 +1,6 @@
-import { Menu, LogOut, Eye } from 'lucide-react';
+import { Menu, LogOut, Eye, Globe } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 
 interface HeaderProps {
     onMenuClick: () => void;
@@ -9,11 +9,25 @@ interface HeaderProps {
 export function Header({ onMenuClick }: HeaderProps) {
     const { signOut } = useAuth();
     const navigate = useNavigate();
+    const { pathname } = useLocation();
+    const { id } = useParams();
 
     function handleLogout() {
         signOut();
         navigate('/login');
     }
+
+    const getPublicUrl = () => {
+        if (id) {
+            if (pathname.includes('/admin/individual')) {
+                return `/races/${id}`;
+            }
+            if (pathname.includes('/admin/championships')) {
+                return `/events/${id}`;
+            }
+        }
+        return '/';
+    };
 
     return (
         <header className="h-16 bg-gray-900 border-b border-gray-800 md:bg-white md:border-gray-200 flex items-center justify-between px-6 sticky top-0 z-40 shadow-sm transition-colors duration-300">
@@ -31,11 +45,11 @@ export function Header({ onMenuClick }: HeaderProps) {
 
             <div className="flex items-center gap-2 sm:gap-4">
                 <button
-                    onClick={() => navigate('/')}
+                    onClick={() => navigate(getPublicUrl())}
                     className="flex items-center gap-2 px-3 py-2 md:py-1.5 text-xs font-bold text-white md:text-indigo-600 bg-indigo-600 md:bg-indigo-50 border border-indigo-600 md:border-indigo-100 rounded-full hover:bg-indigo-700 md:hover:bg-indigo-100 transition-colors shadow-sm"
-                    title="Ver página inicial pública"
+                    title="Ver página pública"
                 >
-                    <Eye className="w-4 h-4 md:w-3.5 md:h-3.5" />
+                    <Globe className="w-4 h-4 md:w-3.5 md:h-3.5" />
                     <span className="hidden sm:inline">Página Pública</span>
                 </button>
 

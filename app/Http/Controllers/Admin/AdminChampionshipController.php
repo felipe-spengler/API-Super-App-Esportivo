@@ -111,7 +111,8 @@ class AdminChampionshipController extends Controller
             'has_elderly_discount' => 'nullable|boolean',
             'elderly_discount_percentage' => 'nullable|numeric|min:0|max:100',
             'elderly_minimum_age' => 'nullable|integer|min:0',
-            'allow_shopping_registration' => 'nullable|boolean'
+            'allow_shopping_registration' => 'nullable|boolean',
+            'remove_bg_on_art' => 'nullable|boolean'
         ]);
 
         if (isset($validated['status'])) {
@@ -170,19 +171,15 @@ class AdminChampionshipController extends Controller
             \DB::beginTransaction();
 
             // 1. Deletar Corridas (Races) e seus resultados
-            $races = \App\Models\Race::where('championship_id', $id)->get();
-            foreach ($races as $race) {
-                \App\Models\RaceResult::where('race_id', $race->id)->delete();
-                $race->delete();
-            }
+            $raceIds = \App\Models\Race::where('championship_id', $id)->pluck('id');
+            \App\Models\RaceResult::whereIn('race_id', $raceIds)->delete();
+            \App\Models\Race::where('championship_id', $id)->delete();
 
             // 2. Deletar Partidas (Matches), Sets e Eventos
-            $matches = \App\Models\GameMatch::where('championship_id', $id)->get();
-            foreach ($matches as $match) {
-                \App\Models\MatchSet::where('game_match_id', $match->id)->delete();
-                \App\Models\MatchEvent::where('game_match_id', $match->id)->delete();
-                $match->delete();
-            }
+            $matchIds = \App\Models\GameMatch::where('championship_id', $id)->pluck('id');
+            \App\Models\MatchSet::whereIn('game_match_id', $matchIds)->delete();
+            \App\Models\MatchEvent::whereIn('game_match_id', $matchIds)->delete();
+            \App\Models\GameMatch::where('championship_id', $id)->delete();
 
             // 3. Limpar vínculos de times e inscritos (Pivot e Jogadores)
             \DB::table('championship_team')->where('championship_id', $id)->delete();

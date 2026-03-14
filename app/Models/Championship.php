@@ -33,7 +33,9 @@ class Championship extends Model
         'has_elderly_discount',
         'elderly_discount_percentage',
         'elderly_minimum_age',
-        'allow_shopping_registration'
+        'allow_shopping_registration',
+        'regulation_path',
+        'remove_bg_on_art'
     ];
 
     protected $casts = [
@@ -52,6 +54,7 @@ class Championship extends Model
         'elderly_discount_percentage' => 'decimal:2',
         'elderly_minimum_age' => 'integer',
         'allow_shopping_registration' => 'boolean',
+        'remove_bg_on_art' => 'boolean',
     ];
 
     public function club()

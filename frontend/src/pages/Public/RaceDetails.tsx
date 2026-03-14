@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, MapPin, Trophy, Camera, Users } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Trophy, Camera, Users, FileText } from 'lucide-react';
 import api from '../../services/api';
 
 export function RaceDetails() {
@@ -81,7 +81,7 @@ export function RaceDetails() {
 
             <div className="max-w-4xl mx-auto px-4 -mt-8 relative z-10">
                 {/* Actions Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                     <button
                         onClick={() => navigate(`/races/${id}/register`)}
                         className="bg-emerald-600 hover:bg-emerald-700 text-white p-4 rounded-xl shadow-lg flex flex-col items-center justify-center gap-2 transition-all active:scale-[0.98]"
@@ -97,6 +97,18 @@ export function RaceDetails() {
                         <Trophy className="w-6 h-6" />
                         <span className="font-bold uppercase text-xs tracking-wider">Resultados</span>
                     </button>
+
+                    {champ.regulation_path && (
+                        <a 
+                            href={`https://api.esportivo.techinteligente.site/api/storage/${champ.regulation_path}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-xl shadow-lg flex flex-col items-center justify-center gap-2 transition-all active:scale-[0.98]"
+                        >
+                            <FileText className="w-6 h-6" />
+                            <span className="font-bold uppercase text-xs tracking-wider">Regulamento</span>
+                        </a>
+                    )}
 
                     <button className="bg-gray-800 hover:bg-gray-700 text-white p-4 rounded-xl shadow-lg flex flex-col items-center justify-center gap-2 transition-all active:scale-[0.98] opacity-50 cursor-not-allowed">
                         <Camera className="w-6 h-6" />

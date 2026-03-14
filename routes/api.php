@@ -250,6 +250,7 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
         Route::post('/upload/player-photo/{playerId}', [ImageUploadController::class, 'uploadPlayerPhoto']);
         Route::post('/upload/championship-logo/{championshipId}', [ImageUploadController::class, 'uploadChampionshipLogo']);
         Route::post('/upload/championship-banner/{championshipId}', [ImageUploadController::class, 'uploadChampionshipBanner']);
+        Route::post('/upload/championship-regulation/{championshipId}', [ImageUploadController::class, 'uploadChampionshipRegulation']);
         Route::post('/upload/award-photo', [ImageUploadController::class, 'uploadAwardPhoto']);
         Route::post('/upload/generic', [ImageUploadController::class, 'uploadGeneric']);
         Route::post('/upload-image', [ImageUploadController::class, 'uploadImage']);

@@ -113,7 +113,7 @@ trait ArtCardTrait
         return $photoPath;
     }
 
-    private function drawPlayerPhoto($img, $player)
+    private function drawPlayerPhoto($img, $player, $championship = null)
     {
         if (!$player->photo_path)
             return;
@@ -131,12 +131,19 @@ trait ArtCardTrait
         if (!$originalAbsPath)
             return;
 
-        $processedFilename = pathinfo(basename($player->photo_path), PATHINFO_FILENAME) . '_processed.png';
-        $photoPath = $this->runRembgAndGetPath($originalAbsPath, $processedFilename);
+        $photoPath = null;
+        $shouldRemoveBg = $championship && $championship->remove_bg_on_art;
+
+        if ($shouldRemoveBg) {
+            $processedFilename = pathinfo(basename($player->photo_path), PATHINFO_FILENAME) . '_processed.png';
+            $photoPath = $this->runRembgAndGetPath($originalAbsPath, $processedFilename);
+        }
 
         if (!$photoPath) {
             $photoPath = $originalAbsPath;
-            \Log::warning("[ArtCardTrait] Fallback: usando foto original.");
+            if ($shouldRemoveBg) {
+                \Log::warning("[ArtCardTrait] Fallback: usando foto original.");
+            }
         }
 
         $photoInfo = @getimagesize($photoPath);
@@ -274,32 +281,38 @@ trait ArtCardTrait
                 }
             }
 
-            // Player Photo — SEMPRE roda rembg para garantir fundo removido
-            $playerPhotoPath = null;
-            if ($player->photo_path) {
-                $originalPhotoCandidates = [
-                    storage_path('app/public/' . $player->photo_path),
-                    public_path('storage/' . $player->photo_path),
-                ];
-                $originalAbsPath = null;
-                foreach ($originalPhotoCandidates as $c) {
-                    if (file_exists($c)) {
-                        $originalAbsPath = $c;
-                        break;
-                    }
+        // Player Photo — Roda rembg se a flag estiver ativa
+        $playerPhotoPath = null;
+        if ($player->photo_path) {
+            $originalPhotoCandidates = [
+                storage_path('app/public/' . $player->photo_path),
+                public_path('storage/' . $player->photo_path),
+            ];
+            $originalAbsPath = null;
+            foreach ($originalPhotoCandidates as $c) {
+                if (file_exists($c)) {
+                    $originalAbsPath = $c;
+                    break;
                 }
+            }
 
-                if ($originalAbsPath) {
+            if ($originalAbsPath) {
+                $shouldRemoveBg = $championship && $championship->remove_bg_on_art;
+
+                if ($shouldRemoveBg) {
                     $processedFilename = pathinfo(basename($player->photo_path), PATHINFO_FILENAME) . '_processed.png';
                     $playerPhotoPath = $this->runRembgAndGetPath($originalAbsPath, $processedFilename);
+                }
 
-                    if (!$playerPhotoPath) {
-                        $playerPhotoPath = $originalAbsPath;
+                if (!$playerPhotoPath) {
+                    $playerPhotoPath = $originalAbsPath;
+                    if ($shouldRemoveBg) {
                         \Log::warning("[ArtCardTrait] template photo fallback: usando foto original.");
                     }
                 }
             }
-            $replacements['player_photo'] = $playerPhotoPath;
+        }
+        $replacements['player_photo'] = $playerPhotoPath;
 
             if ($playerTeam) {
                 $replacements['team_logo'] = $this->getTeamLogoPath($playerTeam);
@@ -367,7 +380,7 @@ trait ArtCardTrait
         };
 
         // 2. Foto do Jogador
-        $this->drawPlayerPhoto($img, $player);
+        $this->drawPlayerPhoto($img, $player, $championship);
 
         // 3. Textos Principais
         $rawName = !empty($player->nickname) ? $player->nickname : $player->name;

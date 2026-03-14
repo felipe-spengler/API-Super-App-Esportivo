@@ -627,7 +627,51 @@ class ImageUploadController extends Controller
             $result['pillow_installed'] = ($ret2 === 0);
             $result['pillow_check_output'] = implode(' ', $out2);
         }
-
         return response()->json($result);
+    }
+
+    /**
+     * Upload de regulamento de campeonato (PDF ou Imagem)
+     */
+    public function uploadChampionshipRegulation(Request $request, $championshipId)
+    {
+        try {
+            $request->validate([
+                'file' => 'required|file|mimes:pdf,jpg,jpeg,png,webp|max:10240', // 10MB
+            ]);
+
+            $championship = Championship::findOrFail($championshipId);
+
+            // Verifica permissão de clube
+            $user = $request->user();
+            if ($user->club_id !== null && $championship->club_id !== $user->club_id) {
+                return response()->json([
+                    'message' => 'Você não tem permissão para editar este campeonato.'
+                ], 403);
+            }
+
+            // Remove regulamento antigo se existir
+            if ($championship->regulation_path && Storage::disk('public')->exists($championship->regulation_path)) {
+                Storage::disk('public')->delete($championship->regulation_path);
+            }
+
+            // Salva novo regulamento
+            $file = $request->file('file');
+            $filename = 'regulamento-' . time() . '.' . $file->getClientOriginalExtension();
+            $path = $file->storeAs("championships/{$championshipId}", $filename, 'public');
+
+            // Atualiza no banco
+            $championship->regulation_path = $path;
+            $championship->save();
+
+            return response()->json([
+                'message' => 'Regulamento enviado com sucesso!',
+                'regulation_path' => $path,
+                'regulation_url' => url('api/storage/' . $path)
+            ]);
+        } catch (\Exception $e) {
+            \Log::error("Upload Regulation Error: " . $e->getMessage());
+            return response()->json(['message' => 'Erro ao enviar regulamento: ' . $e->getMessage()], 500);
+        }
     }
 }

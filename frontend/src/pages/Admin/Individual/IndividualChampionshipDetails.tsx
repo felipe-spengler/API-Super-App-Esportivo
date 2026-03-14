@@ -6,6 +6,7 @@ import {
     ChevronRight, AlertCircle, PlusCircle
 } from 'lucide-react';
 import api from '../../../services/api';
+import toast from 'react-hot-toast';
 
 export function IndividualChampionshipDetails() {
     const { id } = useParams();
@@ -30,6 +31,26 @@ export function IndividualChampionshipDetails() {
             console.error(error);
         } finally {
             setLoading(false);
+        }
+    }
+
+    async function handleRegulationUpload(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const toastId = toast.loading('Enviando regulamento...');
+        try {
+            const res = await api.post(`/admin/upload/championship-regulation/${id}`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            toast.success('Regulamento enviado com sucesso!', { id: toastId });
+            setChampionship({ ...championship, regulation_path: res.data.regulation_path });
+        } catch (error) {
+            console.error(error);
+            toast.error('Erro ao enviar regulamento.', { id: toastId });
         }
     }
 
@@ -120,11 +141,32 @@ export function IndividualChampionshipDetails() {
                                 <span className="bg-emerald-100 text-emerald-700 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">Evento Individual</span>
                                 • {championship.sport?.name || 'Corrida'}
                             </p>
+                            
+                            {/* Regulation Section */}
+                            <div className="mt-4 flex flex-wrap items-center gap-2">
+                                {championship.regulation_path ? (
+                                    <a 
+                                        href={`https://api.esportivo.techinteligente.site/api/storage/${championship.regulation_path}`} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-bold border border-indigo-100 hover:bg-indigo-100 transition-colors"
+                                    >
+                                        <Trophy size={14} /> Ver Regulamento Atual
+                                    </a>
+                                ) : (
+                                    <span className="text-[10px] text-slate-400 font-bold uppercase">Regulamento não enviado</span>
+                                )}
+                                
+                                <label className="cursor-pointer flex items-center gap-2 px-3 py-1.5 bg-slate-50 text-slate-600 rounded-lg text-xs font-bold border border-slate-200 hover:bg-slate-100 transition-colors">
+                                    <PlusCircle size={14} /> {championship.regulation_path ? 'Alterar Regulamento' : 'Subir Regulamento (PDF)'}
+                                    <input type="file" className="hidden" accept=".pdf,image/*" onChange={handleRegulationUpload} />
+                                </label>
+                            </div>
                         </div>
                     </div>
 
                     <div className="flex gap-2">
-                        <button onClick={() => navigate(`/events/${id}`)} className="flex items-center gap-2 px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 font-bold transition-all shadow-sm">
+                        <button onClick={() => navigate(`/races/${id}`)} className="flex items-center gap-2 px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 font-bold transition-all shadow-sm">
                             <Tv size={18} />
                             Página Pública
                         </button>
