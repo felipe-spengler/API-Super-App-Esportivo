@@ -308,13 +308,17 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
         Route::get('/art-templates', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'getTemplate']);
         Route::post('/art-templates', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'saveTemplate']);
 
+        // Artes Individuais (Corridas, etc)
+        Route::get('/individual/art-templates', [\App\Http\Controllers\Admin\IndividualArtController::class, 'getTemplate']);
+        Route::post('/individual/art-templates', [\App\Http\Controllers\Admin\IndividualArtController::class, 'saveTemplate']);
+
         // Gerador de Artes
         Route::get('/art/match/{matchId}/faceoff', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'matchFaceoff']);
         Route::get('/art/match/{matchId}/scheduled', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'matchScheduled']);
         Route::get('/art/match/{matchId}/mvp', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'mvpArt']);
         Route::get('/art/championship/{championshipId}/award/{category}', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'championshipAwardArt']);
         Route::get('/art/championship/{championshipId}/standings', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'standingsArt']);
-        Route::get('/art/championship/{championshipId}/individual/{athleteId}/{category}', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'individualAthleteArt']);
+        Route::get('/art/championship/{championshipId}/individual/{athleteId}/{category}', [\App\Http\Controllers\Admin\IndividualArtController::class, 'individualAthleteArt']);
 
         // Rodízio de Vôlei
         Route::get('/volleyball/match/{matchId}/positions', [\App\Http\Controllers\Admin\VolleyballRotationController::class, 'getPositions']);

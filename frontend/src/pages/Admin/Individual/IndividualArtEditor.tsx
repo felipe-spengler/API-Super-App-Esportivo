@@ -75,11 +75,10 @@ export function IndividualArtEditor() {
     const loadTemplate = async () => {
         setLoading(true);
         try {
-            const res = await api.get('/admin/art-templates', {
+            const res = await api.get('/admin/individual/art-templates', {
                 params: {
                     name: templateName,
-                    championship_id: championshipId,
-                    type: 'individual'
+                    championship_id: championshipId
                 }
             });
 
@@ -102,13 +101,12 @@ export function IndividualArtEditor() {
     const saveTemplate = async () => {
         setLoading(true);
         try {
-            await api.post('/admin/art-templates', {
+            await api.post('/admin/individual/art-templates', {
                 name: templateName,
                 bg_url: persistedBgUrl,
                 elements: elements,
                 canvas: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT },
-                championship_id: championshipId,
-                type: 'individual'
+                championship_id: championshipId
             });
             toast.success('Template salvo com sucesso!');
         } catch (error) {
@@ -131,7 +129,9 @@ export function IndividualArtEditor() {
             formData.append('image', compressed);
             formData.append('folder', 'art-backgrounds');
 
-            const res = await api.post('/admin/upload/generic', formData);
+            const res = await api.post('/admin/upload/generic', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
             if (res.data && res.data.url) {
                 setBgImage(res.data.url);
                 setPersistedBgUrl(res.data.url);
