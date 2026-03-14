@@ -146,7 +146,7 @@ export function IndividualChampionshipDetails() {
                             <div className="mt-4 flex flex-wrap items-center gap-2">
                                 {championship.regulation_path ? (
                                     <a 
-                                        href={`https://api.esportivo.techinteligente.site/api/storage/${championship.regulation_path}`} 
+                                        href={`${window.location.origin}/api/storage/${championship.regulation_path}`} 
                                         target="_blank" 
                                         rel="noopener noreferrer"
                                         className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-bold border border-indigo-100 hover:bg-indigo-100 transition-colors"

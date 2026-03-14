@@ -49,101 +49,140 @@ export function RaceDetails() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 pb-20 font-sans">
-            {/* Hero Image */}
-            <div className="h-72 bg-gray-900 relative">
+        <div className="min-h-screen bg-slate-50 pb-20 font-sans">
+            {/* Hero Image with Dynamic Header */}
+            <div className="relative h-[400px] md:h-[450px] w-full overflow-hidden bg-slate-900">
                 <img
-                    src="https://images.unsplash.com/photo-1552674605-4694559e5bc7?q=80&w=2673&auto=format&fit=crop"
+                    src={champ.cover_image_url || "https://images.unsplash.com/photo-1552674605-4694559e5bc7?q=80&w=2673&auto=format&fit=crop"}
                     alt="Race Hero"
-                    className="w-full h-full object-cover opacity-60"
+                    className="w-full h-full object-cover opacity-60 scale-105"
                 />
+
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/40 to-transparent" />
 
                 <button
                     onClick={() => navigate(-1)}
-                    className="absolute top-6 left-4 z-10 p-2 bg-black/40 rounded-full hover:bg-black/60 transition-colors text-white"
+                    className="absolute top-6 left-4 z-20 p-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-full hover:bg-white/20 transition-all text-white active:scale-95 shadow-2xl"
                 >
                     <ArrowLeft className="w-5 h-5" />
                 </button>
 
-                <div className="absolute bottom-0 w-full p-6 bg-gradient-to-t from-black/90 to-transparent">
-                    <h1 className="text-white text-3xl font-bold uppercase tracking-wide leading-tight mb-2">
-                        {champ.name}
-                    </h1>
-                    <div className="flex items-center text-white/90 font-medium text-sm">
-                        <Calendar className="w-4 h-4 text-green-500 mr-2" />
-                        <span>{new Date(champ.start_date).toLocaleDateString()}</span>
-                        <div className="w-1 h-1 bg-white/50 rounded-full mx-3" />
-                        <MapPin className="w-4 h-4 text-green-500 mr-2" />
-                        <span>{race?.location_name || 'Local a confirmar'}</span>
+                <div className="absolute bottom-12 left-0 w-full px-6 z-10">
+                    <div className="max-w-4xl mx-auto">
+                        <span className="inline-block px-3 py-1 bg-emerald-500 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-md mb-3 shadow-lg shadow-emerald-500/20">
+                            {champ.sport?.name || 'Evento Esportivo'}
+                        </span>
+                        <h1 className="text-white text-3xl md:text-5xl font-black uppercase tracking-tight leading-none mb-4 drop-shadow-2xl">
+                            {champ.name}
+                        </h1>
+                        <div className="flex flex-wrap items-center gap-4 text-white/90 font-bold text-xs md:text-sm uppercase tracking-wider">
+                            <div className="flex items-center bg-white/10 backdrop-blur-md px-3 py-2 rounded-xl border border-white/10">
+                                <Calendar className="w-4 h-4 text-emerald-400 mr-2" />
+                                <span>{new Date(champ.start_date).toLocaleDateString('pt-BR')}</span>
+                            </div>
+                            <div className="flex items-center bg-white/10 backdrop-blur-md px-3 py-2 rounded-xl border border-white/10">
+                                <MapPin className="w-4 h-4 text-emerald-400 mr-2" />
+                                <span>{race?.location_name || 'Local a confirmar'}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div className="max-w-4xl mx-auto px-4 -mt-8 relative z-10">
-                {/* Actions Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div className="max-w-4xl mx-auto px-4 -mt-10 relative z-20">
+                {/* Actions Grid with Richer Cards */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
                     <button
                         onClick={() => navigate(`/races/${id}/register`)}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white p-4 rounded-xl shadow-lg flex flex-col items-center justify-center gap-2 transition-all active:scale-[0.98]"
+                        className="group relative overflow-hidden bg-emerald-600 hover:bg-emerald-500 text-white p-5 rounded-3xl shadow-2xl transition-all active:scale-[0.98] border-b-4 border-emerald-800"
                     >
-                        <Users className="w-6 h-6" />
-                        <span className="font-bold uppercase text-xs tracking-wider">Inscrever-se</span>
+                        <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:scale-125 transition-transform">
+                            <Users size={40} />
+                        </div>
+                        <Users className="w-7 h-7 mb-2 drop-shadow-lg" />
+                        <span className="font-black uppercase text-[10px] tracking-widest block">Inscrever-se</span>
                     </button>
 
                     <button
                         onClick={() => navigate(`/races/${id}/results`)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-xl shadow-lg flex flex-col items-center justify-center gap-2 transition-all active:scale-[0.98]"
+                        className="group relative overflow-hidden bg-blue-600 hover:bg-blue-500 text-white p-5 rounded-3xl shadow-2xl transition-all active:scale-[0.98] border-b-4 border-blue-800"
                     >
-                        <Trophy className="w-6 h-6" />
-                        <span className="font-bold uppercase text-xs tracking-wider">Resultados</span>
+                        <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:scale-125 transition-transform">
+                            <Trophy size={40} />
+                        </div>
+                        <Trophy className="w-7 h-7 mb-2 drop-shadow-lg" />
+                        <span className="font-black uppercase text-[10px] tracking-widest block">Resultados</span>
                     </button>
 
                     {champ.regulation_path && (
                         <a 
-                            href={`https://api.esportivo.techinteligente.site/api/storage/${champ.regulation_path}`}
+                            href={`${window.location.origin}/api/storage/${champ.regulation_path}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-xl shadow-lg flex flex-col items-center justify-center gap-2 transition-all active:scale-[0.98]"
+                            className="group relative overflow-hidden bg-indigo-600 hover:bg-indigo-500 text-white p-5 rounded-3xl shadow-2xl transition-all active:scale-[0.98] border-b-4 border-indigo-800 flex flex-col items-center md:items-start"
                         >
-                            <FileText className="w-6 h-6" />
-                            <span className="font-bold uppercase text-xs tracking-wider">Regulamento</span>
+                            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:scale-125 transition-transform">
+                                <FileText size={40} />
+                            </div>
+                            <FileText className="w-7 h-7 mb-2 drop-shadow-lg" />
+                            <span className="font-black uppercase text-[10px] tracking-widest block">Regulamento</span>
                         </a>
                     )}
 
-                    <button className="bg-gray-800 hover:bg-gray-700 text-white p-4 rounded-xl shadow-lg flex flex-col items-center justify-center gap-2 transition-all active:scale-[0.98] opacity-50 cursor-not-allowed">
-                        <Camera className="w-6 h-6" />
-                        <span className="font-bold uppercase text-xs tracking-wider">Galeria (Em Breve)</span>
+                    <button className="relative overflow-hidden bg-slate-800 text-slate-400 p-5 rounded-3xl shadow-2xl transition-all opacity-80 cursor-not-allowed grayscale border-b-4 border-slate-900">
+                        <Camera className="w-7 h-7 mb-2" />
+                        <span className="font-black uppercase text-[10px] tracking-widest block">Galeria</span>
                     </button>
                 </div>
 
-                {/* Content */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-8">
-                    {/* About */}
-                    {champ.description && (
-                        <div>
-                            <h2 className="text-xl font-bold text-gray-800 mb-3 uppercase tracking-tight">Sobre o Evento</h2>
-                            <p className="text-gray-600 leading-relaxed">
-                                {champ.description}
-                            </p>
-                        </div>
-                    )}
+                {/* Content Area */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="md:col-span-2 space-y-8">
+                        {/* About Section */}
+                        {champ.description && (
+                            <div className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8">
+                                <h2 className="text-2xl font-black text-slate-900 mb-4 uppercase tracking-tight flex items-center gap-3">
+                                    <div className="w-2 h-8 bg-indigo-600 rounded-full" />
+                                    Informações do Evento
+                                </h2>
+                                <p className="text-slate-600 leading-relaxed font-medium">
+                                    {champ.description}
+                                </p>
+                            </div>
+                        )}
+                    </div>
 
-                    {/* Organization */}
-                    {champ.club && (
-                        <div className="border-t border-gray-100 pt-6 flex items-center">
-                            <div className="w-12 h-12 bg-slate-100 rounded-full mr-4 shrink-0 flex items-center justify-center border border-slate-200">
-                                {champ.club.logo_url ? (
-                                    <img src={champ.club.logo_url} className="w-full h-full object-cover rounded-full" />
-                                ) : (
-                                    <Users className="text-slate-400" size={20} />
-                                )}
+                    {/* Sidebar / Org Info */}
+                    <div className="space-y-6">
+                        {champ.club && (
+                            <div className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-6">
+                                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Organização</h3>
+                                <div className="flex items-center gap-4">
+                                    <div className="w-14 h-14 bg-slate-50 rounded-2xl p-1 shrink-0 flex items-center justify-center border border-slate-100 shadow-sm overflow-hidden">
+                                        {champ.club.logo_url ? (
+                                            <img src={champ.club.logo_url} className="w-full h-full object-contain" />
+                                        ) : (
+                                            <Users className="text-slate-300" size={24} />
+                                        )}
+                                    </div>
+                                    <div>
+                                        <h4 className="font-black text-slate-900 uppercase text-sm leading-tight">{champ.club.name}</h4>
+                                        <span className="text-[9px] text-emerald-600 font-black uppercase tracking-widest px-2 py-0.5 bg-emerald-50 rounded-md inline-block mt-1">Verificado</span>
+                                    </div>
+                                </div>
                             </div>
-                            <div>
-                                <h3 className="font-bold text-gray-800 uppercase text-sm tracking-wide">{champ.club.name}</h3>
-                                <span className="text-[10px] text-indigo-600 font-black uppercase tracking-widest px-2 py-0.5 bg-indigo-50 rounded-lg">Organização Oficial</span>
+                        )}
+
+                        {/* Social Share / Placeholder */}
+                        <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-[2rem] p-6 text-white shadow-2xl">
+                            <h4 className="font-black text-xs uppercase tracking-widest mb-2 opacity-60">Status do Evento</h4>
+                            <div className="flex items-center gap-2 mb-4">
+                                <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse shadow-lg shadow-emerald-500/50" />
+                                <span className="font-black uppercase text-sm">Inscrições Abertas</span>
                             </div>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase leading-relaxed">Prepare-se para o desafio e garanta sua vaga agora mesmo.</p>
                         </div>
-                    )}
+                    </div>
                 </div>
             </div>
         </div>
