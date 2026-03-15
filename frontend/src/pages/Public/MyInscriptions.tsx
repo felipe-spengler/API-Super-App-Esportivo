@@ -5,25 +5,35 @@ import { ArrowLeft, Trophy, Calendar, ChevronRight, Loader2, AlertCircle, FileTe
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 
+import { InscriptionDetailsModal } from '../../components/InscriptionDetailsModal';
+
 export function MyInscriptions() {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [inscriptions, setInscriptions] = useState<any[]>([]);
+    const [selectedInscription, setSelectedInscription] = useState<any>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
     useEffect(() => {
         loadInscriptions();
     }, []);
 
-    async function loadInscriptions() {
+    const loadInscriptions = async () => {
         try {
             const response = await api.get('/my-inscriptions');
             setInscriptions(response.data);
+            
+            // Se o modal estiver aberto, atualiza os dados da inscrição selecionada
+            if (selectedInscription) {
+                const updated = response.data.find((ins: any) => ins.id === selectedInscription.id);
+                if (updated) setSelectedInscription(updated);
+            }
         } catch (error) {
-            console.error(error);
+            toast.error('Erro ao carregar inscrições');
         } finally {
             setLoading(false);
         }
-    }
+    };
 
     async function handleDownloadReceipt(e: React.MouseEvent, id: number) {
         e.stopPropagation();
@@ -58,8 +68,15 @@ export function MyInscriptions() {
                 ) : inscriptions.map((ins) => (
                     <div
                         key={ins.id}
-                        onClick={() => !ins.status_payment || ins.status_payment === 'pending' ? navigate(`/public/race-register/${ins.race?.championship_id}`) : null}
-                        className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between cursor-pointer active:bg-gray-50"
+                        onClick={() => {
+                            if (!ins.status_payment || ins.status_payment === 'pending') {
+                                navigate(`/public/race-register/${ins.race?.championship_id}`);
+                            } else {
+                                setSelectedInscription(ins);
+                                setIsModalOpen(true);
+                            }
+                        }}
+                        className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between cursor-pointer active:bg-gray-50 transition-all hover:border-indigo-200"
                     >
                         <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
@@ -111,6 +128,13 @@ export function MyInscriptions() {
                     </div>
                 )}
             </div>
+
+            <InscriptionDetailsModal
+                inscription={selectedInscription}
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onUpdate={loadInscriptions}
+            />
         </div>
     );
 }

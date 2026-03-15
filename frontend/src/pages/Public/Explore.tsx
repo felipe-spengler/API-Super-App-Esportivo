@@ -130,7 +130,7 @@ export function Explore() {
                                         <div className="flex flex-col gap-2.5">
                                             <div className="flex items-center text-[10px] text-slate-900 font-black uppercase tracking-widest">
                                                 <MapPin className="w-4 h-4 mr-2 text-indigo-600" />
-                                                {item.club?.city || item.city || 'Local não definido'}
+                                                {item.races?.[0]?.location_name || item.club?.city?.name || item.city || 'Local não definido'}
                                             </div>
                                             <div className="flex items-center text-[10px] text-slate-400 font-black uppercase tracking-widest">
                                                 <Calendar className="w-4 h-4 mr-2 text-indigo-400" />

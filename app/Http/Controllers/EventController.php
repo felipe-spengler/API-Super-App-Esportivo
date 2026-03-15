@@ -19,14 +19,14 @@ class EventController extends Controller
             $query->where('sport_id', $request->sport_id);
         }
 
-        return response()->json($query->with('sport')->orderBy('start_date', 'desc')->get());
+        return response()->json($query->with(['sport', 'club.city', 'races'])->orderBy('start_date', 'desc')->get());
     }
 
     public function publicList(Request $request)
     {
         $this->syncStatuses();
 
-        $query = Championship::with(['club', 'sport', 'categories']);
+        $query = Championship::with(['club.city', 'sport', 'categories', 'races']);
 
         if ($request->has('status')) {
             $status = $request->status;

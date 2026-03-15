@@ -26,7 +26,7 @@ class RaceInscriptionController extends Controller
     public function myInscriptions(Request $request)
     {
         $results = RaceResult::where('user_id', $request->user()->id)
-            ->with(['race.championship', 'category'])
+            ->with(['race.championship', 'category', 'user'])
             ->orderBy('created_at', 'desc')
             ->get();
 

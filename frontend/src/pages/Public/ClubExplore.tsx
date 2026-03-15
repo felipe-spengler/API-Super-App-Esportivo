@@ -152,7 +152,7 @@ export function ClubExplore() {
                                         <div className="flex flex-col gap-1.5">
                                             <div className="flex items-center text-xs text-gray-700 font-bold">
                                                 <MapPin className="w-3.5 h-3.5 mr-1.5 text-indigo-600" />
-                                                {item.club?.city || item.city || 'Local não definido'}
+                                                {item.races?.[0]?.location_name || item.club?.city?.name || item.city || 'Local não definido'}
                                             </div>
                                             <div className="flex items-center text-xs text-gray-500 font-medium">
                                                 <Calendar className="w-3.5 h-3.5 mr-1.5 opacity-50" />

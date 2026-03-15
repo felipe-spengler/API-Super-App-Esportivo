@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Championship;
 use App\Models\User;
+use App\Models\RaceResult;
 use App\Models\SystemSetting;
 use Illuminate\Support\Str;
 use App\Http\Controllers\Admin\Traits\ArtGdTrait;
@@ -130,10 +131,22 @@ class IndividualArtController extends Controller
     /**
      * Gera a arte individual de um atleta.
      */
-    public function individualAthleteArt($championshipId, $athleteId, $category, Request $request)
+    public function individualAthleteArt($championshipId, $resultId, $category, Request $request)
     {
         $championship = Championship::with(['sport', 'club'])->findOrFail($championshipId);
-        $athlete = User::findOrFail($athleteId);
+        
+        // No contexto de campeonatos individuais (corridas), o ID passado pelo frontend 
+        // na tela de Gestão de Inscritos refere-se ao ID da inscrição (RaceResult).
+        $result = RaceResult::with('user')->find($resultId);
+        
+        if ($result && $result->user) {
+            $athlete = $result->user;
+            $displayName = $result->name ?: $athlete->name;
+        } else {
+            // Fallback para caso o ID seja realmente o do User (legado ou outros fluxos)
+            $athlete = User::findOrFail($resultId);
+            $displayName = $athlete->name;
+        }
 
         $this->loadClubResources($championship->club);
         $sport = strtolower($championship->sport->name ?? 'individual');
@@ -149,7 +162,9 @@ class IndividualArtController extends Controller
 
         return $this->createCard($athlete, $championship, $sport, $cardCategory, null, null, null, $championship->club, [
             '{COLOCACAO}' => $rank,
-            '{CATEGORIA}' => mb_strtoupper($catName)
+            '{CATEGORIA}' => mb_strtoupper($catName),
+            '{ATLETA}' => mb_strtoupper($displayName),
+            '{JOGADOR}' => mb_strtoupper($displayName)
         ]);
     }
 

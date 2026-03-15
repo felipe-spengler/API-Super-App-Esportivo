@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\Category;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class RaceResultController extends Controller
@@ -80,6 +81,34 @@ class RaceResultController extends Controller
                     'club_id' => $race->championship->club_id,
                     'password' => bcrypt(Str::random(12)),
                 ]);
+            }
+
+            // Handle Photo Upload
+            if ($request->hasFile('photo')) {
+                $file = $request->file('photo');
+                $filename = Str::slug($user->name) . '-' . time() . '.' . $file->getClientOriginalExtension();
+                $path = $file->storeAs('players', $filename, 'public');
+                
+                $user->photo_path = $path;
+                $user->photos = [$path];
+                $user->save();
+
+                // Trigger Background Removal if requested
+                if ($request->boolean('remove_bg')) {
+                    try {
+                        $php = PHP_BINARY;
+                        $artisan = base_path('artisan');
+                        $cmd = "{$php} {$artisan} player:process-photos {$user->id}";
+                        
+                        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+                            pclose(popen("start /B " . $cmd, "r"));
+                        } else {
+                            exec("nohup {$cmd} > /dev/null 2>&1 & disown");
+                        }
+                    } catch (\Exception $e) {
+                        Log::error("RaceResultController AI Trigger Error: " . $e->getMessage());
+                    }
+                }
             }
 
             $lastBib = RaceResult::where('race_id', $race->id)->max(DB::raw('CAST(bib_number AS SIGNED)'));
