@@ -644,7 +644,8 @@ class EventController extends Controller
     }
     public function raceDetails($championshipId)
     {
-        return response()->json([]);
+        $race = \App\Models\Race::where('championship_id', $championshipId)->first();
+        return response()->json($race);
     }
     public function raceResults(Request $request, $championshipId)
     {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { Save, ArrowLeft, Trophy, Loader2, ImageIcon, Upload, X, CheckCircle2 } from 'lucide-react';
+import { Save, ArrowLeft, Trophy, Loader2, ImageIcon, Upload, X, CheckCircle2, MapPin } from 'lucide-react';
 import api from '../../services/api';
 
 interface Sport {
@@ -32,7 +32,8 @@ export function ChampionshipForm() {
         has_elderly_discount: false,
         elderly_discount_percentage: 0,
         elderly_minimum_age: 60,
-        allow_shopping_registration: true
+        allow_shopping_registration: true,
+        location_name: ''
     });
 
     const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -88,6 +89,7 @@ export function ChampionshipForm() {
                     elderly_discount_percentage: data.elderly_discount_percentage || 0,
                     elderly_minimum_age: data.elderly_minimum_age || 60,
                     allow_shopping_registration: data.allow_shopping_registration !== undefined ? !!data.allow_shopping_registration : true,
+                    location_name: data.races && data.races.length > 0 ? data.races[0].location_name : '',
                 });
                 setLogoUrl(data.logo_url);
                 setCoverImageUrl(data.cover_image_url);
@@ -242,7 +244,6 @@ export function ChampionshipForm() {
                                     ))}
                                 </select>
                             </div>
-
                             <div className="space-y-2">
                                 <label className="text-sm font-semibold text-gray-700">Descrição (Opcional)</label>
                                 <textarea
@@ -252,6 +253,23 @@ export function ChampionshipForm() {
                                     placeholder="Detalhes sobre o campeonato..."
                                 />
                             </div>
+
+                            {formData.format === 'racing' && (
+                                <div className="space-y-2 animate-in fade-in slide-in-from-left-4 duration-300">
+                                    <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                                        <MapPin className="w-4 h-4 text-indigo-500" />
+                                        Local da Prova
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={formData.location_name}
+                                        onChange={e => setFormData({ ...formData, location_name: e.target.value })}
+                                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                        placeholder="Ex: Praça Central ou Rua das Flores, 123"
+                                    />
+                                    <p className="text-[10px] text-gray-400 font-medium italic">Este endereço aparecerá na página pública do evento.</p>
+                                </div>
+                            )}
                         </div>
 
                         {/* 2. Datas */}

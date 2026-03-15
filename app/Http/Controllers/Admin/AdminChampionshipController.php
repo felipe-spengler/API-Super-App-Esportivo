@@ -41,7 +41,7 @@ class AdminChampionshipController extends Controller
     // Get championship details
     public function show(Request $request, $id)
     {
-        $championship = Championship::with(['sport', 'club', 'categories'])->findOrFail($id);
+        $championship = Championship::with(['sport', 'club', 'categories', 'races'])->findOrFail($id);
         return response()->json($championship);
     }
 
@@ -112,7 +112,8 @@ class AdminChampionshipController extends Controller
             'elderly_discount_percentage' => 'nullable|numeric|min:0|max:100',
             'elderly_minimum_age' => 'nullable|integer|min:0',
             'allow_shopping_registration' => 'nullable|boolean',
-            'remove_bg_on_art' => 'nullable|boolean'
+            'remove_bg_on_art' => 'nullable|boolean',
+            'location_name' => 'nullable|string'
         ]);
 
         if (isset($validated['status'])) {
@@ -120,6 +121,14 @@ class AdminChampionshipController extends Controller
         }
 
         $championship->update($validated);
+
+        // Update race location if format is racing
+        if ($championship->format === 'racing' && $request->has('location_name')) {
+            \App\Models\Race::updateOrCreate(
+                ['championship_id' => $championship->id],
+                ['location_name' => $request->location_name]
+            );
+        }
 
         $changedFields = array_keys($validated);
         $description = "Editou o campeonato '{$championship->name}' (ID: {$championship->id})";
