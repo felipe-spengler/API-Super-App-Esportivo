@@ -345,6 +345,25 @@ trait ArtGdTrait
         }
     }
 
+    private function urlToPath($url)
+    {
+        if (empty($url))
+            return null;
+        $parsed = parse_url($url);
+        $path = $parsed['path'] ?? $url;
+        $path = urldecode($path);
+
+        if (strpos($path, '/assets-templates/') !== false) {
+            return public_path(substr($path, strpos($path, '/assets-templates/')));
+        }
+        if (strpos($path, '/storage/') !== false) {
+            $rel = substr($path, strpos($path, '/storage/'));
+            $rel = str_replace('/storage/', '', $rel);
+            return storage_path('app/public/' . $rel);
+        }
+        return $path;
+    }
+
     private function drawScorersList($img, $match, $configHome, $configAway)
     {
         $goals = $match->events->where('event_type', 'goal');
