@@ -10,7 +10,7 @@ class ReceiptController extends Controller
 {
     public function download($id)
     {
-        $result = RaceResult::with(['user', 'race.championship', 'category'])->findOrFail($id);
+        $result = RaceResult::with(['user', 'race.championship', 'category.parent'])->findOrFail($id);
 
         if ($result->status_payment !== 'paid') {
             return response()->json(['message' => 'Comprovante disponível apenas para inscrições confirmadas.'], 403);
@@ -31,6 +31,7 @@ class ReceiptController extends Controller
             throw new \RuntimeException('DomPDF não instalado. Execute: composer require barryvdh/laravel-dompdf');
         }
 
+        $result->loadMissing(['user', 'race.championship', 'category.parent']);
         $championship = $result->race->championship;
         $user = $result->user;
         $category = $result->category;
@@ -63,6 +64,18 @@ class ReceiptController extends Controller
                 }
             }
         }
+        // Gerar QR Code em Base64 para garantir carregamento no DomPDF
+        $checkInUrl = "https://esportivo.techinteligente.site/admin/check-in/" . $result->id;
+        $qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode($checkInUrl);
+        $qrCodeBase64 = null;
+        try {
+            $qrCodeData = file_get_contents($qrCodeUrl);
+            if ($qrCodeData) {
+                $qrCodeBase64 = 'data:image/png;base64,' . base64_encode($qrCodeData);
+            }
+        } catch (\Exception $e) {
+            \Log::error("Erro ao gerar QR Code para Recibo: " . $e->getMessage());
+        }
 
         return \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.inscription_receipt', [
             'result'       => $result,
@@ -70,7 +83,8 @@ class ReceiptController extends Controller
             'user'         => $user,
             'category'     => $category,
             'gifts'        => $gifts,
-            'shopItems'    => $shopItems
+            'shopItems'    => $shopItems,
+            'qrCode'       => $qrCodeBase64
         ]);
     }
 }

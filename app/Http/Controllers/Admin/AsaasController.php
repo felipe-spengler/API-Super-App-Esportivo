@@ -118,7 +118,7 @@ class AsaasController extends Controller
         // Caso 1: Inscrição Individual de Corrida
         if (str_starts_with($externalReference, 'RR_')) {
             $id = str_replace('RR_', '', $externalReference);
-            $result = RaceResult::with(['user', 'race.championship', 'category'])->find($id);
+            $result = RaceResult::with(['user', 'race.championship', 'category.parent'])->find($id);
             if ($result && $result->status_payment !== 'paid') {
                 $result->update([
                     'status_payment' => 'paid',
@@ -269,7 +269,7 @@ class AsaasController extends Controller
             $pdf = $receiptController->generatePdf($result);
             $pdfContent = $pdf->output();
 
-            Mail::send([], [], function ($message) use ($user, $championship, $pdfContent) {
+            Mail::send([], [], function ($message) use ($user, $championship, $pdfContent, $result) {
                 $message->to($user->email)
                     ->subject("Inscrição Confirmada: " . $championship->name)
                     ->attachData($pdfContent, 'comprovante_inscricao.pdf', [
@@ -286,6 +286,10 @@ class AsaasController extends Controller
                                 
                                 <div style='background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0;'>
                                     <p style='margin: 0;'><strong>Evento:</strong> {$championship->name}</p>
+                                    <p style='margin: 5px 0 0 0;'><strong>Atleta:</strong> {$user->name}</p>
+                                    <p style='margin: 5px 0 0 0;'><strong>Data Nasc.:</strong> " . ($user->birth_date ? $user->birth_date->format('d/m/Y') : '---') . "</p>
+                                    <p style='margin: 5px 0 0 0;'><strong>Categoria:</strong> " . ($result->category->parent ? $result->category->parent->name : $result->category->name) . "</p>
+                                    " . ($result->category->parent ? "<p style='margin: 5px 0 0 0;'><strong>Subcategoria:</strong> {$result->category->name}</p>" : "") . "
                                     <p style='margin: 5px 0 0 0;'><strong>Status:</strong> Pago / Confirmado</p>
                                 </div>
 

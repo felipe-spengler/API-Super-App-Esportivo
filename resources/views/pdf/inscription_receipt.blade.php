@@ -162,6 +162,10 @@
                     <td class="label">E-mail:</td>
                     <td class="value">{{ $user->email }}</td>
                 </tr>
+                <tr>
+                    <td class="label">Data Nasc.:</td>
+                    <td class="value">{{ $user->birth_date ? $user->birth_date->format('d/m/Y') : '---' }}</td>
+                </tr>
             </table>
         </div>
 
@@ -174,8 +178,14 @@
                 </tr>
                 <tr>
                     <td class="label">Categoria:</td>
+                    <td class="value">{{ $category->parent ? $category->parent->name : $category->name }}</td>
+                </tr>
+                @if($category->parent)
+                <tr>
+                    <td class="label">Subcategoria:</td>
                     <td class="value">{{ $category->name }}</td>
                 </tr>
+                @endif
                 <tr>
                     <td class="label">Número de Peito:</td>
                     <td class="value" style="font-size: 18px; font-weight: bold;">#{{ $result->bib_number }}</td>
@@ -201,7 +211,7 @@
                 <tbody>
                     {{-- Inscrição Base --}}
                     <tr>
-                        <td>Inscrição {{ $category->name }}</td>
+                        <td>Inscrição {{ $category->parent ? $category->parent->name . ' (' . $category->name . ')' : $category->name }}</td>
                         <td>Evento</td>
                         <td>---</td>
                         <td style="text-align: center;">1</td>
@@ -240,11 +250,13 @@
             </div>
 
             <div class="qr-code">
-                @php
-                    $checkInUrl = "https://esportivo.techinteligente.site/admin/check-in/" . $result->id;
-                    $qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode($checkInUrl);
-                @endphp
-                <img src="{{ $qrCodeUrl }}" alt="QR Code Check-in">
+                @if($qrCode)
+                    <img src="{{ $qrCode }}" alt="QR Code Check-in">
+                @else
+                    <div style="width: 120px; height: 120px; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #999;">
+                        QR Code Indisponível
+                    </div>
+                @endif
                 <p>VALIDAÇÃO DE KIT</p>
             </div>
             <div class="clear"></div>
