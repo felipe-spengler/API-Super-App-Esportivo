@@ -124,7 +124,10 @@ export function InscriptionDetailsModal({ inscription, isOpen, onClose, onUpdate
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <h3 className="font-bold text-gray-900 truncate">{championship.name}</h3>
-                                    <p className="text-sm text-gray-500">{category.name || 'Individual'}</p>
+                                    <p className="text-sm text-gray-500 font-medium">
+                                        {category.parent?.name ? `${category.parent.name} — ` : ''}
+                                        {category.name || 'Individual'}
+                                    </p>
                                     <div className="mt-2 flex items-center gap-2">
                                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${isConfirmed ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
                                             {isConfirmed ? 'Inscrição Confirmada' : 'Pendente de Pagamento'}
@@ -133,8 +136,23 @@ export function InscriptionDetailsModal({ inscription, isOpen, onClose, onUpdate
                                 </div>
                             </div>
 
+                            {/* Additional Info — Movi para cima para aparecer melhor no mobile */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                                    <span className="text-[10px] uppercase text-gray-400 font-black block mb-1 tracking-wider text-center">Peito</span>
+                                    <span className="text-2xl font-black text-indigo-600 block text-center leading-none">{inscription.bib_number || '--'}</span>
+                                </div>
+                                <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col justify-center">
+                                    <span className="text-[10px] uppercase text-gray-400 font-black block mb-1 tracking-wider text-center">Inscrito em</span>
+                                    <span className="text-xs font-bold text-gray-700 flex items-center justify-center gap-1.5">
+                                        <Calendar size={12} className="text-gray-400" />
+                                        {new Date(inscription.created_at).toLocaleDateString()}
+                                    </span>
+                                </div>
+                            </div>
+
                             {/* Photo Update Section */}
-                            <div className="space-y-3">
+                            <div className="space-y-3 pt-2 border-t border-gray-100">
                                 <h4 className="text-sm font-bold text-gray-700 flex items-center gap-2">
                                     <Camera size={16} className="text-indigo-500" />
                                     Sua Foto do Evento
@@ -159,21 +177,6 @@ export function InscriptionDetailsModal({ inscription, isOpen, onClose, onUpdate
                                     )}
                                     <input type="file" className="hidden" accept="image/*" onChange={handlePhotoChange} disabled={uploading} />
                                 </label>
-                            </div>
-
-                            {/* Additional Info */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
-                                    <span className="text-[10px] uppercase text-gray-400 font-black block mb-1">Número de Peito</span>
-                                    <span className="text-lg font-black text-indigo-600">{inscription.bib_number || '--'}</span>
-                                </div>
-                                <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
-                                    <span className="text-[10px] uppercase text-gray-400 font-black block mb-1">Data Inscrição</span>
-                                    <span className="text-sm font-bold text-gray-700 flex items-center gap-1.5">
-                                        <Calendar size={14} className="text-gray-400" />
-                                        {new Date(inscription.created_at).toLocaleDateString()}
-                                    </span>
-                                </div>
                             </div>
                         </div>
                     )}
