@@ -468,7 +468,7 @@ export function ChampionshipInscription() {
                                 <div className="mt-4 p-4 bg-emerald-50 border border-emerald-100 rounded-lg text-emerald-800 flex items-center gap-2">
                                     <CheckCircle className="w-5 h-5" />
                                     <span className="text-sm font-bold uppercase transition-all">
-                                        Cupom Ativo: -{couponInfo.discount_type === 'percentage' ? `${couponInfo.discount_value}%` : `R$ ${couponInfo.discount_value}`}
+                                        Cupom Ativo: -{couponInfo.discount_type === 'percent' ? `${couponInfo.discount_value}%` : `R$ ${couponInfo.discount_value}`}
                                     </span>
                                 </div>
                             )}
@@ -564,17 +564,9 @@ export function ChampionshipInscription() {
                                 <div className="flex justify-between text-emerald-600 font-bold">
                                     <span className="uppercase text-xs">Desconto Cupom</span>
                                     <span>
-                                        -{couponInfo.discount_type === 'percentage'
-                                            ? `R$ ${((Number(selectedCategory.price) + shopItems.reduce((acc, item) => {
-                                                const p = shopProducts.find(pr => pr.id === item.product_id);
-                                                let price = Number(p?.price || 0);
-                                                if (item.variant && p?.variants) {
-                                                    const v = p.variants.find((v: any) => (typeof v === 'object' ? v.value === item.variant : v === item.variant));
-                                                    if (v && typeof v === 'object' && v.surcharge) price += Number(v.surcharge);
-                                                }
-                                                return acc + (price * item.quantity);
-                                            }, 0)) * (couponInfo.discount_value / 100)).toFixed(2)}`
-                                            : `R$ ${Number(couponInfo.discount_value).toFixed(2)}`}
+                                        -{couponInfo.discount_type === 'percent'
+                                             ? `R$ ${(Number(selectedCategory.price) * (couponInfo.discount_value / 100)).toFixed(2)}`
+                                             : `R$ ${Number(couponInfo.discount_value).toFixed(2)}`}
                                     </span>
                                 </div>
                             )}
@@ -591,15 +583,7 @@ export function ChampionshipInscription() {
                                             }
                                             return acc + (price * item.quantity);
                                         }, 0)) -
-                                        (couponInfo ? (couponInfo.discount_type === 'percentage' ? (Number(selectedCategory.price) + shopItems.reduce((acc, item) => {
-                                            const p = shopProducts.find(pr => pr.id === item.product_id);
-                                            let price = Number(p?.price || 0);
-                                            if (item.variant && p?.variants) {
-                                                const v = p.variants.find((v: any) => (typeof v === 'object' ? v.value === item.variant : v === item.variant));
-                                                if (v && typeof v === 'object' && v.surcharge) price += Number(v.surcharge);
-                                            }
-                                            return acc + (price * item.quantity);
-                                        }, 0)) * (couponInfo.discount_value / 100) : Number(couponInfo.discount_value)) : 0)
+                                        (couponInfo ? (couponInfo.discount_type === 'percent' ? Number(selectedCategory.price) * (couponInfo.discount_value / 100) : Number(couponInfo.discount_value)) : 0)
                                     )).toFixed(2)}
                                 </span>
                             </div>

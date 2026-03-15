@@ -274,13 +274,13 @@ class RaceInscriptionController extends Controller
             }
             $finalPrice += $shopTotal;
 
-            // Cupom
+            // Cupom (Apenas sobre o valor da INSCRIÇÃO, não sobre a loja)
             $couponId = null;
             if ($request->coupon_code) {
                 $coupon = Coupon::where('club_id', $championship->club_id)->where('code', $request->coupon_code)->first();
                 if ($coupon && (!$coupon->max_uses || $coupon->used_count < $coupon->max_uses) && (!$coupon->expires_at || !$coupon->expires_at->endOfDay()->isPast())) {
-                    if ($coupon->discount_type === 'percentage') {
-                        $finalPrice -= $finalPrice * ($coupon->discount_value / 100);
+                    if ($coupon->discount_type === 'percent') {
+                        $finalPrice -= ($finalPrice - $shopTotal) * ($coupon->discount_value / 100);
                     } else {
                         $finalPrice -= $coupon->discount_value;
                     }

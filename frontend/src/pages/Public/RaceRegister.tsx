@@ -261,11 +261,24 @@ export function RaceRegister() {
         let currentTotal = regTotal + shopTotal;
 
         if (couponInfo) {
-            if (couponInfo.discount_type === 'percentage') {
-                currentTotal -= currentTotal * (Number(couponInfo.discount_value) / 100);
+            const discType = couponInfo.discount_type;
+            const discVal = Number(couponInfo.discount_value);
+            const isPercent = discType === 'percent';
+            
+            console.log('--- DEBUG CUPOM ---');
+            console.log(`CUPOM ATUAL: ${formData.coupon_code}`);
+            console.log(`Tipo: ${discType} (${isPercent ? 'PORCENTAGEM' : 'VALOR FIXO'})`);
+            console.log(`Valor Original: ${discVal}`);
+            
+            if (isPercent) {
+                const calculatedDiscount = regTotal * (discVal / 100);
+                console.log(`CÁLCULO: ${regTotal.toFixed(2)} * (${discVal} / 100) = R$ ${calculatedDiscount.toFixed(2)}`);
+                currentTotal -= calculatedDiscount;
             } else {
-                currentTotal -= Number(couponInfo.discount_value);
+                console.log(`CÁLCULO: Valor fixo direto: R$ ${discVal.toFixed(2)}`);
+                currentTotal -= discVal;
             }
+            console.log('-------------------');
         }
 
         const result = Math.max(0, currentTotal);
@@ -1005,6 +1018,7 @@ export function RaceRegister() {
                                                         code: formData.coupon_code,
                                                         club_id: championship.club_id
                                                     });
+                                                    console.log('[CouponValidate] Dados recebidos:', response.data);
                                                     setCouponInfo(response.data);
                                                 } catch (err) {
                                                     alert("Cupom não encontrado ou expirado.");
@@ -1036,7 +1050,7 @@ export function RaceRegister() {
                                         <div>
                                             <p className="text-emerald-800 font-black text-xs uppercase">Cupom Aplicado!</p>
                                             <p className="text-emerald-600 text-[10px] font-bold">
-                                                -{couponInfo.discount_type === 'percentage' ? `${couponInfo.discount_value}%` : `R$ ${couponInfo.discount_value}`} de desconto.
+                                                -{couponInfo.discount_type === 'percent' ? `${couponInfo.discount_value}%` : `R$ ${couponInfo.discount_value}`} de desconto.
                                             </p>
                                         </div>
                                     </div>
@@ -1081,8 +1095,8 @@ export function RaceRegister() {
                                     <div className="flex justify-between text-sm text-emerald-600">
                                         <span className="font-bold uppercase">Desconto Cupom</span>
                                         <span className="font-black italic">
-                                            -{couponInfo.discount_type === 'percentage'
-                                                ? `R$ ${(((Number(selectedCategory?.price || 0) + getGiftsSurcharge()) * (formData.is_pcd ? 0.5 : 1) + getShopTotal()) * (couponInfo.discount_value / 100)).toFixed(2)}`
+                                            -{couponInfo.discount_type === 'percent'
+                                                ? `R$ ${(((Number((championship?.categories?.find((c: any) => String(c.id) === String(parentCategoryId)))?.price || selectedCategory?.price || 0) + ((getAutoSubcategory() && String(getAutoSubcategory().id) !== String(parentCategoryId)) ? Number(getAutoSubcategory().price || 0) : 0) + getGiftsSurcharge()) * (formData.is_pcd ? 0.5 : 1)) * (couponInfo.discount_value / 100)).toFixed(2)}`
                                                 : `R$ ${Number(couponInfo.discount_value).toFixed(2)}`}
                                         </span>
                                     </div>
