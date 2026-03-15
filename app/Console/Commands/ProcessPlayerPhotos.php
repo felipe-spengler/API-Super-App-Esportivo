@@ -95,6 +95,12 @@ class ProcessPlayerPhotos extends Command
         }
 
         if ($updated) {
+            // Antes de salvar o array atualizado com as fotos _nobg, 
+            // garantimos que a original (sem nobg) esteja em photo_path_original
+            if (!$user->photo_path_original && $photoPath && !str_contains($photoPath, '_nobg')) {
+                $user->photo_path_original = $photoPath;
+            }
+
             $user->photos = $photosArray;
             $user->save();
             Log::info("ProcessPlayerPhotos: User record updated for {$userId}");

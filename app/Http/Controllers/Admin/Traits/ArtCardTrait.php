@@ -131,19 +131,66 @@ trait ArtCardTrait
         if (!$originalAbsPath)
             return;
 
-        $photoPath = null;
         $shouldRemoveBg = $championship && $championship->remove_bg_on_art;
+        $photoPath = null;
 
-        if ($shouldRemoveBg) {
-            $processedFilename = pathinfo(basename($player->photo_path), PATHINFO_FILENAME) . '_processed.png';
-            $photoPath = $this->runRembgAndGetPath($originalAbsPath, $processedFilename);
+        // 1. Tentar pegar a original se não for para remover fundo
+        if (!$shouldRemoveBg) {
+            $candidatePath = $player->photo_path_original ?? $player->photo_path;
+            
+            // Se a photo_path atual (ou original salva) já for uma processada (_nobg ou _processed), 
+            // tenta achar a original removendo o sufixo
+            if (str_contains($candidatePath, '_nobg.png') || str_contains($candidatePath, '_processed.png')) {
+                $originalGuess = str_replace(['_nobg.png', '_processed.png', 'players/photos/'], ['', '', 'players/'], $candidatePath);
+                foreach (['.jpg', '.jpeg', '.png', '.webp'] as $ext) {
+                    foreach ([storage_path('app/public/' . $originalGuess . $ext), public_path('storage/' . $originalGuess . $ext)] as $abs) {
+                        if (file_exists($abs)) {
+                            $photoPath = $abs;
+                            break 2;
+                        }
+                    }
+                }
+            } else {
+                foreach ([storage_path('app/public/' . $candidatePath), public_path('storage/' . $candidatePath)] as $abs) {
+                    if (file_exists($abs)) {
+                        $photoPath = $abs;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 2. Se for para remover fundo, ou se não achamos a original acima
+        if (!$photoPath) {
+            $originalAbsPath = null;
+            foreach ([
+                storage_path('app/public/' . $player->photo_path),
+                public_path('storage/' . $player->photo_path),
+            ] as $c) {
+                if (file_exists($c)) {
+                    $originalAbsPath = $c;
+                    break;
+                }
+            }
+
+            if (!$originalAbsPath) return;
+
+            if ($shouldRemoveBg) {
+                // Se já for uma versão processada, usa ela mesma
+                if (str_contains($player->photo_path, '_nobg.png') || str_contains($player->photo_path, '_processed.png')) {
+                    $photoPath = $originalAbsPath;
+                } else {
+                    $processedFilename = pathinfo(basename($player->photo_path), PATHINFO_FILENAME) . '_processed.png';
+                    $photoPath = $this->runRembgAndGetPath($originalAbsPath, $processedFilename);
+                }
+            } else {
+                $photoPath = $originalAbsPath;
+            }
         }
 
         if (!$photoPath) {
-            $photoPath = $originalAbsPath;
-            if ($shouldRemoveBg) {
-                \Log::warning("[ArtCardTrait] Fallback: usando foto original.");
-            }
+            if ($shouldRemoveBg) \Log::warning("[ArtCardTrait] Fallback: usando foto original.");
+            return;
         }
 
         $photoInfo = @getimagesize($photoPath);
@@ -281,37 +328,50 @@ trait ArtCardTrait
                 }
             }
 
-        // Player Photo — Roda rembg se a flag estiver ativa
+        // Player Photo — Usa a nova lógica de seleção
         $playerPhotoPath = null;
-        if ($player->photo_path) {
-            $originalPhotoCandidates = [
-                storage_path('app/public/' . $player->photo_path),
-                public_path('storage/' . $player->photo_path),
-            ];
-            $originalAbsPath = null;
-            foreach ($originalPhotoCandidates as $c) {
-                if (file_exists($c)) {
-                    $originalAbsPath = $c;
-                    break;
-                }
-            }
+        $shouldRemoveBg = $championship && $championship->remove_bg_on_art;
 
-            if ($originalAbsPath) {
-                $shouldRemoveBg = $championship && $championship->remove_bg_on_art;
-
-                if ($shouldRemoveBg) {
-                    $processedFilename = pathinfo(basename($player->photo_path), PATHINFO_FILENAME) . '_processed.png';
-                    $playerPhotoPath = $this->runRembgAndGetPath($originalAbsPath, $processedFilename);
-                }
-
-                if (!$playerPhotoPath) {
-                    $playerPhotoPath = $originalAbsPath;
-                    if ($shouldRemoveBg) {
-                        \Log::warning("[ArtCardTrait] template photo fallback: usando foto original.");
+        // Tenta achar a versão correta da foto baseada no flag remove_bg_on_art
+        if (!$shouldRemoveBg) {
+            // Caso 1: Quer a original. Busca photo_path_original ou tenta deduzir
+            $candidate = $player->photo_path_original ?? $player->photo_path;
+            if (str_contains($candidate, '_nobg.png') || str_contains($candidate, '_processed.png')) {
+                $guess = str_replace(['_nobg.png', '_processed.png', 'players/photos/'], ['', '', 'players/'], $candidate);
+                foreach (['.jpg', '.jpeg', '.png', '.webp'] as $ext) {
+                    foreach ([storage_path('app/public/' . $guess . $ext), public_path('storage/' . $guess . $ext)] as $abs) {
+                        if (file_exists($abs)) { $playerPhotoPath = $abs; break 2; }
                     }
+                }
+            } else {
+                foreach ([storage_path('app/public/' . $candidate), public_path('storage/' . $candidate)] as $abs) {
+                    if (file_exists($abs)) { $playerPhotoPath = $abs; break; }
                 }
             }
         }
+
+        if (!$playerPhotoPath) {
+            // Caso 2: Quer removida (ou fallback se a original não foi achada)
+            $currentPath = $player->photo_path;
+            $currentAbs = null;
+            foreach ([storage_path('app/public/' . $currentPath), public_path('storage/' . $currentPath)] as $abs) {
+                if (file_exists($abs)) { $currentAbs = $abs; break; }
+            }
+
+            if ($currentAbs) {
+                if ($shouldRemoveBg) {
+                    if (str_contains($currentPath, '_nobg.png') || str_contains($currentPath, '_processed.png')) {
+                        $playerPhotoPath = $currentAbs;
+                    } else {
+                        $pFilename = pathinfo(basename($currentPath), PATHINFO_FILENAME) . '_processed.png';
+                        $playerPhotoPath = $this->runRembgAndGetPath($currentAbs, $pFilename);
+                    }
+                } else {
+                    $playerPhotoPath = $currentAbs;
+                }
+            }
+        }
+
         $replacements['player_photo'] = $playerPhotoPath;
         // Se remove_bg NÃO está ativo, forçar opacidade total na foto (ignorar canal alpha de PNGs pré-processados)
         $replacements['player_photo_keep_bg'] = !($championship && $championship->remove_bg_on_art);

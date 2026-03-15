@@ -151,6 +151,11 @@ class ImageUploadController extends Controller
             $currentPhotos = array_values($currentPhotos);
 
             $player->photos = $currentPhotos;
+            
+            // Sempre salva/mantém a original na photo_path_original
+            if (isset($currentPhotos[0])) {
+                $player->photo_path_original = $currentPhotos[0];
+            }
 
             // Mantém compatibilidade com photo_path (sempre a primeira foto)
             $player->photo_path = $currentPhotos[0] ?? null;
