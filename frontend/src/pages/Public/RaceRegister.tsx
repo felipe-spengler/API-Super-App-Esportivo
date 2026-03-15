@@ -260,6 +260,7 @@ export function RaceRegister() {
         let shopTotal = getShopTotal();
         let currentTotal = regTotal + shopTotal;
 
+        let discountValue = 0;
         if (couponInfo) {
             const discType = couponInfo.discount_type;
             const discVal = Number(couponInfo.discount_value);
@@ -271,14 +272,14 @@ export function RaceRegister() {
             console.log(`Valor Original: ${discVal}`);
             
             if (isPercent) {
-                const calculatedDiscount = regTotal * (discVal / 100);
-                console.log(`CÁLCULO: ${regTotal.toFixed(2)} * (${discVal} / 100) = R$ ${calculatedDiscount.toFixed(2)}`);
-                currentTotal -= calculatedDiscount;
+                discountValue = regTotal * (discVal / 100);
+                console.log(`CÁLCULO%: ${regTotal.toFixed(2)} * (${discVal} / 100) = R$ ${discountValue.toFixed(2)}`);
             } else {
-                console.log(`CÁLCULO: Valor fixo direto: R$ ${discVal.toFixed(2)}`);
-                currentTotal -= discVal;
+                discountValue = discVal;
+                console.log(`CÁLCULO FIXO: Valor fixo direto: R$ ${discountValue.toFixed(2)}`);
             }
             console.log('-------------------');
+            currentTotal -= discountValue;
         }
 
         const result = Math.max(0, currentTotal);
@@ -1093,11 +1094,11 @@ export function RaceRegister() {
                                 )}
                                 {couponInfo && (
                                     <div className="flex justify-between text-sm text-emerald-600">
-                                        <span className="font-bold uppercase">Desconto Cupom</span>
+                                        <span className="font-bold uppercase">Desconto Cupom ({couponInfo.discount_type === 'percent' ? `${Number(couponInfo.discount_value).toFixed(0)}%` : 'Fixo'})</span>
                                         <span className="font-black italic">
-                                            -{couponInfo.discount_type === 'percent'
-                                                ? `R$ ${(((Number((championship?.categories?.find((c: any) => String(c.id) === String(parentCategoryId)))?.price || selectedCategory?.price || 0) + ((getAutoSubcategory() && String(getAutoSubcategory().id) !== String(parentCategoryId)) ? Number(getAutoSubcategory().price || 0) : 0) + getGiftsSurcharge()) * (formData.is_pcd ? 0.5 : 1)) * (couponInfo.discount_value / 100)).toFixed(2)}`
-                                                : `R$ ${Number(couponInfo.discount_value).toFixed(2)}`}
+                                            - R$ {(couponInfo.discount_type === 'percent' 
+                                                ? ((Number((championship?.categories?.find((c: any) => String(c.id) === String(parentCategoryId)))?.price || selectedCategory?.price || 0) + ((getAutoSubcategory() && String(getAutoSubcategory().id) !== String(parentCategoryId)) ? Number(getAutoSubcategory().price || 0) : 0) + getGiftsSurcharge()) * (formData.is_pcd ? 0.5 : 1)) * (Number(couponInfo.discount_value) / 100)
+                                                : Number(couponInfo.discount_value)).toFixed(2)}
                                         </span>
                                     </div>
                                 )}

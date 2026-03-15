@@ -161,7 +161,7 @@ export function IndividualCouponManager() {
                                     <div className="flex justify-between text-xs font-bold font-mono">
                                         <span className="text-slate-400 uppercase">Expira em</span>
                                         <span className="text-slate-900 uppercase tracking-tighter">
-                                            {coupon.expires_at ? new Date(coupon.expires_at).toLocaleDateString() : 'NUNCA'}
+                                            {coupon.expires_at ? coupon.expires_at.split('T')[0].split(' ')[0].split('-').reverse().join('/') : 'NUNCA'}
                                         </span>
                                     </div>
                                 </div>
