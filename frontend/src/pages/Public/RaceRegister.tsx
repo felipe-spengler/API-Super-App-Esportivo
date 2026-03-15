@@ -1028,7 +1028,7 @@ export function RaceRegister() {
                                                 }
                                             }}
                                             disabled={couponValidating || !formData.coupon_code}
-                                            className="px-6 py-4 bg-slate-900 text-white rounded-xl font-black uppercase text-xs tracking-widest hover:bg-slate-800 disabled:opacity-50"
+                                            className="px-6 py-4 bg-black text-white rounded-xl font-black uppercase text-xs tracking-widest hover:bg-slate-800 disabled:opacity-50 transition-colors"
                                         >
                                             {couponValidating ? <Loader2 className="animate-spin w-4 h-4" /> : 'Aplicar'}
                                         </button>

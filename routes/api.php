@@ -136,6 +136,7 @@ Route::get('/clubs/{clubId}/products', [ShopController::class, 'products']);
 Route::get('/shop/products/{clubId}', [ShopController::class, 'products']);
 Route::get('/public/products', [ShopController::class, 'allProducts']); // NEW
 Route::get('/products/{id}', [ShopController::class, 'productDetails']);
+Route::post('/cupom/validate', [ShopController::class, 'validateCoupon']);
 Route::post('/asaas/webhook', [\App\Http\Controllers\Admin\AsaasController::class, 'webhook']);
 Route::post('/admin/asaas/webhook', [\App\Http\Controllers\Admin\AsaasController::class, 'webhook']);
 
@@ -153,7 +154,6 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::get('/inscriptions/{id}/receipt', [\App\Http\Controllers\ReceiptController::class, 'download']);
 
     // Checkout e Cupons
-    Route::post('/cupom/validate', [ShopController::class, 'validateCoupon']);
     Route::post('/checkout', [ShopController::class, 'dateCheckout']);
     Route::get('/my-orders', [ShopController::class, 'myOrders']);
 
