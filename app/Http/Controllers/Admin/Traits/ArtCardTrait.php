@@ -313,6 +313,8 @@ trait ArtCardTrait
             }
         }
         $replacements['player_photo'] = $playerPhotoPath;
+        // Se remove_bg NÃO está ativo, forçar opacidade total na foto (ignorar canal alpha de PNGs pré-processados)
+        $replacements['player_photo_keep_bg'] = !($championship && $championship->remove_bg_on_art);
 
             if ($playerTeam) {
                 $replacements['team_logo'] = $this->getTeamLogoPath($playerTeam);

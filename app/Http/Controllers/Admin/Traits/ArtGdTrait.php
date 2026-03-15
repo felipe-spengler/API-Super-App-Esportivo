@@ -321,7 +321,12 @@ trait ArtGdTrait
                     $srcW = imagesx($sourceImage);
                     $srcH = imagesy($sourceImage);
 
-                    if ($sourceIsPng) {
+                    // Se for foto do atleta e o evento NÃO quer remover fundo:
+                    // forçar opacidade total para evitar transparência de PNGs pré-processados
+                    $keepBg = ($contentKey === 'player_photo') && !empty($replaceMap['player_photo_keep_bg']);
+
+                    if ($sourceIsPng && !$keepBg) {
+                        // PNG com transparência (fundo removido) — manter alpha
                         imagealphablending($sourceImage, false);
                         imagesavealpha($sourceImage, true);
 
@@ -334,6 +339,17 @@ trait ArtGdTrait
 
                         imagealphablending($img, true);
                         imagecopy($img, $tempCanvas, $dstX, $dstY, 0, 0, $width, $height);
+                        imagedestroy($tempCanvas);
+                    } elseif ($sourceIsPng && $keepBg) {
+                        // PNG mas sem remoção de fundo — desenhar sobre canvas opaco para ignorar alpha
+                        $tempCanvas = imagecreatetruecolor($width, $height);
+                        $white = imagecolorallocate($tempCanvas, 255, 255, 255);
+                        imagefilledrectangle($tempCanvas, 0, 0, $width, $height, $white);
+                        imagealphablending($sourceImage, true);
+                        imagecopyresampled($tempCanvas, $sourceImage, 0, 0, 0, 0, $width, $height, $srcW, $srcH);
+
+                        imagealphablending($img, true);
+                        imagecopyresampled($img, $tempCanvas, $dstX, $dstY, 0, 0, $width, $height, $width, $height);
                         imagedestroy($tempCanvas);
                     } else {
                         imagealphablending($img, true);

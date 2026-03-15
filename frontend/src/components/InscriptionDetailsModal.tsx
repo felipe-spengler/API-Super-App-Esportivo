@@ -32,10 +32,11 @@ export function InscriptionDetailsModal({ inscription, isOpen, onClose, onUpdate
         };
         reader.readAsDataURL(file);
 
-        // Upload
+        // Upload — respeita configuração do campeonato para remoção de fundo
+        const removeBg = championship?.remove_bg_on_art ? 'true' : 'false';
         const formData = new FormData();
         formData.append('photo', file);
-        formData.append('remove_bg', 'true');
+        formData.append('remove_bg', removeBg);
 
         setUploading(true);
         try {
