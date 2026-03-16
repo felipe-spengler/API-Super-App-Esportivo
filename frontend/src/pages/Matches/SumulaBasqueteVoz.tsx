@@ -210,6 +210,8 @@ export function SumulaBasqueteVoz() {
         } catch (e) {
             console.error(e);
             alert('Erro ao carregar jogo.');
+        } finally {
+            setLoading(false);
         }
     };
 
