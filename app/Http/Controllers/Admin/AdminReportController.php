@@ -242,13 +242,23 @@ class AdminReportController extends Controller
         $payments = \App\Models\RaceResult::whereHas('race', function ($query) use ($championshipId) {
             $query->where('championship_id', $championshipId);
         })
-            ->with(['user:id,name,email', 'category:id,name', 'coupon:id,code'])
+            ->with(['user:id,name,email', 'category:id,name,price,parent_id', 'category.parent', 'coupon:id,code'])
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($registration) {
-                $baseValue = (float) ($registration->payment_info['base_value'] ?? 0);
-                $finalValue = (float) ($registration->payment_info['value'] ?? 0);
-                $discount = (float) ($registration->payment_info['discount_value'] ?? ($baseValue > 0 ? $baseValue - $finalValue : 0));
+                $categoryPrice = (float) ($registration->category->price ?? 0);
+                // If it's a subcategory, we need to add the parent's price as per the logic in RaceInscriptionController
+                if ($registration->category && $registration->category->parent_id) {
+                    $categoryPrice += (float) ($registration->category->parent->price ?? 0);
+                }
+
+                $finalValue = (float) ($registration->payment_info['value'] ?? $registration->payment_info['amount'] ?? 0);
+                $baseValue = (float) ($registration->payment_info['base_value'] ?? ($finalValue > 0 ? $categoryPrice : 0));
+                
+                // If still 0 and we have a final value, base value is at least the final value
+                if ($baseValue == 0 && $finalValue > 0) $baseValue = $finalValue;
+
+                $discount = (float) ($registration->payment_info['discount_value'] ?? ($baseValue > $finalValue ? $baseValue - $finalValue : 0));
                 
                 return [
                     'id' => $registration->id,
