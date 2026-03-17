@@ -248,42 +248,69 @@ export function RaceRegister() {
         // Adicional da subcategoria (se houver automática)
         const subPrice = (autoSub && String(autoSub.id) !== String(parentCategoryId)) ? Number(autoSub.price || 0) : 0;
 
-        console.log('[CalcTotal] basePrice:', basePrice, 'subPrice:', subPrice, 'mainCat:', mainCat?.name, 'autoSub:', autoSub?.name);
-
         let surcharge = getGiftsSurcharge();
         let regTotal = basePrice + subPrice + surcharge;
 
-        if (formData.is_pcd) {
-            regTotal *= 0.5;
+        // Descontos Automáticos (Idoso / PCD) - Cumulativo conforme backend
+        let discountPct = 0;
+        let hasAutoDiscount = false;
+
+        // Cálculo de Idade
+        if (formData.birth_date) {
+            const eventDate = championship.start_date ? new Date(championship.start_date) : new Date();
+            const eventYear = eventDate.getFullYear();
+            const birthDate = new Date(formData.birth_date);
+            const age = eventYear - birthDate.getFullYear();
+            
+            console.log('[DEBUG] Idade do Atleta:', {
+                nascimento: formData.birth_date,
+                idade_calculada: age,
+                ano_referencia: eventYear
+            });
+
+            if (championship.has_elderly_discount && age >= (championship.elderly_minimum_age || 60)) {
+                const disc = Number(championship.elderly_discount_percentage || 0);
+                discountPct += disc;
+                hasAutoDiscount = true;
+                console.log(`[DEBUG] Desconto Idoso Aplicado: ${disc}%`);
+            }
         }
+
+        if (formData.is_pcd && championship.has_pcd_discount) {
+            const disc = Number(championship.pcd_discount_percentage || 0);
+            discountPct += disc;
+            hasAutoDiscount = true;
+            console.log(`[DEBUG] Desconto PCD Aplicado: ${disc}%`);
+        }
+
+        if (discountPct > 100) discountPct = 100;
+        
+        // Aplica desconto sobre o valor da inscrição apenas
+        const originalRegTotal = regTotal;
+        regTotal = originalRegTotal * (1 - (discountPct / 100));
 
         let shopTotal = getShopTotal();
         let currentTotal = regTotal + shopTotal;
 
         let discountValue = 0;
-        if (couponInfo) {
+        if (couponInfo && !hasAutoDiscount) {
             const discType = couponInfo.discount_type;
             const discVal = Number(couponInfo.discount_value);
             const isPercent = discType === 'percent';
             
-            console.log('--- DEBUG CUPOM ---');
-            console.log(`CUPOM ATUAL: ${formData.coupon_code}`);
-            console.log(`Tipo: ${discType} (${isPercent ? 'PORCENTAGEM' : 'VALOR FIXO'})`);
-            console.log(`Valor Original: ${discVal}`);
-            
             if (isPercent) {
+                // Cupom sobre o valor JÁ descontado (ou original se não houver)? 
+                // No backend estamos fazendo sobre o valor da inscrição MENOS descontos?
+                // Vamos seguir a lógica do backend: (finalPrice - shopTotal) * discount
                 discountValue = regTotal * (discVal / 100);
-                console.log(`CÁLCULO%: ${regTotal.toFixed(2)} * (${discVal} / 100) = R$ ${discountValue.toFixed(2)}`);
             } else {
                 discountValue = discVal;
-                console.log(`CÁLCULO FIXO: Valor fixo direto: R$ ${discountValue.toFixed(2)}`);
             }
-            console.log('-------------------');
             currentTotal -= discountValue;
         }
 
         const result = Math.max(0, currentTotal);
-        console.log('[CalcTotal] TOTAL FINAL:', result);
+        console.log('[CalcTotal] basePrice:', basePrice, 'subPrice:', subPrice, 'discountPct:', discountPct, 'TOTAL FINAL:', result);
         return result;
     };
 
@@ -1000,14 +1027,14 @@ export function RaceRegister() {
                                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block ml-1">Tem um cupom?</label>
                                 <div className="flex gap-2">
                                     <input
-                                        className="flex-1 px-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold uppercase text-sm"
-                                        placeholder="CÓDIGO"
+                                        className="flex-1 px-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold uppercase text-sm disabled:opacity-50"
+                                        placeholder={(championship?.has_elderly_discount && (new Date(championship.start_date || new Date()).getFullYear() - new Date(formData.birth_date || new Date()).getFullYear()) >= (championship.elderly_minimum_age || 60)) || (formData.is_pcd && championship.has_pcd_discount) ? "DESCONTO AUTOMÁTICO ATIVO" : "CÓDIGO"}
                                         value={formData.coupon_code}
                                         onChange={e => {
                                             setFormData({ ...formData, coupon_code: e.target.value.toUpperCase() });
                                             setCouponInfo(null);
                                         }}
-                                        disabled={!!couponInfo}
+                                        disabled={!!couponInfo || (championship?.has_elderly_discount && (new Date(championship.start_date || new Date()).getFullYear() - new Date(formData.birth_date || new Date()).getFullYear()) >= (championship.elderly_minimum_age || 60)) || (formData.is_pcd && championship.has_pcd_discount)}
                                     />
                                     {!couponInfo ? (
                                         <button
@@ -1027,7 +1054,7 @@ export function RaceRegister() {
                                                     setCouponValidating(false);
                                                 }
                                             }}
-                                            disabled={couponValidating || !formData.coupon_code}
+                                            disabled={couponValidating || !formData.coupon_code || (championship?.has_elderly_discount && (new Date(championship.start_date || new Date()).getFullYear() - new Date(formData.birth_date || new Date()).getFullYear()) >= (championship.elderly_minimum_age || 60)) || (formData.is_pcd && championship.has_pcd_discount)}
                                             className="px-6 py-4 bg-black text-white rounded-xl font-black uppercase text-xs tracking-widest hover:bg-slate-800 disabled:opacity-50 transition-colors"
                                         >
                                             {couponValidating ? <Loader2 className="animate-spin w-4 h-4" /> : 'Aplicar'}
@@ -1082,22 +1109,48 @@ export function RaceRegister() {
                                         <span className="font-black text-indigo-600">+ R$ {getShopTotal().toFixed(2)}</span>
                                     </div>
                                 )}
-                                {formData.is_pcd && (
-                                    <div className="flex justify-between text-sm text-indigo-600 italic">
-                                        <span className="font-bold uppercase">Desconto PCD (50%)</span>
-                                        <span className="font-black">- R$ {((
-                                            Number((championship?.categories?.find((c: any) => String(c.id) === String(parentCategoryId)))?.price || selectedCategory?.price || 0)
-                                            + Number(getAutoSubcategory()?.price || 0)
-                                            + getGiftsSurcharge()
-                                        ) * 0.5).toFixed(2)}</span>
-                                    </div>
-                                )}
-                                {couponInfo && (
+                                {(() => {
+                                    const eventDate = championship?.start_date ? new Date(championship.start_date) : new Date();
+                                    const age = eventDate.getFullYear() - (formData.birth_date ? new Date(formData.birth_date).getFullYear() : eventDate.getFullYear());
+                                    const isElderly = championship?.has_elderly_discount && age >= (championship.elderly_minimum_age || 60);
+                                    
+                                    return (
+                                        <>
+                                            {isElderly && (
+                                                <div className="flex justify-between text-sm text-indigo-600 italic">
+                                                    <span className="font-bold uppercase">Desconto Idoso ({championship.elderly_discount_percentage}%)</span>
+                                                    <span className="font-black">- R$ {((
+                                                        Number((championship?.categories?.find((c: any) => String(c.id) === String(parentCategoryId)))?.price || selectedCategory?.price || 0)
+                                                        + Number(getAutoSubcategory()?.price || 0)
+                                                        + getGiftsSurcharge()
+                                                    ) * (Number(championship.elderly_discount_percentage) / 100)).toFixed(2)}</span>
+                                                </div>
+                                            )}
+                                            {formData.is_pcd && championship?.has_pcd_discount && (
+                                                <div className="flex justify-between text-sm text-indigo-600 italic">
+                                                    <span className="font-bold uppercase">Desconto PCD ({championship.pcd_discount_percentage}%)</span>
+                                                    <span className="font-black">- R$ {((
+                                                        Number((championship?.categories?.find((c: any) => String(c.id) === String(parentCategoryId)))?.price || selectedCategory?.price || 0)
+                                                        + Number(getAutoSubcategory()?.price || 0)
+                                                        + getGiftsSurcharge()
+                                                    ) * (Number(championship.pcd_discount_percentage) / 100)).toFixed(2)}</span>
+                                                </div>
+                                            )}
+                                        </>
+                                    );
+                                })()}
+                                {couponInfo && !(championship?.has_elderly_discount && (new Date(championship.start_date || new Date()).getFullYear() - new Date(formData.birth_date || new Date()).getFullYear()) >= (championship.elderly_minimum_age || 60)) && !(formData.is_pcd && championship.has_pcd_discount) && (
                                     <div className="flex justify-between text-sm text-emerald-600">
                                         <span className="font-bold uppercase">Desconto Cupom ({couponInfo.discount_type === 'percent' ? `${Number(couponInfo.discount_value).toFixed(0)}%` : 'Fixo'})</span>
                                         <span className="font-black italic">
                                             - R$ {(couponInfo.discount_type === 'percent' 
-                                                ? ((Number((championship?.categories?.find((c: any) => String(c.id) === String(parentCategoryId)))?.price || selectedCategory?.price || 0) + ((getAutoSubcategory() && String(getAutoSubcategory().id) !== String(parentCategoryId)) ? Number(getAutoSubcategory().price || 0) : 0) + getGiftsSurcharge()) * (formData.is_pcd ? 0.5 : 1)) * (Number(couponInfo.discount_value) / 100)
+                                                ? (
+                                                    (
+                                                        Number((championship?.categories?.find((c: any) => String(c.id) === String(parentCategoryId)))?.price || selectedCategory?.price || 0) 
+                                                        + Number(getAutoSubcategory()?.price || 0) 
+                                                        + getGiftsSurcharge()
+                                                    ) * (Number(couponInfo.discount_value) / 100)
+                                                )
                                                 : Number(couponInfo.discount_value)).toFixed(2)}
                                         </span>
                                     </div>
