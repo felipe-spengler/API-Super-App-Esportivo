@@ -217,7 +217,7 @@ export function IndividualPaymentManager() {
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 text-xs font-medium text-slate-400">
-                                                    {px.date}
+                                                    {new Date(px.date).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                                 </td>
                                             </tr>
                                         ))

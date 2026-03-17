@@ -257,7 +257,7 @@ class AdminReportController extends Controller
                     'coupon' => $registration->payment_info['coupon_code'] ?? null,
                     'method' => $registration->payment_method ?? 'N/A',
                     'status' => $registration->status_payment,
-                    'date' => $registration->created_at->format('d/m/Y H:i'),
+                    'date' => $registration->created_at->toIso8601String(),
                     'asaas_id' => $registration->asaas_payment_id
                 ];
             });
