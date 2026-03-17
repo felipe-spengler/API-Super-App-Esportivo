@@ -94,8 +94,11 @@ export function RaceRegister() {
         let interval: any;
 
         // Only poll if we're on the final step, payment is pending and we have credentials to check
-        const docToCheck = formData.document || trackingCpf;
-        const birthToCheck = formData.birth_date || trackingBirthDate;
+        const serverUser = registrationData?.result?.user;
+        const docToCheck = serverUser?.cpf || formData.document || trackingCpf;
+        const birthToCheck = serverUser?.birth_date 
+            ? new Date(serverUser.birth_date).toISOString().split('T')[0]
+            : (formData.birth_date || trackingBirthDate);
 
         if (step === 7 && registrationData?.requires_payment && docToCheck && birthToCheck) {
             interval = setInterval(async () => {
@@ -110,8 +113,8 @@ export function RaceRegister() {
                         clearInterval(interval);
                         toast.success('Pagamento confirmado! 🎉');
                     }
-                } catch (error) {
-                    console.error('Erro ao verificar status:', error);
+                } catch (error: any) {
+                    console.error('Erro ao verificar status:', error.response?.data || error);
                 }
             }, 7000);
         }

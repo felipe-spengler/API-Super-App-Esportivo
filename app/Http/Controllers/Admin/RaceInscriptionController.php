@@ -375,7 +375,7 @@ class RaceInscriptionController extends Controller
             DB::commit();
             return response()->json([
                 'message' => 'Inscrição realizada!',
-                'result' => $result,
+                'result' => $result->load('user'),
                 'requires_payment' => $finalPrice > 0,
                 'price' => $finalPrice,
                 'category_name' => $mainCategory->name,
@@ -401,18 +401,27 @@ class RaceInscriptionController extends Controller
             return response()->json(['error' => 'Evento não encontrado.'], 422);
 
         $cleanCpf = preg_replace('/[^0-9]/', '', $request->document);
-        $user = User::where(DB::raw("REPLACE(REPLACE(cpf, '.', ''), '-', '')"), $cleanCpf)->first();
+        $user = User::where(DB::raw("REPLACE(REPLACE(REPLACE(cpf, '.', ''), '-', ''), ' ', '')"), $cleanCpf)->first();
 
-        if (!$user)
-            return response()->json(['error' => 'Inscrição não encontrada.'], 422);
-
-        if ($user->birth_date && \Carbon\Carbon::parse($user->birth_date)->format('Y-m-d') !== \Carbon\Carbon::parse($request->birth_date)->format('Y-m-d')) {
-            return response()->json(['error' => 'Dados não conferem.'], 422);
+        if (!$user) {
+            return response()->json(['error' => 'Atleta não encontrado com este documento.'], 422);
         }
 
-        $registration = RaceResult::where('race_id', $race->id)->where('user_id', $user->id)->with(['category.parent'])->first();
-        if (!$registration)
-            return response()->json(['error' => 'Não inscrito neste evento.'], 422);
+        $requestBirthDate = \Carbon\Carbon::parse($request->birth_date)->format('Y-m-d');
+        $userBirthDate = $user->birth_date ? \Carbon\Carbon::parse($user->birth_date)->format('Y-m-d') : null;
+
+        if ($userBirthDate && $userBirthDate !== $requestBirthDate) {
+            return response()->json(['error' => 'Data de nascimento não confere com o documento informado.'], 422);
+        }
+
+        $registration = RaceResult::where('race_id', $race->id)
+            ->where('user_id', $user->id)
+            ->with(['category.parent', 'user'])
+            ->first();
+
+        if (!$registration) {
+            return response()->json(['error' => 'Inscrição não encontrada para este evento.'], 422);
+        }
 
         $mainCategory = $registration->category->parent_id ? $registration->category->parent : $registration->category;
         $fallbackPrice = (float) $mainCategory->price;
