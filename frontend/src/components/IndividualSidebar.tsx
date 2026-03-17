@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Trophy, BarChart3, Users, X, ShoppingBag, Key, Palette, Timer, Ticket, CreditCard, Layers } from 'lucide-react';
+import { Home, Trophy, BarChart3, Users, X, ShoppingBag, Key, Palette, Timer, Ticket, CreditCard, Layers, Package } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useAuth } from '../context/AuthContext';
@@ -28,7 +28,8 @@ export function IndividualSidebar({ isOpen, onClose, championshipId }: SidebarPr
         { label: 'Financeiro', path: `/admin/individual/championships/${championshipId}/payments`, icon: CreditCard },
         { label: 'Categorias', path: `/admin/individual/championships/${championshipId}/categories`, icon: Layers },
         { label: 'Cupons', path: `/admin/individual/championships/${championshipId}/coupons`, icon: Ticket },
-        { label: 'Produtos / Brindes', path: `/admin/products?championship_id=${championshipId}`, icon: ShoppingBag },
+        { label: 'Relatório de Kits', path: `/admin/individual/championships/${championshipId}/products`, icon: Package },
+        { label: 'Config. Brindes', path: `/admin/products?championship_id=${championshipId}`, icon: ShoppingBag },
     ];
 
     return (

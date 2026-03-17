@@ -235,6 +235,96 @@ class AdminReportController extends Controller
     /**
      * Get championship-specific financial data
      */
+    /**
+     * Get a summary of all products (gifts and shop items) for a championship
+     * including variants (sizes, etc) to help with manufacturing counts.
+     */
+    public function championshipProductsSummary($championshipId)
+    {
+        $championship = Championship::findOrFail($championshipId);
+        
+        $registrations = \App\Models\RaceResult::whereHas('race', function ($query) use ($championshipId) {
+            $query->where('championship_id', $championshipId);
+        })
+        ->where('status_payment', 'paid')
+        ->get(['gifts', 'shop_items']);
+
+        $summary = [];
+
+        foreach ($registrations as $reg) {
+            // Process Gifts (Inclusos na categoria)
+            if ($reg->gifts && is_array($reg->gifts)) {
+                foreach ($reg->gifts as $item) {
+                    $pid = $item['product_id'] ?? null;
+                    if (!$pid) continue;
+
+                    $variant = $item['variant'] ?? 'Padrão';
+                    $qty = (int)($item['quantity'] ?? 1);
+
+                    if (!isset($summary[$pid])) {
+                        $product = \App\Models\Product::find($pid);
+                        $summary[$pid] = [
+                            'name' => $product->name ?? "Produto #$pid",
+                            'total' => 0,
+                            'variants' => []
+                        ];
+                    }
+
+                    $summary[$pid]['total'] += $qty;
+                    if (!isset($summary[$pid]['variants'][$variant])) {
+                        $summary[$pid]['variants'][$variant] = 0;
+                    }
+                    $summary[$pid]['variants'][$variant] += $qty;
+                }
+            }
+
+            // Process Shop Items (Comprados extra)
+            if ($reg->shop_items && is_array($reg->shop_items)) {
+                foreach ($reg->shop_items as $item) {
+                    $pid = $item['product_id'] ?? null;
+                    if (!$pid) continue;
+
+                    $variant = $item['variant'] ?? 'Padrão';
+                    $qty = (int)($item['quantity'] ?? 1);
+
+                    if (!isset($summary[$pid])) {
+                        $product = \App\Models\Product::find($pid);
+                        $summary[$pid] = [
+                            'name' => $product->name ?? "Produto #$pid",
+                            'total' => 0,
+                            'variants' => []
+                        ];
+                    }
+
+                    $summary[$pid]['total'] += $qty;
+                    if (!isset($summary[$pid]['variants'][$variant])) {
+                        $summary[$pid]['variants'][$variant] = 0;
+                    }
+                    $summary[$pid]['variants'][$variant] += $qty;
+                }
+            }
+        }
+
+        // Format to array for frontend
+        $result = collect($summary)->map(function($data, $id) {
+            $variants = collect($data['variants'])->map(function($count, $name) {
+                return ['name' => $name, 'count' => $count];
+            })->values();
+            
+            return [
+                'product_id' => $id,
+                'name' => $data['name'],
+                'total' => $data['total'],
+                'variants' => $variants
+            ];
+        })->values();
+
+        return response()->json([
+            'championship' => $championship->name,
+            'products' => $result
+        ]);
+    }
+
     public function championshipFinancial($championshipId)
     {
         $championship = Championship::findOrFail($championshipId);

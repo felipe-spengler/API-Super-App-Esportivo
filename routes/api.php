@@ -348,6 +348,7 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
         Route::get('/reports/dashboard', [\App\Http\Controllers\Admin\AdminReportController::class, 'dashboard']);
         Route::get('/reports/championship/{id}', [\App\Http\Controllers\Admin\AdminReportController::class, 'championshipReport']);
         Route::get('/championships/{id}/payments', [\App\Http\Controllers\Admin\AdminReportController::class, 'championshipFinancial']);
+        Route::get('/championships/{id}/products-summary', [\App\Http\Controllers\Admin\AdminReportController::class, 'championshipProductsSummary']);
         Route::get('/reports/export', [\App\Http\Controllers\Admin\AdminReportController::class, 'export']);
 
         // Race Wizard & Results

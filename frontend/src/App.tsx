@@ -42,6 +42,7 @@ import { IndividualCouponManager } from './pages/Admin/Individual/IndividualCoup
 import { IndividualPaymentManager } from './pages/Admin/Individual/IndividualPaymentManager';
 import { IndividualCategoryManager } from './pages/Admin/Individual/IndividualCategoryManager';
 import { IndividualManualResult } from './pages/Admin/Individual/IndividualManualResult';
+import { IndividualProductSummary } from './pages/Admin/Individual/IndividualProductSummary';
 
 import { Explore } from './pages/Public/Explore';
 import { ClubExplore } from './pages/Public/ClubExplore';
@@ -199,6 +200,7 @@ function App() {
                 <Route path="championships/:id/coupons" element={<IndividualCouponManager />} />
                 <Route path="championships/:id/payments" element={<IndividualPaymentManager />} />
                 <Route path="championships/:id/categories" element={<IndividualCategoryManager />} />
+                <Route path="championships/:id/products" element={<IndividualProductSummary />} />
               </Route>
             </Route>
 
