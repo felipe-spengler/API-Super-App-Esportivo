@@ -55,6 +55,22 @@ class AdminDashboardController extends Controller
                 ->when($clubId, fn($q) => $q->whereHas('championship', fn($c) => $c->where('club_id', $clubId)))
                 ->count();
 
+            // Calculate Revenue
+            $revenueOrders = \App\Models\Order::where('status', 'paid')
+                ->when($clubId, fn($q) => $q->where('club_id', $clubId))
+                ->sum('total_amount');
+
+            // Revenue from race inscriptions (RaceResult)
+            // We sum the value stored in payment_info JSON for paid inscriptions
+            $revenueInscriptions = \App\Models\RaceResult::where('status_payment', 'paid')
+                ->when($clubId, fn($q) => $q->whereHas('race.championship', fn($c) => $c->where('club_id', $clubId)))
+                ->get()
+                ->sum(function ($r) {
+                    return $r->payment_info['value'] ?? 0;
+                });
+
+            $totalRevenue = $revenueOrders + $revenueInscriptions;
+
             // Get recent activities (last 10 records)
             $recentChampionships = Championship::when($clubId, fn($q) => $q->where('club_id', $clubId))
                 ->orderBy('created_at', 'desc')
@@ -153,6 +169,7 @@ class AdminDashboardController extends Controller
                     'total_matches' => $totalMatches,
                     'finished_matches' => $finishedMatches,
                     'upcoming_matches' => $upcomingMatches,
+                    'total_revenue' => (float) $totalRevenue,
                 ],
                 'activities' => $activities,
             ]);

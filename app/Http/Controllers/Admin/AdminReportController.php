@@ -40,6 +40,20 @@ class AdminReportController extends Controller
             $totalChampionships = (clone $championshipsQuery)->count();
             $totalMatches = (clone $matchesQuery)->count();
 
+            // Calculate Revenue
+            $revenueOrders = \App\Models\Order::where('status', 'paid')
+                ->when($clubId, fn($q) => $q->where('club_id', $clubId))
+                ->sum('total_amount');
+
+            $revenueInscriptions = \App\Models\RaceResult::where('status_payment', 'paid')
+                ->when($clubId, fn($q) => $q->whereHas('race.championship', fn($c) => $c->where('club_id', $clubId)))
+                ->get()
+                ->sum(function ($r) {
+                    return $r->payment_info['value'] ?? 0;
+                });
+
+            $totalRevenue = $revenueOrders + $revenueInscriptions;
+
             $stats = [
                 'total_championships' => $totalChampionships,
                 'active_championships' => (clone $championshipsQuery)->whereIn('status', ['active', 'in_progress', 'Ativo', 'Em Andamento'])->count(),
@@ -47,6 +61,7 @@ class AdminReportController extends Controller
                 'finished_matches' => (clone $matchesQuery)->whereIn('status', ['finished', 'Finalizado', 'Concluído'])->count(),
                 'total_teams' => (clone $teamsQuery)->count(),
                 'total_players' => (clone $playersQuery)->count(),
+                'total_revenue' => (float) $totalRevenue,
             ];
 
             // Championships by sport - Use leftJoin to avoid missing championships without sport_id

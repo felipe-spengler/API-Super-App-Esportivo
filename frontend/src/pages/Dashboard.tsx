@@ -23,7 +23,7 @@ export function Dashboard() {
                     totalUsers: data.stats.total_players || 0,
                     activeEvents: data.stats.active_championships || 0,
                     totalTeams: data.stats.total_teams || 0,
-                    revenue: 0 // Can be calculated later based on inscriptions
+                    revenue: data.stats.total_revenue || 0
                 });
 
                 // Map activities to frontend format
@@ -76,7 +76,7 @@ export function Dashboard() {
         { label: 'Jogadores Cadastrados', value: stats.totalUsers, icon: Users, color: 'text-indigo-500', bg: 'bg-indigo-50' },
         { label: 'Eventos Ativos', value: stats.activeEvents, icon: Trophy, color: 'text-green-500', bg: 'bg-green-50' },
         { label: 'Equipes', value: stats.totalTeams, icon: UserPlus, color: 'text-blue-500', bg: 'bg-blue-50' },
-        { label: 'Receita (Estimada)', value: stats.revenue > 0 ? `R$ ${stats.revenue}` : 'R$ --', icon: DollarSign, color: 'text-yellow-500', bg: 'bg-yellow-50' },
+        { label: 'Receita (Estimada)', value: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(stats.revenue), icon: DollarSign, color: 'text-yellow-500', bg: 'bg-yellow-50' },
     ];
 
     if (loading) {
