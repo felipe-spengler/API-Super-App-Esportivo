@@ -262,6 +262,17 @@ class AdminReportController extends Controller
         $totalRevenue = $payments->where('status', 'paid')->sum('value');
         $pendingRevenue = $payments->where('status', 'pending')->sum('value');
 
+        // Group by category for performance analysis
+        $revenueByCategory = $payments->groupBy('category')->map(function ($items, $name) {
+            return [
+                'name' => $name,
+                'count' => $items->count(),
+                'paid_count' => $items->where('status', 'paid')->count(),
+                'revenue' => $items->where('status', 'paid')->sum('value'),
+                'pending' => $items->where('status', 'pending')->sum('value'),
+            ];
+        })->values()->sortByDesc('revenue')->values();
+
         return response()->json([
             'championship' => $championship->name,
             'summary' => [
@@ -271,6 +282,7 @@ class AdminReportController extends Controller
                 'paid_count' => $payments->where('status', 'paid')->count(),
                 'pending_count' => $payments->where('status', 'pending')->count(),
             ],
+            'revenue_by_category' => $revenueByCategory,
             'payments' => $payments
         ]);
     }

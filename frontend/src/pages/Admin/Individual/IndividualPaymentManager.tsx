@@ -14,6 +14,8 @@ export function IndividualPaymentManager() {
     });
     const [payments, setPayments] = useState<any[]>([]);
     const [summary, setSummary] = useState<any>(null);
+    const [revByCategory, setRevByCategory] = useState<any[]>([]);
+    const [filterCategory, setFilterCategory] = useState('');
 
     useEffect(() => {
         loadSettings();
@@ -25,6 +27,7 @@ export function IndividualPaymentManager() {
             const res = await api.get(`/admin/championships/${id}/payments`);
             setPayments(res.data.payments);
             setSummary(res.data.summary);
+            setRevByCategory(res.data.revenue_by_category || []);
         } catch (error) {
             console.error(error);
         }
@@ -152,8 +155,19 @@ export function IndividualPaymentManager() {
 
                     {/* Transaction List */}
                     <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-                        <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+                        <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <h2 className="font-black text-slate-900">Lista de Transações</h2>
+                            
+                            <select 
+                                className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500"
+                                value={filterCategory}
+                                onChange={e => setFilterCategory(e.target.value)}
+                            >
+                                <option value="">Todas as Categorias</option>
+                                {revByCategory.map(cat => (
+                                    <option key={cat.name} value={cat.name}>{cat.name}</option>
+                                ))}
+                            </select>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse">
@@ -167,8 +181,12 @@ export function IndividualPaymentManager() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                    {payments.length > 0 ? (
-                                        payments.map(px => (
+                                    {payments
+                                        .filter(p => !filterCategory || p.category === filterCategory)
+                                        .length > 0 ? (
+                                        payments
+                                            .filter(p => !filterCategory || p.category === filterCategory)
+                                            .map(px => (
                                             <tr key={px.id} className="hover:bg-slate-50 transition-colors">
                                                 <td className="px-6 py-4">
                                                     <div className="font-bold text-slate-900 leading-tight">{px.athlete}</div>
@@ -221,6 +239,27 @@ export function IndividualPaymentManager() {
                         </div>
                         <div className="pt-2">
                              <div className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Dados baseados em {summary?.total_count || 0} inscrições</div>
+                        </div>
+                    </div>
+
+                    {/* Revenue by Category Table */}
+                    <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+                        <h3 className="font-black text-slate-900 uppercase tracking-tighter text-sm">Faturamento por Categoria</h3>
+                        <div className="space-y-3">
+                            {revByCategory.map(cat => (
+                                <div key={cat.name} className="flex flex-col gap-1 border-b border-slate-50 pb-2 last:border-0">
+                                    <div className="flex justify-between items-center text-xs font-bold text-slate-600">
+                                        <span>{cat.name}</span>
+                                        <span className="text-slate-900">
+                                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cat.revenue)}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-[10px] text-slate-400 font-bold uppercase tracking-tight">
+                                        <span>{cat.paid_count} confirmados</span>
+                                        {cat.pending > 0 && <span className="text-amber-500">+{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cat.pending)} pendente</span>}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
 
