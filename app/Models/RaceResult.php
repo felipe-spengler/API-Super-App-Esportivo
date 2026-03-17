@@ -51,4 +51,9 @@ class RaceResult extends Model
     {
         return $this->belongsTo(Category::class);
     }
+
+    public function coupon()
+    {
+        return $this->belongsTo(Coupon::class);
+    }
 }

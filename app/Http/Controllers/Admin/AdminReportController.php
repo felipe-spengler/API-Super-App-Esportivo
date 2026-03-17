@@ -242,19 +242,23 @@ class AdminReportController extends Controller
         $payments = \App\Models\RaceResult::whereHas('race', function ($query) use ($championshipId) {
             $query->where('championship_id', $championshipId);
         })
-            ->with(['user:id,name,email', 'category:id,name'])
+            ->with(['user:id,name,email', 'category:id,name', 'coupon:id,code'])
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($registration) {
+                $baseValue = (float) ($registration->payment_info['base_value'] ?? 0);
+                $finalValue = (float) ($registration->payment_info['value'] ?? 0);
+                $discount = (float) ($registration->payment_info['discount_value'] ?? ($baseValue > 0 ? $baseValue - $finalValue : 0));
+                
                 return [
                     'id' => $registration->id,
                     'athlete' => $registration->user->name ?? $registration->name,
                     'email' => $registration->user->email ?? '-',
                     'category' => $registration->category->name ?? '-',
-                    'value' => (float) ($registration->payment_info['value'] ?? 0),
-                    'base_value' => (float) ($registration->payment_info['base_value'] ?? 0),
-                    'discount' => (float) ($registration->payment_info['discount_value'] ?? 0),
-                    'coupon' => $registration->payment_info['coupon_code'] ?? null,
+                    'value' => $finalValue,
+                    'base_value' => $baseValue,
+                    'discount' => $discount,
+                    'coupon' => $registration->payment_info['coupon_code'] ?? ($registration->coupon->code ?? null),
                     'method' => $registration->payment_method ?? 'N/A',
                     'status' => $registration->status_payment,
                     'date' => $registration->created_at->toIso8601String(),
