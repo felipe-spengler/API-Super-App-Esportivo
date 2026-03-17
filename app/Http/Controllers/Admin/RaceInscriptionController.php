@@ -100,8 +100,25 @@ class RaceInscriptionController extends Controller
             // 1. Prioridade PCD: Se é PCD, busca categoria que tenha "PcD" no nome
             if ($request->boolean('is_pcd')) {
                 $subCategory = $mainCategory->children
-                    ->filter(function ($child) {
-                        return str_contains(strtolower($child->name), 'pcd');
+                    ->filter(function ($child) use ($request) {
+                        $nameMatch = str_contains(strtolower($child->name), 'pcd');
+                        
+                        $childGender = strtolower($child->gender ?? '');
+                        if ($childGender && $childGender !== 'mixed' && $childGender !== 'misto') {
+                            $userGender = strtolower($request->gender);
+                            if ($userGender === 'm') $userGender = 'male';
+                            if ($userGender === 'f') $userGender = 'female';
+
+                            $normalizedChildGender = $childGender;
+                            if ($normalizedChildGender === 'm') $normalizedChildGender = 'male';
+                            if ($normalizedChildGender === 'f') $normalizedChildGender = 'female';
+
+                            if ($userGender !== $normalizedChildGender) {
+                                return false;
+                            }
+                        }
+                        
+                        return $nameMatch;
                     })
                     ->first();
             }

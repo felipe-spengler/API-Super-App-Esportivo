@@ -216,11 +216,21 @@ export function RaceRegister() {
 
         if (children.length === 0) return null;
         
-        // 1. Prioridade PCD: Se é PCD, busca categoria que tenha "PcD" no nome
+        // 1. Prioridade PCD: Se é PCD, busca categoria que tenha "PcD" no nome E RESPEITE O GÊNERO
         if (formData.is_pcd) {
-            const pcdSub = children.find((c: any) => (c.name || '').toLowerCase().includes('pcd'));
+            const pcdSub = children.find((c: any) => {
+                const nameMatch = (c.name || '').toLowerCase().includes('pcd');
+                
+                const childGen = (c.gender || '').toLowerCase();
+                const userGen = (formData.gender === 'M' ? 'male' : formData.gender === 'F' ? 'female' : 'other');
+                const normChildGen = (childGen === 'm' ? 'male' : childGen === 'f' ? 'female' : childGen);
+                const genderMatch = !normChildGen || normChildGen === 'mixed' || normChildGen === 'misto' || userGen === normChildGen;
+                
+                return nameMatch && genderMatch;
+            });
+
             if (pcdSub) {
-                console.log('[AutoSub] Perfil PCD detectado. Priorizando categoria PcD específica:', pcdSub.name);
+                console.log('[AutoSub] Perfil PCD detectado. Priorizando categoria PcD compatível:', pcdSub.name);
                 return pcdSub;
             }
         }
@@ -680,18 +690,33 @@ export function RaceRegister() {
                                 <div className="md:col-span-2 space-y-1.5">
                                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block ml-1">Sexo</label>
                                     <div className="grid grid-cols-3 gap-3">
-                                        {['M', 'F', 'O'].map(s => (
-                                            <button
-                                                key={s}
-                                                onClick={() => setFormData({ ...formData, gender: s })}
-                                                className={`py-3 rounded-xl border-2 font-black text-sm uppercase transition-all ${formData.gender === s
-                                                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200'
-                                                    : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'
+                                        {['M', 'F', 'O'].map(s => {
+                                            const mainCat = championship?.categories?.find((c: any) => String(c.id) === String(parentCategoryId));
+                                            const catName = (mainCat?.name || '').toLowerCase();
+                                            const isMaleOnly = catName.includes('masculino') || catName.includes('masc');
+                                            const isFemaleOnly = catName.includes('feminino') || catName.includes('fem');
+
+                                            let disabled = false;
+                                            if (isMaleOnly && s === 'F') disabled = true;
+                                            if (isFemaleOnly && s === 'M') disabled = true;
+
+                                            return (
+                                                <button
+                                                    key={s}
+                                                    disabled={disabled}
+                                                    onClick={() => setFormData({ ...formData, gender: s })}
+                                                    className={`py-3 rounded-xl border-2 font-black text-sm uppercase transition-all ${
+                                                        formData.gender === s
+                                                            ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200'
+                                                            : disabled 
+                                                                ? 'bg-slate-50 border-slate-100 text-slate-200 cursor-not-allowed opacity-50'
+                                                                : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'
                                                     }`}
-                                            >
-                                                {s === 'M' ? 'Masculino' : s === 'F' ? 'Feminino' : 'Outro'}
-                                            </button>
-                                        ))}
+                                                >
+                                                    {s === 'M' ? 'Masculino' : s === 'F' ? 'Feminino' : 'Outro'}
+                                                </button>
+                                            )
+                                        })}
                                     </div>
                                 </div>
 
