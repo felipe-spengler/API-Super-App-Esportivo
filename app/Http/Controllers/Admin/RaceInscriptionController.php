@@ -245,12 +245,30 @@ class RaceInscriptionController extends Controller
             }
 
             $discountPct = 0;
+            $hasAutoDiscount = false;
+
+            Log::info("DEBUG Descontos - Atleta: {$user->name}, Idade Calculada: {$athleteAge}", [
+                'has_elderly_discount_config' => $championship->has_elderly_discount,
+                'elderly_minimum_age' => $championship->elderly_minimum_age,
+                'elderly_discount_percentage' => $championship->elderly_discount_percentage,
+                'is_pcd_request' => $request->boolean('is_pcd'),
+                'has_pcd_discount_config' => $championship->has_pcd_discount,
+                'pcd_discount_percentage' => $championship->pcd_discount_percentage,
+            ]);
+
             if ($championship->has_elderly_discount && $athleteAge >= $championship->elderly_minimum_age) {
-                $discountPct = max($discountPct, $championship->elderly_discount_percentage);
+                $discountPct += (float) $championship->elderly_discount_percentage;
+                $hasAutoDiscount = true;
+                Log::info("Desconto Idoso Aplicado: {$championship->elderly_discount_percentage}%");
             }
+
             if ($request->boolean('is_pcd') && $championship->has_pcd_discount) {
-                $discountPct = max($discountPct, $championship->pcd_discount_percentage);
+                $discountPct += (float) $championship->pcd_discount_percentage;
+                $hasAutoDiscount = true;
+                Log::info("Desconto PCD Aplicado: {$championship->pcd_discount_percentage}%");
             }
+
+            if ($discountPct > 100) $discountPct = 100;
 
             $finalPrice = $originalPrice * (1 - ($discountPct / 100));
 
@@ -275,17 +293,22 @@ class RaceInscriptionController extends Controller
             $finalPrice += $shopTotal;
 
             // Cupom (Apenas sobre o valor da INSCRIÇÃO, não sobre a loja)
+            // REGRA: Se já tem desconto automático (PCD/Idoso), não permite aplicar cupom
             $couponId = null;
             if ($request->coupon_code) {
-                $coupon = Coupon::where('club_id', $championship->club_id)->where('code', $request->coupon_code)->first();
-                if ($coupon && (!$coupon->max_uses || $coupon->used_count < $coupon->max_uses) && (!$coupon->expires_at || !$coupon->expires_at->endOfDay()->isPast())) {
-                    if ($coupon->discount_type === 'percent') {
-                        $finalPrice -= ($finalPrice - $shopTotal) * ($coupon->discount_value / 100);
-                    } else {
-                        $finalPrice -= $coupon->discount_value;
+                if (!$hasAutoDiscount) {
+                    $coupon = Coupon::where('club_id', $championship->club_id)->where('code', $request->coupon_code)->first();
+                    if ($coupon && (!$coupon->max_uses || $coupon->used_count < $coupon->max_uses) && (!$coupon->expires_at || !$coupon->expires_at->endOfDay()->isPast())) {
+                        if ($coupon->discount_type === 'percent') {
+                            $finalPrice -= ($finalPrice - $shopTotal) * ($coupon->discount_value / 100);
+                        } else {
+                            $finalPrice -= $coupon->discount_value;
+                        }
+                        $couponId = $coupon->id;
+                        $coupon->increment('used_count');
                     }
-                    $couponId = $coupon->id;
-                    $coupon->increment('used_count');
+                } else {
+                    Log::info("Cupom '{$request->coupon_code}' ignorado: Atleta já possui desconto automático (Idoso/PCD).");
                 }
             }
 
