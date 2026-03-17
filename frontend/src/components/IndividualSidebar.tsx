@@ -25,7 +25,7 @@ export function IndividualSidebar({ isOpen, onClose, championshipId }: SidebarPr
         { label: 'Atletas / Inscrições', path: `/admin/individual/championships/${championshipId}/athletes`, icon: Users },
         { label: 'Cronometragem', path: `/admin/individual/championships/${championshipId}/results`, icon: Timer },
         { label: 'Artes por Categoria', path: `/admin/individual/championships/${championshipId}/arts`, icon: Palette },
-        { label: 'Financeiro (Asaas)', path: `/admin/individual/championships/${championshipId}/payments`, icon: CreditCard },
+        { label: 'Financeiro', path: `/admin/individual/championships/${championshipId}/payments`, icon: CreditCard },
         { label: 'Categorias', path: `/admin/individual/championships/${championshipId}/categories`, icon: Layers },
         { label: 'Cupons', path: `/admin/individual/championships/${championshipId}/coupons`, icon: Ticket },
         { label: 'Produtos / Brindes', path: `/admin/products?championship_id=${championshipId}`, icon: ShoppingBag },

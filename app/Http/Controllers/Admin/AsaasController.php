@@ -128,11 +128,12 @@ class AsaasController extends Controller
                 // Baixa no Estoque dos Brindes (Produtos Inclusos na Categoria)
                 if ($result->category) {
                     try {
-                        $included = $result->category->products;
+                        $included = $result->category->products(); // Chamada correta do método
                         if ($included && $included->count() > 0) {
-                            foreach ($included as $product) {
-                                if ($product->stock_quantity !== null) {
-                                    $qty = $product->pivot->quantity ?? 1;
+                            foreach ($included as $item) {
+                                $product = $item['product'];
+                                $qty = $item['quantity'] ?? 1;
+                                if ($product && $product->stock_quantity !== null) {
                                     $product->decrement('stock_quantity', $qty);
                                     Log::info("Stock reduced for Gift Product {$product->id}: -{$qty} (RaceResult {$id})");
                                 }
@@ -199,11 +200,12 @@ class AsaasController extends Controller
                     $category = \App\Models\Category::find($pivot->category_id);
                     if ($category) {
                         try {
-                            $included = $category->products;
+                            $included = $category->products();
                             if ($included && $included->count() > 0) {
-                                foreach ($included as $product) {
-                                    if ($product->stock_quantity !== null) {
-                                        $qty = $product->pivot->quantity ?? 1;
+                                foreach ($included as $item) {
+                                    $product = $item['product'];
+                                    $qty = $item['quantity'] ?? 1;
+                                    if ($product && $product->stock_quantity !== null) {
                                         $product->decrement('stock_quantity', $qty);
                                         Log::info("Stock reduced for Team Gift Product {$product->id}: -{$qty} (CT {$id})");
                                     }

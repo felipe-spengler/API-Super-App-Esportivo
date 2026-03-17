@@ -363,6 +363,32 @@ class RaceInscriptionController extends Controller
                 'coupon_id' => $couponId,
                 'shop_items' => $request->shop_items
             ]);
+            
+            // 4.1. Baixa no Estoque se for inscrição Gratuita/Cortesia (Já nasce 'paid')
+            if ($status === 'paid') {
+                try {
+                    // Baixa nos Brindes da Categoria
+                    $included = $category->products();
+                    foreach ($included as $item) {
+                        $product = $item['product'];
+                        $qty = $item['quantity'] ?? 1;
+                        if ($product && $product->stock_quantity !== null) {
+                            $product->decrement('stock_quantity', $qty);
+                        }
+                    }
+                    // Baixa nos Itens da Loja
+                    if ($request->has('shop_items')) {
+                        foreach ($request->shop_items as $item) {
+                            $prod = \App\Models\Product::find($item['product_id']);
+                            if ($prod && $prod->stock_quantity !== null) {
+                                $prod->decrement('stock_quantity', $item['quantity'] ?? 1);
+                            }
+                        }
+                    }
+                } catch (\Exception $stockEx) {
+                    \Illuminate\Support\Facades\Log::error("Erro estoque inscrição grátis: " . $stockEx->getMessage());
+                }
+            }
 
             $paymentInfo = null;
             if ($status === 'pending') {
