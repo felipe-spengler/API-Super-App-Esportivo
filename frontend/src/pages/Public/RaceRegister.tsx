@@ -692,9 +692,10 @@ export function RaceRegister() {
                                     <div className="grid grid-cols-3 gap-3">
                                         {['M', 'F', 'O'].map(s => {
                                             const mainCat = championship?.categories?.find((c: any) => String(c.id) === String(parentCategoryId));
-                                            const catName = (mainCat?.name || '').toLowerCase();
-                                            const isMaleOnly = catName.includes('masculino') || catName.includes('masc');
-                                            const isFemaleOnly = catName.includes('feminino') || catName.includes('fem');
+                                            const catGender = (mainCat?.gender || '').toLowerCase();
+                                            
+                                            const isMaleOnly = catGender === 'male' || catGender === 'm';
+                                            const isFemaleOnly = catGender === 'female' || catGender === 'f';
 
                                             let disabled = false;
                                             if (isMaleOnly && s === 'F') disabled = true;
