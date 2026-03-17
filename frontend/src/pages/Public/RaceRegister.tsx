@@ -215,7 +215,17 @@ export function RaceRegister() {
         console.log('Subcategorias Candidatas:', children.length);
 
         if (children.length === 0) return null;
+        
+        // 1. Prioridade PCD: Se é PCD, busca categoria que tenha "PcD" no nome
+        if (formData.is_pcd) {
+            const pcdSub = children.find((c: any) => (c.name || '').toLowerCase().includes('pcd'));
+            if (pcdSub) {
+                console.log('[AutoSub] Perfil PCD detectado. Priorizando categoria PcD específica:', pcdSub.name);
+                return pcdSub;
+            }
+        }
 
+        // 2. Busca por Idade e Gênero
         const found = children.find((child: any) => {
             const min = child.min_age ?? 0;
             const max = child.max_age ?? 999;
@@ -245,7 +255,7 @@ export function RaceRegister() {
         let surcharge = getGiftsSurcharge();
         let regTotal = basePrice + subPrice + surcharge;
 
-        // Descontos Automáticos (Idoso / PCD) - Cumulativo conforme backend
+        // Descontos Automáticos (Idoso / PCD) - NÃO CUMULATIVOS
         let discountPct = 0;
         let hasAutoDiscount = false;
 
@@ -256,28 +266,22 @@ export function RaceRegister() {
             const birthDate = new Date(formData.birth_date);
             const age = eventYear - birthDate.getFullYear();
             
-            console.log('[DEBUG] Idade do Atleta:', {
-                nascimento: formData.birth_date,
-                idade_calculada: age,
-                ano_referencia: eventYear
-            });
-
             if (championship.has_elderly_discount && age >= (championship.elderly_minimum_age || 60)) {
                 const disc = Number(championship.elderly_discount_percentage || 0);
-                discountPct += disc;
+                discountPct = Math.max(discountPct, disc);
                 hasAutoDiscount = true;
-                console.log(`[DEBUG] Desconto Idoso Aplicado: ${disc}%`);
+                console.log(`[DEBUG] Candidato a Desconto Idoso: ${disc}%`);
             }
         }
 
         if (formData.is_pcd && championship.has_pcd_discount) {
             const disc = Number(championship.pcd_discount_percentage || 0);
-            discountPct += disc;
+            discountPct = Math.max(discountPct, disc);
             hasAutoDiscount = true;
-            console.log(`[DEBUG] Desconto PCD Aplicado: ${disc}%`);
+            console.log(`[DEBUG] Candidato a Desconto PCD: ${disc}%`);
         }
 
-        if (discountPct > 100) discountPct = 100;
+        console.log(`[DEBUG] Desconto Automático Final Selecionado: ${discountPct}%`);
         
         // Aplica desconto sobre o valor da inscrição apenas
         const originalRegTotal = regTotal;
@@ -1059,30 +1063,27 @@ export function RaceRegister() {
                                     const eventDate = championship?.start_date ? new Date(championship.start_date) : new Date();
                                     const age = eventDate.getFullYear() - (formData.birth_date ? new Date(formData.birth_date).getFullYear() : eventDate.getFullYear());
                                     const isElderly = championship?.has_elderly_discount && age >= (championship.elderly_minimum_age || 60);
-                                    
+                                    const isPcd = formData.is_pcd && championship?.has_pcd_discount;
+
+                                    const elderlyPct = isElderly ? Number(championship.elderly_discount_percentage) : 0;
+                                    const pcdPct = isPcd ? Number(championship.pcd_discount_percentage) : 0;
+
+                                    if (!isElderly && !isPcd) return null;
+
+                                    // Mostra apenas o MAIOR desconto
+                                    const showingElderly = elderlyPct >= pcdPct && isElderly;
+                                    const activePct = Math.max(elderlyPct, pcdPct);
+                                    const label = showingElderly ? `Desconto Idoso (${elderlyPct}%)` : `Desconto PCD (${pcdPct}%)`;
+
                                     return (
-                                        <>
-                                            {isElderly && (
-                                                <div className="flex justify-between text-sm text-indigo-600 italic">
-                                                    <span className="font-bold uppercase">Desconto Idoso ({championship.elderly_discount_percentage}%)</span>
-                                                    <span className="font-black">- R$ {((
-                                                        Number((championship?.categories?.find((c: any) => String(c.id) === String(parentCategoryId)))?.price || selectedCategory?.price || 0)
-                                                        + Number(getAutoSubcategory()?.price || 0)
-                                                        + getGiftsSurcharge()
-                                                    ) * (Number(championship.elderly_discount_percentage) / 100)).toFixed(2)}</span>
-                                                </div>
-                                            )}
-                                            {formData.is_pcd && championship?.has_pcd_discount && (
-                                                <div className="flex justify-between text-sm text-indigo-600 italic">
-                                                    <span className="font-bold uppercase">Desconto PCD ({championship.pcd_discount_percentage}%)</span>
-                                                    <span className="font-black">- R$ {((
-                                                        Number((championship?.categories?.find((c: any) => String(c.id) === String(parentCategoryId)))?.price || selectedCategory?.price || 0)
-                                                        + Number(getAutoSubcategory()?.price || 0)
-                                                        + getGiftsSurcharge()
-                                                    ) * (Number(championship.pcd_discount_percentage) / 100)).toFixed(2)}</span>
-                                                </div>
-                                            )}
-                                        </>
+                                        <div className="flex justify-between text-sm text-indigo-600 italic">
+                                            <span className="font-bold uppercase">{label}</span>
+                                            <span className="font-black">- R$ {((
+                                                Number((championship?.categories?.find((c: any) => String(c.id) === String(parentCategoryId)))?.price || selectedCategory?.price || 0)
+                                                + Number(getAutoSubcategory()?.price || 0)
+                                                + getGiftsSurcharge()
+                                            ) * (activePct / 100)).toFixed(2)}</span>
+                                        </div>
                                     );
                                 })()}
                                 {couponInfo && !(championship?.has_elderly_discount && (new Date(championship.start_date || new Date()).getFullYear() - new Date(formData.birth_date || new Date()).getFullYear()) >= (championship.elderly_minimum_age || 60)) && !(formData.is_pcd && championship.has_pcd_discount) && (

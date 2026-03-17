@@ -97,34 +97,46 @@ class RaceInscriptionController extends Controller
 
         // A subcategoria deve ser automática conforme idade e gênero se a categoria principal tiver filhos.
         if ($mainCategory->children->count() > 0) {
-            $subCategory = $mainCategory->children
-                ->filter(function ($child) use ($athleteAge, $request) {
-                    // Validar Idade
-                    $min = $child->min_age ?? 0;
-                    $max = $child->max_age ?? 999;
-                    if ($athleteAge < $min || $athleteAge > $max) {
-                        return false;
-                    }
+            // 1. Prioridade PCD: Se é PCD, busca categoria que tenha "PcD" no nome
+            if ($request->boolean('is_pcd')) {
+                $subCategory = $mainCategory->children
+                    ->filter(function ($child) {
+                        return str_contains(strtolower($child->name), 'pcd');
+                    })
+                    ->first();
+            }
 
-                    // Validar Gênero (se a subcategoria tiver gênero específico)
-                    $childGender = strtolower($child->gender ?? '');
-                    if ($childGender && $childGender !== 'mixed' && $childGender !== 'misto') {
-                        $userGender = strtolower($request->gender);
-                        if ($userGender === 'm') $userGender = 'male';
-                        if ($userGender === 'f') $userGender = 'female';
-
-                        $normalizedChildGender = $childGender;
-                        if ($normalizedChildGender === 'm') $normalizedChildGender = 'male';
-                        if ($normalizedChildGender === 'f') $normalizedChildGender = 'female';
-
-                        if ($userGender !== $normalizedChildGender) {
+            // 2. Se não achou via PcD (ou não é PcD), busca por Idade e Gênero
+            if (!isset($subCategory)) {
+                $subCategory = $mainCategory->children
+                    ->filter(function ($child) use ($athleteAge, $request) {
+                        // Validar Idade
+                        $min = $child->min_age ?? 0;
+                        $max = $child->max_age ?? 999;
+                        if ($athleteAge < $min || $athleteAge > $max) {
                             return false;
                         }
-                    }
 
-                    return true;
-                })
-                ->first();
+                        // Validar Gênero (se a subcategoria tiver gênero específico)
+                        $childGender = strtolower($child->gender ?? '');
+                        if ($childGender && $childGender !== 'mixed' && $childGender !== 'misto') {
+                            $userGender = strtolower($request->gender);
+                            if ($userGender === 'm') $userGender = 'male';
+                            if ($userGender === 'f') $userGender = 'female';
+
+                            $normalizedChildGender = $childGender;
+                            if ($normalizedChildGender === 'm') $normalizedChildGender = 'male';
+                            if ($normalizedChildGender === 'f') $normalizedChildGender = 'female';
+
+                            if ($userGender !== $normalizedChildGender) {
+                                return false;
+                            }
+                        }
+
+                        return true;
+                    })
+                    ->first();
+            }
 
             if ($subCategory) {
                 $category = $subCategory;
@@ -257,18 +269,18 @@ class RaceInscriptionController extends Controller
             ]);
 
             if ($championship->has_elderly_discount && $athleteAge >= $championship->elderly_minimum_age) {
-                $discountPct += (float) $championship->elderly_discount_percentage;
+                $discountPct = max($discountPct, (float) $championship->elderly_discount_percentage);
                 $hasAutoDiscount = true;
-                Log::info("Desconto Idoso Aplicado: {$championship->elderly_discount_percentage}%");
+                Log::info("Candidato a Desconto Idoso: {$championship->elderly_discount_percentage}%");
             }
 
             if ($request->boolean('is_pcd') && $championship->has_pcd_discount) {
-                $discountPct += (float) $championship->pcd_discount_percentage;
+                $discountPct = max($discountPct, (float) $championship->pcd_discount_percentage);
                 $hasAutoDiscount = true;
-                Log::info("Desconto PCD Aplicado: {$championship->pcd_discount_percentage}%");
+                Log::info("Candidato a Desconto PCD: {$championship->pcd_discount_percentage}%");
             }
 
-            if ($discountPct > 100) $discountPct = 100;
+            Log::info("Desconto Automático Final Selecionado: {$discountPct}%");
 
             $finalPrice = $originalPrice * (1 - ($discountPct / 100));
 
