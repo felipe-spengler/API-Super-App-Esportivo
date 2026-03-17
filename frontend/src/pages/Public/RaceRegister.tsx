@@ -46,7 +46,6 @@ export function RaceRegister() {
     const [pcdFile, setPcdFile] = useState<File | null>(null);
 
     const [parentCategoryId, setParentCategoryId] = useState<string | null>(null);
-    const [selectingSubcategory, setSelectingSubcategory] = useState(false);
 
     const [shopProducts, setShopProducts] = useState<any[]>([]);
     const [shopItems, setShopItems] = useState<any[]>([]);
@@ -476,182 +475,113 @@ export function RaceRegister() {
             <div className="max-w-3xl mx-auto px-4 mt-8">
                 {step === 1 && (
                     <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-6">
-                        {!selectingSubcategory ? (
-                            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-                                <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight mb-6">Selecione sua Categoria</h2>
+                        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+                            <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight mb-6">Selecione sua Distância</h2>
 
-                                <div className="space-y-6">
-                                    <div className="grid gap-4">
-                                        {mainCategories.map((cat: any) => (
-                                            <button
-                                                key={cat.id}
-                                                onClick={() => {
-                                                    setParentCategoryId(cat.id);
-                                                    setFormData({ ...formData, category_id: '' });
-                                                }}
-                                                className={`p-6 rounded-2xl border-2 text-left transition-all relative overflow-hidden ${parentCategoryId === cat.id
-                                                    ? 'border-indigo-600 bg-indigo-50/50 shadow-md'
-                                                    : 'border-slate-100 bg-white hover:border-slate-200'
-                                                    }`}
-                                            >
-                                                <div className="flex justify-between items-start">
-                                                    <div>
-                                                        <h3 className="font-black text-slate-900 uppercase text-lg italic">{cat.name}</h3>
-                                                        <p className="text-slate-500 text-xs font-medium uppercase mt-1">{cat.description || 'Categoria Principal'}</p>
-                                                    </div>
-                                                    {!championship?.categories?.some((c: any) => c.parent_id === cat.id) && (
-                                                        <div className="text-right">
-                                                            <span className="block font-black text-indigo-600 text-xl italic leading-none">
-                                                                {Number(cat.price) > 0 ? `R$ ${cat.price}` : 'GRÁTIS'}
-                                                            </span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                {parentCategoryId === cat.id && (
-                                                    <div className="absolute top-2 right-2">
-                                                        <div className="bg-indigo-600 text-white p-1 rounded-full">
-                                                            <Check size={12} />
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                                <button
-                                    disabled={!parentCategoryId}
-                                    onClick={() => {
-                                        if (subCategories.length > 0) {
-                                            setSelectingSubcategory(true);
-                                        } else {
-                                            if (parentCategoryId) {
-                                                setFormData(prev => ({ ...prev, category_id: parentCategoryId.toString() }));
-                                            }
-                                            setStep(2);
-                                        }
-                                    }}
-                                    className="w-full mt-6 py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-800 disabled:opacity-50 shadow-xl flex items-center justify-center gap-3 group transition-all"
-                                >
-                                    Próximo Passo
-                                    <ArrowRight className="group-hover:translate-x-1 transition-transform" />
-                                </button>
-
-                                {/* Tracking Section */}
-                                <div className="mt-8 pt-8 border-t border-slate-100">
-                                    {!isTracking ? (
+                            <div className="space-y-6">
+                                <div className="grid gap-4">
+                                    {mainCategories.map((cat: any) => (
                                         <button
-                                            onClick={() => setIsTracking(true)}
-                                            className="w-full py-4 bg-indigo-50 text-indigo-600 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-indigo-100 transition-all flex items-center justify-center gap-2"
-                                        >
-                                            <Search size={14} />
-                                            Já se inscreveu? Acompanhe aqui
-                                        </button>
-                                    ) : (
-                                        <div className="space-y-4 animate-in fade-in zoom-in-95 duration-300">
-                                            <div className="flex items-center justify-between">
-                                                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                                                    <Activity size={12} className="text-indigo-600" />
-                                                    Consultar Inscrição
-                                                </h3>
-                                                <button onClick={() => setIsTracking(false)} className="text-[10px] font-black text-indigo-600 uppercase">Cancelar</button>
-                                            </div>
-
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div className="space-y-1.5">
-                                                    <label className="text-[10px] font-black text-slate-400 uppercase ml-1">CPF do Atleta</label>
-                                                    <div className="relative">
-                                                        <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                                        <input
-                                                            value={trackingCpf}
-                                                            onChange={e => setTrackingCpf(e.target.value)}
-                                                            placeholder="000.000.000-00"
-                                                            className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-transparent focus:border-indigo-600 rounded-2xl text-sm font-bold transition-all outline-none"
-                                                        />
-                                                    </div>
-                                                </div>
-                                                <div className="space-y-1.5">
-                                                    <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Data de Nascimento</label>
-                                                    <div className="relative">
-                                                        <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                                        <input
-                                                            type="date"
-                                                            value={trackingBirthDate}
-                                                            onChange={e => setTrackingBirthDate(e.target.value)}
-                                                            className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-transparent focus:border-indigo-600 rounded-2xl text-sm font-bold transition-all outline-none"
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <button
-                                                onClick={handleTrack}
-                                                disabled={saving || !trackingCpf || !trackingBirthDate}
-                                                className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-700 disabled:opacity-50 shadow-lg shadow-indigo-100 flex items-center justify-center gap-3 transition-all"
-                                            >
-                                                {saving ? <Loader2 className="animate-spin" /> : <Search size={18} />}
-                                                Localizar Minha Inscrição
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-                                <div className="flex items-center gap-3 mb-6">
-                                    <button
-                                        onClick={() => {
-                                            setSelectingSubcategory(false);
-                                            setFormData({ ...formData, category_id: '' });
-                                        }}
-                                        className="p-2 hover:bg-slate-100 rounded-full transition-colors flex-shrink-0"
-                                    >
-                                        <ArrowLeft className="w-5 h-5 text-slate-600" />
-                                    </button>
-                                    <div>
-                                        <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight leading-tight">Escolha a Subcategoria</h2>
-                                        <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">
-                                            {mainCategories.find((c: any) => c.id === parentCategoryId)?.name}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                                    {subCategories.map((sub: any) => (
-                                        <button
-                                            key={sub.id}
-                                            onClick={() => setFormData({ ...formData, category_id: sub.id })}
-                                            className={`p-4 rounded-xl border-2 text-left transition-all flex flex-col justify-between items-start gap-3 h-full ${formData.category_id === sub.id
-                                                ? 'border-indigo-600 bg-indigo-50 shadow-sm'
-                                                : 'border-slate-100 bg-slate-50/50 hover:bg-slate-50'
+                                            key={cat.id}
+                                            onClick={() => {
+                                                setParentCategoryId(cat.id.toString());
+                                                setFormData({ ...formData, category_id: cat.id.toString() });
+                                            }}
+                                            className={`p-6 rounded-2xl border-2 text-left transition-all relative overflow-hidden ${parentCategoryId === cat.id.toString()
+                                                ? 'border-indigo-600 bg-indigo-50/50 shadow-md transform scale-[1.01]'
+                                                : 'border-slate-100 bg-white hover:border-slate-200'
                                                 }`}
                                         >
-                                            <div className="w-full">
-                                                <span className={`font-black uppercase text-sm block leading-tight ${formData.category_id === sub.id ? 'text-indigo-600' : 'text-slate-700'}`}>
-                                                    {sub.name}
-                                                </span>
-                                                {sub.description && <p className="text-[10px] text-slate-400 uppercase mt-1 leading-tight">{sub.description}</p>}
-                                            </div>
-                                            <div className="flex w-full items-center justify-between mt-auto pt-2 border-t border-slate-100/50">
-                                                <span className="font-black text-slate-900 text-sm italic">
-                                                    {Number(sub.price) > 0 ? `R$ ${sub.price}` : (Number(sub.price) === 0 ? '' : (Number(selectedCategory?.price) > 0 ? `R$ ${selectedCategory?.price}` : ''))}
-                                                </span>
-                                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0 ${formData.category_id === sub.id ? 'bg-indigo-600 border-indigo-600' : 'border-slate-200 bg-white'}`}>
-                                                    {formData.category_id === sub.id && <Check size={10} className="text-white" />}
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <h3 className="font-black text-slate-900 uppercase text-lg italic">{cat.name}</h3>
+                                                    <p className="text-slate-500 text-xs font-medium uppercase mt-1">{cat.description || 'Categoria Principal'}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <span className="block font-black text-indigo-600 text-xl italic leading-none">
+                                                        {Number(cat.price) > 0 ? `R$ ${cat.price}` : 'Escolher'}
+                                                    </span>
                                                 </div>
                                             </div>
+                                            {parentCategoryId === cat.id.toString() && (
+                                                <div className="absolute top-2 right-2">
+                                                    <div className="bg-indigo-600 text-white p-1 rounded-full">
+                                                        <Check size={12} />
+                                                    </div>
+                                                </div>
+                                            )}
                                         </button>
                                     ))}
                                 </div>
-                                <button
-                                    disabled={!formData.category_id}
-                                    onClick={() => setStep(2)}
-                                    className="w-full mt-6 py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-800 disabled:opacity-50 shadow-xl flex items-center justify-center gap-3 group transition-all"
-                                >
-                                    Confirmar {formData.category_id ? 'Subcategoria' : ''}
-                                    <ArrowRight className="group-hover:translate-x-1 transition-transform" />
-                                </button>
                             </div>
-                        )}
+                            <button
+                                disabled={!parentCategoryId}
+                                onClick={() => setStep(2)}
+                                className="w-full mt-6 py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-800 disabled:opacity-50 shadow-xl flex items-center justify-center gap-3 transition-all"
+                            >
+                                Próximo Passo
+                                <ArrowRight />
+                            </button>
+
+                            {/* Tracking Section */}
+                            <div className="mt-8 pt-8 border-t border-slate-100">
+                                {!isTracking ? (
+                                    <button
+                                        onClick={() => setIsTracking(true)}
+                                        className="w-full py-4 bg-indigo-50 text-indigo-600 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-indigo-100 transition-all flex items-center justify-center gap-2"
+                                    >
+                                        <Search size={14} />
+                                        Já se inscreveu? Acompanhe aqui
+                                    </button>
+                                ) : (
+                                    <div className="space-y-4 animate-in fade-in zoom-in-95 duration-300">
+                                        <div className="flex items-center justify-between">
+                                            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                                <Activity size={12} className="text-indigo-600" />
+                                                Consultar Inscrição
+                                            </h3>
+                                            <button onClick={() => setIsTracking(false)} className="text-[10px] font-black text-indigo-600 uppercase">Cancelar</button>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="space-y-1.5">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">CPF do Atleta</label>
+                                                <div className="relative">
+                                                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                                    <input
+                                                        value={trackingCpf}
+                                                        onChange={e => setTrackingCpf(e.target.value)}
+                                                        placeholder="000.000.000-00"
+                                                        className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-transparent focus:border-indigo-600 rounded-2xl text-sm font-bold transition-all outline-none"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Data de Nascimento</label>
+                                                <div className="relative">
+                                                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                                    <input
+                                                        type="date"
+                                                        value={trackingBirthDate}
+                                                        onChange={e => setTrackingBirthDate(e.target.value)}
+                                                        className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-transparent focus:border-indigo-600 rounded-2xl text-sm font-bold transition-all outline-none"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            onClick={handleTrack}
+                                            disabled={saving || !trackingCpf || !trackingBirthDate}
+                                            className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-700 disabled:opacity-50 shadow-lg shadow-indigo-100 flex items-center justify-center gap-3 transition-all"
+                                        >
+                                            {saving ? <Loader2 className="animate-spin" /> : <Search size={18} />}
+                                            Localizar Minha Inscrição
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 )}
 
