@@ -62,32 +62,17 @@ class EventController extends Controller
     // 2. Detalhes do Campeonato (com Categorias)
     public function championshipDetails($id)
     {
-        // Carregar categorias pai COM seus filhos (subcategorias)
-        // O frontend gerencia a exibição da tela de subcategoria
-        $champ = Championship::with([
-            'categories' => function ($q) {
-                $q->whereNull('parent_id')->with('children');
-            },
-            'sport'
-        ])
+        // Carrega o campeonato com TODAS as suas categorias (pai e filhas)
+        $champ = Championship::with(['categories', 'sport'])
             ->withCount('teams')
             ->findOrFail($id);
 
-        // Hydrate products e achatar categorias + subcategorias no array
-        $allCategories = collect();
-        foreach ($champ->categories as $category) {
+        // Processa os produtos inclusos para todas as categorias
+        $champ->categories->each(function ($category) {
             if ($category->included_products) {
                 $category->products_details = $category->products();
             }
-            $allCategories->push($category);
-
-            // Adicionar subcategorias no mesmo array para o frontend acessar
-            foreach ($category->children as $child) {
-                $allCategories->push($child);
-            }
-        }
-
-        $champ->categories = $allCategories->values();
+        });
 
         return response()->json($champ);
     }
