@@ -188,54 +188,46 @@ export function RaceRegister() {
     };
 
     const getAutoSubcategory = () => {
+        const eventDate = championship?.start_date ? new Date(championship.start_date) : new Date();
+        const eventYear = eventDate.getFullYear();
+        
+        console.log('--- [DEBUG AUTOSUB] ---');
+        console.log('Nascimento no Form:', formData.birth_date);
+        console.log('Gênero no Form:', formData.gender);
+        console.log('Parent ID:', parentCategoryId);
+
         if (!parentCategoryId || !formData.birth_date || !formData.gender) {
-            console.log('[AutoSub] Faltando dados:', { parentCategoryId, birth_date: formData.birth_date, gender: formData.gender });
+            console.log('[AutoSub] Pulando: Faltam dados básicos.');
             return null;
         }
 
         const mainCat = championship?.categories?.find((c: any) => String(c.id) === String(parentCategoryId));
-        if (!mainCat || !championship.categories) {
-            console.log('[AutoSub] Categoria pai não encontrada. parentCategoryId:', parentCategoryId, 'categorias:', championship?.categories?.map((c: any) => c.id));
-            return null;
-        }
+        if (!mainCat) return null;
 
         const children = championship.categories.filter((c: any) => String(c.parent_id) === String(mainCat.id));
-        console.log('[AutoSub] Filhos encontrados:', children.map((c: any) => ({ id: c.id, name: c.name, min_age: c.min_age, max_age: c.max_age, gender: c.gender, price: c.price })));
-
-        if (children.length === 0) {
-            console.log('[AutoSub] Nenhum filho. Sem subcategoria automática.');
-            return null;
-        }
-
-        // Calcular idade em 31/12 do ano do campeonato (igual ao backend)
-        const eventDate = championship.start_date ? new Date(championship.start_date) : new Date();
-        const eventYear = eventDate.getFullYear();
+        
         const birthDate = new Date(formData.birth_date);
         const age = eventYear - birthDate.getFullYear();
-        console.log('[AutoSub] Idade calculada:', age, 'ano evento:', eventYear, 'nasc:', formData.birth_date);
+        
+        console.log('Idade Calculada para o Evento:', age);
+        console.log('Subcategorias Candidatas:', children.length);
+
+        if (children.length === 0) return null;
 
         const found = children.find((child: any) => {
             const min = child.min_age ?? 0;
             const max = child.max_age ?? 999;
-            if (age < min || age > max) {
-                console.log(`[AutoSub] Filho ${child.name} rejeitado por idade: ${age} fora de [${min}, ${max}]`);
-                return false;
-            }
-
-            // Gênero
             const childGen = (child.gender || '').toLowerCase();
-            if (childGen && childGen !== 'mixed' && childGen !== 'misto') {
-                const userGen = (formData.gender === 'M' ? 'male' : formData.gender === 'F' ? 'female' : 'other');
-                const normChildGen = (childGen === 'm' ? 'male' : childGen === 'f' ? 'female' : childGen);
-                if (userGen !== normChildGen) {
-                    console.log(`[AutoSub] Filho ${child.name} rejeitado por gênero: atleta=${userGen} cat=${normChildGen}`);
-                    return false;
-                }
-            }
-            return true;
+            const userGen = (formData.gender === 'M' ? 'male' : formData.gender === 'F' ? 'female' : 'other');
+            const normChildGen = (childGen === 'm' ? 'male' : childGen === 'f' ? 'female' : childGen);
+
+            const ageMatch = age >= min && age <= max;
+            const genderMatch = !normChildGen || normChildGen === 'mixed' || normChildGen === 'misto' || userGen === normChildGen;
+
+            return ageMatch && genderMatch;
         });
 
-        console.log('[AutoSub] Subcategoria automática encontrada:', found ? { id: found.id, name: found.name, price: found.price } : null);
+        console.log('Resultado AutoSub:', found ? found.name : 'NENHUMA COMPATÍVEL');
         return found || null;
     };
 
@@ -319,6 +311,14 @@ export function RaceRegister() {
             const response = await api.get(`/championships/${id}`);
             const champ = response.data;
             setChampionship(champ);
+
+            console.log('--- [DEBUG CATEGORIAS DO BANCO] ---');
+            console.table(champ.categories?.map((c: any) => ({
+                id: c.id,
+                nome: c.name,
+                parent_id: c.parent_id,
+                preco: c.price
+            })));
 
             // Fetch Club Products
             const productsRes = await api.get(`/shop/products/${champ.club_id}`);
@@ -1158,7 +1158,18 @@ export function RaceRegister() {
                                 <div className="flex justify-between items-center pt-3 border-t-2 border-slate-900 border-dashed">
                                     <span className="font-black text-slate-900 uppercase text-lg italic">Total a Pagar</span>
                                     <span className="font-black text-indigo-600 text-2xl italic">
-                                        R$ {calculateTotal().toFixed(2)}
+                                        {(() => {
+                                            const mainCat = championship?.categories?.find((c: any) => String(c.id) === String(parentCategoryId));
+                                            const children = championship?.categories?.filter((c: any) => String(c.parent_id) === String(mainCat?.id)) || [];
+                                            const autoSub = getAutoSubcategory();
+                                            
+                                            // Se a categoria tem filhos mas não achou nenhum compatível, trava.
+                                            if (children.length > 0 && !autoSub && formData.birth_date && formData.gender) {
+                                                return <span className="text-red-600 text-xs italic uppercase">Nenhuma subcategoria compatível com sua idade/sexo</span>;
+                                            }
+                                            
+                                            return `R$ ${calculateTotal().toFixed(2)}`;
+                                        })()}
                                     </span>
                                 </div>
                             </div>
