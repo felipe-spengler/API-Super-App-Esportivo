@@ -233,6 +233,49 @@ class AdminReportController extends Controller
     }
 
     /**
+     * Get championship-specific financial data
+     */
+    public function championshipFinancial($championshipId)
+    {
+        $championship = Championship::findOrFail($championshipId);
+
+        $payments = \App\Models\RaceResult::whereHas('race', function ($query) use ($championshipId) {
+            $query->where('championship_id', $championshipId);
+        })
+            ->with(['user:id,name,email', 'category:id,name'])
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($registration) {
+                return [
+                    'id' => $registration->id,
+                    'athlete' => $registration->user->name ?? $registration->name,
+                    'email' => $registration->user->email ?? '-',
+                    'category' => $registration->category->name ?? '-',
+                    'value' => (float) ($registration->payment_info['value'] ?? 0),
+                    'method' => $registration->payment_method ?? 'N/A',
+                    'status' => $registration->status_payment,
+                    'date' => $registration->created_at->format('d/m/Y H:i'),
+                    'asaas_id' => $registration->asaas_payment_id
+                ];
+            });
+
+        $totalRevenue = $payments->where('status', 'paid')->sum('value');
+        $pendingRevenue = $payments->where('status', 'pending')->sum('value');
+
+        return response()->json([
+            'championship' => $championship->name,
+            'summary' => [
+                'total_revenue' => $totalRevenue,
+                'pending_revenue' => $pendingRevenue,
+                'total_count' => $payments->count(),
+                'paid_count' => $payments->where('status', 'paid')->count(),
+                'pending_count' => $payments->where('status', 'pending')->count(),
+            ],
+            'payments' => $payments
+        ]);
+    }
+
+    /**
      * Export data as CSV
      */
     public function export(Request $request)

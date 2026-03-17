@@ -277,6 +277,19 @@ class StatisticsController extends Controller
             })
                 ->distinct('player_id')
                 ->count('player_id'),
+            // Race/Individual Inscriptions
+            'total_inscriptions' => \App\Models\RaceResult::whereHas('race', function ($q) use ($championshipId) {
+                $q->where('championship_id', $championshipId);
+            })->count(),
+            'paid_inscriptions' => \App\Models\RaceResult::whereHas('race', function ($q) use ($championshipId) {
+                $q->where('championship_id', $championshipId);
+            })->where('status_payment', 'paid')->count(),
+            'total_subcategories' => \App\Models\Category::where('championship_id', $championshipId)
+                ->whereNotNull('parent_id')
+                ->count(),
+            'total_parent_categories' => \App\Models\Category::where('championship_id', $championshipId)
+                ->whereNull('parent_id')
+                ->count(),
         ];
 
         return response()->json([

@@ -12,10 +12,23 @@ export function IndividualPaymentManager() {
         asaas_environment: 'sandbox',
         enabled: false
     });
+    const [payments, setPayments] = useState<any[]>([]);
+    const [summary, setSummary] = useState<any>(null);
 
     useEffect(() => {
         loadSettings();
+        loadPayments();
     }, [id]);
+
+    async function loadPayments() {
+        try {
+            const res = await api.get(`/admin/championships/${id}/payments`);
+            setPayments(res.data.payments);
+            setSummary(res.data.summary);
+        } catch (error) {
+            console.error(error);
+        }
+    }
 
     async function loadSettings() {
         try {
@@ -136,23 +149,87 @@ export function IndividualPaymentManager() {
                             <p className="mt-3 text-[10px] uppercase font-black text-amber-600 tracking-widest">Eventos necessários: Pagamento Recebido, Pagamento Confirmado.</p>
                         </div>
                     </div>
+
+                    {/* Transaction List */}
+                    <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+                            <h2 className="font-black text-slate-900">Lista de Transações</h2>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-slate-50 border-b border-slate-100 italic">
+                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Atleta / Categoria</th>
+                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Valor</th>
+                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Método</th>
+                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Data</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {payments.length > 0 ? (
+                                        payments.map(px => (
+                                            <tr key={px.id} className="hover:bg-slate-50 transition-colors">
+                                                <td className="px-6 py-4">
+                                                    <div className="font-bold text-slate-900 leading-tight">{px.athlete}</div>
+                                                    <div className="text-[10px] font-black text-indigo-500 uppercase tracking-tighter">{px.category}</div>
+                                                </td>
+                                                <td className="px-6 py-4 font-black text-slate-700">
+                                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(px.value)}
+                                                </td>
+                                                <td className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">
+                                                    {px.method}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${px.status === 'paid' ? 'bg-emerald-100 text-emerald-700' : px.status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>
+                                                        {px.status === 'paid' ? 'Pago' : px.status === 'pending' ? 'Pendente' : px.status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-xs font-medium text-slate-400">
+                                                    {px.date}
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={5} className="px-6 py-8 text-center text-slate-400 font-medium">
+                                                Nenhuma transação encontrada para este evento.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="space-y-6">
+                    {/* Financial Summary */}
+                    <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+                        <h3 className="font-black text-slate-900 uppercase tracking-tighter text-sm">Resumo Financeiro</h3>
+                        <div className="flex justify-between items-end border-b border-slate-50 pb-3">
+                            <span className="text-xs font-bold text-slate-400 uppercase">Recebido</span>
+                            <span className="text-xl font-black text-emerald-600">
+                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(summary?.total_revenue || 0)}
+                            </span>
+                        </div>
+                        <div className="flex justify-between items-end border-b border-slate-50 pb-3">
+                            <span className="text-xs font-bold text-slate-400 uppercase">Pendente</span>
+                            <span className="text-xl font-black text-amber-500">
+                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(summary?.pending_revenue || 0)}
+                            </span>
+                        </div>
+                        <div className="pt-2">
+                             <div className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Dados baseados em {summary?.total_count || 0} inscrições</div>
+                        </div>
+                    </div>
+
                     <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
                         <CreditCard className="text-indigo-600 mb-4" size={32} />
                         <h3 className="font-black text-slate-900 mb-2">Por que usar Asaas?</h3>
                         <p className="text-sm text-slate-500 font-medium leading-relaxed">
-                            O Asaas permite que você receba via PIX, Boleto e Cartão de Crédito com conciliação automática. Os fundos caem diretamente na sua conta.
+                            O Asaas permite que você receba via PIX, Boleto e Cartão de Crédito com conciliação automática.
                         </p>
-                        <a
-                            href="https://www.asaas.com"
-                            target="_blank"
-                            className="mt-4 flex items-center justify-center gap-2 w-full py-3 bg-indigo-50 text-indigo-700 rounded-xl font-bold text-sm hover:bg-indigo-100 transition-all"
-                        >
-                            Ver Site do Asaas
-                            <ExternalLink size={14} />
-                        </a>
                     </div>
                 </div>
             </div>

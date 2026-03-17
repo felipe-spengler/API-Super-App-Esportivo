@@ -13,6 +13,7 @@ export function IndividualChampionshipDetails() {
     const navigate = useNavigate();
     const [championship, setChampionship] = useState<any>(null);
     const [categories, setCategories] = useState<any[]>([]);
+    const [statsData, setStatsData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -21,12 +22,14 @@ export function IndividualChampionshipDetails() {
 
     async function loadData() {
         try {
-            const [campRes, catRes] = await Promise.all([
+            const [campRes, catRes, statsRes] = await Promise.all([
                 api.get(`/championships/${id}`),
-                api.get(`/admin/championships/${id}/categories-list`).catch(() => ({ data: [] }))
+                api.get(`/admin/championships/${id}/categories-list`).catch(() => ({ data: [] })),
+                api.get(`/admin/championships/${id}/stats/dashboard`).catch(() => ({ data: { stats: {} } }))
             ]);
             setChampionship(campRes.data);
             setCategories(catRes.data);
+            setStatsData(statsRes.data.stats);
         } catch (error) {
             console.error(error);
         } finally {
@@ -58,9 +61,10 @@ export function IndividualChampionshipDetails() {
     if (!championship) return <div className="p-8">Evento não encontrado.</div>;
 
     const stats = [
-        { label: 'Inscritos', value: '0', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
-        { label: 'Confirmados', value: '0', icon: CreditCard, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-        { label: 'Categorias', value: categories.filter(c => !c.parent_id).length, icon: Layers, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+        { label: 'Inscritos', value: statsData?.total_inscriptions || 0, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
+        { label: 'Confirmados', value: statsData?.paid_inscriptions || 0, icon: CreditCard, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+        { label: 'Categorias', value: statsData?.total_parent_categories || 0, icon: Layers, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+        { label: 'Subcategorias', value: statsData?.total_subcategories || 0, icon: PlusCircle, color: 'text-purple-600', bg: 'bg-purple-50' },
     ];
 
     const cards = [
@@ -179,7 +183,7 @@ export function IndividualChampionshipDetails() {
             </div>
 
             {/* Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {stats.map(s => (
                     <div key={s.label} className="bg-white p-6 rounded-2xl border border-slate-200 flex items-center gap-4 shadow-sm">
                         <div className={`p-4 rounded-xl ${s.bg} ${s.color}`}>
