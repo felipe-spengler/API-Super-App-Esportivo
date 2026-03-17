@@ -383,7 +383,10 @@ export function RaceRegister() {
             data.append('document', formData.document);
             data.append('birth_date', formData.birth_date);
             data.append('gender', formData.gender);
-            data.append('category_id', formData.category_id);
+            const autoSub = getAutoSubcategory();
+            const finalCategoryId = autoSub ? autoSub.id.toString() : formData.category_id;
+
+            data.append('category_id', finalCategoryId);
             data.append('remove_bg', formData.remove_bg ? '1' : '0');
             if (photoFile) {
                 data.append('photo', photoFile);
@@ -805,6 +808,16 @@ export function RaceRegister() {
                                         return;
                                     }
 
+                                    // Validação de Subcategoria Automática/Obrigatória
+                                    const mainCat = championship?.categories?.find((c: any) => String(c.id) === String(parentCategoryId));
+                                    const children = championship?.categories?.filter((c: any) => String(c.parent_id) === String(mainCat?.id)) || [];
+                                    const autoSub = getAutoSubcategory();
+
+                                    if (children.length > 0 && !autoSub) {
+                                        alert('Não encontramos uma subcategoria (faixa etária/gênero) compatível com seu perfil nesta categoria. Por favor, verifique seus dados ou escolha outra categoria.');
+                                        return;
+                                    }
+
                                     // Check if category has gifts
                                     if (selectedCategory?.products_details?.length > 0) {
                                         setStep(3);
@@ -1188,7 +1201,13 @@ export function RaceRegister() {
                             </button>
                             <button
                                 onClick={() => setStep(6)}
-                                className="flex-1 py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-700 shadow-xl flex items-center justify-center gap-3 transition-all"
+                                disabled={(() => {
+                                    const mainCat = championship?.categories?.find((c: any) => String(c.id) === String(parentCategoryId));
+                                    const children = championship?.categories?.filter((c: any) => String(c.parent_id) === String(mainCat?.id)) || [];
+                                    const autoSub = getAutoSubcategory();
+                                    return children.length > 0 && !autoSub;
+                                })()}
+                                className="flex-1 py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-700 disabled:opacity-50 shadow-xl flex items-center justify-center gap-3 transition-all"
                             >
                                 Revisar Pedido
                                 <ArrowRight />
