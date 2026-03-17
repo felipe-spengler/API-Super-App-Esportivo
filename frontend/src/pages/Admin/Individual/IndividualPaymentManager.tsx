@@ -192,8 +192,21 @@ export function IndividualPaymentManager() {
                                                     <div className="font-bold text-slate-900 leading-tight">{px.athlete}</div>
                                                     <div className="text-[10px] font-black text-indigo-500 uppercase tracking-tighter">{px.category}</div>
                                                 </td>
-                                                <td className="px-6 py-4 font-black text-slate-700">
-                                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(px.value)}
+                                                <td className="px-6 py-4">
+                                                    <div className="font-black text-slate-700">
+                                                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(px.value)}
+                                                    </div>
+                                                    {px.discount > 0 && (
+                                                        <div className="text-[9px] font-bold text-rose-500 uppercase tracking-tight">
+                                                            -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(px.discount)} 
+                                                            {px.coupon && ` (${px.coupon})`}
+                                                        </div>
+                                                    )}
+                                                    {px.base_value > 0 && px.base_value !== px.value && (
+                                                        <div className="text-[9px] text-slate-400 font-medium line-through">
+                                                            De {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(px.base_value)}
+                                                        </div>
+                                                    )}
                                                 </td>
                                                 <td className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">
                                                     {px.method}
