@@ -281,14 +281,15 @@ trait ArtMatchTrait
             } elseif (!empty($goal->metadata['label'])) {
                 $name = $goal->metadata['label'];
             }
+            $isOwnGoal = isset($goal->metadata['own_goal']) && $goal->metadata['own_goal'] === true;
             if ($goal->team_id == $match->home_team_id) {
                 if (!isset($scorersA[$name]))
-                    $scorersA[$name] = 0;
-                $scorersA[$name]++;
+                    $scorersA[$name] = [];
+                $scorersA[$name][] = $isOwnGoal;
             } elseif ($goal->team_id == $match->away_team_id) {
                 if (!isset($scorersB[$name]))
-                    $scorersB[$name] = 0;
-                $scorersB[$name]++;
+                    $scorersB[$name] = [];
+                $scorersB[$name][] = $isOwnGoal;
             }
         }
 
@@ -297,6 +298,17 @@ trait ArtMatchTrait
         if (file_exists($ballPath))
             $ballImg = @imagecreatefrompng($ballPath);
 
+        $ballRedImg = null;
+        $ballRedPath = public_path('assets/img/bola_vermelha.png');
+        if (file_exists($ballRedPath)) {
+            $ballRedImg = @imagecreatefrompng($ballRedPath);
+        } elseif ($ballImg) {
+            $ballRedImg = @imagecreatefrompng($ballPath);
+            if ($ballRedImg) {
+                imagefilter($ballRedImg, IMG_FILTER_COLORIZE, 255, 0, 0);
+            }
+        }
+
         $tamanho_fonte_goleadores = 40;
         $y_goleadores = 1170 + 200;
         $x_goleadores_a = ($width / 2) - $centerDist - 50;
@@ -304,14 +316,19 @@ trait ArtMatchTrait
         $tamanho_bola = 40;
         $espacamento_bola = 5;
 
+        $red = imagecolorallocate($img, 255, 0, 0);
         $offset_y_a = 0;
-        foreach ($scorersA as $name => $count) {
+        foreach ($scorersA as $name => $goalsArray) {
+            $count = count($goalsArray);
             $x_current = $x_goleadores_a;
             for ($i = 0; $i < $count; $i++) {
-                if ($ballImg) {
-                    imagecopyresampled($img, $ballImg, $x_current - ($count - 1) * $tamanho_bola, $y_goleadores + $offset_y_a - $tamanho_bola, 0, 0, $tamanho_bola, $tamanho_bola, imagesx($ballImg), imagesy($ballImg));
+                $isOwn = $goalsArray[$i];
+                $currentBall = $isOwn ? $ballRedImg : $ballImg;
+                if ($currentBall) {
+                    imagecopyresampled($img, $currentBall, $x_current - ($count - 1) * $tamanho_bola, $y_goleadores + $offset_y_a - $tamanho_bola, 0, 0, $tamanho_bola, $tamanho_bola, imagesx($currentBall), imagesy($currentBall));
                 } else {
-                    imagefilledellipse($img, $x_current - ($count - 1) * $tamanho_bola + ($tamanho_bola / 2), $y_goleadores + $offset_y_a - $tamanho_bola + ($tamanho_bola / 2), $tamanho_bola, $tamanho_bola, $white);
+                    $color = $isOwn ? $red : $white;
+                    imagefilledellipse($img, $x_current - ($count - 1) * $tamanho_bola + ($tamanho_bola / 2), $y_goleadores + $offset_y_a - $tamanho_bola + ($tamanho_bola / 2), $tamanho_bola, $tamanho_bola, $color);
                 }
                 $x_current += $tamanho_bola + $espacamento_bola;
             }
@@ -322,13 +339,17 @@ trait ArtMatchTrait
         }
 
         $offset_y_b = 0;
-        foreach ($scorersB as $name => $count) {
+        foreach ($scorersB as $name => $goalsArray) {
+            $count = count($goalsArray);
             $x_current = $x_goleadores_b;
             for ($i = 0; $i < $count; $i++) {
-                if ($ballImg) {
-                    imagecopyresampled($img, $ballImg, $x_current - ($count - 1) * $tamanho_bola, $y_goleadores + $offset_y_b - $tamanho_bola, 0, 0, $tamanho_bola, $tamanho_bola, imagesx($ballImg), imagesy($ballImg));
+                $isOwn = $goalsArray[$i];
+                $currentBall = $isOwn ? $ballRedImg : $ballImg;
+                if ($currentBall) {
+                    imagecopyresampled($img, $currentBall, $x_current - ($count - 1) * $tamanho_bola, $y_goleadores + $offset_y_b - $tamanho_bola, 0, 0, $tamanho_bola, $tamanho_bola, imagesx($currentBall), imagesy($currentBall));
                 } else {
-                    imagefilledellipse($img, $x_current - ($count - 1) * $tamanho_bola + ($tamanho_bola / 2), $y_goleadores + $offset_y_b - $tamanho_bola + ($tamanho_bola / 2), $tamanho_bola, $tamanho_bola, $white);
+                    $color = $isOwn ? $red : $white;
+                    imagefilledellipse($img, $x_current - ($count - 1) * $tamanho_bola + ($tamanho_bola / 2), $y_goleadores + $offset_y_b - $tamanho_bola + ($tamanho_bola / 2), $tamanho_bola, $tamanho_bola, $color);
                 }
                 $x_current += $tamanho_bola + $espacamento_bola;
             }
@@ -340,6 +361,8 @@ trait ArtMatchTrait
 
         if ($ballImg)
             imagedestroy($ballImg);
+        if ($ballRedImg)
+            imagedestroy($ballRedImg);
 
         return $this->outputImage($img, 'confronto_' . $match->id);
     }

@@ -397,14 +397,15 @@ trait ArtGdTrait
                 $name = $goal->metadata['label'];
             }
 
+            $isOwnGoal = isset($goal->metadata['own_goal']) && $goal->metadata['own_goal'] === true;
             if ($goal->team_id == $match->home_team_id) {
                 if (!isset($scorersA[$name]))
-                    $scorersA[$name] = 0;
-                $scorersA[$name]++;
+                    $scorersA[$name] = [];
+                $scorersA[$name][] = $isOwnGoal;
             } elseif ($goal->team_id == $match->away_team_id) {
                 if (!isset($scorersB[$name]))
-                    $scorersB[$name] = 0;
-                $scorersB[$name]++;
+                    $scorersB[$name] = [];
+                $scorersB[$name][] = $isOwnGoal;
             }
         }
 
@@ -413,10 +414,23 @@ trait ArtGdTrait
         if (file_exists($ballPath)) {
             $ballImg = @imagecreatefrompng($ballPath);
         }
+
+        $ballRedImg = null;
+        $ballRedPath = public_path('assets/img/bola_vermelha.png');
+        if (file_exists($ballRedPath)) {
+            $ballRedImg = @imagecreatefrompng($ballRedPath);
+        } elseif ($ballImg) {
+            $ballRedImg = @imagecreatefrompng($ballPath);
+            if ($ballRedImg) {
+                imagefilter($ballRedImg, IMG_FILTER_COLORIZE, 255, 0, 0);
+            }
+        }
+
         $tamanho_bola = 40;
         $espacamento_bola = 5;
         $white = imagecolorallocate($img, 255, 255, 255);
         $black = imagecolorallocate($img, 0, 0, 0);
+        $red = imagecolorallocate($img, 255, 0, 0);
 
         foreach ([[$configHome, $scorersA], [$configAway, $scorersB]] as [$cfg, $scorers]) {
             if (!$cfg)
@@ -426,7 +440,8 @@ trait ArtGdTrait
             $fontSize = $cfg['fontSize'] ?? 30;
             $offset_y = 0;
 
-            foreach ($scorers as $name => $count) {
+            foreach ($scorers as $name => $goalsArray) {
+                $count = count($goalsArray);
                 $ballsWidth = ($count * $tamanho_bola) + (($count - 1) * $espacamento_bola);
                 $box = imagettfbbox($fontSize, 0, $this->fontPath, mb_strtoupper($name));
                 $nameWidth = abs($box[2] - $box[0]);
@@ -435,10 +450,13 @@ trait ArtGdTrait
                 $currX = $startX;
 
                 for ($i = 0; $i < $count; $i++) {
-                    if ($ballImg) {
-                        imagecopyresampled($img, $ballImg, $currX, $y + $offset_y - $tamanho_bola + ($tamanho_bola / 2), 0, 0, $tamanho_bola, $tamanho_bola, imagesx($ballImg), imagesy($ballImg));
+                    $isOwn = $goalsArray[$i];
+                    $currentBall = $isOwn ? $ballRedImg : $ballImg;
+                    if ($currentBall) {
+                        imagecopyresampled($img, $currentBall, $currX, $y + $offset_y - $tamanho_bola + ($tamanho_bola / 2), 0, 0, $tamanho_bola, $tamanho_bola, imagesx($currentBall), imagesy($currentBall));
                     } else {
-                        imagefilledellipse($img, $currX + ($tamanho_bola / 2), $y + $offset_y, $tamanho_bola, $tamanho_bola, $white);
+                        $color = $isOwn ? $red : $white;
+                        imagefilledellipse($img, $currX + ($tamanho_bola / 2), $y + $offset_y, $tamanho_bola, $tamanho_bola, $color);
                     }
                     $currX += $tamanho_bola + $espacamento_bola;
                 }
@@ -451,5 +469,7 @@ trait ArtGdTrait
 
         if ($ballImg)
             imagedestroy($ballImg);
+        if ($ballRedImg)
+            imagedestroy($ballRedImg);
     }
 }
