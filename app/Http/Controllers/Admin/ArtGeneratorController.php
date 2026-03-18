@@ -324,6 +324,22 @@ class ArtGeneratorController extends Controller
             $targetAward = $awards['generic'][$awardType];
         }
 
+        // Fallback backward compatibility for array flat
+        if (!$targetAward && is_array($awards)) {
+            foreach ($awards as $key => $award) {
+                if (is_array($award) && isset($award['category']) && $award['category'] === $awardType) {
+                    if (!$categoryId || (isset($award['category_id']) && (string)$award['category_id'] === (string)$categoryId)) {
+                        $targetAward = $award;
+                        break;
+                    }
+                    if (!isset($award['category_id'])) {
+                        $targetAward = $award;
+                        break;
+                    }
+                }
+            }
+        }
+
         if (!$targetAward || !isset($targetAward['player_id'])) {
             return response("Premiação não definida para esta categoria: $awardType" . ($categoryId ? " (CatID: $categoryId)" : ""), 404);
         }

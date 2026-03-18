@@ -43,21 +43,16 @@ export function AdminChampionshipAwards() {
         loadData();
     }, [id]);
 
-    async function loadData() {
+    useEffect(() => {
+        if (selectedCategory) {
+            loadTeamsForCategory(selectedCategory);
+        }
+    }, [selectedCategory]);
+
+    async function loadTeamsForCategory(catId: number | null) {
         try {
-            const [campRes, teamsRes, catsRes] = await Promise.all([
-                api.get(`/championships/${id}`),
-                api.get(`/championships/${id}/teams?with_players=true`),
-                api.get(`/admin/championships/${id}/categories`)
-            ]);
-
-            setChampionship(campRes.data);
-            setCategories(catsRes.data);
-            if (catsRes.data.length > 0) {
-                setSelectedCategory(catsRes.data[0].id);
-            }
-
-            // Process teams and flatten players for easy search
+            const query = catId ? `?category_id=${catId}&with_players=true` : '?with_players=true';
+            const teamsRes = await api.get(`/championships/${id}/teams${query}`);
             const teamsData = teamsRes.data || [];
             setTeams(teamsData);
 
@@ -70,10 +65,45 @@ export function AdminChampionshipAwards() {
                 }
             });
             setPlayers(allPlayers);
+        } catch (error) {
+            console.error("Erro ao carregar times da categoria", error);
+        }
+    }
+
+    async function loadData() {
+        try {
+            const [campRes, catsRes] = await Promise.all([
+                api.get(`/championships/${id}`),
+                api.get(`/admin/championships/${id}/categories`)
+            ]);
+
+            setChampionship(campRes.data);
+            setCategories(catsRes.data);
+            
+            if (catsRes.data.length > 0) {
+                // setting selected category will trigger loadTeamsForCategory
+                setSelectedCategory(catsRes.data[0].id);
+            } else {
+                loadTeamsForCategory(null);
+            }
+
+            // Normalize legacy flat array to new dynamic object format
+            const normalizeAwards = (paramAwards: any) => {
+                if (Array.isArray(paramAwards)) {
+                    const newStruct: any = { generic: {} };
+                    paramAwards.forEach(a => {
+                        if (a && typeof a === 'object' && a.category) {
+                            newStruct.generic[a.category] = { player_id: a.player_id, team_id: a.team_id };
+                        }
+                    });
+                    return newStruct;
+                }
+                return paramAwards || {};
+            };
 
             // Load existing awards
             if (campRes.data.awards) {
-                setAllAwards(campRes.data.awards);
+                setAllAwards(normalizeAwards(campRes.data.awards));
             }
 
         } catch (error) {
@@ -112,23 +142,32 @@ export function AdminChampionshipAwards() {
         ];
     };
 
-    const handlePlayerSelect = (awardType: string, playerId: string) => {
+    const handlePlayerSelect = async (awardType: string, playerId: string) => {
         // Find player to get team_id
         const player = players.find(p => p.id === Number(playerId));
         const teamId = player?.team_id;
 
         const catKey = selectedCategory ? String(selectedCategory) : 'generic';
 
-        setAllAwards((prev: any) => ({
-            ...prev,
+        const updatedAwards = {
+            ...allAwards,
             [catKey]: {
-                ...prev[catKey],
+                ...(allAwards[catKey] || {}),
                 [awardType]: {
                     player_id: playerId,
                     team_id: teamId
                 }
             }
-        }));
+        };
+
+        setAllAwards(updatedAwards);
+
+        // Auto-save no background para evitar o bug de o usuário baixar a arte sem salvar.
+        try {
+            await api.put(`/admin/championships/${id}/awards`, { awards: updatedAwards });
+        } catch (error) {
+            console.error('Erro ao auto-salvar premiação', error);
+        }
     };
 
     const handleTeamFilterChange = (awardType: string, teamId: string) => {

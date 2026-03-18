@@ -233,27 +233,9 @@ class CategoryController extends Controller
         // Validação de elegibilidade de todos os membros do time (incluindo capitão)
         $team = \App\Models\Team::with(['players', 'captain'])->findOrFail($validated['team_id']);
 
-        // Verifica o capitão
-        if ($team->captain) {
-            $check = $category->isUserEligible($team->captain);
-            if (!$check['eligible']) {
-                return response()->json([
-                    'message' => "O capitão {$team->captain->name} não atende aos requisitos desta categoria.",
-                    'reason' => $check['reason']
-                ], 403);
-            }
-        }
-
-        // Verifica os jogadores
-        foreach ($team->players as $player) {
-            $check = $category->isUserEligible($player);
-            if (!$check['eligible']) {
-                return response()->json([
-                    'message' => "O atleta {$player->name} não atende aos requisitos desta categoria.",
-                    'reason' => $check['reason']
-                ], 403);
-            }
-        }
+        // Removida a validação automática do capitão global e dos jogadores globais do time ($team->captain e $team->players).
+        // Isso porque no momento em que um time entra em um campeonato/categoria, o seu elenco local é vazio 
+        // e o capitão da categoria pode ser definido depois. As validações ocorrerão no momento de adicionar o jogador.
 
         $category->teams()->attach($validated['team_id']);
 

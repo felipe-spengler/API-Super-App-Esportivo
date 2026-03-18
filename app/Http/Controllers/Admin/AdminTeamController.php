@@ -178,8 +178,8 @@ class AdminTeamController extends Controller
         if (!empty($validated['category_id'])) {
             $category = \App\Models\Category::findOrFail($validated['category_id']);
 
-            // Verifica o capitão informado ou o global
-            $checkCaptain = $validated['captain_id'] ? \App\Models\User::find($validated['captain_id']) : $team->captain;
+            // Verifica o capitão apenas se for informado explicitamente para a categoria
+            $checkCaptain = !empty($validated['captain_id']) ? \App\Models\User::find($validated['captain_id']) : null;
             if ($checkCaptain) {
                 $check = $category->isUserEligible($checkCaptain);
                 if (!$check['eligible']) {
@@ -190,16 +190,8 @@ class AdminTeamController extends Controller
                 }
             }
 
-            // Verifica os jogadores
-            foreach ($team->players as $player) {
-                $check = $category->isUserEligible($player);
-                if (!$check['eligible']) {
-                    return response()->json([
-                        'message' => "O atleta {$player->name} não atende aos requisitos da categoria {$category->name}.",
-                        'reason' => $check['reason']
-                    ], 403);
-                }
-            }
+            // A validação de jogadores ($team->players) foi removida daqui, 
+            // pois o elenco da categoria inicia vazio e os jogadores serão validados ao serem adicionados/copiados.
         }
 
         // Se não informou categoria e o campeonato tem categorias, pega a primeira
@@ -211,8 +203,8 @@ class AdminTeamController extends Controller
             }
         }
 
-        // Determina o capitão para este vínculo (prioriza o informado, depois o do time)
-        $captainIdForPivot = $validated['captain_id'] ?? ($team->captain_id ?? null);
+        // O capitão inicia nulo para a categoria, a menos que especificado
+        $captainIdForPivot = !empty($validated['captain_id']) ? $validated['captain_id'] : null;
 
         // Attach team to championship with specific category
         $exists = \DB::table('championship_team')
