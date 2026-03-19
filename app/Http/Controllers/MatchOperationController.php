@@ -5,7 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\GameMatch;
 use App\Models\Team;
-use App\Models\User; // Players are Users or specific Player model? Using User/Participant logic concept
+use App\Models\User;
+use App\Models\MatchSet;
 use Illuminate\Support\Facades\DB;
 
 class MatchOperationController extends Controller
@@ -132,8 +133,25 @@ class MatchOperationController extends Controller
                 })->values();
             $details['events'] = $tableEvents;
         }
-        if (!isset($details['sets']))
-            $details['sets'] = [];
+        if (!isset($details['sets']) || empty($details['sets'])) {
+            $isVolley = ($match->championship->sport->slug ?? '') === 'volei';
+            if ($isVolley) {
+                $details['sets'] = MatchSet::where('game_match_id', $match->id)
+                    ->orderBy('set_number')
+                    ->get()
+                    ->map(function ($s) {
+                        return [
+                            'id' => $s->id,
+                            'set_number' => $s->set_number,
+                            'home_score' => $s->home_score,
+                            'away_score' => $s->away_score,
+                            'status' => $s->status
+                        ];
+                    })->toArray();
+            } else {
+                $details['sets'] = [];
+            }
+        }
         if (!isset($details['positions']))
             $details['positions'] = [];
 

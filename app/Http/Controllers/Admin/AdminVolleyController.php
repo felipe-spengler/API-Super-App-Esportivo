@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\GameMatch;
 use App\Models\MatchSet;
+use App\Events\MatchUpdated;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
@@ -116,6 +117,8 @@ class AdminVolleyController extends Controller
             $details['volley_state'] = [
                 'current_set' => $setNumber,
                 'serving_team_id' => $servingTeamId,
+                'home_score' => 0,
+                'away_score' => 0,
                 'last_point_sideout' => false,
                 'history' => $existingHistory
             ];
@@ -128,6 +131,8 @@ class AdminVolleyController extends Controller
             $match->match_details = $details;
             $match->status = 'live';
             $match->save();
+
+            MatchUpdated::dispatch($match->id, $match->toArray());
 
             // 4. Record System Event
             DB::table('match_events')->insert([
@@ -180,6 +185,8 @@ class AdminVolleyController extends Controller
             // Advance state
             $state['current_set'] = $setNum + 1;
             $state['serving_team_id'] = null;
+            $state['home_score'] = 0;
+            $state['away_score'] = 0;
             $state['last_point_sideout'] = false;
             $details['volley_state'] = $state;
 
@@ -196,6 +203,8 @@ class AdminVolleyController extends Controller
 
             $match->match_details = $details;
             $match->save();
+
+            MatchUpdated::dispatch($match->id, $match->toArray());
         });
 
         return $this->getState($matchId);
@@ -256,6 +265,9 @@ class AdminVolleyController extends Controller
                     $state['last_point_sideout'] = false;
                 }
 
+                $state['home_score'] = $set->home_score;
+                $state['away_score'] = $set->away_score;
+
                 $secondsPassed = $set->start_time ? now()->diffInSeconds($set->start_time) : 0;
                 $details['sync_timer'] = [
                     'time' => $secondsPassed,
@@ -267,6 +279,8 @@ class AdminVolleyController extends Controller
                 $details['volley_state'] = $state;
                 $match->match_details = $details;
                 $match->save();
+
+                MatchUpdated::dispatch($match->id, $match->toArray());
 
                 // 3. Record Match Event for Timeline
                 $categoryMap = [
@@ -377,6 +391,8 @@ class AdminVolleyController extends Controller
         }
 
         $match->save();
+
+        MatchUpdated::dispatch($match->id, $match->toArray());
         return $currentSetFinished;
     }
 
@@ -394,6 +410,9 @@ class AdminVolleyController extends Controller
         } else {
             $this->rotateTeamDB($matchId, $teamId, $setNum, true);
         }
+
+        $match = GameMatch::find($matchId);
+        MatchUpdated::dispatch($match->id, $match->toArray());
 
         return $this->getState($matchId);
     }
@@ -464,6 +483,9 @@ class AdminVolleyController extends Controller
                 ]);
             }
         });
+
+        $match = GameMatch::find($matchId);
+        MatchUpdated::dispatch($match->id, $match->toArray());
 
         return $this->getState($matchId);
     }

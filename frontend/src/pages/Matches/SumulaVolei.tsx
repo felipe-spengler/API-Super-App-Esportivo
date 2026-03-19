@@ -108,7 +108,7 @@ export function SumulaVolei() {
                     currentSeconds += Math.floor(diffMs / 1000);
                 }
                 const mins = Math.floor(currentSeconds / 60);
-                const secs = currentSeconds % 60;
+                const secs = Math.floor(currentSeconds % 60);
                 setElapsedTime(`${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`);
             }, 1000);
         } else {

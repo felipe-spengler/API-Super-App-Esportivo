@@ -289,6 +289,19 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                         <span className="text-3xl sm:text-5xl font-black text-white tabular-nums">{match?.away_score ?? 0}</span>
                                     </div>
 
+                                    {/* Placar de pontos do set atual (Vôlei) */}
+                                    {match?.championship?.sport?.slug === 'volei' && details?.volley_state && (
+                                        <div className="flex items-center gap-1.5 mt-[-2px] mb-1">
+                                            <span className="text-[10px] sm:text-xs font-bold text-white/50 bg-white/5 px-2 py-0.5 rounded border border-white/5 shadow-inner tabular-nums">
+                                                {details.volley_state.home_score ?? 0}
+                                            </span>
+                                            <span className="text-[8px] text-white/20 font-black">PONTOS</span>
+                                            <span className="text-[10px] sm:text-xs font-bold text-white/50 bg-white/5 px-2 py-0.5 rounded border border-white/5 shadow-inner tabular-nums">
+                                                {details.volley_state.away_score ?? 0}
+                                            </span>
+                                        </div>
+                                    )}
+
                                     {/* Placar de Sets/Games para Tênis/Vôlei/Beach Tennis */}
                                     {['tenis', 'volei', 'beach-tennis', 'volei-praia', 'tenis-mesa'].includes(match?.championship?.sport?.slug) && details?.sets?.length > 0 && (
                                         <div className="flex items-center gap-1 mt-1">
@@ -524,7 +537,11 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                                         {/* Minute circle (desktop center line) */}
                                                         <div className="flex flex-col items-center z-10 shrink-0 ml-4 lg:ml-0">
                                                             <div className="w-8 h-8 rounded-full bg-white border-2 border-indigo-100 flex items-center justify-center text-[10px] font-black text-gray-700 shadow-sm mb-0.5">
-                                                                {event.minute ? (event.minute.toString().includes(':') || event.minute.toString() === 'Fim' ? event.minute : `${event.minute}'`) : '--'}
+                                                                {event.minute ? (
+                                                                    event.minute.toString().includes(':') 
+                                                                        ? event.minute.toString().split('.')[0] // Remove fractional seconds if present
+                                                                        : (event.minute.toString() === 'Fim' ? event.minute : `${event.minute}'`)
+                                                                ) : '--'}
                                                             </div>
                                                             <span className="text-[7px] font-black text-indigo-500 uppercase tracking-tighter bg-indigo-50 px-1 rounded border border-indigo-100/50">
                                                                 {event.period?.replace('Quarto', 'Q') || '1T'}
