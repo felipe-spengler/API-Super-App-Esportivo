@@ -1150,18 +1150,54 @@ export function SumulaVolei() {
                                 {pointFlow.type === 'erro' ? (
                                     <div className="text-center text-gray-400 mb-4">Ponto por erro do adversário. <br /> Nenhum jogador específico.</div>
                                 ) : (
-                                    <div className="grid grid-cols-4 gap-2 max-h-60 overflow-y-auto mb-4">
-                                        {(pointFlow.teamId === matchData.home_team_id ? teamPlayers.home : teamPlayers.away).map((p: any) => (
-                                            <button key={p.id} onClick={() => confirmPointPlayer(p.id)} className="p-2 bg-gray-700 hover:bg-gray-600 rounded flex flex-col items-center">
-                                                <span className="font-bold text-lg">{p.number}</span>
-                                                <span className="text-[10px] truncate w-full text-center">{p.nickname || p.name.split(' ')[0]}</span>
-                                            </button>
-                                        ))}
+                                    <div className="space-y-4 mb-4">
+                                        {/* Jogadores em Quadra */}
+                                        <div>
+                                            <div className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-2 border-b border-indigo-500/30 pb-1">Em Quadra</div>
+                                            <div className="grid grid-cols-3 gap-2">
+                                                {(() => {
+                                                    const isHome = pointFlow.teamId === matchData.home_team_id;
+                                                    const onCourtIds = new Set((isHome ? rotations.home : rotations.away).filter((id: any) => id != null).map(Number));
+                                                    const allP = isHome ? teamPlayers.home : teamPlayers.away;
+                                                    const onCourt = allP.filter((p: any) => onCourtIds.has(Number(p.id)));
+                                                    
+                                                    return onCourt.map((p: any) => (
+                                                        <button key={p.id} onClick={() => confirmPointPlayer(p.id)} className="p-3 bg-indigo-600/40 hover:bg-indigo-600 border border-indigo-500/50 rounded-xl flex flex-col items-center shadow-lg active:scale-95 transition-all">
+                                                            <span className="font-black text-xl text-white leading-none">{p.number}</span>
+                                                            <span className="text-[10px] font-bold truncate w-full text-center text-indigo-100">{p.nickname || p.name.split(' ')[0]}</span>
+                                                        </button>
+                                                    ));
+                                                })()}
+                                            </div>
+                                        </div>
+
+                                        {/* Resto do Time (Reservas) */}
+                                        <div>
+                                            <div className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 border-b border-gray-700 pb-1">Reservas / Outros</div>
+                                            <div className="grid grid-cols-4 gap-2 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
+                                                {(() => {
+                                                    const isHome = pointFlow.teamId === matchData.home_team_id;
+                                                    const onCourtIds = new Set((isHome ? rotations.home : rotations.away).filter((id: any) => id != null).map(Number));
+                                                    const allP = isHome ? teamPlayers.home : teamPlayers.away;
+                                                    const offCourt = allP.filter((p: any) => !onCourtIds.has(Number(p.id)));
+                                                    
+                                                    return offCourt.map((p: any) => (
+                                                        <button key={p.id} onClick={() => confirmPointPlayer(p.id)} className="p-2 bg-gray-700/50 hover:bg-gray-700 border border-gray-600 rounded flex flex-col items-center">
+                                                            <span className="font-bold text-sm text-gray-300">{p.number}</span>
+                                                            <span className="text-[9px] truncate w-full text-center text-gray-500">{p.nickname || p.name.split(' ')[0]}</span>
+                                                        </button>
+                                                    ));
+                                                })()}
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
-                                <button onClick={() => confirmPointPlayer(null)} className="w-full py-3 bg-indigo-600 rounded-xl font-bold mb-2">
-                                    {pointFlow.type === 'erro' ? 'Confirmar Ponto' : 'Não Identificado / Time'}
-                                </button>
+                                
+                                {pointFlow.type === 'erro' && (
+                                    <button onClick={() => confirmPointPlayer(null)} className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-bold mb-2 shadow-lg shadow-indigo-900/40 active:scale-95 transition-all">
+                                        CONFIRMAR PONTO (EQUIPE)
+                                    </button>
+                                )}
                             </>
                         )}
                         <button onClick={() => setPointFlow(null)} className="mt-4 w-full py-4 text-gray-400 font-bold">Cancelar</button>
