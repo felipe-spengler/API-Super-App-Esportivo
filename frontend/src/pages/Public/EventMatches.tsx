@@ -15,12 +15,14 @@ export function EventMatches() {
     const [champName, setChampName] = useState('');
     const [activeTab, setActiveTab] = useState<'all' | 'live' | 'upcoming' | 'finished'>('all');
     const [selectedRound, setSelectedRound] = useState<string>('Todas');
+    const [now, setNow] = useState(Date.now());
 
     // Modal State
     const [selectedMatchId, setSelectedMatchId] = useState<string | number | null>(null);
 
-    // Polling Ref to avoid state closure staleness if needed, but dependency array is enough
+    // Polling Ref
     const pollingRef = useRef<any>(null);
+    const tickRef = useRef<any>(null);
 
     const fetchData = async (silent = false) => {
         if (!silent) setLoading(true);
@@ -51,8 +53,13 @@ export function EventMatches() {
             fetchData(true);
         }, 30000); // 30s
 
+        tickRef.current = setInterval(() => {
+            setNow(Date.now());
+        }, 1000);
+
         return () => {
             if (pollingRef.current) clearInterval(pollingRef.current);
+            if (tickRef.current) clearInterval(tickRef.current);
         };
     }, [id, categoryId]);
 
@@ -64,8 +71,13 @@ export function EventMatches() {
         const st = match.match_details?.sync_timer;
 
         switch (status) {
-
             case 'live':
+                let displayTime = st?.time || 0;
+                if (st?.isRunning && st?.updated_at) {
+                    const diff = Math.floor((now - st.updated_at) / 1000);
+                    displayTime += Math.max(0, diff);
+                }
+
                 return (
                     <div className="flex flex-col items-center gap-1">
                         <div className="flex items-center gap-1">
@@ -74,16 +86,14 @@ export function EventMatches() {
                                 <span className="px-1 py-0.5 bg-yellow-100 text-yellow-700 rounded text-[8px] font-black uppercase border border-yellow-200">Parado</span>
                             )}
                         </div>
-                        {st && (
-                            <div className="flex flex-col items-center">
-                                <span className="text-lg font-mono font-black text-red-600 leading-none">
-                                    {formatMatchTimePublic(st.time || 0)}
-                                </span>
-                                {st.currentPeriod && (
-                                    <span className="text-[8px] text-gray-400 font-bold uppercase">{st.currentPeriod}</span>
-                                )}
-                            </div>
-                        )}
+                        <div className="flex flex-col items-center">
+                            <span className="text-lg font-mono font-black text-red-600 leading-none">
+                                {formatMatchTimePublic(displayTime)}
+                            </span>
+                            {st?.currentPeriod && (
+                                <span className="text-[8px] text-gray-400 font-bold uppercase">{st.currentPeriod}</span>
+                            )}
+                        </div>
                     </div>
                 );
             case 'finished':

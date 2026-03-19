@@ -19,11 +19,11 @@ export function MatchPrintView() {
 
     const loadMatch = async () => {
         try {
-            const response = await api.get(`/matches/${id}/operation-details`);
+            const response = await api.get(`/public/matches/${id}/full-details`);
             const data = response.data;
             setMatch(data.match);
             setRosters(data.rosters);
-            setEvents(data.events);
+            setEvents(data.details?.events || []);
         } catch (error) {
             console.error('Error fetching match details:', error);
         } finally {

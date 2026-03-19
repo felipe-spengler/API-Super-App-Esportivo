@@ -24,7 +24,7 @@ export const PrintFootball = ({ match, rosters, events }: { match: any, rosters:
         return (
             <div className="mb-8 break-inside-avoid">
                 <div className="border border-black bg-gray-100 font-bold p-1 text-lg uppercase text-center mb-1">
-                    {team.name}
+                    {team?.name}
                 </div>
                 <div className="flex gap-2">
                     <div className="w-[70%]">
@@ -122,11 +122,11 @@ export const PrintFootball = ({ match, rosters, events }: { match: any, rosters:
             <table className="w-full text-lg border-collapse border border-black mb-4">
                 <tbody>
                     <tr>
-                        <td className="border border-black p-2 font-bold text-right w-[40%]">{match.home_team?.name}</td>
+                        <td className="border border-black p-2 font-bold text-right w-[40%]">{(match.home_team || match.homeTeam)?.name}</td>
                         <td className="border border-black p-2 font-bold text-center w-[10%] text-2xl bg-gray-50">{match.home_score ?? '0'}</td>
                         <td className="border border-black p-2 font-bold text-center w-[5%] text-xl">X</td>
                         <td className="border border-black p-2 font-bold text-center w-[10%] text-2xl bg-gray-50">{match.away_score ?? '0'}</td>
-                        <td className="border border-black p-2 font-bold text-left w-[40%]">{match.away_team?.name}</td>
+                        <td className="border border-black p-2 font-bold text-left w-[40%]">{(match.away_team || match.awayTeam)?.name}</td>
                     </tr>
                 </tbody>
             </table>
@@ -161,9 +161,9 @@ export const PrintFootball = ({ match, rosters, events }: { match: any, rosters:
                 </div>
             </div>
 
-            <TeamBlock team={match.home_team || { name: 'Time Mandante' }} players={rosters.home} />
+            <TeamBlock team={(match.home_team || match.homeTeam) || { name: 'Time Mandante' }} players={rosters.home} />
             <div className="border-t-2 border-dashed border-gray-400 my-4 no-print relative"><span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white px-2 text-xs text-gray-500">Corte Aqui (Opcional)</span></div>
-            <TeamBlock team={match.away_team || { name: 'Time Visitante' }} players={rosters.away} />
+            <TeamBlock team={(match.away_team || match.awayTeam) || { name: 'Time Visitante' }} players={rosters.away} />
         </>
     );
 };

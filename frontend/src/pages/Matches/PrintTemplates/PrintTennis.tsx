@@ -21,7 +21,7 @@ export const PrintTennis = ({ match, rosters, events }: { match: any, rosters: a
         return (
             <div className="mb-8 break-inside-avoid">
                 <div className="border border-black bg-gray-100 font-bold p-1 text-lg uppercase text-center mb-1">
-                    {team.name}
+                    {team?.name}
                 </div>
                 <div className="flex gap-2">
                     <div className="w-full">
@@ -70,7 +70,7 @@ export const PrintTennis = ({ match, rosters, events }: { match: any, rosters: a
                 <tbody>
                     <tr>
                         <td className="border border-black p-2 font-bold text-right w-[40%] flex-col">
-                            <div>{match.home_team?.name}</div>
+                            <div>{(match.home_team || match.homeTeam)?.name}</div>
                             <div className="text-[10px] text-gray-400 font-normal">Mandante</div>
                         </td>
                         <td className="border border-black p-2 font-bold text-center w-[10%] text-2xl bg-gray-50 flex flex-col items-center">
@@ -83,7 +83,7 @@ export const PrintTennis = ({ match, rosters, events }: { match: any, rosters: a
                             <div className="text-[9px] font-normal uppercase text-blue-600">Sets</div>
                         </td>
                         <td className="border border-black p-2 font-bold text-left w-[40%]">
-                            <div>{match.away_team?.name}</div>
+                            <div>{(match.away_team || match.awayTeam)?.name}</div>
                             <div className="text-[10px] text-gray-400 font-normal">Visitante</div>
                         </td>
                     </tr>
@@ -117,9 +117,9 @@ export const PrintTennis = ({ match, rosters, events }: { match: any, rosters: a
                 </table>
             </div>
 
-            <TeamBlock team={match.home_team || { name: 'Time Mandante' }} players={rosters.home} />
+            <TeamBlock team={(match.home_team || match.homeTeam) || { name: 'Time Mandante' }} players={rosters.home} />
             <div className="border-t-2 border-dashed border-gray-400 my-4 no-print relative"><span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white px-2 text-xs text-gray-500">Corte Aqui (Opcional)</span></div>
-            <TeamBlock team={match.away_team || { name: 'Time Visitante' }} players={rosters.away} />
+            <TeamBlock team={(match.away_team || match.awayTeam) || { name: 'Time Visitante' }} players={rosters.away} />
         </>
     );
 };
