@@ -621,19 +621,28 @@ export function Matches() {
                                     ) : matchEvents.length === 0 ? (
                                         <div className="text-center py-4 text-gray-400 text-[10px] uppercase font-bold tracking-widest border border-dashed rounded-xl">Nenhum evento registrado</div>
                                     ) : (
-                                        matchEvents.filter(ev => ['goal', 'yellow_card', 'red_card', 'blue_card', 'assist'].includes(ev.event_type)).map((ev: any) => (
+                                        matchEvents.filter(ev => [
+                                            'goal', 'yellow_card', 'red_card', 'blue_card', 'assist',
+                                            'point', 'ace', 'block', 'foul', 'timeout', 'substitution'
+                                        ].includes(ev.event_type)).map((ev: any) => (
                                             <div key={ev.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-100">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="text-[10px] font-bold text-gray-400 w-8">{ev.game_time || '--'}</div>
+                                                    <div className="text-[10px] font-bold text-gray-400 w-10 text-center">{ev.game_time || '--'}</div>
                                                     <div className="flex flex-col">
-                                                        <span className="text-xs font-bold text-gray-800 flex items-center gap-1">
-                                                            {ev.event_type === 'goal' && '⚽'}
-                                                            {ev.event_type === 'yellow_card' && '🟨'}
-                                                            {ev.event_type === 'red_card' && '🟥'}
-                                                            {ev.event_type === 'blue_card' && '🟦'}
-                                                            {ev.event_type === 'assist' && '👟'}
-                                                            {ev.player?.name || 'Jogador desconhecido'}
-                                                            <span className="text-[9px] text-gray-400 font-normal ml-1">({ev.team?.name})</span>
+                                                        <span className="text-xs font-bold text-gray-800 flex items-center gap-1 flex-wrap">
+                                                            {ev.icon || (
+                                                                (ev.event_type === 'goal' || ev.event_type === 'point') ? '⚽' :
+                                                                ev.event_type === 'yellow_card' ? '🟨' :
+                                                                ev.event_type === 'red_card' ? '🟥' :
+                                                                ev.event_type === 'blue_card' ? '🟦' :
+                                                                ev.event_type === 'assist' ? '👟' :
+                                                                ev.event_type === 'block' ? '🛡️' :
+                                                                ev.event_type === 'ace' ? '🚀' :
+                                                                ev.event_type === 'timeout' ? '⏱️' : '📋'
+                                                            )}
+                                                            <span className="uppercase text-[10px] text-gray-500 mr-1">{ev.label ? `${ev.label}:` : ''}</span>
+                                                            {ev.player_name || ev.player?.name || 'Equipe'}
+                                                            <span className="text-[9px] text-gray-400 font-normal ml-1">({ev.team?.name || 'SYS'})</span>
                                                         </span>
                                                     </div>
                                                 </div>

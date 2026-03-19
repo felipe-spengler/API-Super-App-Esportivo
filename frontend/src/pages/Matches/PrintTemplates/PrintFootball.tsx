@@ -3,21 +3,37 @@ import { EditableSpan } from './PrintBase';
 
 export const PrintFootball = ({ match, rosters, events }: { match: any, rosters: any, events: any[] }) => {
     const TeamBlock = ({ team, players }: { team: any, players: any[] }) => {
-        const teamEvents = events.filter((e: any) => e.team_id === team.id);
-        const teamGoals = teamEvents.filter((e: any) => e.type === 'goal');
-        const teamFouls = teamEvents.filter((e: any) => e.type === 'foul');
+        const homeId = match.home_team_id || match.home_team?.id;
+        const awayId = match.away_team_id || match.away_team?.id;
+        const isHomeTeam = team.id === homeId;
+        const opponentId = isHomeTeam ? awayId : homeId;
+
+        const teamEvents = events.filter((e: any) => {
+            // Include events for this team, and own goals where this team benefits
+            if (e.type === 'goal' || e.type === 'own_goal') {
+                const isOwnGoal = e.type === 'own_goal' || e.metadata?.own_goal;
+                if (isOwnGoal) return e.team_id === opponentId;
+                return e.team_id === team.id;
+            }
+            return e.team_id === team.id;
+        });
+
+        const teamGoals = teamEvents.filter((e: any) => e.type === 'goal' || e.type === 'own_goal');
+        const teamFouls = events.filter((e: any) => e.type === 'foul' && e.team_id === team.id);
         
         const rows = Array.from({ length: 20 }, (_, i) => {
             const player = players[i];
             const pId = player?.id;
+            const pEvents = events.filter(e => e.player_id === pId && e.team_id === team.id);
             const participatedSets = player?.participated_sets || [];
 
             return {
                 idx: i + 1,
                 player,
-                hasYellow: teamEvents.some(e => ['yellow_card', 'yellow'].includes(e.type) && e.player_id === pId),
-                hasRed: teamEvents.some(e => ['red_card', 'red'].includes(e.type) && e.player_id === pId),
-                goals: teamGoals.filter(e => e.player_id === pId).length,
+                hasYellow: pEvents.some(e => ['yellow_card', 'yellow'].includes(e.type)),
+                hasRed: pEvents.some(e => ['red_card', 'red'].includes(e.type)),
+                goals: teamGoals.filter(e => e.player_id === pId && !(e.metadata?.own_goal || e.type === 'own_goal')).length,
+                fouls: pEvents.filter(e => e.type === 'foul').length,
                 participation: [1, 2].map(n => participatedSets.includes(n))
             };
         });
@@ -58,8 +74,12 @@ export const PrintFootball = ({ match, rosters, events }: { match: any, rosters:
                                         </td>
                                         <td className="border border-black text-center font-bold">{row.participation[0] ? 'X' : ''}</td>
                                         <td className="border border-black text-center font-bold">{row.participation[1] ? 'X' : ''}</td>
-                                        <td className="border border-black text-center text-[8px] text-gray-400 tracking-widest leading-none pt-1">
-                                            1 2 3 4 5
+                                        <td className="border border-black text-center text-[10px] font-bold tracking-[2px]">
+                                            {[1, 2, 3, 4, 5].map(n => (
+                                                <span key={n} className={row.fouls >= n ? 'text-black' : 'text-gray-200'}>
+                                                    {n}
+                                                </span>
+                                            ))}
                                         </td>
                                         <td className="border border-black text-center font-bold">{row.hasYellow ? 'X' : ''}</td>
                                         <td className="border border-black text-center font-bold">{row.hasRed ? 'X' : ''}</td>
@@ -107,10 +127,16 @@ export const PrintFootball = ({ match, rosters, events }: { match: any, rosters:
                                         {Array.from({ length: 5 }).map((_, cIdx) => {
                                             const gIdx = (rIdx * 5) + cIdx;
                                             const goal = teamGoals[gIdx];
+                                            const isOwn = goal?.type === 'own_goal' || goal?.metadata?.own_goal;
                                             return (
                                                 <td key={cIdx} className="border border-black relative align-top">
                                                     <span className="absolute bg-gray-200 text-[8px] top-0 left-0 px-0.5 border-r border-b border-gray-300">{gIdx + 1}</span>
-                                                    {goal ? <div className="pt-2"><div className="font-bold text-sm">{goal.player?.number || '#'}</div><div className="text-[9px] leading-none">{goal.minute}'</div></div> : <div className="pt-3"><EditableSpan text="" /></div>}
+                                                    {goal ? (
+                                                        <div className="pt-2">
+                                                            <div className="font-bold text-sm">{goal.player_number || '#'}</div>
+                                                            <div className="text-[9px] leading-none">{goal.minute}' {isOwn ? '(GC)' : ''}</div>
+                                                        </div>
+                                                    ) : <div className="pt-3"><EditableSpan text="" /></div>}
                                                 </td>
                                             );
                                         })}

@@ -204,7 +204,9 @@ export const PrintVolley = ({ match, rosters, events }: { match: any, rosters: a
                                         <td className="p-1 border-r border-gray-300">
                                             <span className="inline-block w-4 mr-1 text-center">{e.icon || '🏐'}</span>
                                             <span className="font-bold uppercase mr-1">{typeInfo}:</span>
-                                            <span>{pName}</span>
+                                            {(!typeInfo.includes(pName) || pName === 'Equipe') && (
+                                                <span>{pName}</span>
+                                            )}
                                         </td>
                                         <td className={`p-1 border-r border-gray-300 text-center font-medium ${isHome ? 'text-blue-700' : 'text-red-700'}`}>
                                             {isHome ? 'MANDANTE' : 'VISITANTE'}

@@ -27,6 +27,7 @@ class MatchOperationController extends Controller
             },
             'championship.sport',
             'events.player',
+            'events.team',
             'sets'
         ]);
 
@@ -122,22 +123,22 @@ class MatchOperationController extends Controller
                     $info = $eventLabels[$e->event_type] ?? ['label' => ucfirst(str_replace('_', ' ', $e->event_type)), 'icon' => '📋'];
 
                     // Ajuste de ícone dinâmico baseado no esporte
-                    $icon = $info['icon'];
+                    $icon = $info['icon'] ?? '🏐';
+                    $metadata = is_string($e->metadata) ? json_decode($e->metadata, true) : $e->metadata;
                     if ($isVolley && in_array($e->event_type, ['point', 'ace', 'ataque', 'saque', 'block', 'bloqueio'])) {
                         $icon = '🏐';
-                        $metadata = is_string($e->metadata) ? json_decode($e->metadata, true) : $e->metadata;
                         if (isset($metadata['volley_type'])) {
                             $vType = $metadata['volley_type'];
-                            if ($vType === 'ataque') {
-                                $info['label'] = 'Ponto de Ataque';
-                            } elseif ($vType === 'bloqueio') {
-                                $info['label'] = 'Ponto de Bloqueio';
-                            } elseif ($vType === 'saque') {
-                                $info['label'] = 'Ponto de Saque (Ace)';
-                            } elseif ($vType === 'erro') {
-                                $info['label'] = 'Erro Adversário';
-                            }
+                            $labelMap = [
+                                'ataque' => 'Ponto de Ataque',
+                                'bloqueio' => 'Ponto de Bloqueio',
+                                'saque' => 'Ponto de Saque (Ace)',
+                                'erro' => 'Erro Adversário',
+                            ];
+                            $info['label'] = $metadata['label'] ?? $labelMap[$vType] ?? 'Ponto';
                         }
+                    } else {
+                        $info['label'] = $metadata['label'] ?? $info['label'];
                     }
 
                     $player = $e->player;
@@ -150,6 +151,10 @@ class MatchOperationController extends Controller
                     $pName = null;
                     if ($player) {
                         $pName = $player->nickname ?: $player->name;
+                    } elseif (!empty($metadata['player_name'])) {
+                        $pName = $metadata['player_name'];
+                    } elseif (!empty($metadata['label']) && preg_match('/\((.*?)\)/', $metadata['label'], $matches)) {
+                        $pName = $matches[1]; // Tenta extrair de "Ponto (Nome)"
                     } else {
                         // For team level events or missing records, use team name if possible
                         if ($e->team_id) {
