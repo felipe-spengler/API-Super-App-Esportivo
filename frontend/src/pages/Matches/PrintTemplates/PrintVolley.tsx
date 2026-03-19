@@ -19,9 +19,14 @@ export const PrintVolley = ({ match, rosters, events }: { match: any, rosters: a
             const player = players[i];
             const pId = player?.id;
             
-            // Check participation in each set using events
+            // USE BACKEND CALCULATED PARTICIPATION
+            const participatedSets = player?.participated_sets || [];
             const participation = [1, 2, 3, 4, 5].map(setNum => {
-                return sortedEvents.some(e => e.player_id === pId && (e.period === `${setNum}º Set` || e.period === `Set ${setNum}`));
+                // If it's a legacy match without participation data, fallback to event-based check
+                if (participatedSets.length === 0) {
+                    return sortedEvents.some(e => e.player_id === pId && (e.period === `${setNum}º Set` || e.period === `Set ${setNum}`));
+                }
+                return participatedSets.includes(setNum);
             });
 
             return {
@@ -134,12 +139,29 @@ export const PrintVolley = ({ match, rosters, events }: { match: any, rosters: a
                     <tbody>
                         {[1, 2, 3, 4, 5].map(n => {
                             const setData = sets.find((s: any) => s.set_number === n);
+                            
+                            // Format start/end times
+                            const formatTime = (timeStr: string) => {
+                                if (!timeStr) return '';
+                                try {
+                                    const d = new Date(timeStr);
+                                    if (isNaN(d.getTime())) return '';
+                                    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                } catch (e) {
+                                    return '';
+                                }
+                            };
+
                             return (
                                 <tr key={n}>
                                     <td className="border border-black font-bold">{n}º</td>
                                     <td className="border border-black bg-gray-50">{setData ? `${setData.home_score} x ${setData.away_score}` : '- x -'}</td>
-                                    <td className="border border-black"><EditableSpan text="" /></td>
-                                    <td className="border border-black"><EditableSpan text="" /></td>
+                                    <td className="border border-black">
+                                        <EditableSpan text={formatTime(setData?.start_time)} />
+                                    </td>
+                                    <td className="border border-black">
+                                        <EditableSpan text={formatTime(setData?.end_time)} />
+                                    </td>
                                 </tr>
                             );
                         })}

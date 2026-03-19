@@ -9,12 +9,16 @@ export const PrintFootball = ({ match, rosters, events }: { match: any, rosters:
         
         const rows = Array.from({ length: 20 }, (_, i) => {
             const player = players[i];
+            const pId = player?.id;
+            const participatedSets = player?.participated_sets || [];
+
             return {
                 idx: i + 1,
                 player,
-                hasYellow: teamEvents.some(e => ['yellow_card', 'yellow'].includes(e.type) && e.player_id === player?.id),
-                hasRed: teamEvents.some(e => ['red_card', 'red'].includes(e.type) && e.player_id === player?.id),
-                goals: teamGoals.filter(e => e.player_id === player?.id).length
+                hasYellow: teamEvents.some(e => ['yellow_card', 'yellow'].includes(e.type) && e.player_id === pId),
+                hasRed: teamEvents.some(e => ['red_card', 'red'].includes(e.type) && e.player_id === pId),
+                goals: teamGoals.filter(e => e.player_id === pId).length,
+                participation: [1, 2].map(n => participatedSets.includes(n))
             };
         });
 
@@ -34,6 +38,8 @@ export const PrintFootball = ({ match, rosters, events }: { match: any, rosters:
                                     <th className="border border-black w-8">Nº</th>
                                     <th className="border border-black text-left px-2">Nome</th>
                                     <th className="border border-black w-8">Camisa</th>
+                                    <th className="border border-black w-10">P1</th>
+                                    <th className="border border-black w-10">P2</th>
                                     <th className="border border-black w-24">Faltas</th>
                                     <th className="border border-black w-6">A</th>
                                     <th className="border border-black w-6">V</th>
@@ -50,6 +56,8 @@ export const PrintFootball = ({ match, rosters, events }: { match: any, rosters:
                                         <td className="border border-black text-center">
                                             {row.player ? row.player.number : <EditableSpan />}
                                         </td>
+                                        <td className="border border-black text-center font-bold">{row.participation[0] ? 'X' : ''}</td>
+                                        <td className="border border-black text-center font-bold">{row.participation[1] ? 'X' : ''}</td>
                                         <td className="border border-black text-center text-[8px] text-gray-400 tracking-widest leading-none pt-1">
                                             1 2 3 4 5
                                         </td>
@@ -149,13 +157,29 @@ export const PrintFootball = ({ match, rosters, events }: { match: any, rosters:
                     <table className="w-full text-xs border-collapse border border-black text-center">
                         <thead className="bg-gray-200"><tr><th className="border border-black">Cronômetro</th><th className="border border-black">Início</th><th className="border border-black">Fim</th></tr></thead>
                         <tbody>
-                            {['1º Período', '2º Período', 'Extra'].map(label => (
-                                <tr key={label}>
-                                    <td className="border border-black font-bold">{label}</td>
-                                    <td className="border border-black"><EditableSpan text="" /></td>
-                                    <td className="border border-black"><EditableSpan text="" /></td>
-                                </tr>
-                            ))}
+                            {['1º Período', '2º Período', 'Extra'].map((label, idx) => {
+                                const setNum = idx + 1;
+                                const setData = (match.match_details?.sets || []).find((s: any) => s.set_number === setNum);
+                                
+                                const formatTime = (timeStr: string) => {
+                                    if (!timeStr) return '';
+                                    try {
+                                        const d = new Date(timeStr);
+                                        if (isNaN(d.getTime())) return '';
+                                        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                    } catch (e) {
+                                        return '';
+                                    }
+                                };
+
+                                return (
+                                    <tr key={label}>
+                                        <td className="border border-black font-bold">{label}</td>
+                                        <td className="border border-black"><EditableSpan text={formatTime(setData?.start_time)} /></td>
+                                        <td className="border border-black"><EditableSpan text={formatTime(setData?.end_time)} /></td>
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>

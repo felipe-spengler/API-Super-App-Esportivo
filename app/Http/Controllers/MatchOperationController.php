@@ -26,10 +26,54 @@ class MatchOperationController extends Controller
                 $q->where('team_players.championship_id', $champId);
             },
             'championship.sport',
-            'events.player'
+            'events.player',
+            'sets'
         ]);
 
         $details = $match->match_details ?? [];
+
+        // 2. BUSCAR POSIÇÕES (Para Participação)
+        $positions = DB::table('match_positions')
+            ->where('game_match_id', $match->id)
+            ->get();
+
+        // 3. CALCULAR HORÁRIOS DOS SETS (Via Events created_at)
+        $setTimes = [];
+        foreach ($match->events as $event) {
+            $p = $event->period;
+            if (!$p) continue;
+            
+            // Normalize period to set number if possible (e.g. "1º Set" -> 1)
+            $setNum = null;
+            if (preg_match('/(\d+)/', $p, $matches)) {
+                $setNum = (int)$matches[1];
+            }
+            if (!$setNum) continue;
+
+            if (!isset($setTimes[$setNum])) {
+                $setTimes[$setNum] = ['start' => null, 'end' => null];
+            }
+
+            $createdAt = $event->created_at;
+            
+            // Se for início de período, é o start definitivo
+            if ($event->event_type === 'period_start' || $event->event_type === 'match_start') {
+                $setTimes[$setNum]['start'] = $createdAt;
+            } 
+            // Se for fim de período, é o end definitivo
+            elseif ($event->event_type === 'period_end' || $event->event_type === 'match_end') {
+                $setTimes[$setNum]['end'] = $createdAt;
+            }
+            // Fallback: Earliest and Latest
+            else {
+                if (!$setTimes[$setNum]['start'] || $createdAt->lt($setTimes[$setNum]['start'])) {
+                    $setTimes[$setNum]['start'] = $createdAt;
+                }
+                if (!$setTimes[$setNum]['end'] || $createdAt->gt($setTimes[$setNum]['end'])) {
+                    $setTimes[$setNum]['end'] = $createdAt;
+                }
+            }
+        }
 
         if (!isset($details['events'])) {
             $details['events'] = [];
@@ -134,31 +178,94 @@ class MatchOperationController extends Controller
             $details['events'] = $tableEvents;
         }
         if (!isset($details['sets']) || empty($details['sets'])) {
-            $isVolley = ($match->championship->sport->slug ?? '') === 'volei';
-            if ($isVolley) {
-                $details['sets'] = MatchSet::where('game_match_id', $match->id)
-                    ->orderBy('set_number')
-                    ->get()
-                    ->map(function ($s) {
-                        return [
-                            'id' => $s->id,
-                            'set_number' => $s->set_number,
-                            'home_score' => $s->home_score,
-                            'away_score' => $s->away_score,
-                            'status' => $s->status
+            $sportSlug = $match->championship->sport->slug ?? '';
+            $isVolley = $sportSlug === 'volei';
+            
+            // For all sports, if we have setTimes, we can populate a 'sets' structure for the frontend
+            if ($isVolley || count($setTimes) > 0) {
+                // Se for vôlei, usamos os MatchSet reais se existirem
+                if ($isVolley && $match->sets->count() > 0) {
+                    $details['sets'] = $match->sets
+                        ->sortBy('set_number')
+                        ->map(function ($s) use ($setTimes) {
+                            $st = $setTimes[$s->set_number] ?? null;
+                            return [
+                                'id' => $s->id,
+                                'set_number' => $s->set_number,
+                                'home_score' => $s->home_score,
+                                'away_score' => $s->away_score,
+                                'status' => $s->status,
+                                'start_time' => $s->start_time ?: ($st['start'] ?? null),
+                                'end_time' => $s->end_time ?: ($st['end'] ?? null),
+                            ];
+                        })->toArray();
+                } else {
+                    // Para outros esportes ou vôlei sem match_sets, usamos os tempos descobertos nos eventos
+                    $details['sets'] = [];
+                    $maxSet = count($setTimes) > 0 ? max(array_keys($setTimes)) : ($isVolley ? 3 : 2);
+                    for ($i = 1; $i <= $maxSet; $i++) {
+                        $st = $setTimes[$i] ?? null;
+                        $details['sets'][] = [
+                            'set_number' => $i,
+                            'home_score' => null, // Placar por período opcional aqui
+                            'away_score' => null,
+                            'start_time' => $st['start'] ?? null,
+                            'end_time' => $st['end'] ?? null,
                         ];
-                    })->toArray();
+                    }
+                }
             } else {
                 $details['sets'] = [];
             }
+        } else {
+            // Se já existirem sets no JSON (legacy), tentamos injetar os horários se faltarem
+            foreach ($details['sets'] as &$s) {
+                $num = $s['set_number'] ?? null;
+                if ($num && empty($s['start_time'])) {
+                    $s['start_time'] = $setTimes[$num]['start'] ?? null;
+                }
+                if ($num && empty($s['end_time'])) {
+                    $s['end_time'] = $setTimes[$num]['end'] ?? null;
+                }
+            }
         }
+
+        // 4. CALCULAR PARTICIPAÇÃO (Sets que cada jogador jogou)
+        // Um jogador participou se:
+        // - Estava em match_positions para aquele set
+        // - Foi citado em evento de substitution naquele set (como player_in ou player_out)
+        $participationMap = [];
+        foreach ($positions as $pos) {
+            $pId = $pos->player_id;
+            $sNum = (int)$pos->set_number;
+            if ($pId) {
+                $participationMap[$pId][$sNum] = true;
+            }
+        }
+
+        foreach ($match->events as $event) {
+            if ($event->event_type === 'substitution') {
+                $metadata = is_string($event->metadata) ? json_decode($event->metadata, true) : $event->metadata;
+                $pIn = $metadata['player_in'] ?? $event->player_id;
+                $pOut = $metadata['player_out'] ?? null;
+                
+                $setNum = 1;
+                if (preg_match('/(\d+)/', $event->period, $m)) {
+                    $setNum = (int)$m[1];
+                }
+
+                if ($pIn) $participationMap[$pIn][$setNum] = true;
+                if ($pOut) $participationMap[$pOut][$setNum] = true;
+            }
+        }
+
         if (!isset($details['positions']))
-            $details['positions'] = [];
+            $details['positions'] = $positions;
 
         // Carregar jogadores reais dos times (Rosters já carregados e filtrados no topo)
         $rosters = [
-            'home' => $this->formatRoster($match->homeTeam),
-            'away' => $this->formatRoster($match->awayTeam),
+            'home' => $this->formatRoster($match->homeTeam, $participationMap),
+            'away' => $this->formatRoster($match->awayTeam, $participationMap),
         ];
 
         return response()->json([
@@ -171,18 +278,22 @@ class MatchOperationController extends Controller
     }
 
     // LISTA DE JOGADORES (ROSTER) REAL
-    private function formatRoster($team)
+    private function formatRoster($team, $participationMap = [])
     {
         if (!$team)
             return [];
 
-        return $team->players->map(function ($player) {
+        return $team->players->map(function ($player) use ($participationMap) {
+            $pId = $player->id;
+            $participatedSets = isset($participationMap[$pId]) ? array_keys($participationMap[$pId]) : [];
+            
             return [
                 'id' => $player->id,
                 'number' => $player->pivot->number ?? '',
                 'name' => $player->name,
                 'nickname' => $player->nickname,
-                'position' => $player->pivot->position
+                'position' => $player->pivot->position,
+                'participated_sets' => $participatedSets
             ];
         });
     }

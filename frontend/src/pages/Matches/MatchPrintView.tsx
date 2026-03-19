@@ -5,6 +5,8 @@ import { PrintHeaderInfo, PrintSignatures, PrintObservations } from './PrintTemp
 import { PrintFootball } from './PrintTemplates/PrintFootball';
 import { PrintVolley } from './PrintTemplates/PrintVolley';
 import { PrintTennis } from './PrintTemplates/PrintTennis';
+import { PrintBasketball } from './PrintTemplates/PrintBasketball';
+import { PrintHandball } from './PrintTemplates/PrintHandball';
 
 export function MatchPrintView() {
     const { id } = useParams();
@@ -42,6 +44,12 @@ export function MatchPrintView() {
         }
         if (sportSlug.includes('tenis')) {
             return <PrintTennis match={match} rosters={rosters} events={events} />;
+        }
+        if (sportSlug === 'basquete') {
+            return <PrintBasketball match={match} rosters={rosters} events={events} />;
+        }
+        if (sportSlug === 'handebol') {
+            return <PrintHandball match={match} rosters={rosters} events={events} />;
         }
         return <PrintFootball match={match} rosters={rosters} events={events} />;
     };
