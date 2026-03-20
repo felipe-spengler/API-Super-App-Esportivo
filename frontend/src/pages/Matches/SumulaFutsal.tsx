@@ -103,6 +103,7 @@ export function SumulaFutsal() {
                 const history = (data.details?.events || []).map((e: any) => ({
                     id: e.id, type: e.type, team: parseInt(e.team_id) === data.match.home_team_id ? 'home' : 'away',
                     time: e.minute, period: e.period, player_name: e.player_name,
+                    player_id: e.player_id ?? null,
                     own_goal: e.metadata?.own_goal === true || e.metadata?.is_own_goal === true,
                 }));
                 setEvents(history);
@@ -181,12 +182,29 @@ export function SumulaFutsal() {
         const tid = selectedTeam === 'home' ? cur.matchData?.home_team_id : cur.matchData?.away_team_id;
         const pName = player ? (player.nickname || player.name) : 'Equipe';
         const labelMap: Record<string, string> = { goal: isSelectingOwnGoal ? `Gol Contra: ${pName}` : `Gol: ${pName}`, yellow_card: `Cartão Amarelo: ${pName}`, red_card: `Cartão Vermelho: ${pName}`, blue_card: `Cartão Azul: ${pName}`, assist: `Assistência: ${pName}`, mvp: `Melhor em Campo: ${pName}` };
-        const newEv = { id: 'temp-' + Date.now(), type, team: selectedTeam, time: formatTime(cur.time), period: cur.currentPeriod, player_name: pName, own_goal: isSelectingOwnGoal };
+
+        // ⚠️ Aviso de 2º Cartão Amarelo
+        if (type === 'yellow_card') {
+            const prevYellow = player?.id
+                ? events.find(e => e.type === 'yellow_card' && e.player_id === player.id)
+                : events.find(e => e.type === 'yellow_card' && e.player_name === pName);
+            if (prevYellow) {
+                const ok = window.confirm(
+                    `⚠️ ATENÇÃO — 2º CARTÃO AMARELO!\n\n` +
+                    `"${pName}" já recebeu um cartão amarelo nesta partida.\n\n` +
+                    `Isso resultará em EXPULSÃO (cartão vermelho automático).\n\n` +
+                    `Deseja confirmar o lançamento?`
+                );
+                if (!ok) return;
+            }
+        }
+
+        const newEv = { id: 'temp-' + Date.now(), type, team: selectedTeam, time: formatTime(cur.time), period: cur.currentPeriod, player_name: pName, player_id: player?.id ?? null, own_goal: isSelectingOwnGoal };
         setEvents(prev => [newEv, ...prev]);
         addToQueue('event', { event_type: type, team_id: tid, player_id: player?.id || null, minute: formatTime(cur.time), period: cur.currentPeriod, metadata: { label: labelMap[type] || type, own_goal: isSelectingOwnGoal } });
         setShowEventModal(false); setEventType(null);
         setConfirmationEffect(selectedTeam); setTimeout(() => setConfirmationEffect(null), 1000);
-    }, [eventType, selectedTeam, isSelectingOwnGoal, addToQueue]);
+    }, [eventType, selectedTeam, isSelectingOwnGoal, addToQueue, events]);
 
     const handleDeleteEvent = useCallback(async (evId: any) => {
         if (!window.confirm("Cancelar lançamento?")) return;

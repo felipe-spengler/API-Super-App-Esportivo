@@ -146,6 +146,7 @@ export function SumulaFutebol7() {
                     id: e.id, type: e.type,
                     team: parseInt(e.team_id) === data.match.home_team_id ? 'home' : 'away',
                     time: e.minute, period: e.period, player_name: e.player_name,
+                    player_id: e.player_id ?? null,
                     own_goal: e.metadata?.own_goal === true,
                 }));
                 setEvents(history);
@@ -423,6 +424,22 @@ export function SumulaFutebol7() {
             setSelectedPlayer(player); setShowEventModal(false); setShowShootoutOptions(true); return;
         }
 
+        // ⚠️ Aviso de 2º Cartão Amarelo
+        if (eventType === 'yellow_card') {
+            const prevYellow = player.id
+                ? events.find(e => e.type === 'yellow_card' && e.player_id === player.id)
+                : events.find(e => e.type === 'yellow_card' && e.player_name === player.name);
+            if (prevYellow) {
+                const ok = window.confirm(
+                    `⚠️ ATENÇÃO — 2º CARTÃO AMARELO!\n\n` +
+                    `"${player.name}" já recebeu um cartão amarelo nesta partida.\n\n` +
+                    `Isso resultará em EXPULSÃO (cartão vermelho automático).\n\n` +
+                    `Deseja confirmar o lançamento?`
+                );
+                if (!ok) return;
+            }
+        }
+
         try {
             const response = await apiPost('event', {
                 event_type: eventType, team_id: teamId, minute: currentTime, period: currentPeriod,
@@ -437,6 +454,7 @@ export function SumulaFutebol7() {
                 id: response?.data?.id || Date.now(), type: eventType, team: selectedTeam,
                 time: currentTime, period: currentPeriod,
                 player_name: player.isOwnGoal ? `${player.name} (Gol Contra)` : player.name,
+                player_id: player.id ?? null,
                 own_goal: player.isOwnGoal
             };
             setEvents(prev => [newEvent, ...prev]);
@@ -464,7 +482,7 @@ export function SumulaFutebol7() {
         const currentTime = formatTime(time);
         try {
             const response = await apiPost('event', { event_type: type, team_id: teamId, minute: currentTime, period: currentPeriod, player_id: selectedPlayer.id, metadata: { outcome } });
-            setEvents(prev => [{ id: response?.data?.id || Date.now(), type, team: selectedTeam, time: currentTime, period: currentPeriod, player_name: selectedPlayer.name }, ...prev]);
+            setEvents(prev => [{ id: response?.data?.id || Date.now(), type, team: selectedTeam, time: currentTime, period: currentPeriod, player_name: selectedPlayer.name, player_id: selectedPlayer.id }, ...prev]);
             if (outcome === 'score') setPenaltyScore(prev => ({ ...prev, [selectedTeam]: prev[selectedTeam] + 1 }));
             setShowShootoutOptions(false); setSelectedPlayer(null);
         } catch (e) { console.error(e); alert('Erro ao registrar pênalti'); }
