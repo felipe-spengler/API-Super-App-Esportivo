@@ -129,7 +129,7 @@ export function SumulaTenis() {
                 home_score: manualScores.home,
                 away_score: manualScores.away 
             });
-            navigate('/admin/matches');
+            navigate(-1);
         }
         setTimeModal(null);
     };

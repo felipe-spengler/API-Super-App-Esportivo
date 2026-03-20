@@ -87,7 +87,7 @@ class AdminTennisController extends Controller
         $match->match_details = $details;
         $match->save();
 
-        // 2. Run recalculation to sync sets/history, but match score will be overridden by request
+        // 2. Run recalculation to sync sets/history
         $this->recalculateState($match);
         $match->refresh();
 
@@ -117,7 +117,7 @@ class AdminTennisController extends Controller
             'serving_team_id' => $details['tennis_state']['serving_team_id'] ?? null,
             'game_score' => ['home' => 0, 'away' => 0],
             'games_won' => ['home' => 0, 'away' => 0],
-            'match_finished' => false,
+            'match_finished' => ($match->status === 'finished'),
             'is_tiebreak' => false,
             'actual_start_time' => $details['actual_start_time'] ?? null,
             'actual_end_time' => $details['actual_end_time'] ?? null
@@ -126,7 +126,6 @@ class AdminTennisController extends Controller
         // Reset Match/Sets score for fresh calculation
         $match->home_score = 0;
         $match->away_score = 0;
-        $match->status = $match->status === 'finished' ? 'live' : $match->status;
         MatchSet::where('game_match_id', $match->id)->delete();
 
         foreach ($events as $event) {
