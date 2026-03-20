@@ -78,22 +78,28 @@ class AdminTennisController extends Controller
         $match = GameMatch::findOrFail($matchId);
         $details = $match->match_details ?? [];
 
+        // 1. Update end time and ensure tennis_state is marked as finished
         $details['actual_end_time'] = $request->input('actual_end_time', now()->format('H:i'));
+        if (isset($details['tennis_state'])) {
+            $details['tennis_state']['match_finished'] = true;
+            $details['tennis_state']['actual_end_time'] = $details['actual_end_time'];
+        }
         $match->match_details = $details;
         $match->save();
 
-        // 1. First ensure recalculation is done to have correct sets/scores
+        // 2. Run recalculation to sync sets/history, but match score will be overridden by request
         $this->recalculateState($match);
         $match->refresh();
 
-        // 2. Call generic finish logic to handle brackets/advancements
+        // 3. Call generic finish logic with prioritized manual scores
+        // This ensures the match status moves to 'finished' and brackets advance correctly
         $adminMatchController = new AdminMatchController();
         $adminMatchController->finish(new Request([
-            'home_score' => $match->home_score,
-            'away_score' => $match->away_score
+            'home_score' => $request->input('home_score', $match->home_score),
+            'away_score' => $request->input('away_score', $match->away_score)
         ]), $matchId);
 
-        // 3. Return full state for UI consistency
+        // 4. Return full state
         return $this->getState($matchId);
     }
 
