@@ -89,17 +89,19 @@ class AdminTennisController extends Controller
 
         // 2. Run recalculation to sync sets/history
         $this->recalculateState($match);
-        $match->refresh();
 
         // 3. Call generic finish logic with prioritized manual scores
         // This ensures the match status moves to 'finished' and brackets advance correctly
-        $adminMatchController = new AdminMatchController();
-        $adminMatchController->finish(new Request([
-            'home_score' => $request->input('home_score', $match->home_score),
-            'away_score' => $request->input('away_score', $match->away_score)
-        ]), $matchId);
+        $finishRequest = new Request();
+        $finishRequest->merge([
+            'home_score' => (int) $request->input('home_score', $match->home_score),
+            'away_score' => (int) $request->input('away_score', $match->away_score)
+        ]);
 
-        // 4. Return full state
+        $adminMatchController = new AdminMatchController();
+        $adminMatchController->finish($finishRequest, $matchId);
+
+        // 4. Update the state one last time to ensure UI gets 'match_finished' = true
         return $this->getState($matchId);
     }
 
