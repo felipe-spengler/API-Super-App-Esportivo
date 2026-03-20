@@ -19,6 +19,7 @@ export function SumulaTenis() {
     const [pointFlow, setPointFlow] = useState<{ teamId: number, playerIndex: number } | null>(null);
     const [timeModal, setTimeModal] = useState<'start' | 'end' | null>(null);
     const [tempTime, setTempTime] = useState(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false }));
+    const [manualScores, setManualScores] = useState({ home: 0, away: 0 });
 
     // 🛡️ Offline Resilience
     const { isOnline, addToQueue, pendingCount, getPendingCount } = useOfflineResilience(id, 'Tênis', async (action, data) => {
@@ -123,7 +124,11 @@ export function SumulaTenis() {
         if (timeModal === 'start') {
             await apiCall('tennis_times', `/admin/matches/${id}/tennis/times`, { actual_start_time: tempTime });
         } else {
-            await apiCall('tennis_finish', `/admin/matches/${id}/tennis/finish`, { actual_end_time: tempTime });
+            await apiCall('tennis_finish', `/admin/matches/${id}/tennis/finish`, { 
+                actual_end_time: tempTime,
+                home_score: manualScores.home,
+                away_score: manualScores.away 
+            });
             navigate('/admin/matches');
         }
         setTimeModal(null);
@@ -189,6 +194,7 @@ export function SumulaTenis() {
                         <button
                             onClick={() => {
                                 setTempTime(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false }));
+                                setManualScores({ home: matchData.home_score || 0, away: matchData.away_score || 0 });
                                 setTimeModal('end');
                             }}
                             className="text-red-400 hover:text-red-300 font-black flex items-center gap-1 border border-red-400/20 px-3 py-1 rounded-full bg-red-400/5 transition-colors"
@@ -421,12 +427,39 @@ export function SumulaTenis() {
                             </div>
                         </div>
 
+                        {timeModal === 'end' && (
+                            <div className="mb-8">
+                                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">PLACAR FINAL (SETS)</h4>
+                                <div className="flex items-center justify-center gap-4">
+                                    <div className="flex-1">
+                                        <p className="text-[8px] font-bold text-slate-400 uppercase mb-1 truncate">{matchData.home_team?.name}</p>
+                                        <input
+                                            type="number"
+                                            value={manualScores.home}
+                                            onChange={(e) => setManualScores({ ...manualScores, home: parseInt(e.target.value) || 0 })}
+                                            className="w-full bg-slate-950 border-2 border-slate-800 rounded-2xl py-3 px-2 text-2xl font-black text-center text-white focus:border-blue-500 outline-none transition-all"
+                                        />
+                                    </div>
+                                    <div className="text-xl font-black text-slate-700 mt-5">X</div>
+                                    <div className="flex-1">
+                                        <p className="text-[8px] font-bold text-slate-400 uppercase mb-1 truncate">{matchData.away_team?.name}</p>
+                                        <input
+                                            type="number"
+                                            value={manualScores.away}
+                                            onChange={(e) => setManualScores({ ...manualScores, away: parseInt(e.target.value) || 0 })}
+                                            className="w-full bg-slate-950 border-2 border-slate-800 rounded-2xl py-3 px-2 text-2xl font-black text-center text-white focus:border-emerald-500 outline-none transition-all"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="space-y-3">
                             <button
                                 onClick={handleConfirmTime}
                                 className="w-full bg-yellow-500 py-4 rounded-2xl text-black font-black uppercase tracking-widest hover:bg-yellow-400 active:scale-95 transition-all shadow-lg shadow-yellow-500/20"
                             >
-                                {timeModal === 'start' ? 'INICIAR JOGO' : 'ENCERRAR JOGO'}
+                                {timeModal === 'start' ? 'INICIAR JOGO' : 'CONFIRMAR E ENCERRAR'}
                             </button>
                             {timeModal === 'start' && (
                                 <button
@@ -441,7 +474,7 @@ export function SumulaTenis() {
                                     onClick={() => setTimeModal(null)}
                                     className="w-full py-2 text-[10px] text-slate-500 font-black uppercase hover:text-white transition-colors"
                                 >
-                                    Cancelar
+                                    Voltar
                                 </button>
                             )}
                         </div>
