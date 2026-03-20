@@ -915,24 +915,15 @@ export function SumulaFutebol7() {
 
                         <div className="overflow-y-auto p-4 flex-1">
                             {eventType === 'goal' && !isSelectingOwnGoal && (
-                                <div className="grid grid-cols-2 gap-2 mb-4">
-                                    <button onClick={() => confirmEvent({ id: 'unknown', name: 'Jogador Desconhecido' })}
-                                        className="py-3 px-2 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/10 flex flex-col items-center gap-1.5 transition-all active:scale-95">
-                                        <Users size={18} className="text-gray-400" />
-                                        <span className="text-[10px] font-bold uppercase text-gray-400">Sem Jogador</span>
-                                    </button>
+                                <div className="mb-4">
                                     <button onClick={() => setIsSelectingOwnGoal(true)}
-                                        className="py-3 px-2 bg-red-950/40 hover:bg-red-900/50 rounded-2xl border border-red-700/40 flex flex-col items-center gap-1.5 transition-all active:scale-95">
+                                        className="w-full py-4 px-2 bg-red-950/40 hover:bg-red-900/50 rounded-2xl border border-red-700/40 flex items-center justify-center gap-2 transition-all active:scale-95">
                                         <AlertCircle size={18} className="text-red-400" />
-                                        <span className="text-[10px] font-bold uppercase text-red-400">Gol Contra</span>
+                                        <span className="text-xs font-bold uppercase text-red-400">Marcar como Gol Contra</span>
                                     </button>
                                 </div>
                             )}
-                            {(eventType === 'foul') && !isSelectingOwnGoal && (
-                                <button onClick={() => confirmEvent({ id: 'unknown', name: 'Equipe' })} className="w-full mb-3 py-3 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/10 text-[11px] font-bold uppercase text-gray-400 flex items-center justify-center gap-2 transition-all active:scale-95">
-                                    <Users size={14} /> Sem jogador específico
-                                </button>
-                            )}
+
                             {isSelectingOwnGoal && (
                                 <div className="mb-3 px-3 py-2 bg-red-950/30 border border-red-700/30 rounded-2xl flex items-center gap-2 text-red-400 text-xs font-bold">
                                     <AlertCircle size={14} /> Gol contra — escolha quem marcou

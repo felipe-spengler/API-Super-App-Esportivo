@@ -379,9 +379,7 @@ export function SumulaFutsal() {
                                         <Icon icon="heroicons-solid:chevron-right" className="w-5 h-5 text-gray-700 group-hover:text-emerald-400" />
                                     </button>
                                 ))}
-                                <button onClick={() => confirmEvent(null)} className="w-full py-5 mt-4 bg-white/5 hover:bg-white/10 rounded-2xl font-black uppercase text-gray-500 hover:text-white tracking-[0.2em] text-[10px] transition-all border border-dashed border-white/10 flex items-center justify-center gap-3">
-                                    <Icon icon="solar:users-group-rounded-bold" className="w-5 h-5" /> EQUIPE / OUTRO
-                                </button>
+
                             </div>
                         </div>
                     </div>
