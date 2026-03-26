@@ -223,7 +223,9 @@ trait ArtCardTrait
 
     private function generatePlayerArt($player, $match, $category)
     {
-        $championship = $match->championship;
+        $championship = clone $match->championship;
+        $championship->remove_bg_on_art = true; // Forçar always remove BG pra garantir igual MVP
+
         $club = $championship->club;
         $sport = strtolower($championship->sport->name ?? 'futebol');
 
@@ -235,12 +237,15 @@ trait ArtCardTrait
 
     private function generateAwardCard($player, $championship, $team, $category, $club = null)
     {
-        $sport = strtolower($championship->sport->name ?? 'futebol');
+        $champClone = clone $championship;
+        $champClone->remove_bg_on_art = true; // Forçar always remove BG para Awards pra garantir
+
+        $sport = strtolower($champClone->sport->name ?? 'futebol');
 
         if ($club)
             $this->loadClubResources($club);
 
-        return $this->createCard($player, $championship, $sport, $category, null, null, $team, $club);
+        return $this->createCard($player, $champClone, $sport, $category, null, null, $team, $club);
     }
 
     /**
