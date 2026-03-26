@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Edit3, Save, X, GripVertical } from 'lucide-react';
 import api from '../../services/api';
 import { TournamentBracket } from '../../components/TournamentBracket';
 import type { BracketMatch } from '../../components/TournamentBracket';
 import { TeamPlayersModal } from '../../components/TeamPlayersModal';
+import { useAuth } from '../../context/AuthContext';
 
 // Icons/Indicators for top 3
 const getMedalClass = (position: number) => {
@@ -43,6 +44,10 @@ export function EventLeaderboard() {
 
     const [champ, setChamp] = useState<any>(null);
     const [champName, setChampName] = useState('');
+    
+    const { user } = useAuth();
+    const isAdmin = user && (user.is_admin || user.role === 'admin' || user.role === 'super_admin' || user.club_id === champ?.club_id);
+    const [isEditingTiebreaker, setIsEditingTiebreaker] = useState(false);
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -98,6 +103,53 @@ export function EventLeaderboard() {
         }
     }
 
+    async function handleSaveTiebreaker() {
+        if (!window.confirm('Deseja salvar a nova ordem de desempate manual?')) return;
+        
+        try {
+            const priorityIds = standings.map(s => s.id); // All team IDs in current visual order
+            await api.post(`/admin/championships/${id}/tiebreaker-priority`, { tiebreaker_priority: priorityIds });
+            alert('Ordem manual salva com sucesso! Tempos com pontos iguais agora respeitarão essa prioridade.');
+            setIsEditingTiebreaker(false);
+            // Reload the definitive sorted data from server
+            const response = await api.get(`/championships/${id}/leaderboard${categoryId ? `?category_id=${categoryId}` : ''}`);
+            setStandings(response.data);
+        } catch (error) {
+            console.error("Erro ao salvar ordem", error);
+            alert('Erro ao salvar a ordem do desempate.');
+        }
+    }
+
+    const handleDragStart = (e: React.DragEvent, index: number) => {
+        if (!isEditingTiebreaker) return;
+        e.dataTransfer.setData('dragIndex', index.toString());
+    };
+
+    const handleDrop = (e: React.DragEvent, index: number) => {
+        if (!isEditingTiebreaker) return;
+        e.preventDefault();
+        const dragIndexStr = e.dataTransfer.getData('dragIndex');
+        if (!dragIndexStr) return;
+        
+        const dragIndex = parseInt(dragIndexStr, 10);
+        if (dragIndex === index) return;
+        
+        const newStandings = [...standings];
+        const draggedItem = newStandings[dragIndex];
+        newStandings.splice(dragIndex, 1);
+        newStandings.splice(index, 0, draggedItem);
+        
+        // Temporarily recalculate row numbers purely for visual representation
+        newStandings.forEach((s, idx) => { s.position = idx + 1; });
+        
+        setStandings(newStandings);
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+        if (!isEditingTiebreaker) return;
+        e.preventDefault();
+    };
+
     const renderLeagueTable = (data: Standing[] = standings) => {
         const sport = champ?.sport?.name?.toLowerCase() || 'futebol';
         const isBasquete = sport.includes('basquete');
@@ -131,16 +183,24 @@ export function EventLeaderboard() {
                         </thead>
                         <tbody>
                             {data.map((team, index) => (
-                                <tr key={team.id || index} className={`border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors ${index < 4 ? 'bg-indigo-50/10' : ''}`}>
-                                    <td className="px-4 py-3 font-bold text-gray-500">
-                                        <span className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${getMedalClass(team.position)}`}>
+                                <tr 
+                                    key={team.id || index} 
+                                    draggable={isEditingTiebreaker}
+                                    onDragStart={(e) => handleDragStart(e, index)}
+                                    onDragOver={handleDragOver}
+                                    onDrop={(e) => handleDrop(e, index)}
+                                    className={`border-b border-gray-50 last:border-0 transition-all ${isEditingTiebreaker ? 'cursor-move hover:bg-indigo-50 active:bg-indigo-100' : 'hover:bg-gray-50'} ${index < 4 && !isEditingTiebreaker ? 'bg-indigo-50/10' : ''}`}
+                                >
+                                    <td className="px-4 py-3 font-bold text-gray-500 flex items-center gap-2">
+                                        {isEditingTiebreaker && <GripVertical className="w-4 h-4 text-indigo-400" />}
+                                        <span className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${!isEditingTiebreaker ? getMedalClass(team.position) : 'bg-gray-200 text-gray-600'}`}>
                                             {team.position}
                                         </span>
                                     </td>
                                     <td className="px-4 py-3">
                                         <button
-                                            onClick={() => handleTeamClick(team.id, team.team_name, team.team_logo)}
-                                            className="flex items-center gap-3 hover:text-indigo-600 transition-colors text-left"
+                                            onClick={() => !isEditingTiebreaker && handleTeamClick(team.id, team.team_name, team.team_logo)}
+                                            className={`flex items-center gap-3 transition-colors text-left ${isEditingTiebreaker ? 'cursor-move pointer-events-none' : 'hover:text-indigo-600'}`}
                                         >
                                             {team.team_logo && <img src={team.team_logo} alt="" className="w-6 h-6 rounded-full object-cover bg-gray-100" />}
                                             <span className="font-bold text-gray-800">{team.team_name}</span>
@@ -216,11 +276,40 @@ export function EventLeaderboard() {
                         {/* Show Standings Table if we have data, regardless of format name */}
                         {standings.length > 0 && (
                             <div className="mb-8">
-                                {(['groups', 'group_knockout'].includes(championshipFormat) || standings.some(s => s.group_name && s.group_name !== 'Geral')) ? (
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                                    <h3 className="text-xl font-bold text-gray-800 px-2 border-l-4 border-indigo-600">
+                                        {championshipFormat === 'group_knockout' ? 'Fase de Grupos' : 'Classificação'}
+                                    </h3>
+                                    
+                                    {isAdmin && (
+                                        <div className="flex items-center gap-2">
+                                            {isEditingTiebreaker ? (
+                                                <>
+                                                    <button onClick={() => { setIsEditingTiebreaker(false); window.location.reload(); }} className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors text-sm font-bold">
+                                                        <X className="w-4 h-4" /> Cancelar
+                                                    </button>
+                                                    <button onClick={handleSaveTiebreaker} className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-SM text-sm font-bold">
+                                                        <Save className="w-4 h-4" /> Salvar Ordem
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <button onClick={() => setIsEditingTiebreaker(true)} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors shadow-sm text-sm font-bold">
+                                                    <Edit3 className="w-4 h-4 text-indigo-500" /> Desempate Manual
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                                {isEditingTiebreaker && (
+                                    <div className="mb-4 bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-sm text-indigo-800">
+                                        <p className="font-bold flex items-center gap-2 mb-1">
+                                            <GripVertical className="w-4 h-4" /> Modo de Ajuste de Desempate
+                                        </p>
+                                        <p>Arraste os times para ordenar. Esta prioridade manual <b>só será ativada</b> para desempatar times que possuírem a mesma pontuação. Caso um time tenha mais pontos que o outro, ele automaticamente ficará acima.</p>
+                                    </div>
+                                )}
+                                {(isEditingTiebreaker || ['groups', 'group_knockout'].includes(championshipFormat) || standings.some(s => s.group_name && s.group_name !== 'Geral')) ? (
                                     <>
-                                        <h3 className="text-xl font-bold text-gray-800 mb-4 px-2 border-l-4 border-indigo-600">
-                                            {championshipFormat === 'group_knockout' ? 'Fase de Grupos' : 'Classificação'}
-                                        </h3>
                                         {renderGroupStage()}
                                     </>
                                 ) : (

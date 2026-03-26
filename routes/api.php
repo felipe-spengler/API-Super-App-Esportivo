@@ -146,6 +146,7 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::put('/me', [AuthController::class, 'update']);
 
     Route::post('/me/photo', [\App\Http\Controllers\Admin\ImageUploadController::class, 'uploadMyPhoto']);
+    Route::delete('/me/photo', [\App\Http\Controllers\Admin\ImageUploadController::class, 'deleteMyPhoto']);
     Route::delete('/me', [AuthController::class, 'deleteAccount']);
     Route::post('/logout', [AuthController::class, 'logout']);
 
@@ -178,6 +179,7 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::put('/teams/{id}/players/{playerId}', [TeamController::class, 'updatePlayer']);
     Route::delete('/teams/{id}/players/{playerId}', [TeamController::class, 'removePlayer']);
     Route::post('/teams/{id}/upload-player-photo/{playerId}', [TeamController::class, 'uploadPlayerPhoto']);
+    Route::delete('/teams/{id}/delete-player-photo/{playerId}', [TeamController::class, 'deletePlayerPhoto']);
 
     // Área Admin (Web) - Protegido com middleware 'admin'
     Route::prefix('admin')->middleware(['admin'])->group(function () {
@@ -194,6 +196,7 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
         Route::post('/championships/{id}/categories', [AdminChampionshipController::class, 'addCategory']);
         Route::get('/championships/{id}/categories', [AdminChampionshipController::class, 'categories']);
         Route::put('/championships/{id}/awards', [AdminChampionshipController::class, 'updateAwards']);
+        Route::post('/championships/{id}/tiebreaker-priority', [AdminChampionshipController::class, 'updateTiebreakerPriority']);
 
         // Gestão de Partidas (NEW)
         Route::get('/matches', [AdminMatchController::class, 'index']);
@@ -248,6 +251,7 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
         // Upload de Imagens
         Route::post('/upload/team-logo/{teamId}', [ImageUploadController::class, 'uploadTeamLogo']);
         Route::post('/upload/player-photo/{playerId}', [ImageUploadController::class, 'uploadPlayerPhoto']);
+        Route::delete('/upload/player-photo/{playerId}', [ImageUploadController::class, 'deletePlayerPhoto']);
         Route::post('/upload/championship-logo/{championshipId}', [ImageUploadController::class, 'uploadChampionshipLogo']);
         Route::post('/upload/championship-banner/{championshipId}', [ImageUploadController::class, 'uploadChampionshipBanner']);
         Route::post('/upload/championship-regulation/{championshipId}', [ImageUploadController::class, 'uploadChampionshipRegulation']);

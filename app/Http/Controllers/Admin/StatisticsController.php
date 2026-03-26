@@ -185,14 +185,29 @@ class StatisticsController extends Controller
             $team['goal_difference'] = $team['goals_for'] - $team['goals_against'];
         }
 
-        // Ordena por Grupo, Pontos, Saldo
-        usort($standings, function ($a, $b) {
+        // Ordena por Grupo, Pontos, Desempate Manual, Saldo
+        $tiebreakerPriority = $championship->tiebreaker_priority ?? [];
+
+        usort($standings, function ($a, $b) use ($tiebreakerPriority) {
             if ($a['group_name'] != $b['group_name']) {
                 return strcmp($a['group_name'], $b['group_name']);
             }
             if ($a['points'] != $b['points']) {
                 return $b['points'] - $a['points'];
             }
+            
+            // Desempate manual (só se aplicam se os pontos forem iguais)
+            $posA = array_search($a['team_id'], $tiebreakerPriority);
+            $posB = array_search($b['team_id'], $tiebreakerPriority);
+            
+            if ($posA !== false && $posB !== false) {
+                return $posA - $posB; // Menor índice = maior prioridade
+            } elseif ($posA !== false) {
+                return -1; // A está na lista manual (ganha do B)
+            } elseif ($posB !== false) {
+                return 1; // B está na lista manual (ganha do A)
+            }
+
             if ($a['goal_difference'] != $b['goal_difference']) {
                 return $b['goal_difference'] - $a['goal_difference'];
             }

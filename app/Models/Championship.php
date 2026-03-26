@@ -35,7 +35,8 @@ class Championship extends Model
         'elderly_minimum_age',
         'allow_shopping_registration',
         'regulation_path',
-        'remove_bg_on_art'
+        'remove_bg_on_art',
+        'tiebreaker_priority'
     ];
 
     protected $casts = [
@@ -55,6 +56,7 @@ class Championship extends Model
         'elderly_minimum_age' => 'integer',
         'allow_shopping_registration' => 'boolean',
         'remove_bg_on_art' => 'boolean',
+        'tiebreaker_priority' => 'array',
     ];
 
     public function club()

@@ -386,6 +386,94 @@ class ImageUploadController extends Controller
         ], 404);
     }
     /**
+     * Deletar foto de jogador
+     */
+    public function deletePlayerPhoto(Request $request, $playerId)
+    {
+        try {
+            $request->validate([
+                'index' => 'nullable|integer|min:0|max:2', // Validar índice (0, 1, 2)
+            ]);
+
+            $player = User::findOrFail($playerId);
+
+            // Verifica permissão de clube (mesma lógica do upload)
+            $user = $request->user();
+            if ($user && $user->club_id !== null && $player->club_id !== $user->club_id && $user->id !== $player->id) {
+                $belongsToClubTeam = false;
+                if ($player->club_id === null) {
+                    $belongsToClubTeam = $player->teamsAsPlayer()->where('club_id', $user->club_id)->exists();
+                }
+
+                if (!$belongsToClubTeam) {
+                    return response()->json([
+                        'message' => 'Você não tem permissão para editar este jogador.'
+                    ], 403);
+                }
+            }
+
+            $currentPhotos = $player->photos ?? [];
+            if (!is_array($currentPhotos)) {
+                $currentPhotos = [];
+                if ($player->photo_path) {
+                    $currentPhotos[] = $player->photo_path;
+                }
+            }
+
+            $index = $request->input('index', 0);
+
+            if (!isset($currentPhotos[$index])) {
+                return response()->json([
+                    'message' => 'Nenhuma foto encontrada neste índice.'
+                ], 404);
+            }
+
+            $pathToDelete = $currentPhotos[$index];
+
+            // 1. Deletar arquivo principal
+            if (Storage::disk('public')->exists($pathToDelete)) {
+                Storage::disk('public')->delete($pathToDelete);
+            }
+
+            // 2. Deletar versões processadas se existirem (_nobg.png, _processed.png)
+            $info = pathinfo($pathToDelete);
+            $basePath = $info['dirname'] . '/' . $info['filename'];
+            
+            foreach (['_nobg.png', '_processed.png'] as $suffix) {
+                $processedPath = $basePath . $suffix;
+                if (Storage::disk('public')->exists($processedPath)) {
+                    Storage::disk('public')->delete($processedPath);
+                }
+            }
+
+            // 3. Atualizar array de fotos
+            unset($currentPhotos[$index]);
+            $currentPhotos = array_values($currentPhotos); // Reindexa
+
+            $player->photos = $currentPhotos;
+            
+            // 4. Atualizar campos legados e auxiliares
+            $player->photo_path = $currentPhotos[0] ?? null;
+            
+            // Se deletou a foto que era a original, limpa o campo original também
+            // ou atualiza para a nova primeira foto
+            $player->photo_path_original = $currentPhotos[0] ?? null;
+
+            $player->save();
+
+            return response()->json([
+                'message' => 'Foto removida com sucesso!',
+                'photos' => $currentPhotos,
+                'photo_path' => $player->photo_path
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error("Delete Player Photo Error: " . $e->getMessage());
+            return response()->json(['message' => 'Erro ao remover a foto.'], 500);
+        }
+    }
+
+    /**
      * Listar imagens de uma pasta
      */
     public function listImages(Request $request)
@@ -412,6 +500,15 @@ class ImageUploadController extends Controller
 
         return response()->json($images);
     }
+    /**
+     * Deletar foto do próprio perfil (Authenticated User)
+     */
+    public function deleteMyPhoto(Request $request)
+    {
+        $user = $request->user();
+        return $this->deletePlayerPhoto($request, $user->id);
+    }
+
     /**
      * Upload de foto do próprio perfil (Authenticated User)
      */

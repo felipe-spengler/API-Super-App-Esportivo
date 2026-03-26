@@ -114,7 +114,8 @@ export function AdminChampionshipAwards() {
     }
 
     const getAwardTypes = (sportName: string) => {
-        const sport = sportName.toLowerCase();
+        const sport = (sportName || '').toLowerCase();
+        
         if (sport.includes('volei') || sport.includes('volley')) {
             return [
                 { key: 'mvp', label: 'MVP (Melhor Quadra)' },
@@ -128,6 +129,52 @@ export function AdminChampionshipAwards() {
                 { key: 'estreante', label: 'Melhor Estreante' }
             ];
         }
+        
+        if (sport.includes('futsal') || sport.includes('indoor')) {
+            return [
+                 { key: 'craque', label: 'Craque do Campeonato' },
+                 { key: 'goleiro', label: 'Melhor Goleiro' },
+                 { key: 'fixo', label: 'Melhor Fixo' },
+                 { key: 'ala_direita', label: 'Melhor Ala Direita' },
+                 { key: 'ala_esquerda', label: 'Melhor Ala Esquerda' },
+                 { key: 'pivo', label: 'Melhor Pivô' },
+                 { key: 'artilheiro', label: 'Artilheiro' },
+                 { key: 'assistencia', label: 'Líder de Assistências' },
+                 { key: 'estreante', label: 'Melhor Estreante' }
+            ];
+        }
+
+        if (sport.includes('basquete') || sport.includes('basket')) {
+            return [
+                 { key: 'mvp', label: 'MVP do Campeonato' },
+                 { key: 'armador', label: 'Melhor Armador(a)' },
+                 { key: 'ala_armador', label: 'Melhor Ala-Armador(a)' },
+                 { key: 'ala', label: 'Melhor Ala' },
+                 { key: 'ala_pivo', label: 'Melhor Ala-Pivô' },
+                 { key: 'pivo', label: 'Melhor Pivô' },
+                 { key: 'cestinha', label: 'Cestinha' },
+                 { key: 'reboteiro', label: 'Líder em Rebotes' },
+                 { key: 'assistencia', label: 'Líder em Assistências' },
+                 { key: 'estreante', label: 'Melhor Estreante' }
+            ];
+        }
+
+        if (sport.includes('handebol') || sport.includes('handball')) {
+            return [
+                 { key: 'craque', label: 'MVP do Campeonato' },
+                 { key: 'goleiro', label: 'Melhor Goleiro(a)' },
+                 { key: 'ponta_esquerda', label: 'Melhor Ponta Esquerda' },
+                 { key: 'armador_esquerdo', label: 'Melhor Armador(a) Esquerdo' },
+                 { key: 'central', label: 'Melhor Central' },
+                 { key: 'armador_direito', label: 'Melhor Armador(a) Direito' },
+                 { key: 'ponta_direita', label: 'Melhor Ponta Direita' },
+                 { key: 'pivo', label: 'Melhor Pivô' },
+                 { key: 'artilheiro', label: 'Artilheiro' },
+                 { key: 'estreante', label: 'Melhor Estreante' }
+            ];
+        }
+
+        // Default: Futebol de Campo / Society
         return [
             { key: 'craque', label: 'Craque do Campeonato' },
             { key: 'goleiro', label: 'Melhor Goleiro' },

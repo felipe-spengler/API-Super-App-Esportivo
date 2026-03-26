@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Camera, Loader2, X, Plus, Download } from 'lucide-react';
+import { Camera, Loader2, X, Plus, Download, Trash2 } from 'lucide-react';
 import api from '../../../services/api';
 import { useAuth } from '../../../context/AuthContext';
 import { prepareImageForUpload } from '../../../utils/imageCompressor';
@@ -165,6 +165,40 @@ export function PhotoUploadSection({ playerId, currentPhotos }: PhotoUploadSecti
         }
     }
 
+    async function handleDelete(index: number) {
+        if (!window.confirm('Tem certeza que deseja remover esta foto?')) return;
+        
+        setLoadingIndex(index);
+        setUploadError(null);
+        try {
+            const isOwnProfile = user && user.id.toString() === playerId;
+            const endpoint = isOwnProfile ? '/me/photo' : `/admin/upload/player-photo/${playerId}`;
+            
+            const res = await api.delete(endpoint, { data: { index } });
+            const newPhotos = res.data.photos || [];
+            
+            setPhotos(newPhotos.map((p: string) => getImageUrl(p)));
+            
+            if (isOwnProfile) {
+                const updatedUser = {
+                    ...user,
+                    photos: newPhotos,
+                    photo_path: res.data.photo_path,
+                    photo_url: getImageUrl(res.data.photo_path),
+                    photo_urls: newPhotos.map((p: string) => getImageUrl(p))
+                };
+                updateUser(updatedUser as any);
+            }
+            alert('Foto removida com sucesso!');
+        } catch (error: any) {
+            console.error('[PhotoUpload] Delete Error:', error);
+            setUploadError(error.response?.data?.message || 'Erro ao remover a foto.');
+            alert(`❌ ${error.response?.data?.message || 'Erro ao remover a foto.'}`);
+        } finally {
+            setLoadingIndex(null);
+        }
+    }
+
     const [removeBg, setRemoveBg] = useState(false);
 
     return (
@@ -223,6 +257,9 @@ export function PhotoUploadSection({ playerId, currentPhotos }: PhotoUploadSecti
                                         <a href={hasPhoto} target="_blank" rel="noopener noreferrer" download={`foto-${playerId}-${index}.png`} className="cursor-pointer p-2 bg-white rounded-full hover:bg-gray-100" title="Baixar Foto">
                                             <Download className="w-4 h-4 text-gray-700" />
                                         </a>
+                                        <button type="button" onClick={() => handleDelete(index)} className="cursor-pointer p-2 bg-white rounded-full hover:bg-red-50 text-red-600" title="Remover Foto">
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
                                     </div>
                                     {index === 0 && <span className="absolute bottom-0 left-0 right-0 bg-indigo-600 text-white text-[10px] text-center py-0.5">Principal</span>}
                                 </>

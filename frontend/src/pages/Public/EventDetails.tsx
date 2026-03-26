@@ -14,7 +14,8 @@ import {
     UserPlus,
     Star,
     Images,
-    Hand
+    Hand,
+    Medal
 } from 'lucide-react';
 import api from '../../services/api';
 
@@ -28,6 +29,7 @@ const SPORT_MENUS: any = {
         { label: 'Artilharia', icon: Target, route: 'stats', params: { type: 'goals', title: 'Artilharia' }, color: 'gray' },
         { label: 'Cartões', icon: Square, iconColor: '#EF4444', route: 'stats', params: { type: 'cards', title: 'Cartões' }, color: 'red' },
         { label: 'Melhor em Campo', icon: Crown, route: 'mvp', color: 'black' },
+        { label: 'Premiações', icon: Medal, route: 'tourney-awards', color: 'purple' },
         { label: 'Ver Artes', icon: Images, route: 'awards', color: 'green' },
     ],
     futsal: 'futebol', // Alias
@@ -38,6 +40,7 @@ const SPORT_MENUS: any = {
         { label: 'Equipes', icon: Users, route: 'participants', color: 'indigo' },
         { label: 'Artilharia', icon: Target, route: 'stats', params: { type: 'goals', title: 'Artilharia' }, color: 'gray' },
         { label: 'MVP', icon: Crown, route: 'mvp', color: 'black' },
+        { label: 'Premiações', icon: Medal, route: 'tourney-awards', color: 'purple' },
         { label: 'Ver Artes', icon: Images, route: 'awards', color: 'green' },
     ],
     volei: [
@@ -48,6 +51,7 @@ const SPORT_MENUS: any = {
         { label: 'Bloqueador', icon: HandMetal, route: 'stats', params: { type: 'blocks', title: 'Melhores Bloqueadores' }, color: 'cyan' },
         { label: 'Acer', icon: Star, route: 'stats', params: { type: 'aces', title: 'Melhores Sacadores' }, color: 'indigo' },
         { label: 'MVP', icon: Crown, route: 'mvp', color: 'purple' },
+        { label: 'Premiações', icon: Medal, route: 'tourney-awards', color: 'purple' },
         { label: 'Ver Artes', icon: Images, route: 'awards', color: 'green' },
     ],
     basquete: [
@@ -58,6 +62,7 @@ const SPORT_MENUS: any = {
         { label: 'Rebotes', icon: Hand, route: 'stats', params: { type: 'rebounds', title: 'Líderes em Rebotes' }, color: 'cyan' },
         { label: 'Assistências', icon: HandMetal, route: 'stats', params: { type: 'assists', title: 'Líderes em Assistências' }, color: 'indigo' },
         { label: 'MVP', icon: Crown, route: 'mvp', color: 'black' },
+        { label: 'Premiações', icon: Medal, route: 'tourney-awards', color: 'purple' },
         { label: 'Ver Artes', icon: Images, route: 'awards', color: 'green' },
     ],
 
@@ -66,6 +71,7 @@ const SPORT_MENUS: any = {
         { label: 'Resultados', icon: Trophy, route: 'results', color: 'orange' },
         { label: 'Inscritos', icon: Users, route: 'participants', color: 'blue' },
         { label: 'Categorias', icon: ListOrdered, route: 'categories', color: 'cyan' },
+        { label: 'Premiações', icon: Medal, route: 'tourney-awards', color: 'purple' },
         { label: 'Ver Artes', icon: Images, route: 'awards', color: 'green' },
     ],
     ciclismo: 'corrida',
@@ -78,6 +84,7 @@ const SPORT_MENUS: any = {
         { label: 'Chaves', icon: Target, route: 'brackets', color: 'orange' },
         { label: 'Inscritos', icon: Users, route: 'participants', color: 'blue' },
         { label: 'Ao Vivo', icon: Trophy, route: 'matches', color: 'red' },
+        { label: 'Premiações', icon: Medal, route: 'tourney-awards', color: 'purple' },
         { label: 'Ver Artes', icon: Images, route: 'awards', color: 'green' },
     ],
     judo: 'jiu-jitsu',
@@ -89,6 +96,7 @@ const SPORT_MENUS: any = {
         { label: 'Chaves', icon: Target, route: 'brackets', color: 'orange' },
         { label: 'Jogos', icon: Trophy, route: 'matches', color: 'blue' },
         { label: 'Inscritos', icon: Users, route: 'participants', color: 'purple' },
+        { label: 'Premiações', icon: Medal, route: 'tourney-awards', color: 'purple' },
         { label: 'Ver Artes', icon: Images, route: 'awards', color: 'green' },
     ],
     'beach-tennis': 'tenis',
@@ -100,6 +108,7 @@ const SPORT_MENUS: any = {
         { label: 'Resultados', icon: Trophy, route: 'leaderboard', color: 'orange' }, // Ranking por nota
         { label: 'Baterias', icon: ListOrdered, route: 'heats', color: 'blue' },
         { label: 'Inscritos', icon: Users, route: 'participants', color: 'purple' },
+        { label: 'Premiações', icon: Medal, route: 'tourney-awards', color: 'purple' },
         { label: 'Ver Artes', icon: Images, route: 'awards', color: 'green' },
     ],
     surf: 'skate',

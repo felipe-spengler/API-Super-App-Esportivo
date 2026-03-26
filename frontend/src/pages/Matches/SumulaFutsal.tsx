@@ -192,7 +192,6 @@ export function SumulaFutsal() {
                 const ok = window.confirm(
                     `⚠️ ATENÇÃO — 2º CARTÃO AMARELO!\n\n` +
                     `"${pName}" já recebeu um cartão amarelo nesta partida.\n\n` +
-                    `Isso resultará em EXPULSÃO (cartão vermelho automático).\n\n` +
                     `Deseja confirmar o lançamento?`
                 );
                 if (!ok) return;

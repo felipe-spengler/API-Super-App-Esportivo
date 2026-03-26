@@ -264,12 +264,38 @@ class TeamController extends Controller
         return $uploadController->uploadPlayerPhoto($request, $playerId);
     }
 
+    // 3.6. Delete Player Photo (Pelo Capitão)
+    public function deletePlayerPhoto(Request $request, $id, $playerId)
+    {
+        $team = Team::findOrFail($id);
+        $user = $request->user();
+
+        // Permission check
+        $isCaptain = ($user->id === $team->captain_id);
+        $isAdmin = $user->is_admin;
+        $isRegionalCaptain = false;
+
+        if (!$isCaptain && !$isAdmin) {
+            $isRegionalCaptain = \DB::table('championship_team')
+                ->where('team_id', $id)
+                ->where('captain_id', $user->id)
+                ->exists();
+        }
+
+        if (!$isCaptain && !$isAdmin && !$isRegionalCaptain) {
+            return response()->json(['message' => 'Você não tem permissão para editar as fotos deste time.'], 403);
+        }
+
+        $uploadController = new \App\Http\Controllers\Admin\ImageUploadController();
+        return $uploadController->deletePlayerPhoto($request, $playerId);
+    }
+
     // 4. Editar Jogador (Pelo Capitão)
     public function updatePlayer(Request $request, $id, $playerId)
     {
         set_time_limit(300);
         \Log::info("TeamController updatePlayer [START] - Team ID: {$id}, Player ID: {$playerId}");
-
+    ...
         $team = Team::findOrFail($id);
         $player = \App\Models\User::findOrFail($playerId);
         $user = $request->user();

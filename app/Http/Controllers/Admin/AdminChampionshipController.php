@@ -259,4 +259,18 @@ class AdminChampionshipController extends Controller
 
         return response()->json($championship);
     }
+
+    // Update tiebreaker priority
+    public function updateTiebreakerPriority(Request $request, $id)
+    {
+        $championship = Championship::findOrFail($id);
+
+        $validated = $request->validate([
+            'tiebreaker_priority' => 'array',
+        ]);
+
+        $championship->update(['tiebreaker_priority' => $validated['tiebreaker_priority']]);
+
+        return response()->json(['message' => 'Ordem de desempate atualizada', 'tiebreaker_priority' => $championship->tiebreaker_priority]);
+    }
 }
