@@ -93,9 +93,11 @@ const SPORT_MENUS: any = {
 
     // Racket Sports (Sets/Games)
     tenis: [
-        { label: 'Chaves', icon: Target, route: 'brackets', color: 'orange' },
-        { label: 'Jogos', icon: Trophy, route: 'matches', color: 'blue' },
-        { label: 'Inscritos', icon: Users, route: 'participants', color: 'purple' },
+        { label: 'Jogos', icon: Trophy, route: 'matches', color: 'orange' },
+        { label: 'Classificação', icon: ListOrdered, route: 'brackets', color: 'blue' },
+        { label: 'Inscritos', icon: Users, route: 'participants', color: 'indigo' },
+        { label: 'Pontuador', icon: Target, route: 'stats', params: { type: 'points', title: 'Maiores Pontuadores' }, color: 'gray' },
+        { label: 'MVP', icon: Crown, route: 'mvp', color: 'black' },
         { label: 'Premiações', icon: Medal, route: 'tourney-awards', color: 'purple' },
         { label: 'Ver Artes', icon: Images, route: 'awards', color: 'green' },
     ],

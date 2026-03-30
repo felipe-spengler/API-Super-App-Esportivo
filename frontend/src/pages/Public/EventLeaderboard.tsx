@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Edit3, Save, X, GripVertical } from 'lucide-react';
+import { ArrowLeft, Edit3, Save, X, GripVertical, ListOrdered, Calendar, Trophy, List, ChevronRight } from 'lucide-react';
+import { Reorder } from 'framer-motion';
 import api from '../../services/api';
 import { TournamentBracket } from '../../components/TournamentBracket';
 import type { BracketMatch } from '../../components/TournamentBracket';
@@ -120,40 +121,48 @@ export function EventLeaderboard() {
         }
     }
 
-    const handleDragStart = (e: React.DragEvent, index: number) => {
+    const handleReorder = (newItems: Standing[], currentGroupName: string) => {
         if (!isEditingTiebreaker) return;
-        e.dataTransfer.setData('dragIndex', index.toString());
-    };
+        
+        // Se estivermos em tabela única (Geral), apenas setamos
+        if (champ?.format !== 'group_knockout' && champ?.format !== 'groups') {
+            const reordered = [...newItems];
+            reordered.forEach((s, idx) => { s.position = idx + 1; });
+            setStandings(reordered);
+            return;
+        }
 
-    const handleDrop = (e: React.DragEvent, index: number) => {
-        if (!isEditingTiebreaker) return;
-        e.preventDefault();
-        const dragIndexStr = e.dataTransfer.getData('dragIndex');
-        if (!dragIndexStr) return;
-        
-        const dragIndex = parseInt(dragIndexStr, 10);
-        if (dragIndex === index) return;
-        
+        // Se estivermos em grupos, precisamos mesclar as mudanças no array global mantendo a ordem dos demais grupos
         const newStandings = [...standings];
-        const draggedItem = newStandings[dragIndex];
-        newStandings.splice(dragIndex, 1);
-        newStandings.splice(index, 0, draggedItem);
         
-        // Temporarily recalculate row numbers purely for visual representation
+        // 1. Encontra os índices dos times desse grupo no array original
+        const teamIdsInGroup = new Set(newItems.map(t => t.id));
+        const originalIndices = standings
+            .map((t, idx) => teamIdsInGroup.has(t.id) ? idx : -1)
+            .filter(idx => idx !== -1);
+        
+        if (originalIndices.length === 0) return;
+
+        // 2. Substitui os times nas posições originais pela nova ordem
+        newItems.forEach((team, i) => {
+            if (originalIndices[i] !== undefined) {
+                newStandings[originalIndices[i]] = team;
+            }
+        });
+
+        // 3. Recalcula posições globais (opcional, já que o backend vai decidir a posição definitiva)
         newStandings.forEach((s, idx) => { s.position = idx + 1; });
         
         setStandings(newStandings);
-    };
-
-    const handleDragOver = (e: React.DragEvent) => {
-        if (!isEditingTiebreaker) return;
-        e.preventDefault();
     };
 
     const renderLeagueTable = (data: Standing[] = standings) => {
         const sport = champ?.sport?.name?.toLowerCase() || 'futebol';
         const isBasquete = sport.includes('basquete');
         const isVolei = sport.includes('volei');
+        const isTenis = sport.includes('tenis') || sport.includes('padel') || sport.includes('beach') || sport.includes('racket');
+
+        const isPointsSport = isBasquete || isVolei || isTenis;
 
         return (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -166,33 +175,41 @@ export function EventLeaderboard() {
                                 <th className="px-3 py-3 font-bold text-center" title="Pontos">P</th>
                                 <th className="px-3 py-3 font-bold text-center" title="Jogos">J</th>
                                 <th className="px-3 py-3 font-bold text-center" title="Vitórias">V</th>
-                                {!isBasquete && !isVolei && (
+                                {!isPointsSport && (
                                     <th className="px-3 py-3 font-bold text-center hidden sm:table-cell" title="Empates">E</th>
                                 )}
                                 <th className="px-3 py-3 font-bold text-center hidden sm:table-cell" title="Derrotas">D</th>
-                                <th className="px-3 py-3 font-bold text-center hidden md:table-cell" title={isBasquete ? "Pontos Pró" : (isVolei ? "Sets Pró" : "Gols Pró")}>
-                                    {isBasquete ? "PF" : (isVolei ? "SP" : "GP")}
+                                <th className="px-3 py-3 font-bold text-center hidden md:table-cell" title={isBasquete ? "Pontos Pró" : (isVolei ? "Sets Pró" : (isTenis ? "Sets Pró" : "Gols Pró"))}>
+                                    {isBasquete ? "PF" : (isVolei ? "SP" : (isTenis ? "SP" : "GP"))}
                                 </th>
-                                <th className="px-3 py-3 font-bold text-center hidden md:table-cell" title={isBasquete ? "Pontos Contra" : (isVolei ? "Sets Contra" : "Gols Contra")}>
-                                    {isBasquete ? "PC" : (isVolei ? "SC" : "GC")}
+                                <th className="px-3 py-3 font-bold text-center hidden md:table-cell" title={isBasquete ? "Pontos Contra" : (isVolei ? "Sets Contra" : (isTenis ? "Sets Contra" : "Gols Contra"))}>
+                                    {isBasquete ? "PC" : (isVolei ? "SC" : (isTenis ? "SC" : "GC"))}
                                 </th>
-                                <th className="px-3 py-3 font-bold text-center hidden sm:table-cell" title={isBasquete ? "Saldo de Pontos" : (isVolei ? "Saldo de Sets" : "Saldo de Gols")}>
-                                    {isBasquete ? "SP" : (isVolei ? "SS" : "SG")}
+                                <th className="px-3 py-3 font-bold text-center hidden sm:table-cell" title={isBasquete ? "Saldo de Pontos" : (isVolei ? "Saldo de Sets" : (isTenis ? "Saldo de Sets" : "Saldo de Gols"))}>
+                                    {isBasquete ? "SP" : (isVolei ? "SS" : (isTenis ? "SS" : "SG"))}
                                 </th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <Reorder.Group 
+                            as="tbody" 
+                            axis="y" 
+                            values={data} 
+                            onReorder={(newOrder) => handleReorder(newOrder, data[0]?.group_name || 'Geral')}
+                        >
                             {data.map((team, index) => (
-                                <tr 
+                                <Reorder.Item 
+                                    as="tr" 
                                     key={team.id || index} 
-                                    draggable={isEditingTiebreaker}
-                                    onDragStart={(e) => handleDragStart(e, index)}
-                                    onDragOver={handleDragOver}
-                                    onDrop={(e) => handleDrop(e, index)}
-                                    className={`border-b border-gray-50 last:border-0 transition-all ${isEditingTiebreaker ? 'cursor-move hover:bg-indigo-50 active:bg-indigo-100' : 'hover:bg-gray-50'} ${index < 4 && !isEditingTiebreaker ? 'bg-indigo-50/10' : ''}`}
+                                    value={team}
+                                    dragListener={isEditingTiebreaker}
+                                    className={`border-b border-gray-50 last:border-0 transition-all ${isEditingTiebreaker ? 'cursor-move hover:bg-indigo-50 active:bg-indigo-100 relative z-10' : 'hover:bg-gray-50'} ${index < 4 && !isEditingTiebreaker ? 'bg-indigo-50/10' : ''} bg-white`}
                                 >
-                                    <td className="px-4 py-3 font-bold text-gray-500 flex items-center gap-2">
-                                        {isEditingTiebreaker && <GripVertical className="w-4 h-4 text-indigo-400" />}
+                                    <td className="px-4 py-3 font-bold text-gray-500 flex items-center gap-2 select-none">
+                                        {isEditingTiebreaker && (
+                                            <div className="p-1 -ml-1 bg-indigo-50 rounded-md cursor-move">
+                                                <GripVertical className="w-5 h-5 text-indigo-500" />
+                                            </div>
+                                        )}
                                         <span className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${!isEditingTiebreaker ? getMedalClass(team.position) : 'bg-gray-200 text-gray-600'}`}>
                                             {team.position}
                                         </span>
@@ -209,16 +226,16 @@ export function EventLeaderboard() {
                                     <td className="px-3 py-3 font-black text-center text-indigo-900">{team.points}</td>
                                     <td className="px-3 py-3 text-center text-gray-600">{team.played}</td>
                                     <td className="px-3 py-3 text-center text-gray-600">{team.won}</td>
-                                    {!isBasquete && !isVolei && (
+                                    {!isPointsSport && (
                                         <td className="px-3 py-3 text-center text-gray-600 hidden sm:table-cell">{team.drawn}</td>
                                     )}
                                     <td className="px-3 py-3 text-center text-gray-600 hidden sm:table-cell">{team.lost}</td>
                                     <td className="px-3 py-3 text-center text-gray-600 hidden md:table-cell">{team.goals_for}</td>
                                     <td className="px-3 py-3 text-center text-gray-600 hidden md:table-cell">{team.goals_against}</td>
                                     <td className="px-3 py-3 text-center text-gray-600 hidden sm:table-cell">{team.goal_difference}</td>
-                                </tr>
+                                </Reorder.Item>
                             ))}
-                        </tbody>
+                        </Reorder.Group>
                     </table>
                 </div>
             </div>

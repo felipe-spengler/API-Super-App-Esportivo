@@ -261,8 +261,12 @@ class EventController extends Controller
                 }
             }
 
+            // Manual Tiebreaker Priority
+            $priority = $champ->tiebreaker_priority ?? [];
+            $priorityMap = array_flip($priority);
+
             // Ordenação
-            usort($teamsData, function ($a, $b) {
+            usort($teamsData, function ($a, $b) use ($priorityMap) {
                 // Sort by Group
                 $groupA = $a['group_name'] ?? 'Geral';
                 $groupB = $b['group_name'] ?? 'Geral';
@@ -271,6 +275,13 @@ class EventController extends Controller
                 }
 
                 if ($a['stats']['points'] === $b['stats']['points']) {
+                    // Manual Tiebreaker Priority (Immediate override if available)
+                    if (isset($priorityMap[$a['id'] ?? 0]) && isset($priorityMap[$b['id'] ?? 0])) {
+                        if ($priorityMap[$a['id'] ?? 0] !== $priorityMap[$b['id'] ?? 0]) {
+                            return $priorityMap[$a['id'] ?? 0] <=> $priorityMap[$b['id'] ?? 0];
+                        }
+                    }
+
                     if ($a['stats']['wins'] === $b['stats']['wins']) {
                         // Saldo
                         $balA = $a['stats']['goals_for'] - $a['stats']['goals_against'];
@@ -279,7 +290,7 @@ class EventController extends Controller
                         if ($balA === $balB) {
                             // Gols Pró (Opcional, mas comum)
                             if ($a['stats']['goals_for'] === $b['stats']['goals_for']) {
-                                // Ordem Alfabética
+                                // Ordem Alfabética as final fallback
                                 return strcmp($a['name'], $b['name']);
                             }
                             return $b['stats']['goals_for'] <=> $a['stats']['goals_for'];
