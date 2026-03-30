@@ -379,7 +379,7 @@ class BracketController extends Controller
                 $startDate,
                 $intervalDays,
                 $categoryId,
-                "Grupo {$groupName}",
+                $groupName, // Salva apenas a letra (ex: "A"), sem o prefixo "Grupo "
                 1,
                 $legs
             );
@@ -569,9 +569,12 @@ class BracketController extends Controller
         };
 
         foreach ($matches as $match) {
-            $gName = $match->group_name;
-            if (!$gName)
-                continue;
+            $rawName = $match->group_name;
+            if (!$rawName) continue;
+            
+            // Normalização: remove "Grupo " e espaços para evitar duplicidade (ex: "Grupo A" vira "A")
+            $gName = trim(str_ireplace('Grupo', '', $rawName));
+            if (empty($gName)) $gName = 'A';
 
             if (!isset($groups[$gName]))
                 $groups[$gName] = [];

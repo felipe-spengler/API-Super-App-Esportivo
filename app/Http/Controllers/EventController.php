@@ -144,10 +144,14 @@ class EventController extends Controller
                 ->get();
 
             foreach ($allMatches as $am) {
+                $rawGroupName = $am->group_name;
+                $normalized = $rawGroupName ? trim(str_ireplace('Grupo', '', $rawGroupName)) : 'Geral';
+                if (empty($normalized)) $normalized = 'A';
+
                 if ($am->home_team_id)
-                    $teamGroups[$am->home_team_id] = $am->group_name;
+                    $teamGroups[$am->home_team_id] = $normalized;
                 if ($am->away_team_id)
-                    $teamGroups[$am->away_team_id] = $am->group_name;
+                    $teamGroups[$am->away_team_id] = $normalized;
             }
 
             foreach ($matches as $m) {
@@ -157,7 +161,9 @@ class EventController extends Controller
                     continue; // Ignora jogos sem definição
 
                 // Prefere o grupo do jogo atual, se não tiver, tenta do mapa
-                $groupName = $m->group_name ?? ($teamGroups[$homeId] ?? 'Geral');
+                $rawGName = $m->group_name ?? ($teamGroups[$homeId] ?? 'Geral');
+                $groupName = trim(str_ireplace('Grupo', '', $rawGName));
+                if (empty($groupName)) $groupName = 'A';
 
                 if (!isset($teamsData[$homeId])) {
                     $teamsData[$homeId] = $initStats($m->homeTeam?->name ?? 'Time A', $m->homeTeam?->logo_url ?? null);
@@ -245,7 +251,9 @@ class EventController extends Controller
             $allTeams = $teamsQuery->get();
 
             foreach ($allTeams as $team) {
-                $groupFromPivot = $team->pivot->group_name ?? null;
+                $rawGroupFromPivot = $team->pivot->group_name ?? null;
+                $groupFromPivot = $rawGroupFromPivot ? trim(str_ireplace('Grupo', '', $rawGroupFromPivot)) : null;
+                if (empty($groupFromPivot) && $rawGroupFromPivot) $groupFromPivot = 'A';
 
                 if (!isset($teamsData[$team->id])) {
                     $teamsData[$team->id] = $initStats($team->name, $team->logo_url);
