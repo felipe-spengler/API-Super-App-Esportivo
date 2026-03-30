@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Loader2 } from 'lucide-react';
+import { X, Save, Loader2, Hash } from 'lucide-react';
 
 interface EditRoundModalProps {
     isOpen: boolean;
@@ -13,16 +13,14 @@ interface EditRoundModalProps {
     onSave: (roundName: string) => Promise<void>;
 }
 
-// Preset round names for knockout phases - backend values
-const KNOCKOUT_PRESETS = [
-    { value: 'Rodada 1', label: 'Rodada 1' },
-    { value: 'Rodada 2', label: 'Rodada 2' },
-    { value: 'Rodada 3', label: 'Rodada 3' },
-    { value: 'Oitavas de Final', label: 'Oitavas de Final', backendValue: 'round_of_16' },
-    { value: 'Quartas de Final', label: 'Quartas de Final', backendValue: 'quarter' },
-    { value: 'Semifinal', label: 'Semifinal', backendValue: 'semi' },
-    { value: 'Disputa 3º Lugar', label: 'Disputa 3º Lugar', backendValue: 'third_place' },
-    { value: 'Final', label: 'Final', backendValue: 'final' },
+// Fases fixas de mata-mata
+const PHASES = [
+    { value: 'round_of_32', label: '32-avos de Final' },
+    { value: 'round_of_16', label: 'Oitavas de Final' },
+    { value: 'quarter', label: 'Quartas de Final' },
+    { value: 'semi', label: 'Semifinal' },
+    { value: 'third_place', label: 'Disputa 3º Lugar' },
+    { value: 'final', label: 'Final' },
     { value: 'Grande Final', label: 'Grande Final' },
 ];
 
@@ -32,25 +30,49 @@ export function EditRoundModal({
     editingRound,
     onSave
 }: EditRoundModalProps) {
-    const [roundName, setRoundName] = useState('');
-    const [isCustom, setIsCustom] = useState(false);
+    const [selectedType, setSelectedType] = useState<'round' | 'phase'>('round');
+    const [roundNumber, setRoundNumber] = useState('1');
+    const [selectedPhase, setSelectedPhase] = useState('round_of_16');
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
-        if (editingRound) {
-            setRoundName(editingRound.round_name || `Rodada ${editingRound.round}`);
-            // Check if it's a preset
-            const isPreset = KNOCKOUT_PRESETS.some(p => p.value === editingRound.round_name);
-            setIsCustom(!isPreset);
+        if (editingRound && isOpen) {
+            const currentName = editingRound.round_name || '';
+            
+            // Tenta identificar se o nome atual é uma Rodada X
+            const roundMatch = currentName.match(/Rodada\s+(\d+)/i);
+            
+            if (roundMatch) {
+                setSelectedType('round');
+                setRoundNumber(roundMatch[1]);
+            } else if (PHASES.some(p => p.value === currentName)) {
+                setSelectedType('phase');
+                setSelectedPhase(currentName);
+            } else if (!currentName) {
+                // Se estiver vazio, usa o número da rodada vindo do banco
+                setSelectedType('round');
+                setRoundNumber(String(editingRound.round));
+            } else {
+                // Fallback para fase se for um texto qualquer
+                setSelectedType('phase');
+                setSelectedPhase(currentName);
+            }
         }
-    }, [editingRound]);
+    }, [editingRound, isOpen]);
 
     if (!isOpen || !editingRound) return null;
+
+    const getFinalName = () => {
+        if (selectedType === 'round') {
+            return `Rodada ${roundNumber}`;
+        }
+        return selectedPhase;
+    };
 
     const handleSave = async () => {
         setSaving(true);
         try {
-            await onSave(roundName);
+            await onSave(getFinalName());
             onClose();
         } catch (error) {
             console.error('Error saving round name:', error);
@@ -59,25 +81,15 @@ export function EditRoundModal({
         }
     };
 
-    const handlePresetSelect = (value: string) => {
-        setRoundName(value);
-        setIsCustom(false);
-    };
-
-    const handleCustomChange = (value: string) => {
-        setRoundName(value);
-        setIsCustom(true);
-    };
-
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
             <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
                 {/* Header */}
                 <div className="p-4 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
                     <div>
-                        <h3 className="font-bold text-gray-900">Editar Fase/Rodada</h3>
+                        <h3 className="font-bold text-gray-900">Configurar Nome da Fase</h3>
                         <p className="text-sm text-gray-500">
-                            Alterar o nome da {editingRound.matchIds.length} jogo(s) nesta fase
+                            Aplicar à {editingRound.matchIds.length} jogo(s) desta rodada
                         </p>
                     </div>
                     <button onClick={onClose} className="p-1 hover:bg-gray-200 rounded-full transition-colors">
@@ -86,57 +98,81 @@ export function EditRoundModal({
                 </div>
 
                 {/* Content */}
-                <div className="p-6 space-y-4">
-                    {/* Current Name */}
-                    <div className="bg-indigo-50 p-3 rounded-xl border border-indigo-100">
-                        <p className="text-xs font-bold text-indigo-600 uppercase mb-1">Nome Atual</p>
-                        <p className="font-bold text-indigo-900">{editingRound.round_name || `Rodada ${editingRound.round}`}</p>
-                    </div>
-
-                    {/* Preset Selection */}
-                    <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">
-                            Selecionar Fase (Recomendado)
-                        </label>
-                        <div className="grid grid-cols-3 gap-2">
-                            {KNOCKOUT_PRESETS.map((preset) => (
-                                <button
-                                    key={preset.value}
-                                    onClick={() => handlePresetSelect(preset.value)}
-                                    className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${
-                                        roundName === preset.value && !isCustom
-                                            ? 'bg-indigo-600 text-white shadow-md'
-                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                    }`}
-                                >
-                                    {preset.label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Custom Name */}
-                    <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">
-                            Ou Digitar Nome Personalizado
-                        </label>
-                        <input
-                            type="text"
-                            value={roundName}
-                            onChange={(e) => handleCustomChange(e.target.value)}
-                            placeholder="Ex: Final do Municipal, Decisão..."
-                            className={`w-full px-4 py-3 rounded-xl border-2 transition-all outline-none font-medium ${
-                                isCustom
-                                    ? 'border-indigo-500 bg-indigo-50 focus:ring-2 focus:ring-indigo-200'
-                                    : 'border-gray-200 bg-gray-50 focus:border-indigo-300'
+                <div className="p-6 space-y-6">
+                    
+                    {/* Seletor de Tipo */}
+                    <div className="flex p-1 bg-gray-100 rounded-xl">
+                        <button
+                            onClick={() => setSelectedType('round')}
+                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-all ${
+                                selectedType === 'round' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
                             }`}
-                        />
+                        >
+                            <Hash className="w-4 h-4" />
+                            Tipo Rodada
+                        </button>
+                        <button
+                            onClick={() => setSelectedType('phase')}
+                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-all ${
+                                selectedType === 'phase' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                        >
+                            <span className="text-lg leading-none">🏆</span>
+                            Fase Mata-Mata
+                        </button>
                     </div>
 
-                    {/* Preview */}
-                    <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-100">
-                        <p className="text-xs font-bold text-emerald-600 uppercase mb-1">Preview</p>
-                        <p className="font-bold text-emerald-900 text-lg">{roundName}</p>
+                    {selectedType === 'round' ? (
+                        <div className="space-y-3 animate-in slide-in-from-left-2 duration-200">
+                            <label className="block text-xs font-black text-gray-400 uppercase tracking-wider">
+                                Número da Rodada
+                            </label>
+                            <div className="relative">
+                                <input
+                                    type="number"
+                                    value={roundNumber}
+                                    onChange={(e) => setRoundNumber(e.target.value)}
+                                    className="w-full px-4 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl text-2xl font-black text-gray-800 focus:border-indigo-500 focus:bg-white outline-none transition-all"
+                                    placeholder="Ex: 10"
+                                />
+                                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">
+                                    ª Rodada
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="space-y-3 animate-in slide-in-from-right-2 duration-200">
+                            <label className="block text-xs font-black text-gray-400 uppercase tracking-wider">
+                                Selecionar Fase
+                            </label>
+                            <div className="grid grid-cols-2 gap-2">
+                                {PHASES.map((phase) => (
+                                    <button
+                                        key={phase.value}
+                                        onClick={() => setSelectedPhase(phase.value)}
+                                        className={`px-4 py-3 rounded-xl border-2 text-sm font-bold transition-all text-left flex items-center justify-between ${
+                                            selectedPhase === phase.value
+                                                ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                                                : 'border-gray-100 bg-gray-50 text-gray-600 hover:border-gray-200'
+                                        }`}
+                                    >
+                                        {phase.label}
+                                        {selectedPhase === phase.value && <div className="w-2 h-2 rounded-full bg-indigo-600" />}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Final Preview Overlay */}
+                    <div className="bg-indigo-600 rounded-2xl p-4 text-white shadow-xl shadow-indigo-100 flex items-center justify-between">
+                        <div>
+                            <p className="text-[10px] font-black uppercase opacity-60">Visualização no site</p>
+                            <p className="text-xl font-black">{getFinalName()}</p>
+                        </div>
+                        <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-xl">
+                            {selectedType === 'round' ? '📅' : '🏆'}
+                        </div>
                     </div>
                 </div>
 
@@ -144,24 +180,21 @@ export function EditRoundModal({
                 <div className="p-4 bg-gray-50 border-t border-gray-100 flex gap-3">
                     <button
                         onClick={onClose}
-                        className="flex-1 px-4 py-3 bg-white border border-gray-300 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all"
+                        className="flex-1 px-4 py-3 bg-white border border-gray-200 text-gray-600 font-bold rounded-xl hover:bg-gray-50 transition-all"
                     >
                         Cancelar
                     </button>
                     <button
                         onClick={handleSave}
-                        disabled={saving || !roundName.trim()}
+                        disabled={saving || (selectedType === 'round' && !roundNumber)}
                         className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all disabled:opacity-50"
                     >
                         {saving ? (
-                            <>
-                                <Loader2 className="w-5 h-5 animate-spin" />
-                                Salvando...
-                            </>
+                            <Loader2 className="w-5 h-5 animate-spin" />
                         ) : (
                             <>
                                 <Save className="w-5 h-5" />
-                                Salvar
+                                Aplicar Nome
                             </>
                         )}
                     </button>
