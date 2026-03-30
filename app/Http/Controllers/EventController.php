@@ -136,43 +136,32 @@ class EventController extends Controller
                 ];
             };
 
-            // Mapa de grupos dos times (baseado em qualquer jogo gerado, não só finalizados)
-            $teamGroups = [];
-            $allMatches = GameMatch::where('championship_id', $championshipId)
-                ->whereNotNull('group_name')
-                ->select('home_team_id', 'away_team_id', 'group_name')
-                ->get();
+            // 1. PRIMEIRA PASSADA: Inicializa todos os times com seus grupos REAIS (do pivot/cadastro)
+            $teamsQuery = $champ->teams();
+            if ($request->filled('category_id') && $request->category_id != 'null') {
+                $teamsQuery->wherePivot('category_id', $request->category_id);
+            }
+            $allTeams = $teamsQuery->get();
 
-            foreach ($allMatches as $am) {
-                $rawGroupName = $am->group_name;
-                $normalized = $rawGroupName ? trim(str_ireplace('Grupo', '', $rawGroupName)) : 'Geral';
-                if (empty($normalized)) $normalized = 'A';
+            foreach ($allTeams as $team) {
+                $rawG = $team->pivot->group_name ?? 'Geral';
+                $groupName = trim(str_ireplace('Grupo', '', $rawG));
+                if (empty($groupName) && $rawG) $groupName = 'A';
 
-                if ($am->home_team_id)
-                    $teamGroups[$am->home_team_id] = $normalized;
-                if ($am->away_team_id)
-                    $teamGroups[$am->away_team_id] = $normalized;
+                $teamsData[$team->id] = $initStats($team->name, $team->logo_url);
+                $teamsData[$team->id]['id'] = $team->id;
+                $teamsData[$team->id]['group_name'] = $groupName;
             }
 
+            // 2. SEGUNDA PASSADA: Processa os jogos e soma os pontos nos times já inicializados
             foreach ($matches as $m) {
                 $homeId = $m->home_team_id;
                 $awayId = $m->away_team_id;
-                if (!$homeId || !$awayId)
-                    continue; // Ignora jogos sem definição
+                if (!$homeId || !$awayId) continue;
 
-                // Prefere o grupo do jogo atual, se não tiver, tenta do mapa
-                $rawGName = $m->group_name ?? ($teamGroups[$homeId] ?? 'Geral');
-                $groupName = trim(str_ireplace('Grupo', '', $rawGName));
-                if (empty($groupName)) $groupName = 'A';
-
-                if (!isset($teamsData[$homeId])) {
-                    $teamsData[$homeId] = $initStats($m->homeTeam?->name ?? 'Time A', $m->homeTeam?->logo_url ?? null);
-                    $teamsData[$homeId]['group_name'] = $groupName;
-                }
-                if (!isset($teamsData[$awayId])) {
-                    $teamsData[$awayId] = $initStats($m->awayTeam?->name ?? 'Time B', $m->awayTeam?->logo_url ?? null);
-                    $teamsData[$awayId]['group_name'] = $groupName;
-                }
+                // Garante que o time existe no nosso mapa (caso tenha sido deletado ou algo assim)
+                if (!isset($teamsData[$homeId])) continue;
+                if (!isset($teamsData[$awayId])) continue;
 
                 // Lógica de Pontuação
                 $teamsData[$homeId]['stats']['played']++;
@@ -243,31 +232,9 @@ class EventController extends Controller
                 }
             }
 
-            // Garante que TODOS os times do campeonato apareçam, mesmo com 0 jogos
-            $teamsQuery = $champ->teams();
-            if ($request->has('category_id') && $request->category_id != 'null') {
-                $teamsQuery->wherePivot('category_id', $request->category_id);
-            }
-            $allTeams = $teamsQuery->get();
-
-            foreach ($allTeams as $team) {
-                $rawGroupFromPivot = $team->pivot->group_name ?? null;
-                $groupFromPivot = $rawGroupFromPivot ? trim(str_ireplace('Grupo', '', $rawGroupFromPivot)) : null;
-                if (empty($groupFromPivot) && $rawGroupFromPivot) $groupFromPivot = 'A';
-
-                if (!isset($teamsData[$team->id])) {
-                    $teamsData[$team->id] = $initStats($team->name, $team->logo_url);
-                    $teamsData[$team->id]['id'] = $team->id;
-                    $teamsData[$team->id]['group_name'] = $groupFromPivot ?? $teamGroups[$team->id] ?? 'Geral';
-                } else {
-                    // Ensure ID is set
-                    $teamsData[$team->id]['id'] = $team->id;
-                    // Update group if it was 'Geral' but pivot has something better
-                    if ($groupFromPivot && ($teamsData[$team->id]['group_name'] ?? 'Geral') === 'Geral') {
-                        $teamsData[$team->id]['group_name'] = $groupFromPivot;
-                    }
-                }
-            }
+            // O sorteio e loop de times já foi feito no início
+            // mantemos o loop original limpo apenas para garantir IDs se necessário 
+            // (mas foi movido para o topo para ser a fonte da verdade)
 
             // Manual Tiebreaker Priority
             $priority = $champ->tiebreaker_priority ?? [];

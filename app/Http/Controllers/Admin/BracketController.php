@@ -554,6 +554,20 @@ class BracketController extends Controller
             ], 400);
         }
 
+        // 1. MAPEIA ONDE CADA TIME ESTÁ AGORA (Fonte Única de Verdade)
+        $teamsQuery = $championship->teams();
+        if ($categoryId) {
+            $teamsQuery->wherePivot('category_id', $categoryId);
+        }
+        $allTeams = $teamsQuery->get();
+        $teamToGroupMap = [];
+        foreach ($allTeams as $t) {
+            $rawG = $t->pivot->group_name ?? 'A';
+            $normalized = trim(str_ireplace('Grupo', '', $rawG));
+            if (empty($normalized)) $normalized = 'A';
+            $teamToGroupMap[$t->id] = $normalized;
+        }
+
         $groups = [];
         $teamStats = [];
 
@@ -569,18 +583,15 @@ class BracketController extends Controller
         };
 
         foreach ($matches as $match) {
-            $rawName = $match->group_name;
-            if (!$rawName) continue;
-            
-            // Normalização: remove "Grupo " e espaços para evitar duplicidade (ex: "Grupo A" vira "A")
-            $gName = trim(str_ireplace('Grupo', '', $rawName));
-            if (empty($gName)) $gName = 'A';
+            $hId = $match->home_team_id;
+            $aId = $match->away_team_id;
+            if (!$hId || !$aId) continue;
+
+            // Usa o grupo do time no cadastro, não o nome gravado no jogo
+            $gName = $teamToGroupMap[$hId] ?? ($teamToGroupMap[$aId] ?? 'A');
 
             if (!isset($groups[$gName]))
                 $groups[$gName] = [];
-
-            $hId = $match->home_team_id;
-            $aId = $match->away_team_id;
 
             if (!in_array($hId, $groups[$gName]))
                 $groups[$gName][] = $hId;
