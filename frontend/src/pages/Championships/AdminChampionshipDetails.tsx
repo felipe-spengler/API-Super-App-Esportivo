@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import {
     ArrowLeft, Trophy, Users, Calendar, Settings,
-    Tv, List, Medal, Edit, ImageIcon, ChevronRight, PlusCircle, AlertCircle
+    Tv, List, Medal, Edit, ImageIcon, ChevronRight, PlusCircle, AlertCircle,
+    UsersRound
 } from 'lucide-react';
 import api from '../../services/api';
 
@@ -227,6 +228,27 @@ export function AdminChampionshipDetails() {
                             Acompanhe a classificação atualizada da {selectedCategory?.name}.
                         </p>
                     </Link>
+
+                    {/* Card Gerenciar Grupos (apenas para formatos com grupos) */}
+                    {(championship.format === 'groups' || championship.format === 'group_knockout') && (
+                        <Link to={appendCat(`/admin/championships/${id}/groups`)} className="bg-gradient-to-br from-indigo-500 to-purple-600 p-6 rounded-xl shadow-lg hover:shadow-xl transition-all group text-white">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="font-bold flex items-center gap-2">
+                                    <UsersRound className="w-5 h-5" />
+                                    Gerenciar Grupos
+                                </h3>
+                                <ChevronRight className="w-5 h-5 opacity-70 group-hover:translate-x-1 transition-transform" />
+                            </div>
+                            <p className="text-sm text-white/80">
+                                Organize times em grupos, faça sorteios e gerencie a fase de grupos da {selectedCategory?.name}.
+                            </p>
+                            <div className="mt-4 flex items-center gap-2">
+                                <span className="text-xs font-medium bg-white/20 px-3 py-1 rounded-full">
+                                    {championship.format === 'group_knockout' ? 'Grupos + Mata-Mata' : 'Formato por Grupos'}
+                                </span>
+                            </div>
+                        </Link>
+                    )}
 
                     {/* Card Premiações */}
                     <Link to={appendCat(`/admin/championships/${id}/awards`)} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow group">

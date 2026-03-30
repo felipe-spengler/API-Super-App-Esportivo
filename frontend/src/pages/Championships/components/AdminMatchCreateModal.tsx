@@ -8,6 +8,7 @@ interface MatchData {
     start_time: string;
     location: string;
     round_number: number;
+    round_name?: string;
     group_name: string;
 }
 
@@ -21,7 +22,21 @@ interface MatchCreateModalProps {
     teams: any[];
     groupAssignments: Record<string, string>;
     selectedCategoryId: number | 'no-category' | null;
+    maxRoundNumber?: number;
 }
+
+// Preset round names for knockout phases - backend values
+const KNOCKOUT_PRESETS = [
+    { value: 'Rodada 1', label: 'Rodada 1', backendValue: 'Rodada 1' },
+    { value: 'Rodada 2', label: 'Rodada 2', backendValue: 'Rodada 2' },
+    { value: 'Rodada 3', label: 'Rodada 3', backendValue: 'Rodada 3' },
+    { value: 'Oitavas de Final', label: 'Oitavas de Final', backendValue: 'round_of_16' },
+    { value: 'Quartas de Final', label: 'Quartas de Final', backendValue: 'quarter' },
+    { value: 'Semifinal', label: 'Semifinal', backendValue: 'semi' },
+    { value: 'Disputa 3º Lugar', label: 'Disputa 3º Lugar', backendValue: 'third_place' },
+    { value: 'Final', label: 'Final', backendValue: 'final' },
+    { value: 'Grande Final', label: 'Grande Final', backendValue: 'Grande Final' },
+];
 
 export function AdminMatchCreateModal({
     isOpen,
@@ -32,11 +47,20 @@ export function AdminMatchCreateModal({
     availableGroupNames,
     teams,
     groupAssignments,
-    selectedCategoryId
+    selectedCategoryId,
+    maxRoundNumber = 1
 }: MatchCreateModalProps) {
     const [matches, setMatches] = useState<MatchData[]>([
-        { id: Date.now(), ...initialData }
+        { id: Date.now(), ...initialData, round_name: initialData.round_name || `Rodada ${initialData.round_number}` }
     ]);
+    const [roundNameMode, setRoundNameMode] = useState<'auto' | 'custom'>('auto');
+    const [customRoundName, setCustomRoundName] = useState(`Rodada ${initialData.round_number}`);
+    
+    // Determine display round name
+    const getDisplayRoundName = () => {
+        if (roundNameMode === 'custom') return customRoundName;
+        return `Rodada ${initialData.round_number}`;
+    };
 
     // Update matches when modal opens with new initial data
     React.useEffect(() => {
@@ -69,21 +93,75 @@ export function AdminMatchCreateModal({
     };
 
     const handleConfirm = () => {
-        // Validation could be added here
-        handleSaveAdd(matches);
+        // Add round_name to all matches before saving
+        const finalRoundName = roundNameMode === 'custom' ? customRoundName : `Rodada ${initialData.round_number}`;
+        const matchesWithRoundName = matches.map(m => ({
+            ...m,
+            round_name: finalRoundName
+        }));
+        handleSaveAdd(matchesWithRoundName);
     };
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
             <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 my-8 flex flex-col max-h-[90vh]">
                 <div className="p-4 bg-gray-50 border-b border-gray-100 flex items-center justify-between shrink-0">
-                    <h3 className="font-bold text-gray-900">Adicionar Jogos: Rodada {initialData.round_number}</h3>
+                    <h3 className="font-bold text-gray-900">Adicionar Jogos: {getDisplayRoundName()}</h3>
                     <button onClick={onClose} className="p-1 hover:bg-gray-200 rounded-full transition-colors flex-shrink-0">
                         <X size={20} />
                     </button>
                 </div>
 
                 <div className="p-6 overflow-y-auto space-y-6 flex-1">
+                    {/* Round Name Selection */}
+                    <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-4 rounded-xl border border-indigo-100">
+                        <label className="block text-xs font-bold text-indigo-700 uppercase mb-2">Nome da Rodada/Fase</label>
+                        <div className="flex flex-wrap gap-2 mb-3">
+                            <select
+                                value={roundNameMode === 'custom' ? 'custom' : `rodada_${initialData.round_number}`}
+                                onChange={(e) => {
+                                    if (e.target.value === 'custom') {
+                                        setRoundNameMode('custom');
+                                    } else {
+                                        setRoundNameMode('auto');
+                                        setCustomRoundName(e.target.value.replace('rodada_', 'Rodada '));
+                                    }
+                                }}
+                                className="flex-1 min-w-[150px] bg-white border border-indigo-200 rounded-lg px-3 py-2 text-sm font-medium text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-500"
+                            >
+                                <option value={`rodada_${initialData.round_number}`}>Rodada {initialData.round_number}</option>
+                                <option value="custom">Personalizado...</option>
+                            </select>
+                        </div>
+                        {roundNameMode === 'custom' && (
+                            <div className="space-y-2">
+                                <select
+                                    value={customRoundName}
+                                    onChange={(e) => setCustomRoundName(e.target.value)}
+                                    className="w-full bg-white border border-indigo-200 rounded-lg px-3 py-2 text-sm font-medium text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-500"
+                                >
+                                    <optgroup label="Rodadas Numeradas">
+                                        {Array.from({ length: 20 }, (_, i) => (
+                                            <option key={`rodada_${i + 1}`} value={`Rodada ${i + 1}`}>Rodada {i + 1}</option>
+                                        ))}
+                                    </optgroup>
+                                    <optgroup label="Fases de Mata-Mata">
+                                        {KNOCKOUT_PRESETS.filter(p => p.value !== 'Rodada 1' && p.value !== 'Rodada 2' && p.value !== 'Rodada 3').map(p => (
+                                            <option key={p.value} value={p.value}>{p.label}</option>
+                                        ))}
+                                    </optgroup>
+                                </select>
+                                <input
+                                    type="text"
+                                    value={customRoundName}
+                                    onChange={(e) => setCustomRoundName(e.target.value)}
+                                    placeholder="Ou digite um nome personalizado..."
+                                    className="w-full bg-white border border-indigo-200 rounded-lg px-3 py-2 text-sm font-medium text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-500"
+                                />
+                            </div>
+                        )}
+                    </div>
+
                     <div className="bg-indigo-50 p-3 rounded-xl border border-indigo-100 mb-2">
                         <p className="text-sm font-medium text-indigo-800">
                             Categoria Base: <strong>{championship?.categories?.find((c: any) => c.id === selectedCategoryId)?.name || 'Sem Categoria'}</strong>

@@ -7,6 +7,7 @@ import { MatchAuditModal } from './components/AdminMatchAuditModal';
 import { AdminMatchSummaryModal } from './components/AdminMatchSummaryModal';
 import { AdminMatchCreateModal } from './components/AdminMatchCreateModal';
 import { AdminMatchEditModal } from './components/AdminMatchEditModal';
+import { EditRoundModal } from './components/EditRoundModal';
 import { AdminMatchArbitrationModal } from './components/AdminMatchArbitrationModal';
 
 interface Match {
@@ -50,6 +51,10 @@ export function AdminMatchManager() {
     const [editData, setEditData] = useState({ start_time: '', location: '', round_number: 1, category_id: null as number | null, home_score: undefined as number | undefined, away_score: undefined as number | undefined, group_name: '' });
     const [showAddModal, setShowAddModal] = useState(false);
     const [newData, setNewData] = useState({ home_team_id: '', away_team_id: '', start_time: '', location: '', round_number: 1, group_name: '' });
+    
+    // Round editing state
+    const [showEditRoundModal, setShowEditRoundModal] = useState(false);
+    const [editingRound, setEditingRound] = useState<{ round: string; round_number: number; round_name: string; matchIds: number[] } | null>(null);
 
     // Arbitration Modal State
     const [isArbitrationOpen, setIsArbitrationOpen] = useState(false);
@@ -390,6 +395,7 @@ export function AdminMatchManager() {
                     away_team_id: match.away_team_id,
                     location: match.location,
                     round_number: match.round_number,
+                    round_name: match.round_name || null,
                     start_time: toUTCString(match.start_time),
                     championship_id: id,
                     category_id: selectedCategoryId,
@@ -402,6 +408,27 @@ export function AdminMatchManager() {
             loadMatches();
         } catch (err) {
             alert('Erro ao criar jogo(s).');
+        }
+    };
+
+    // Handle saving round name for multiple matches
+    const handleSaveRoundName = async (roundName: string) => {
+        if (!editingRound || !editingRound.matchIds.length) return;
+
+        try {
+            // Update all matches in this round with the new round_name
+            const promises = editingRound.matchIds.map(matchId =>
+                api.put(`/admin/matches/${matchId}`, {
+                    round_name: roundName
+                })
+            );
+            await Promise.all(promises);
+            alert(`Nome da fase atualizado para "${roundName}" em ${editingRound.matchIds.length} jogo(s)!`);
+            loadMatches();
+        } catch (err) {
+            console.error('Error updating round name:', err);
+            alert('Erro ao atualizar nome da fase.');
+            throw err;
         }
     };
 
@@ -858,37 +885,53 @@ export function AdminMatchManager() {
                                         <div className="flex items-center gap-3">
                                             <h3 className="font-bold text-gray-800 text-lg">
                                                 {(() => {
-                                                    const rNum = Number(round);
-                                                    if (rNum >= 50 && roundMatches[0]?.round_name) {
-                                                        const name = roundMatches[0].round_name;
-                                                        if (name === 'round_of_32') return '32-avos de Final';
-                                                        if (name === 'round_of_16') return 'Oitavas de Final';
-                                                        if (name === 'quarter') return 'Quartas de Final';
-                                                        if (name === 'semi') return 'Semifinal';
-                                                        if (name === 'final') return 'Final';
-                                                        if (name === 'third_place') return 'Disputa de 3º Lugar';
+                                                    const roundName = roundMatches[0]?.round_name;
+                                                    if (roundName) {
+                                                        if (roundName === 'round_of_32') return '32-avos de Final';
+                                                        if (roundName === 'round_of_16') return 'Oitavas de Final';
+                                                        if (roundName === 'quarter') return 'Quartas de Final';
+                                                        if (roundName === 'semi') return 'Semifinal';
+                                                        if (roundName === 'final') return 'Final';
+                                                        if (roundName === 'third_place') return 'Disputa de 3º Lugar';
+                                                        return roundName; // Nome personalizado
                                                     }
                                                     return `Rodada ${round}`;
                                                 })()}
                                             </h3>
                                             <span className="text-[10px] font-bold text-gray-500 bg-gray-200 px-2 py-1 rounded-full uppercase tracking-wider">{roundMatches.length} JOGOS</span>
                                         </div>
-                                        <button
-                                            onClick={() => {
-                                                setNewData({
-                                                    home_team_id: '',
-                                                    away_team_id: '',
-                                                    start_time: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
-                                                    location: championship?.location || '',
-                                                    round_number: Number(round),
-                                                    group_name: ''
-                                                });
-                                                setShowAddModal(true);
-                                            }}
-                                            className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-indigo-200 text-indigo-600 rounded-lg hover:bg-indigo-50 hover:border-indigo-300 text-xs font-bold uppercase transition-all shadow-sm"
-                                        >
-                                            <Plus className="w-3 h-3" /> Adicionar Jogo Nesta Rodada
-                                        </button>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => {
+                                                    setEditingRound({
+                                                        round: round,
+                                                        round_number: Number(round),
+                                                        round_name: roundMatches[0]?.round_name || `Rodada ${round}`,
+                                                        matchIds: roundMatches.map((m: any) => m.id)
+                                                    });
+                                                    setShowEditRoundModal(true);
+                                                }}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-100 hover:border-gray-400 text-xs font-bold uppercase transition-all shadow-sm"
+                                            >
+                                                <Edit2 size={12} /> Editar Fase
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setNewData({
+                                                        home_team_id: '',
+                                                        away_team_id: '',
+                                                        start_time: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
+                                                        location: championship?.location || '',
+                                                        round_number: Number(round),
+                                                        group_name: ''
+                                                    });
+                                                    setShowAddModal(true);
+                                                }}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-indigo-200 text-indigo-600 rounded-lg hover:bg-indigo-50 hover:border-indigo-300 text-xs font-bold uppercase transition-all shadow-sm"
+                                            >
+                                                <Plus className="w-3 h-3" /> Adicionar Jogo
+                                            </button>
+                                        </div>
                                     </div>
 
                                     <div>
@@ -1111,6 +1154,14 @@ export function AdminMatchManager() {
                 groupAssignments={groupAssignments}
                 setGroupAssignments={setGroupAssignments}
                 handleSaveGroups={handleSaveGroups}
+            />
+
+            {/* Edit Round Name Modal */}
+            <EditRoundModal
+                isOpen={showEditRoundModal}
+                onClose={() => setShowEditRoundModal(false)}
+                editingRound={editingRound}
+                onSave={handleSaveRoundName}
             />
             {/* Modal de Auditoria Completa (Extra-Súmula) */}
             <MatchAuditModal

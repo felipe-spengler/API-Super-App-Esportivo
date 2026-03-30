@@ -630,7 +630,8 @@ class BracketController extends Controller
                 return $sb['goals_for'] <=> $sa['goals_for'];
             });
 
-            // Pega top 2
+            // Pega top 2 (ou top 4 se for grupo único para permitir semi-final no futuro, 
+            // mas por enquanto mantemos 2 para consistência com o cruzamento padrão)
             $qualifiedTeams[$gName] = array_slice($teamIds, 0, 2);
         }
 
@@ -649,15 +650,16 @@ class BracketController extends Controller
         $numGroups = count($groupNames);
 
         $nextRoundName = '';
-        if ($numGroups == 2)
+        if ($numGroups == 1) {
+            $nextRoundName = 'final';
+        } elseif ($numGroups == 2) {
             $nextRoundName = 'semi';
-        elseif ($numGroups == 4)
+        } elseif ($numGroups == 4) {
             $nextRoundName = 'quarter';
-        elseif ($numGroups == 8)
+        } elseif ($numGroups == 8) {
             $nextRoundName = 'round_of_16';
-        else {
+        } else {
             // Fallback genérico ou erro se for ímpar/diferente
-            // Tenta parear sequencialmente: Grupo 0 vs Grupo 1, Grupo 2 vs 3...
             if ($numGroups % 2 != 0) {
                 return response()->json([
                     'message' => "Número de grupos ($numGroups) não suportado para geração automática de mata-mata padrão (precisa ser potência de 2: 2, 4, 8)."
@@ -712,39 +714,44 @@ class BracketController extends Controller
         // Check for legs (ida e volta)
         $legs = $request->input('legs', 1); // Default 1
 
-        for ($i = 0; $i < $numGroups; $i += 2) {
-            $g1 = $groupNames[$i];   // ex: A
-            $g2 = $groupNames[$i + 1]; // ex: B
-
-            // Cruzamentos Padrão: 1o x 2o
+        if ($numGroups == 1) {
+            $g1 = $groupNames[0];
             $crossings = [
-                ['home' => $qualifiedTeams[$g1][0] ?? null, 'away' => $qualifiedTeams[$g2][1] ?? null], // 1A x 2B
-                ['home' => $qualifiedTeams[$g2][0] ?? null, 'away' => $qualifiedTeams[$g1][1] ?? null]  // 1B x 2A
+                ['home' => $qualifiedTeams[$g1][0] ?? null, 'away' => $qualifiedTeams[$g1][1] ?? null], // 1o x 2o do único grupo
             ];
+        } else {
+            for ($i = 0; $i < $numGroups; $i += 2) {
+                $g1 = $groupNames[$i];   // ex: A
+                $g2 = $groupNames[$i + 1]; // ex: B
 
-            foreach ($crossings as $crossing) {
-                if ($crossing['home'] && $crossing['away']) {
-                    for ($l = 1; $l <= $legs; $l++) {
-                        // Se for jogo de volta, inverte mando
-                        $home = ($l % 2 != 0) ? $crossing['home'] : $crossing['away'];
-                        $away = ($l % 2 != 0) ? $crossing['away'] : $crossing['home'];
+                // Cruzamentos Padrão: 1o x 2o
+                $crossings[] = ['home' => $qualifiedTeams[$g1][0] ?? null, 'away' => $qualifiedTeams[$g2][1] ?? null]; // 1A x 2B
+                $crossings[] = ['home' => $qualifiedTeams[$g2][0] ?? null, 'away' => $qualifiedTeams[$g1][1] ?? null]; // 1B x 2A
+            }
+        }
 
-                        $matchDate = ($l == 1) ? $baseDate : Carbon::parse($baseDate)->addDays(7);
+        foreach ($crossings as $crossing) {
+            if ($crossing['home'] && $crossing['away']) {
+                for ($l = 1; $l <= $legs; $l++) {
+                    // Se for jogo de volta, inverte mando
+                    $home = ($l % 2 != 0) ? $crossing['home'] : $crossing['away'];
+                    $away = ($l % 2 != 0) ? $crossing['away'] : $crossing['home'];
 
-                        $newMatches[] = MatchModel::create([
-                            'championship_id' => $championshipId,
-                            'category_id' => $categoryId,
-                            'home_team_id' => $home,
-                            'away_team_id' => $away,
-                            'start_time' => $matchDate,
-                            'location' => $championship->location,
-                            'status' => 'scheduled',
-                            'round_name' => $nextRoundName,
-                            'round_number' => $roundNumber,
-                            'is_knockout' => true,
-                            'match_details' => $legs > 1 ? ['leg' => $l] : null
-                        ]);
-                    }
+                    $matchDate = ($l == 1) ? $baseDate : Carbon::parse($baseDate)->addDays(7);
+
+                    $newMatches[] = MatchModel::create([
+                        'championship_id' => $championshipId,
+                        'category_id' => $categoryId,
+                        'home_team_id' => $home,
+                        'away_team_id' => $away,
+                        'start_time' => $matchDate,
+                        'location' => $championship->location,
+                        'status' => 'scheduled',
+                        'round_name' => $nextRoundName,
+                        'round_number' => $roundNumber,
+                        'is_knockout' => true,
+                        'match_details' => $legs > 1 ? ['leg' => $l] : null
+                    ]);
                 }
             }
         }
@@ -762,11 +769,18 @@ class BracketController extends Controller
     {
         $championship = Championship::with(['teams'])->findOrFail($championshipId);
 
-        // Group teams by group_name
+        $categoryId = $request->query('category_id');
+
+        // Group teams by group_name, optionally filtered by category
         $groups = [];
         $ungrouped = [];
 
         foreach ($championship->teams as $team) {
+            // Filter by category if provided
+            if ($categoryId && $team->pivot->category_id != $categoryId) {
+                continue;
+            }
+
             $groupName = $team->pivot->group_name;
             if ($groupName) {
                 if (!isset($groups[$groupName])) {
@@ -801,6 +815,8 @@ class BracketController extends Controller
             ], 403);
         }
 
+        $categoryId = $request->query('category_id');
+
         // Validate: teams must belong to this championship (implicit check on sync but good to be careful)
         // Expected payload: { "groups": { "A": [teamId1, teamId2], "B": [teamId3, teamId4] } }
         // Or Flat list: { "team_groups": [ { "team_id": 1, "group": "A" }, ... ] }
@@ -813,33 +829,18 @@ class BracketController extends Controller
         ]);
 
         try {
-            // Process each group
-            foreach ($data['groups'] as $groupName => $teamIds) {
-                // Sanitize group Name (Uppercase single letter usually, but allow string)
-                $groupName = strtoupper(trim($groupName));
-
-                if (empty($groupName))
-                    continue;
-
-                foreach ($teamIds as $teamId) {
-                    // Update pivot
-                    // Use updateExistingPivot to adhere to existing relationships
-                    $championship->teams()->updateExistingPivot($teamId, [
-                        'group_name' => $groupName
-                    ]);
-                }
+            // If category_id is provided, only reset group_names for that category
+            // Otherwise reset all group_names for this championship
+            if ($categoryId) {
+                \DB::table('championship_team')
+                    ->where('championship_id', $championshipId)
+                    ->where('category_id', $categoryId)
+                    ->update(['group_name' => null]);
+            } else {
+                \DB::table('championship_team')
+                    ->where('championship_id', $championshipId)
+                    ->update(['group_name' => null]);
             }
-
-            // Handle ungrouped? The frontend should send a "clearing" mechanism if needed.
-            // For now, assume this endpoint sets groups. Clearing happens if we send null?
-            // Let's assume frontend manages state.
-            // A more robust way: Reset all group_names to NULL first? 
-            // Yes, let's reset all group_names for this championship first to ensure clean state based on submission
-
-            // RESET ALL FIRST
-            \DB::table('championship_team')
-                ->where('championship_id', $championshipId)
-                ->update(['group_name' => null]);
 
             // APPLY NEW
             foreach ($data['groups'] as $groupName => $teamIds) {
@@ -849,13 +850,19 @@ class BracketController extends Controller
 
                 foreach ($teamIds as $teamId) {
                     // Check if team is actually in championship to avoid errors
-                    $exists = \DB::table('championship_team')
+                    $query = \DB::table('championship_team')
                         ->where('championship_id', $championshipId)
-                        ->where('team_id', $teamId)
-                        ->exists();
+                        ->where('team_id', $teamId);
+
+                    if ($categoryId) {
+                        $query->where('category_id', $categoryId);
+                    }
+
+                    $exists = $query->exists();
 
                     if ($exists) {
-                        $championship->teams()->updateExistingPivot($teamId, ['group_name' => $groupName]);
+                        $updateData = ['group_name' => $groupName];
+                        $query->update($updateData);
                     }
                 }
             }

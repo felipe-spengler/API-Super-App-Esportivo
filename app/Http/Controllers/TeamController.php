@@ -295,7 +295,7 @@ class TeamController extends Controller
     {
         set_time_limit(300);
         \Log::info("TeamController updatePlayer [START] - Team ID: {$id}, Player ID: {$playerId}");
-    ...
+
         $team = Team::findOrFail($id);
         $player = \App\Models\User::findOrFail($playerId);
         $user = $request->user();
