@@ -191,7 +191,7 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
             const timeA = parseInt(String(a.minute).replace(/\D/g, '')) || 0;
             const timeB = parseInt(String(b.minute).replace(/\D/g, '')) || 0;
             if (timeA !== timeB) return timeB - timeA;
-            
+
             // Secondary sort by ID if available
             return (b.id || 0) - (a.id || 0);
         });
@@ -398,12 +398,12 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                     >
                                         ⭐ Craque
                                     </button>
-                                    {(isFinished || match?.perna_de_pau) && (
+                                    {match?.perna_de_pau && (
                                         <button
                                             onClick={() => setActiveTab('perna')}
                                             className={`flex-1 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors ${activeTab === 'perna' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
                                         >
-                                            🤡 Perna
+                                            🤡 Perna de Pau
                                         </button>
                                     )}
                                     <button
@@ -546,7 +546,7 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                                         <div className="flex flex-col items-center z-10 shrink-0 ml-4 lg:ml-0">
                                                             <div className="w-8 h-8 rounded-full bg-white border-2 border-indigo-100 flex items-center justify-center text-[10px] font-black text-gray-700 shadow-sm mb-0.5">
                                                                 {event.minute ? (
-                                                                    event.minute.toString().includes(':') 
+                                                                    event.minute.toString().includes(':')
                                                                         ? event.minute.toString().split('.')[0] // Remove fractional seconds if present
                                                                         : (event.minute.toString() === 'Fim' ? event.minute : `${event.minute}'`)
                                                                 ) : '--'}
