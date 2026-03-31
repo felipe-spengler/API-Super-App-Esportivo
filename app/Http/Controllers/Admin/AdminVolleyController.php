@@ -158,16 +158,24 @@ class AdminVolleyController extends Controller
         DB::transaction(function () use (&$match, &$details, &$state) {
             $setNum = (int) ($state['current_set'] ?? 1);
 
-            // Grava auditoria de fim de set
-            DB::table('match_events')->insert([
-                'game_match_id' => $match->id,
-                'event_type' => 'period_end',
-                'period' => "{$setNum}º Set",
-                'game_time' => '00:00',
-                'metadata' => json_encode(['label' => "Fim do {$setNum}º Set"]),
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
+            // Grava auditoria de fim de set (evita duplicidade)
+            $alreadyFinished = DB::table('match_events')
+                ->where('game_match_id', $match->id)
+                ->where('period', "{$setNum}º Set")
+                ->whereIn('event_type', ['match_end', 'period_end'])
+                ->exists();
+
+            if (!$alreadyFinished) {
+                DB::table('match_events')->insert([
+                    'game_match_id' => $match->id,
+                    'event_type' => 'period_end',
+                    'period' => "{$setNum}º Set",
+                    'game_time' => '00:00',
+                    'metadata' => json_encode(['label' => "Fim do {$setNum}º Set"]),
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+            }
 
             // Finaliza o set na tabela match_sets se existir
             $currentSet = MatchSet::where('game_match_id', $match->id)->where('set_number', (string) $setNum)->first();
@@ -218,6 +226,10 @@ class AdminVolleyController extends Controller
         $gameTime = $request->input('game_time', '00:00');
 
         $match = GameMatch::findOrFail($matchId);
+
+        if ($match->status === 'finished') {
+            return response()->json(['error' => 'Esta partida já foi encerrada.'], 400);
+        }
 
         try {
             DB::transaction(function () use ($match, $teamId, $playerId, $pointType, $gameTime) {
@@ -328,21 +340,30 @@ class AdminVolleyController extends Controller
                 $finished = $this->updateMatchSetsScore($match, $set);
 
                 if ($finished) {
-                    $set->end_time = now();
+                    $set->end_time = $set->end_time ?: now();
                     if ($set->start_time) {
-                        $set->duration_minutes = now()->diffInMinutes($set->start_time);
+                        $set->duration_minutes = abs($set->end_time->diffInMinutes($set->start_time));
                     }
                     $set->save();
 
-                    DB::table('match_events')->insert([
-                        'game_match_id' => $match->id,
-                        'event_type' => $match->status === 'finished' ? 'match_end' : 'period_end',
-                        'period' => "{$setNum}º Set",
-                        'game_time' => sprintf('%02d:00', $set->duration_minutes ?? 0),
-                        'metadata' => json_encode(['label' => $match->status === 'finished' ? 'Fim da Partida' : "Fim do {$setNum}º Set"]),
-                        'created_at' => now(),
-                        'updated_at' => now()
-                    ]);
+                    // Evita duplicidade de evento de fim (especialmente em cliques rápidos ou edições retroativas)
+                    $alreadyFinished = DB::table('match_events')
+                        ->where('game_match_id', $match->id)
+                        ->where('period', "{$setNum}º Set")
+                        ->whereIn('event_type', ['match_end', 'period_end'])
+                        ->exists();
+
+                    if (!$alreadyFinished) {
+                        DB::table('match_events')->insert([
+                            'game_match_id' => $match->id,
+                            'event_type' => $match->status === 'finished' ? 'match_end' : 'period_end',
+                            'period' => "{$setNum}º Set",
+                            'game_time' => $gameTime ?: '00:00',
+                            'metadata' => json_encode(['label' => $match->status === 'finished' ? 'Fim da Partida' : "Fim do {$setNum}º Set"]),
+                            'created_at' => now(),
+                            'updated_at' => now()
+                        ]);
+                    }
                 }
             });
         } catch (\Exception $e) {
