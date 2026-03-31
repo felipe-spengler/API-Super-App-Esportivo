@@ -41,15 +41,20 @@ export function AdminMatchCreateModal({
     const [matches, setMatches] = useState<MatchData[]>([
         { id: Date.now(), ...initialData, round_name: initialData.round_name || `Rodada ${initialData.round_number}` }
     ]);
-    
+
     // Round type selection - same as EditRoundModal
     const [selectedType, setSelectedType] = useState<'round' | 'elimination' | 'phase'>('round');
     const [roundNumber, setRoundNumber] = useState(String(initialData.round_number || 1));
     const [eliminationNumber, setEliminationNumber] = useState('1');
     const [selectedPhase, setSelectedPhase] = useState('round_of_16');
-    
+
+    // NOVO: Select de rodada/fase existente
+    const [existingRounds, setExistingRounds] = useState<string[]>([]);
+    const [selectedExistingRound, setSelectedExistingRound] = useState<string>('');
+
     // Get the final round name based on selection
     const getFinalRoundName = () => {
+        if (selectedExistingRound) return selectedExistingRound;
         if (selectedType === 'round') {
             return `Rodada ${roundNumber}`;
         }
@@ -59,13 +64,26 @@ export function AdminMatchCreateModal({
         return selectedPhase; // Returns backend value like 'round_of_16'
     };
 
-    // Update matches when modal opens with new initial data
+    // Atualiza lista de rodadas/fases existentes ao abrir modal
     React.useEffect(() => {
         if (isOpen) {
             setMatches([{ id: Date.now(), ...initialData }]);
             setRoundNumber(String(initialData.round_number || 1));
+
+            // Buscar rodadas/fases já existentes dos jogos (exceto avulsos)
+            if (championship && championship.matches) {
+                const uniqueRounds = Array.from(new Set(
+                    championship.matches
+                        .map((m: any) => m.round_name)
+                        .filter((n: string | undefined) => n && n.trim() !== '')
+                ));
+                setExistingRounds(uniqueRounds);
+            } else {
+                setExistingRounds([]);
+            }
+            setSelectedExistingRound('');
         }
-    }, [isOpen, initialData]);
+    }, [isOpen, initialData, championship]);
 
     if (!isOpen) return null;
 
@@ -111,119 +129,135 @@ export function AdminMatchCreateModal({
                 </div>
 
                 <div className="p-6 overflow-y-auto space-y-6 flex-1">
-                    {/* Round Type Selection - Same as EditRoundModal */}
-                    <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-4 rounded-xl border border-indigo-100 space-y-4">
-                        <label className="block text-xs font-bold text-indigo-700 uppercase">Configurar Nome da Rodada/Fase</label>
-                        
-                        {/* Type Selector */}
-                        <div className="flex p-1 bg-white rounded-xl border border-indigo-200">
-                            <button
-                                onClick={() => setSelectedType('round')}
-                                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-[11px] font-bold transition-all ${
-                                    selectedType === 'round' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                                }`}
-                            >
-                                <Hash className="w-3.5 h-3.5" />
-                                RODADA
-                            </button>
-                            <button
-                                onClick={() => setSelectedType('elimination')}
-                                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-[11px] font-bold transition-all ${
-                                    selectedType === 'elimination' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                                }`}
-                            >
-                                <span className="text-xs leading-none">⚔️</span>
-                                ELIMINATÓRIA
-                            </button>
-                            <button
-                                onClick={() => setSelectedType('phase')}
-                                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-[11px] font-bold transition-all ${
-                                    selectedType === 'phase' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                                }`}
-                            >
-                                <span className="text-xs leading-none">🏆</span>
-                                MATA-MATA
-                            </button>
-                        </div>
-
-                        {/* Round Number Input */}
-                        {selectedType === 'round' && (
-                            <div className="space-y-2 animate-in slide-in-from-left-2 duration-200">
-                                <label className="block text-xs font-black text-indigo-600 uppercase tracking-wider">
-                                    Número da Rodada
-                                </label>
-                                <div className="relative">
-                                    <input
-                                        type="number"
-                                        value={roundNumber}
-                                        onChange={(e) => setRoundNumber(e.target.value)}
-                                        className="w-full px-4 py-3 bg-white border-2 border-indigo-200 rounded-xl text-xl font-black text-indigo-700 focus:border-indigo-500 outline-none transition-all"
-                                        placeholder="Ex: 1"
-                                    />
-                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-indigo-400 font-bold text-sm">
-                                        ª Rodada
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Elimination Number Input */}
-                        {selectedType === 'elimination' && (
-                            <div className="space-y-2 animate-in slide-in-from-right-2 duration-200">
-                                <label className="block text-xs font-black text-indigo-600 uppercase tracking-wider">
-                                    Número da Eliminatória
-                                </label>
-                                <div className="relative">
-                                    <input
-                                        type="number"
-                                        value={eliminationNumber}
-                                        onChange={(e) => setEliminationNumber(e.target.value)}
-                                        className="w-full px-4 py-3 bg-white border-2 border-indigo-200 rounded-xl text-xl font-black text-indigo-700 focus:border-indigo-500 outline-none transition-all"
-                                        placeholder="Ex: 1"
-                                    />
-                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-indigo-400 font-bold text-sm">
-                                        ª Fase
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Phase Selection */}
-                        {selectedType === 'phase' && (
-                            <div className="space-y-2 animate-in fade-in duration-200">
-                                <label className="block text-xs font-black text-indigo-600 uppercase tracking-wider">
-                                    Selecionar Fase
-                                </label>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {PHASES.map((phase) => (
-                                        <button
-                                            key={phase.value}
-                                            onClick={() => setSelectedPhase(phase.value)}
-                                            className={`px-4 py-3 rounded-xl border-2 text-sm font-bold transition-all text-left flex items-center justify-between ${
-                                                selectedPhase === phase.value
-                                                    ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
-                                                    : 'border-gray-100 bg-white text-gray-600 hover:border-indigo-200'
-                                            }`}
-                                        >
-                                            {phase.label}
-                                            {selectedPhase === phase.value && <div className="w-2 h-2 rounded-full bg-indigo-600" />}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Preview */}
-                        <div className="bg-indigo-600 rounded-xl p-3 text-white shadow-lg flex items-center justify-between">
-                            <div>
-                                <p className="text-[9px] font-black uppercase opacity-60">Visualização no site</p>
-                                <p className="text-lg font-black">{getPhaseDisplayName(getFinalRoundName())}</p>
-                            </div>
-                            <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-lg">
-                                {selectedType === 'round' ? '📅' : selectedType === 'elimination' ? '⚔️' : '🏆'}
-                            </div>
-                        </div>
+                    {/* NOVO: Select de rodada/fase existente */}
+                    <div className="mb-4">
+                        <label className="block text-xs font-bold text-indigo-700 uppercase mb-1">Vincular a Rodada/Fase Existente</label>
+                        <select
+                            value={selectedExistingRound}
+                            onChange={e => setSelectedExistingRound(e.target.value)}
+                            className="w-full bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold text-indigo-700 text-sm"
+                        >
+                            <option value="">Nova Rodada/Fase</option>
+                            {existingRounds.map(rn => (
+                                <option key={rn} value={rn}>{rn}</option>
+                            ))}
+                        </select>
                     </div>
+
+                    {/* Só mostra inputs de nova rodada/fase se não selecionou existente */}
+                    {!selectedExistingRound && (
+                        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-4 rounded-xl border border-indigo-100 space-y-4">
+                            <label className="block text-xs font-bold text-indigo-700 uppercase">Configurar Nome da Rodada/Fase</label>
+                            {/* Type Selector */}
+                            <div className="flex p-1 bg-white rounded-xl border border-indigo-200">
+                                <button
+                                    onClick={() => setSelectedType('round')}
+                                    className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-[11px] font-bold transition-all ${
+                                        selectedType === 'round' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                                    }`}
+                                >
+                                    <Hash className="w-3.5 h-3.5" />
+                                    RODADA
+                                </button>
+                                <button
+                                    onClick={() => setSelectedType('elimination')}
+                                    className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-[11px] font-bold transition-all ${
+                                        selectedType === 'elimination' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                                    }`}
+                                >
+                                    <span className="text-xs leading-none">⚔️</span>
+                                    ELIMINATÓRIA
+                                </button>
+                                <button
+                                    onClick={() => setSelectedType('phase')}
+                                    className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-[11px] font-bold transition-all ${
+                                        selectedType === 'phase' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                                    }`}
+                                >
+                                    <span className="text-xs leading-none">🏆</span>
+                                    MATA-MATA
+                                </button>
+                            </div>
+
+                            {/* Round Number Input */}
+                            {selectedType === 'round' && (
+                                <div className="space-y-2 animate-in slide-in-from-left-2 duration-200">
+                                    <label className="block text-xs font-black text-indigo-600 uppercase tracking-wider">
+                                        Número da Rodada
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            type="number"
+                                            value={roundNumber}
+                                            onChange={(e) => setRoundNumber(e.target.value)}
+                                            className="w-full px-4 py-3 bg-white border-2 border-indigo-200 rounded-xl text-xl font-black text-indigo-700 focus:border-indigo-500 outline-none transition-all"
+                                            placeholder="Ex: 1"
+                                        />
+                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-indigo-400 font-bold text-sm">
+                                            ª Rodada
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Elimination Number Input */}
+                            {selectedType === 'elimination' && (
+                                <div className="space-y-2 animate-in slide-in-from-right-2 duration-200">
+                                    <label className="block text-xs font-black text-indigo-600 uppercase tracking-wider">
+                                        Número da Eliminatória
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            type="number"
+                                            value={eliminationNumber}
+                                            onChange={(e) => setEliminationNumber(e.target.value)}
+                                            className="w-full px-4 py-3 bg-white border-2 border-indigo-200 rounded-xl text-xl font-black text-indigo-700 focus:border-indigo-500 outline-none transition-all"
+                                            placeholder="Ex: 1"
+                                        />
+                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-indigo-400 font-bold text-sm">
+                                            ª Fase
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Phase Selection */}
+                            {selectedType === 'phase' && (
+                                <div className="space-y-2 animate-in fade-in duration-200">
+                                    <label className="block text-xs font-black text-indigo-600 uppercase tracking-wider">
+                                        Selecionar Fase
+                                    </label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {PHASES.map((phase) => (
+                                            <button
+                                                key={phase.value}
+                                                onClick={() => setSelectedPhase(phase.value)}
+                                                className={`px-4 py-3 rounded-xl border-2 text-sm font-bold transition-all text-left flex items-center justify-between ${
+                                                    selectedPhase === phase.value
+                                                        ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                                                        : 'border-gray-100 bg-white text-gray-600 hover:border-indigo-200'
+                                                }`}
+                                            >
+                                                {phase.label}
+                                                {selectedPhase === phase.value && <div className="w-2 h-2 rounded-full bg-indigo-600" />}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Preview */}
+                            <div className="bg-indigo-600 rounded-xl p-3 text-white shadow-lg flex items-center justify-between">
+                                <div>
+                                    <p className="text-[9px] font-black uppercase opacity-60">Visualização no site</p>
+                                    <p className="text-lg font-black">{getPhaseDisplayName(getFinalRoundName())}</p>
+                                </div>
+                                <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-lg">
+                                    {selectedType === 'round' ? '📅' : selectedType === 'elimination' ? '⚔️' : '🏆'}
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     <div className="bg-indigo-50 p-3 rounded-xl border border-indigo-100 mb-2">
                         <p className="text-sm font-medium text-indigo-800">

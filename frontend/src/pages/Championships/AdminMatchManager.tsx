@@ -630,14 +630,10 @@ export function AdminMatchManager() {
 
             setGroupAssignments(assignments);
 
-            // Update available names if we found more/different ones, OR defaults
+            // Corrigido: sobrescreve availableGroupNames SEM mesclar
             if (foundNames.length > 0) {
-                setAvailableGroupNames(prev => {
-                    // Merge unique names
-                    const combined = Array.from(new Set([...prev, ...foundNames])).sort();
-                    return combined;
-                });
-                setNumGroups(Math.max(foundNames.length, numGroups));
+                setAvailableGroupNames(foundNames);
+                setNumGroups(foundNames.length);
             }
 
         } catch (error) {
@@ -907,7 +903,26 @@ export function AdminMatchManager() {
                                     <div className="bg-gray-50 px-6 py-3 border-b border-gray-200 flex justify-between items-center">
                                         <div className="flex items-center gap-3">
                                             <h3 className="font-bold text-gray-800 text-lg">
-                                                {getRoundDisplayName(roundMatches[0]?.round_name) || `Rodada ${round}`}
+                                                {/* Exibe número da rodada ao lado do nome */}
+                                                {(() => {
+                                                    const rn = roundMatches[0]?.round_name;
+                                                    // Se for "Rodada X" ou "Eliminatória Y", extrai número
+                                                    const rodadaMatch = rn && rn.match(/Rodada\s*(\d+)/i);
+                                                    const elimMatch = rn && rn.match(/Eliminat[óo]ria\s*(\d+)/i);
+                                                    if (rodadaMatch) {
+                                                        return <>{getRoundDisplayName(rn)} <span className="ml-1 text-indigo-500 font-black">#{rodadaMatch[1]}</span></>;
+                                                    }
+                                                    if (elimMatch) {
+                                                        return <>{getRoundDisplayName(rn)} <span className="ml-1 text-indigo-500 font-black">#{elimMatch[1]}</span></>;
+                                                    }
+                                                    // Se for fase eliminatória conhecida
+                                                    const phaseLabel = getRoundDisplayName(rn);
+                                                    if (phaseLabel !== rn) {
+                                                        return <>{phaseLabel}</>;
+                                                    }
+                                                    // Fallback: mostra nome puro
+                                                    return rn || `Rodada ${round}`;
+                                                })()}
                                             </h3>
                                             <span className="text-[10px] font-bold text-gray-500 bg-gray-200 px-2 py-1 rounded-full uppercase tracking-wider">{roundMatches.length} JOGOS</span>
                                         </div>
