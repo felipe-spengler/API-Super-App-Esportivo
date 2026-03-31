@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Target, Shield, Hand, Star, AlertTriangle, AlertOctagon, Trophy, X, Calendar } from 'lucide-react';
 import api from '../../services/api';
+import { getRoundDisplayName } from '../../utils/phaseNames';
 
 export function EventStats() {
     const { id } = useParams();
@@ -78,15 +79,9 @@ export function EventStats() {
     const getPhaseLabel = (round: string | number) => {
         if (!round) return 'Fase de Grupos';
         const str = String(round);
-        if (str === 'round_of_32') return '32-avos de Final';
-        if (str === 'round_of_16') return 'Oitavas de Final';
-        if (str === 'quarter') return 'Quartas de Final';
-        if (str === 'semi') return 'Semifinal';
-        if (str === 'final') return 'Final';
-        if (str === 'third_place') return '3º Lugar';
         // Check if numeric
         if (!isNaN(Number(str)) && Number(str) < 50) return `Rodada ${str}`;
-        return str; // Fallback
+        return getRoundDisplayName(str);
     };
 
     return (

@@ -9,6 +9,7 @@ import { AdminMatchCreateModal } from './components/AdminMatchCreateModal';
 import { AdminMatchEditModal } from './components/AdminMatchEditModal';
 import { EditRoundModal } from './components/EditRoundModal';
 import { AdminMatchArbitrationModal } from './components/AdminMatchArbitrationModal';
+import { getRoundDisplayName } from '../../utils/phaseNames';
 
 interface Match {
     id: number;
@@ -906,19 +907,7 @@ export function AdminMatchManager() {
                                     <div className="bg-gray-50 px-6 py-3 border-b border-gray-200 flex justify-between items-center">
                                         <div className="flex items-center gap-3">
                                             <h3 className="font-bold text-gray-800 text-lg">
-                                                {(() => {
-                                                    const roundName = roundMatches[0]?.round_name;
-                                                    if (roundName) {
-                                                        if (roundName === 'round_of_32') return '32-avos de Final';
-                                                        if (roundName === 'round_of_16') return 'Oitavas de Final';
-                                                        if (roundName === 'quarter') return 'Quartas de Final';
-                                                        if (roundName === 'semi') return 'Semifinal';
-                                                        if (roundName === 'final') return 'Final';
-                                                        if (roundName === 'third_place') return 'Disputa de 3º Lugar';
-                                                        return roundName; // Nome personalizado
-                                                    }
-                                                    return `Rodada ${round}`;
-                                                })()}
+                                                {getRoundDisplayName(roundMatches[0]?.round_name) || `Rodada ${round}`}
                                             </h3>
                                             <span className="text-[10px] font-bold text-gray-500 bg-gray-200 px-2 py-1 rounded-full uppercase tracking-wider">{roundMatches.length} JOGOS</span>
                                         </div>

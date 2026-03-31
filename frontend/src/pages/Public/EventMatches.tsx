@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Calendar, MapPin, Clock, Eye, FileText } from 'lucide-react';
 import api from '../../services/api';
 import { MatchDetailsModal } from '../../components/MatchDetailsModal';
+import { getRoundDisplayName } from '../../utils/phaseNames';
 
 export function EventMatches() {
     const { id } = useParams();
@@ -122,16 +123,6 @@ export function EventMatches() {
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
-    // Mapeamento de round_name → label de exibição (igual ao admin)
-    const ROUND_NAME_MAP: Record<string, string> = {
-        'round_of_32': '32-avos de Final',
-        'round_of_16': 'Oitavas de Final',
-        'quarter': 'Quartas de Final',
-        'semi': 'Semifinal',
-        'final': 'Final',
-        'third_place': 'Disputa de 3º Lugar',
-    };
-
     // Prioridade de ordenação das fases eliminatórias (quanto menor, mais cedo aparece)
     const KNOCKOUT_ORDER: Record<string, number> = {
         '32-avos de Final': 101,
@@ -144,7 +135,7 @@ export function EventMatches() {
 
     // Resolve o label de rodada de uma partida
     const getRoundLabel = (m: any): string => {
-        if (m.round_name && ROUND_NAME_MAP[m.round_name]) return ROUND_NAME_MAP[m.round_name];
+        if (m.round_name) return getRoundDisplayName(m.round_name);
         if (m.round_number) return `Rodada ${m.round_number}`;
         if (m.round) {
             const lower = String(m.round).toLowerCase();
