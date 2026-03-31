@@ -119,6 +119,7 @@ Route::get('/championships/{id}/mvp', [EventController::class, 'mvp']);
 Route::get('/championships/{id}/teams', [EventController::class, 'teamsList']);
 Route::get('/championships/{id}/h2h', [EventController::class, 'h2h']);
 Route::get('/public/art/match/{matchId}/mvp', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'downloadMvpArt']);
+Route::get('/public/art/match/{matchId}/perna-de-pau', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'downloadPernaArt']);
 Route::get('/public/art/match/{matchId}/scheduled', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'downloadScheduledArt']);
 Route::get('/public/art/match/{matchId}/faceoff', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'matchFaceoff']);
 Route::get('/public/matches/{id}/pdf', [EventController::class, 'matchPdf']);
@@ -207,6 +208,7 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
         Route::delete('/matches/{id}', [AdminMatchController::class, 'destroy']);
         Route::post('/matches/{id}/finish', [AdminMatchController::class, 'finish']);
         Route::post('/matches/{id}/mvp', [AdminMatchController::class, 'setMVP']);
+        Route::post('/matches/{id}/perna-de-pau', [AdminMatchController::class, 'setPernaDePau']);
         Route::post('/matches/{id}/events', [AdminMatchController::class, 'addEvent']);
         Route::get('/matches/{id}/events', [AdminMatchController::class, 'events']);
         Route::delete('/matches/{id}/events/{eventId}', [AdminMatchController::class, 'deleteEvent']);
@@ -321,6 +323,7 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
         Route::get('/art/match/{matchId}/faceoff', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'matchFaceoff']);
         Route::get('/art/match/{matchId}/scheduled', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'matchScheduled']);
         Route::get('/art/match/{matchId}/mvp', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'mvpArt']);
+        Route::get('/art/match/{matchId}/perna-de-pau', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'pernaArt']);
         Route::get('/art/championship/{championshipId}/award/{category}', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'championshipAwardArt']);
         Route::get('/art/championship/{championshipId}/standings', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'standingsArt']);
         Route::get('/art/championship/{championshipId}/individual/{athleteId}/{category}', [\App\Http\Controllers\Admin\IndividualArtController::class, 'individualAthleteArt']);

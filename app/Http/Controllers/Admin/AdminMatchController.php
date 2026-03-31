@@ -452,6 +452,37 @@ class AdminMatchController extends Controller
         return response()->json($match);
     }
 
+    /**
+     * Define o "Perna de Pau" da partida
+     */
+    public function setPernaDePau(Request $request, $id)
+    {
+        $match = GameMatch::findOrFail($id);
+
+        $validated = $request->validate([
+            'player_id' => 'required|integer',
+        ]);
+
+        $awards = $match->awards ?? [];
+        $awards['perna_de_pau'] = [
+            'player_id' => $validated['player_id'],
+        ];
+
+        $match->update([
+            'perna_de_pau_player_id' => $validated['player_id'],
+            'awards' => $awards,
+        ]);
+
+        AuditLogger::log('match.perna_de_pau_set', "Definiu o Perna de Pau da partida (ID: {$match->id})", [
+            'match_id' => $match->id,
+            'player_id' => $validated['player_id']
+        ]);
+
+        MatchUpdated::dispatch($match->id, $match->toArray());
+
+        return response()->json($match);
+    }
+
     // Add event to match (goal, card, etc)
     public function addEvent(Request $request, $id)
     {

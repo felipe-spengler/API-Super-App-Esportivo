@@ -226,6 +226,8 @@ class ArtGeneratorController extends Controller
             'Confronto (Placar)' => 'art_layout_faceoff',
             'Atleta Confirmado' => 'art_layout_individual_confirmed',
             'Colocação do Atleta' => 'art_layout_individual_placement',
+            'Perna de Pau' => 'art_layout_perna_vertical',
+            'Perna de Pau (Geral)' => 'art_layout_perna_vertical',
         ];
         return $map[$name] ?? 'art_layout_custom_' . Str::slug($name);
     }
@@ -273,6 +275,24 @@ class ArtGeneratorController extends Controller
     public function downloadMvpArt($matchId, Request $request)
     {
         return $this->mvpArt($matchId, $request);
+    }
+
+    /** Gera Arte do Perna de Pau da Partida */
+    public function pernaArt($matchId, Request $request)
+    {
+        $match = GameMatch::with(['homeTeam', 'awayTeam', 'pernaDePau', 'championship', 'championship.sport'])->findOrFail($matchId);
+        $category = $request->query('category', 'perna_de_pau');
+
+        if (!$match->perna_de_pau_player_id) {
+            return response('Perna de Pau não definido para esta partida.', 404);
+        }
+
+        return $this->generatePlayerArt($match->pernaDePau, $match, $category);
+    }
+
+    public function downloadPernaArt($matchId, Request $request)
+    {
+        return $this->pernaArt($matchId, $request);
     }
 
     /** Gera Arte de Classificação */

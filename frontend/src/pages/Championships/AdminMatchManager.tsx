@@ -25,6 +25,7 @@ interface Match {
     group_name?: string;
     round_name?: string; // Enhanced round support
     mvp_player_id?: number | string | null;
+    perna_de_pau_player_id?: number | string | null;
     category_id?: number | null;
     match_details?: {
         arbitration?: {
@@ -70,6 +71,8 @@ export function AdminMatchManager() {
     const [loadingRosters, setLoadingRosters] = useState(false);
     const [selectedMvpId, setSelectedMvpId] = useState<string | number>('');
     const [isSavingMvp, setIsSavingMvp] = useState(false);
+    const [selectedPernaId, setSelectedPernaId] = useState<string | number>('');
+    const [isSavingPerna, setIsSavingPerna] = useState(false);
     const [activeTab, setActiveTab] = useState('summary'); // Tab state for modal
 
     // Group Management State
@@ -86,6 +89,7 @@ export function AdminMatchManager() {
         if (isSummaryOpen || isAuditOpen || activeTab === 'audit') {
             fetchFullDetails(selectedMatch.id);
             setSelectedMvpId(selectedMatch.mvp_player_id || '');
+            setSelectedPernaId(selectedMatch.perna_de_pau_player_id || '');
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isSummaryOpen, isAuditOpen, activeTab]); // selectedMatch excluído intencionalmente
@@ -132,6 +136,24 @@ export function AdminMatchManager() {
             alert("Erro ao salvar Craque do Jogo.");
         } finally {
             setIsSavingMvp(false);
+        }
+    };
+
+    const handleSavePerna = async () => {
+        if (!selectedMatch || !selectedPernaId) return;
+        try {
+            setIsSavingPerna(true);
+            await api.post(`/admin/matches/${selectedMatch.id}/perna-de-pau`, {
+                player_id: selectedPernaId
+            });
+            alert("Perna de Pau definido com sucesso!");
+            loadData();
+            setIsSummaryOpen(false);
+        } catch (error) {
+            console.error("Erro ao salvar Perna de Pau", error);
+            alert("Erro ao salvar Perna de Pau.");
+        } finally {
+            setIsSavingPerna(false);
         }
     };
 
@@ -1124,6 +1146,10 @@ export function AdminMatchManager() {
                 setSelectedMvpId={setSelectedMvpId}
                 handleSaveMvp={handleSaveMvp}
                 isSavingMvp={isSavingMvp}
+                selectedPernaId={selectedPernaId}
+                setSelectedPernaId={setSelectedPernaId}
+                handleSavePerna={handleSavePerna}
+                isSavingPerna={isSavingPerna}
                 navigateToSumula={navigateToSumula}
                 navigate={navigate}
             />

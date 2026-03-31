@@ -15,6 +15,10 @@ interface MatchSummaryModalProps {
     setSelectedMvpId: (id: string | number) => void;
     handleSaveMvp: () => void;
     isSavingMvp: boolean;
+    selectedPernaId: string | number;
+    setSelectedPernaId: (id: string | number) => void;
+    handleSavePerna: () => void;
+    isSavingPerna: boolean;
     navigateToSumula: (matchId: number, sportSlug: string) => void;
     navigate: (path: string) => void;
 }
@@ -32,6 +36,10 @@ export function AdminMatchSummaryModal({
     setSelectedMvpId,
     handleSaveMvp,
     isSavingMvp,
+    selectedPernaId,
+    setSelectedPernaId,
+    handleSavePerna,
+    isSavingPerna,
     navigateToSumula,
     navigate
 }: MatchSummaryModalProps) {
@@ -162,6 +170,54 @@ export function AdminMatchSummaryModal({
                                         className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg text-sm transition-all disabled:opacity-50 shadow-sm shadow-amber-200 active:scale-95"
                                     >
                                         {isSavingMvp ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Definir'}
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Perna de Pau (Worst Player) */}
+                        <div className="bg-red-50 p-4 rounded-xl border border-red-100 mb-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                    <X className="w-4 h-4 text-red-500" />
+                                    <div className="text-[10px] text-red-600 font-black uppercase tracking-wider">Perna de Pau (Pior do Jogo)</div>
+                                </div>
+                            </div>
+
+                            {loadingRosters ? (
+                                <div className="flex items-center gap-2 text-xs text-red-400 py-2">
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                    Carregando elencos...
+                                </div>
+                            ) : (
+                                <div className="flex gap-2">
+                                    <select
+                                        value={selectedPernaId}
+                                        onChange={e => setSelectedPernaId(e.target.value)}
+                                        className="flex-1 bg-white border border-red-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500 transition-all font-medium text-gray-700"
+                                    >
+                                        <option value="">Selecione o Perna de Pau...</option>
+                                        {rosters.home.length > 0 && (
+                                            <optgroup label={match.home_team?.name}>
+                                                {rosters.home.map((p: any) => (
+                                                    <option key={p.id} value={p.id}>{p.number ? `#${p.number}` : ''} {p.name}</option>
+                                                ))}
+                                            </optgroup>
+                                        )}
+                                        {rosters.away.length > 0 && (
+                                            <optgroup label={match.away_team?.name}>
+                                                {rosters.away.map((p: any) => (
+                                                    <option key={p.id} value={p.id}>{p.number ? `#${p.number}` : ''} {p.name}</option>
+                                                ))}
+                                            </optgroup>
+                                        )}
+                                    </select>
+                                    <button
+                                        onClick={handleSavePerna}
+                                        disabled={isSavingPerna || !selectedPernaId}
+                                        className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-bold rounded-lg text-sm transition-all disabled:opacity-50 shadow-sm shadow-red-200 active:scale-95"
+                                    >
+                                        {isSavingPerna ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Definir'}
                                     </button>
                                 </div>
                             )}

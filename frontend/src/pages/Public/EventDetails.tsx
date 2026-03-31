@@ -28,7 +28,7 @@ const SPORT_MENUS: any = {
         { label: 'Equipes', icon: Users, route: 'participants', color: 'indigo' },
         { label: 'Artilharia', icon: Target, route: 'stats', params: { type: 'goals', title: 'Artilharia' }, color: 'gray' },
         { label: 'Cartões', icon: Square, iconColor: '#EF4444', route: 'stats', params: { type: 'cards', title: 'Cartões' }, color: 'red' },
-        { label: 'Melhor em Campo', icon: Crown, route: 'mvp', color: 'black' },
+        { label: 'MVP', icon: Crown, route: 'mvp', color: 'black' },
         { label: 'Premiações', icon: Medal, route: 'tourney-awards', color: 'purple' },
         { label: 'Ver Artes', icon: Images, route: 'awards', color: 'green' },
     ],

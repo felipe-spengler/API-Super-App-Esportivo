@@ -49,6 +49,7 @@ class GameMatch extends Model
         'round_number',
         'match_details',
         'mvp_player_id',
+        'perna_de_pau_player_id',
         'is_knockout',
         'group_name',
         'photos',
@@ -132,6 +133,11 @@ class GameMatch extends Model
     public function mvp()
     {
         return $this->belongsTo(User::class, 'mvp_player_id');
+    }
+
+    public function pernaDePau()
+    {
+        return $this->belongsTo(User::class, 'perna_de_pau_player_id');
     }
 
     public function sets()

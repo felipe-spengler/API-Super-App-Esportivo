@@ -256,6 +256,8 @@ trait ArtCardTrait
         $templateKey = null;
         if (in_array($category, ['craque', 'mvp', 'melhor_jogador', 'melhor_quadra'])) {
             $templateKey = 'art_layout_mvp_vertical';
+        } elseif (in_array($category, ['perna', 'perna_de_pau', 'pior_jogador'])) {
+            $templateKey = 'art_layout_perna_vertical';
         } elseif ($category === 'atleta_confirmado') {
             $templateKey = 'art_layout_individual_confirmed';
         } elseif ($category === 'colocacao') {
@@ -634,6 +636,7 @@ trait ArtCardTrait
             'confronto' => 'fundo_confronto.jpg',
             'jogo_programado' => 'fundo_confronto.jpg',
             'craque' => 'fundo_craque_do_jogo.jpg',
+            'perna_de_pau' => 'fundo_perna_de_pau.jpg',
             'goleiro' => 'fundo_melhor_goleiro.jpg',
             'artilheiro' => 'fundo_melhor_artilheiro.jpg',
             'zagueiro' => 'fundo_melhor_zagueiro.jpg',
@@ -734,6 +737,25 @@ trait ArtCardTrait
                 "canvas" => ["width" => 1080, "height" => 1920],
                 "bg_url" => null,
                 "name" => "Atleta Confirmado"
+            ];
+        }
+
+        if ($key === 'art_layout_perna_vertical') {
+            return [
+                "elements" => [
+                    ["id" => "player_photo", "type" => "image", "x" => 540, "y" => 701, "width" => 700, "height" => 700, "label" => "Foto do Jogador", "zIndex" => 1, "content" => "player_photo", "borderRadius" => 0],
+                    ["id" => "player_name", "type" => "text", "x" => 550, "y" => 1140, "fontSize" => 75, "color" => "#EF4444", "align" => "center", "label" => "Nome do Jogador", "zIndex" => 2, "content" => "{JOGADOR}", "fontFamily" => "Roboto"],
+                    ["id" => "team_badge_a", "type" => "image", "x" => 295, "y" => 1329, "width" => 160, "height" => 160, "label" => "Brasão Mandante", "zIndex" => 2, "content" => "team_a"],
+                    ["id" => "team_badge_b", "type" => "image", "x" => 780, "y" => 1329, "width" => 160, "height" => 160, "label" => "Brasão Visitante", "zIndex" => 2, "content" => "team_b"],
+                    ["id" => "championship", "type" => "text", "x" => 540, "y" => 1720, "fontSize" => 40, "color" => "#FFFFFF", "align" => "center", "label" => "Nome Campeonato", "zIndex" => 2, "content" => "{CAMPEONATO}"],
+                    ["id" => "round", "type" => "text", "x" => 540, "y" => 1780, "fontSize" => 30, "color" => "#FFFFFF", "align" => "center", "label" => "Rodada/Fase", "zIndex" => 2, "content" => "{RODADA}"],
+                    ["id" => "score_home", "type" => "text", "x" => 290, "y" => 1495, "fontSize" => 100, "color" => "#000000", "align" => "center", "label" => "Placar Casa", "zIndex" => 3, "content" => "{PA}", "fontFamily" => "Roboto-Bold"],
+                    ["id" => "score_x", "type" => "text", "x" => 540, "y" => 1335, "fontSize" => 60, "color" => "#000000", "align" => "center", "label" => "X (Divisor)", "zIndex" => 3, "content" => "X", "fontFamily" => "Roboto"],
+                    ["id" => "score_away", "type" => "text", "x" => 785, "y" => 1495, "fontSize" => 100, "color" => "#000000", "align" => "right", "label" => "Placar Visitante", "zIndex" => 3, "content" => "{PF}", "fontFamily" => "Roboto-Bold"]
+                ],
+                "canvas" => ["width" => 1080, "height" => 1920],
+                "bg_url" => null,
+                "name" => "Perna de Pau"
             ];
         }
 

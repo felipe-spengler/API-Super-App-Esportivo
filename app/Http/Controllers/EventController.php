@@ -647,7 +647,7 @@ class EventController extends Controller
             $query->where('category_id', $request->category_id);
         }
 
-        $matches = $query->with('mvp')->get();
+        $matches = $query->with(['mvp', 'homeTeam', 'awayTeam'])->get();
 
         $mvpCounts = [];
         foreach ($matches as $match) {
@@ -656,12 +656,33 @@ class EventController extends Controller
                 continue;
 
             if (!isset($mvpCounts[$pid])) {
+                $team = \DB::table('team_players')
+                    ->join('teams', 'teams.id', '=', 'team_players.team_id')
+                    ->where('team_players.user_id', $pid)
+                    ->where('team_players.championship_id', $championshipId)
+                    ->select('teams.name')
+                    ->first();
+
                 $mvpCounts[$pid] = [
                     'player' => $match->mvp,
-                    'count' => 0
+                    'player_name' => $match->mvp->nickname ?: $match->mvp->name,
+                    'team_name' => $team->name ?? 'Time não informado',
+                    'photo_url' => $match->mvp->photo_url ?? $match->mvp->photo ?? null,
+                    'count' => 0,
+                    'details' => []
                 ];
             }
             $mvpCounts[$pid]['count']++;
+
+            $home = $match->homeTeam?->name ?? 'TBA';
+            $away = $match->awayTeam?->name ?? 'TBA';
+            $mvpCounts[$pid]['details'][] = [
+                'match_id' => $match->id,
+                'match_label' => "$home vs $away",
+                'match_date' => $match->start_time,
+                'round' => $match->round_name ?? $match->round_number ?? null,
+                'phase' => $match->phase ?? null,
+            ];
         }
 
         usort($mvpCounts, function ($a, $b) {
@@ -792,7 +813,7 @@ class EventController extends Controller
     // 11. Detalhes da Partida (Público - para Modal Ao Vivo/Súmula)
     public function matchDetails($id)
     {
-        $match = GameMatch::with(['championship.sport', 'events.player', 'mvp'])->findOrFail($id);
+        $match = GameMatch::with(['championship.sport', 'events.player', 'mvp', 'pernaDePau'])->findOrFail($id);
 
         $champId = $match->championship_id;
         $match->load([
