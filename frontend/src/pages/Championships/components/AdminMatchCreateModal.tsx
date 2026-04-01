@@ -160,7 +160,7 @@ export function AdminMatchCreateModal({
                                 <div className="bg-white p-5 rounded-2xl border-2 border-indigo-50 shadow-sm space-y-5">
                                     <label className="block text-xs font-bold text-indigo-700 uppercase">Qual o tipo da nova fase?</label>
                                     
-                                    <div className="flex p-1 bg-gray-100 rounded-xl">
+                                    <div className="flex flex-col sm:flex-row p-1 bg-gray-100 rounded-xl gap-1 sm:gap-0">
                                         <button
                                             onClick={() => setSelectedType('round')}
                                             className={`flex-1 flex items-center justify-center gap-1.5 py-3 rounded-lg text-xs font-bold transition-all ${
@@ -224,7 +224,7 @@ export function AdminMatchCreateModal({
                                     {selectedType === 'phase' && !isLeague && (
                                         <div className="space-y-2 animate-in fade-in">
                                             <label className="block text-xs font-black text-gray-500 uppercase">Selecionar Fase</label>
-                                            <div className="grid grid-cols-2 gap-2">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                                 {PHASES.map((phase) => (
                                                     <button
                                                         key={phase.value}
@@ -235,8 +235,8 @@ export function AdminMatchCreateModal({
                                                                 : 'border-gray-100 bg-white text-gray-600 hover:border-indigo-200'
                                                         }`}
                                                     >
-                                                        {phase.label}
-                                                        {selectedPhase === phase.value && <div className="w-2 h-2 rounded-full bg-indigo-600" />}
+                                                        <span className="truncate">{phase.label}</span>
+                                                        {selectedPhase === phase.value && <div className="w-2 h-2 rounded-full bg-indigo-600 flex-shrink-0" />}
                                                     </button>
                                                 ))}
                                             </div>
@@ -388,23 +388,23 @@ export function AdminMatchCreateModal({
                     )}
                 </div>
 
-                <div className="p-4 bg-white border-t border-gray-100 flex gap-3 shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                <div className="p-4 bg-white border-t border-gray-100 flex flex-col sm:flex-row gap-3 shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
                     {step === 1 ? (
                         <>
-                            <button onClick={onClose} className="flex-1 px-4 py-3 bg-white border-2 border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all">
+                            <button onClick={onClose} className="w-full sm:flex-1 px-4 py-3 bg-white border-2 border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all order-2 sm:order-1">
                                 Cancelar
                             </button>
-                            <button onClick={() => setStep(2)} className="flex-1 px-4 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all">
+                            <button onClick={() => setStep(2)} className="w-full sm:flex-1 px-4 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all order-1 sm:order-2">
                                 Avançar para Jogos &raquo;
                             </button>
                         </>
                     ) : (
                         <>
-                            <button onClick={() => setStep(1)} className="px-6 py-3 bg-white border-2 border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all">
+                            <button onClick={() => setStep(1)} className="w-full sm:w-auto px-6 py-3 bg-white border-2 border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all order-2 sm:order-1">
                                 &laquo; Voltar
                             </button>
-                            <button onClick={handleConfirm} className="flex-1 px-4 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 shadow-lg shadow-green-200 transition-all text-lg">
-                                Concluir e Salvar {matches.length} Jogo(s)
+                            <button onClick={handleConfirm} className="w-full sm:flex-1 px-4 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 shadow-lg shadow-green-200 transition-all text-base sm:text-lg order-1 sm:order-2">
+                                Confirmar {matches.length} Jogo(s)
                             </button>
                         </>
                     )}

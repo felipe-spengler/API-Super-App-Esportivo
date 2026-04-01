@@ -145,7 +145,17 @@ export function ArtEditor() {
             console.log('Frontend: API Response', res.data);
 
             if (res.data && res.data.elements) {
-                setElements(res.data.elements);
+                let loadedElements = res.data.elements;
+                
+                // Auto-inject missing RODADA if it's Jogo Programado and they haven't restored defaults
+                if (templateName === 'Jogo Programado' && !loadedElements.find((e: any) => String(e.content).includes('{RODADA}'))) {
+                    loadedElements.push({
+                        id: 'round_' + Date.now(),
+                        type: 'text', x: 540, y: 320, fontSize: 35, color: '#FFFFFF', align: 'center', label: 'Rodada/Fase', zIndex: 2, content: '{RODADA}', fontFamily: 'Roboto'
+                    });
+                }
+                
+                setElements(loadedElements);
 
                 // Smart Background Resolution
                 let bgToUse = res.data.bg_url;
@@ -186,6 +196,25 @@ export function ArtEditor() {
 
     const handleElementChange = (id: string, updates: Partial<Element>) => {
         setElements(prev => prev.map(el => el.id === id ? { ...el, ...updates } : el));
+    };
+
+    const handleAddElement = () => {
+        const newEl: Element = {
+            id: 'new_text_' + Date.now(),
+            type: 'text',
+            x: CANVAS_WIDTH / 2,
+            y: CANVAS_HEIGHT / 2,
+            fontSize: 40,
+            color: '#FFFFFF',
+            align: 'center',
+            label: 'Novo Texto',
+            zIndex: elements.length + 1,
+            content: 'Novo Texto',
+            fontFamily: 'Roboto'
+        };
+        setElements(prev => [...prev, newEl]);
+        setActiveElementId(newEl.id);
+        setShowElements(true);
     };
 
 
@@ -467,7 +496,8 @@ export function ArtEditor() {
                             <div className="flex items-center gap-2">
                                 <span className="p-1 hover:bg-indigo-50 rounded text-indigo-600 cursor-pointer" onClick={(e) => {
                                     e.stopPropagation();
-                                }}><Plus size={14} /></span>
+                                    handleAddElement();
+                                }} title="Adicionar novo elemento de texto"><Plus size={14} /></span>
                                 {showElements ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                             </div>
                         </button>
@@ -509,7 +539,13 @@ export function ArtEditor() {
                             {showProps && (
                                 <div className="p-4 pt-0">
                                     <h3 className="text-[10px] font-bold text-gray-400 mb-3 uppercase flex justify-end">
-                                        <button className="text-red-500 hover:text-red-700 flex items-center gap-1 bg-white border border-red-100 px-2 py-1 rounded shadow-sm">
+                                        <button 
+                                            onClick={() => {
+                                                setElements(prev => prev.filter(el => el.id !== activeElement.id));
+                                                setActiveElementId(null);
+                                            }}
+                                            className="text-red-500 hover:text-red-700 flex items-center gap-1 bg-white border border-red-100 px-2 py-1 rounded shadow-sm"
+                                        >
                                             <Trash2 size={12} /> Excluir
                                         </button>
                                     </h3>
