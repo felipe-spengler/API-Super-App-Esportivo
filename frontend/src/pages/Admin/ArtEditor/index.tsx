@@ -108,6 +108,7 @@ export function ArtEditor() {
         } else if (name === 'Jogo Programado') {
             setElements([
                 { id: 'championship', type: 'text', x: 540, y: 250, fontSize: 45, color: '#FFFFFF', align: 'center', label: 'Campeonato', zIndex: 2, content: '{CAMPEONATO}', fontFamily: 'Roboto' },
+                { id: 'round', type: 'text', x: 540, y: 320, fontSize: 35, color: '#FFB700', align: 'center', label: 'Rodada/Fase', zIndex: 2, content: '{RODADA}', fontFamily: 'Roboto' },
                 { id: 'team_a', type: 'image', x: 250, y: 800, width: 400, height: 400, label: 'Brasão Mandante', zIndex: 2, content: 'team_a' },
                 { id: 'team_b', type: 'image', x: 830, y: 800, width: 400, height: 400, label: 'Brasão Visitante', zIndex: 2, content: 'team_b' },
                 { id: 'vs', type: 'text', x: 540, y: 1000, fontSize: 80, color: '#FFB700', align: 'center', label: 'X (Versus)', zIndex: 2, content: 'X', fontFamily: 'Roboto-Bold' },

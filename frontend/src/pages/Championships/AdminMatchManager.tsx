@@ -761,22 +761,6 @@ export function AdminMatchManager() {
                                 <Plus className="w-4 h-4" /> Nova Rodada (+{matches.length > 0 ? Math.max(...matches.map(m => m.round_number || 1)) + 1 : 1})
                             </button>
 
-                            <button
-                                onClick={() => {
-                                    setNewData({
-                                        home_team_id: '',
-                                        away_team_id: '',
-                                        start_time: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
-                                        location: championship?.location || '',
-                                        round_number: 1,
-                                        group_name: ''
-                                    });
-                                    setShowAddModal(true);
-                                }}
-                                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-sm transition-all active:scale-95"
-                            >
-                                <Plus className="w-4 h-4" /> Novo Jogo Avulso
-                            </button>
                         </div>
                     )}
                 </div>
@@ -906,22 +890,14 @@ export function AdminMatchManager() {
                                                 {/* Exibe número da rodada ao lado do nome */}
                                                 {(() => {
                                                     const rn = roundMatches[0]?.round_name;
-                                                    // Se for "Rodada X" ou "Eliminatória Y", extrai número
-                                                    const rodadaMatch = rn && rn.match(/Rodada\s*(\d+)/i);
-                                                    const elimMatch = rn && rn.match(/Eliminat[óo]ria\s*(\d+)/i);
-                                                    if (rodadaMatch) {
-                                                        return <>{getRoundDisplayName(rn)} <span className="ml-1 text-indigo-500 font-black">#{rodadaMatch[1]}</span></>;
+                                                    if (!rn) return <>Rodada {round}</>;
+                                                    let display = getRoundDisplayName(rn);
+                                                    if (display.trim().toLowerCase() === 'rodada') {
+                                                        display = `Rodada ${round}`;
+                                                    } else if (display.trim().toLowerCase() === 'eliminatória') {
+                                                        display = `Eliminatória ${round}`;
                                                     }
-                                                    if (elimMatch) {
-                                                        return <>{getRoundDisplayName(rn)} <span className="ml-1 text-indigo-500 font-black">#{elimMatch[1]}</span></>;
-                                                    }
-                                                    // Se for fase eliminatória conhecida
-                                                    const phaseLabel = getRoundDisplayName(rn);
-                                                    if (phaseLabel !== rn) {
-                                                        return <>{phaseLabel}</>;
-                                                    }
-                                                    // Fallback: mostra nome puro
-                                                    return rn || `Rodada ${round}`;
+                                                    return <>{display}</>;
                                                 })()}
                                             </h3>
                                             <span className="text-[10px] font-bold text-gray-500 bg-gray-200 px-2 py-1 rounded-full uppercase tracking-wider">{roundMatches.length} JOGOS</span>
