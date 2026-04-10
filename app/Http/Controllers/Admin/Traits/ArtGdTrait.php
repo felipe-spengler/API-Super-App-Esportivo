@@ -482,9 +482,9 @@ trait ArtGdTrait
         }
 
         $translations = [
-            'round_of_32' => '16 avos',
-            'round_of_16' => 'Oitavas',
-            'quarter' => 'Quartas',
+            'round_of_32' => '16 avos de Final',
+            'round_of_16' => 'Oitavas de Final',
+            'quarter' => 'Quartas de Final',
             'semi' => 'Semifinal',
             'final' => 'Final',
             'third_place' => '3º Lugar',
