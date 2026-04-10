@@ -51,7 +51,7 @@ trait ArtMatchTrait
             $elements = $templateData['elements'];
             $replacements = [
                 '{CAMPEONATO}' => mb_strtoupper($match->championship->name),
-                '{RODADA}' => mb_strtoupper($match->round_name ?? "RODADA " . ($match->round_number ?? 1)),
+                '{RODADA}' => mb_strtoupper($this->getTranslatedRoundName($match)),
                 'X' => 'X',
                 'DD/MM HH:MM' => \Carbon\Carbon::parse($match->start_time)->setTimezone('America/Sao_Paulo')->translatedFormat('d/m H:i'),
                 'Local da Partida' => mb_strtoupper($match->location ?? 'LOCAL A DEFINIR'),
@@ -104,10 +104,11 @@ trait ArtMatchTrait
         $drawText($isStory ? 45 : 35, $yTop, $secondaryColor, $champName, true);
         $drawText($isStory ? 80 : 65, $ySport, $primaryColor, mb_strtoupper($sport), false);
 
-        $roundText = mb_strtoupper($match->round_name ?? "RODADA " . ($match->round_number ?? 1));
+        $roundText = mb_strtoupper($this->getTranslatedRoundName($match));
         $drawText($isStory ? 40 : 30, $yRound, $secondaryColor, $roundText, true);
 
         $badgeSize = $isStory ? 400 : (abs($width - $height) < 100 ? 300 : 380);
+
         $yBadges = ($height / 2) - ($badgeSize / 2) - ($isStory ? 0 : 40);
         $centerDist = $isStory ? 280 : 320;
 
@@ -198,7 +199,7 @@ trait ArtMatchTrait
 
             $replacements = [
                 '{CAMPEONATO}' => mb_strtoupper($match->championship->name),
-                '{RODADA}' => mb_strtoupper($match->round_name ?? "RODADA " . ($match->round_number ?? 1)),
+                '{RODADA}' => mb_strtoupper($this->getTranslatedRoundName($match)),
                 'X' => 'X',
                 'DD/MM HH:MM' => \Carbon\Carbon::parse($match->start_time)->setTimezone('America/Sao_Paulo')->translatedFormat('d/m H:i'),
                 'Local da Partida' => mb_strtoupper($match->location ?? 'LOCAL A DEFINIR'),
@@ -218,6 +219,7 @@ trait ArtMatchTrait
 
             return $this->outputImage($img, 'confronto_' . $match->id);
         }
+
 
         // Legacy rendering
         $width = imagesx($img);
@@ -262,9 +264,10 @@ trait ArtMatchTrait
         imagettftext($img, $placarSize, 0, ($width / 2) + 180 + 80, $placarY, $primaryColor, $this->fontPath, trim($scoreB));
 
         $champName = mb_strtoupper($match->championship->name);
-        $roundName = mb_strtoupper($match->round_name ?? 'Rodada');
+        $roundName = mb_strtoupper($this->getTranslatedRoundName($match));
         $drawText(40, 1600, $secondaryColor, $champName, true);
         $drawText(30, 1660, $primaryColor, $roundName, true);
+
 
         // Goleadores legacy
         $goals = $match->events->where('event_type', 'goal');
@@ -367,3 +370,5 @@ trait ArtMatchTrait
         return $this->outputImage($img, 'confronto_' . $match->id);
     }
 }
+
+

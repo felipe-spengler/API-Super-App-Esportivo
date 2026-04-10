@@ -232,7 +232,7 @@ trait ArtCardTrait
         if ($club)
             $this->loadClubResources($club);
 
-        return $this->createCard($player, $championship, $sport, $category, $match->round_name ?? ('Rodada ' . $match->round_number), $match, null, $club);
+        return $this->createCard($player, $championship, $sport, $category, $this->getTranslatedRoundName($match), $match, null, $club);
     }
 
     private function generateAwardCard($player, $championship, $team, $category, $club = null)

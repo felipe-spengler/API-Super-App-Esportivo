@@ -472,4 +472,26 @@ trait ArtGdTrait
         if ($ballRedImg)
             imagedestroy($ballRedImg);
     }
+
+    private function getTranslatedRoundName($match)
+    {
+        if (!$match) return '';
+        $roundName = $match->round_name;
+        if (empty($roundName)) {
+            return "RODADA " . ($match->round_number ?? 1);
+        }
+
+        $translations = [
+            'round_of_32' => '16 avos',
+            'round_of_16' => 'Oitavas',
+            'quarter' => 'Quartas',
+            'semi' => 'Semifinal',
+            'final' => 'Final',
+            'third_place' => '3º Lugar',
+            'group' => 'Fase de Grupos',
+        ];
+
+        return $translations[strtolower($roundName)] ?? $roundName;
+    }
 }
+
