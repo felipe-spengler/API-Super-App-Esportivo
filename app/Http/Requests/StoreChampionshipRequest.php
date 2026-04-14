@@ -39,6 +39,14 @@ class StoreChampionshipRequest extends FormRequest
             'elderly_discount_percentage' => 'nullable|numeric|min:0|max:100',
             'elderly_minimum_age' => 'nullable|integer|min:0',
             'allow_shopping_registration' => 'nullable|boolean',
+            'include_repescagem_goals' => 'nullable|boolean',
+            'include_repescagem_assists' => 'nullable|boolean',
+            'include_repescagem_cards' => 'nullable|boolean',
+            'include_repescagem_standings' => 'nullable|boolean',
+            'include_knockout_standings' => 'nullable|boolean',
+            'include_knockout_goals' => 'nullable|boolean',
+            'include_knockout_assists' => 'nullable|boolean',
+            'include_knockout_cards' => 'nullable|boolean',
         ];
     }
 

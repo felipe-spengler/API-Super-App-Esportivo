@@ -19,6 +19,7 @@ class StoreMatchRequest extends FormRequest
             'away_team_id' => 'required|exists:teams,id',
             'start_time' => 'required|date',
             'location' => 'nullable|string|max:255',
+            'round_name' => 'nullable|string|max:100',
             'round_number' => 'nullable|integer|min:1',
             'category_id' => 'nullable|exists:categories,id',
             'group_name' => 'nullable|string|max:255',

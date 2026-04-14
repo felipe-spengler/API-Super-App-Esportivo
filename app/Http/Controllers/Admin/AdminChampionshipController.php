@@ -113,7 +113,15 @@ class AdminChampionshipController extends Controller
             'elderly_minimum_age' => 'nullable|integer|min:0',
             'allow_shopping_registration' => 'nullable|boolean',
             'remove_bg_on_art' => 'nullable|boolean',
-            'location_name' => 'nullable|string'
+            'location_name' => 'nullable|string',
+            'include_repescagem_goals' => 'nullable|boolean',
+            'include_repescagem_assists' => 'nullable|boolean',
+            'include_repescagem_cards' => 'nullable|boolean',
+            'include_repescagem_standings' => 'nullable|boolean',
+            'include_knockout_standings' => 'nullable|boolean',
+            'include_knockout_goals' => 'nullable|boolean',
+            'include_knockout_assists' => 'nullable|boolean',
+            'include_knockout_cards' => 'nullable|boolean'
         ]);
 
         if (isset($validated['status'])) {

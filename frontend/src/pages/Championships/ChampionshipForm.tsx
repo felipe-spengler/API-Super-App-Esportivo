@@ -33,7 +33,16 @@ export function ChampionshipForm() {
         elderly_discount_percentage: 0,
         elderly_minimum_age: 60,
         allow_shopping_registration: true,
-        location_name: ''
+        location_name: '',
+        // Statistics configuration
+        include_repescagem_goals: false,
+        include_repescagem_assists: false,
+        include_repescagem_cards: true,
+        include_repescagem_standings: false,
+        include_knockout_standings: false,
+        include_knockout_goals: false,
+        include_knockout_assists: false,
+        include_knockout_cards: true
     });
 
     const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -90,6 +99,15 @@ export function ChampionshipForm() {
                     elderly_minimum_age: data.elderly_minimum_age || 60,
                     allow_shopping_registration: data.allow_shopping_registration !== undefined ? !!data.allow_shopping_registration : true,
                     location_name: data.races && data.races.length > 0 ? data.races[0].location_name : '',
+                    // Statistics configuration
+                    include_repescagem_goals: !!data.include_repescagem_goals,
+                    include_repescagem_assists: !!data.include_repescagem_assists,
+                    include_repescagem_cards: data.include_repescagem_cards !== undefined ? !!data.include_repescagem_cards : true,
+                    include_repescagem_standings: !!data.include_repescagem_standings,
+                    include_knockout_standings: !!data.include_knockout_standings,
+                    include_knockout_goals: !!data.include_knockout_goals,
+                    include_knockout_assists: !!data.include_knockout_assists,
+                    include_knockout_cards: data.include_knockout_cards !== undefined ? !!data.include_knockout_cards : true
                 });
                 setLogoUrl(data.logo_url);
                 setCoverImageUrl(data.cover_image_url);
@@ -423,7 +441,150 @@ export function ChampionshipForm() {
                             </div>
                         )}
 
-                        {/* 5. Identidade Visual */}
+                        {/* 5. Configurações de Estatísticas */}
+                        <div className="space-y-4">
+                            <h2 className="text-lg font-semibold text-gray-800 border-b pb-2">5. Configurações de Estatísticas</h2>
+                            <p className="text-sm text-gray-600 mb-4">Configure quais tipos de partidas contam para as estatísticas do campeonato (artilharia, assistências, cartões, classificação).</p>
+
+                            {/* Repescagem */}
+                            <div className="bg-amber-50 border border-amber-200 p-6 rounded-xl space-y-4">
+                                <h3 className="font-bold text-amber-800 text-base">Partidas de Repescagem</h3>
+                                <p className="text-sm text-amber-700 mb-3">Configure se as partidas marcadas como "Repescagem" contam para as estatísticas.</p>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    <label className="flex items-center gap-3 cursor-pointer p-3 bg-white rounded-lg border border-amber-200 hover:bg-amber-25 transition-colors">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.include_repescagem_goals}
+                                            onChange={e => setFormData({ ...formData, include_repescagem_goals: e.target.checked })}
+                                            className="w-5 h-5 text-amber-600 rounded"
+                                        />
+                                        <div>
+                                            <span className="font-semibold text-gray-800">Gols/Pontos/Cestas</span>
+                                            <p className="text-xs text-gray-500">Contam para artilharia</p>
+                                        </div>
+                                    </label>
+
+                                    <label className="flex items-center gap-3 cursor-pointer p-3 bg-white rounded-lg border border-amber-200 hover:bg-amber-25 transition-colors">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.include_repescagem_assists}
+                                            onChange={e => setFormData({ ...formData, include_repescagem_assists: e.target.checked })}
+                                            className="w-5 h-5 text-amber-600 rounded"
+                                        />
+                                        <div>
+                                            <span className="font-semibold text-gray-800">Assistências</span>
+                                            <p className="text-xs text-gray-500">Contam para ranking</p>
+                                        </div>
+                                    </label>
+
+                                    <label className="flex items-center gap-3 cursor-pointer p-3 bg-white rounded-lg border border-amber-200 hover:bg-amber-25 transition-colors">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.include_repescagem_cards}
+                                            onChange={e => setFormData({ ...formData, include_repescagem_cards: e.target.checked })}
+                                            className="w-5 h-5 text-amber-600 rounded"
+                                        />
+                                        <div>
+                                            <span className="font-semibold text-gray-800">Cartões</span>
+                                            <p className="text-xs text-gray-500">Amarelo/Vermelho/Azul</p>
+                                        </div>
+                                    </label>
+
+                                    <label className="flex items-center gap-3 cursor-pointer p-3 bg-white rounded-lg border border-amber-200 hover:bg-amber-25 transition-colors">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.include_repescagem_standings}
+                                            onChange={e => setFormData({ ...formData, include_repescagem_standings: e.target.checked })}
+                                            className="w-5 h-5 text-amber-600 rounded"
+                                        />
+                                        <div>
+                                            <span className="font-semibold text-gray-800">Pontos</span>
+                                            <p className="text-xs text-gray-500">Contam para classificação</p>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            {/* Mata-mata */}
+                            <div className="bg-red-50 border border-red-200 p-6 rounded-xl space-y-4">
+                                <h3 className="font-bold text-red-800 text-base">Partidas de Mata-mata</h3>
+                                <p className="text-sm text-red-700 mb-3">Configure se as partidas da fase eliminatória contam para as estatísticas.</p>
+
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                    <label className="flex items-center gap-3 cursor-pointer p-3 bg-white rounded-lg border border-red-200 hover:bg-red-25 transition-colors">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.include_knockout_standings}
+                                            onChange={e => setFormData({ ...formData, include_knockout_standings: e.target.checked })}
+                                            className="w-5 h-5 text-red-600 rounded"
+                                        />
+                                        <div>
+                                            <span className="font-semibold text-gray-800">Pontos</span>
+                                            <p className="text-xs text-gray-500">Classificação</p>
+                                        </div>
+                                    </label>
+
+                                    <label className="flex items-center gap-3 cursor-pointer p-3 bg-white rounded-lg border border-red-200 hover:bg-red-25 transition-colors">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.include_knockout_goals}
+                                            onChange={e => setFormData({ ...formData, include_knockout_goals: e.target.checked })}
+                                            className="w-5 h-5 text-red-600 rounded"
+                                        />
+                                        <div>
+                                            <span className="font-semibold text-gray-800">Gols/Pontos/Cestas</span>
+                                            <p className="text-xs text-gray-500">Artilharia</p>
+                                        </div>
+                                    </label>
+
+                                    <label className="flex items-center gap-3 cursor-pointer p-3 bg-white rounded-lg border border-red-200 hover:bg-red-25 transition-colors">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.include_knockout_assists}
+                                            onChange={e => setFormData({ ...formData, include_knockout_assists: e.target.checked })}
+                                            className="w-5 h-5 text-red-600 rounded"
+                                        />
+                                        <div>
+                                            <span className="font-semibold text-gray-800">Assistências</span>
+                                            <p className="text-xs text-gray-500">Ranking</p>
+                                        </div>
+                                    </label>
+
+                                    <label className="flex items-center gap-3 cursor-pointer p-3 bg-white rounded-lg border border-red-200 hover:bg-red-25 transition-colors">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.include_knockout_cards}
+                                            onChange={e => setFormData({ ...formData, include_knockout_cards: e.target.checked })}
+                                            className="w-5 h-5 text-red-600 rounded"
+                                        />
+                                        <div>
+                                            <span className="font-semibold text-gray-800">Cartões</span>
+                                            <p className="text-xs text-gray-500">Amarelo/Vermelho/Azul</p>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl">
+                                <div className="flex items-start gap-3">
+                                    <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center mt-0.5">
+                                        <span className="text-white text-xs font-bold">ℹ</span>
+                                    </div>
+                                    <div>
+                                        <h4 className="font-semibold text-blue-800 mb-1">Como Funciona</h4>
+                                        <ul className="text-sm text-blue-700 space-y-1">
+                                            <li>• <strong>Repescagem:</strong> Partidas marcadas como "Repescagem" no round_name</li>
+                                            <li>• <strong>Mata-mata:</strong> Partidas com is_knockout = true (fase eliminatória)</li>
+                                            <li>• <strong>Padrão:</strong> Repescagem não conta para gols/assistências, mas conta cartões</li>
+                                            <li>• <strong>Mata-mata:</strong> Não conta para nada por padrão (compatibilidade)</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 6. Identidade Visual */}
                         {isEditing && (
                             <div className="space-y-4 animate-in slide-in-from-bottom-4 duration-500">
                                 <h2 className="text-lg font-semibold text-gray-800 border-b pb-2">5. Identidade Visual do Campeonato</h2>
@@ -509,9 +670,9 @@ export function ChampionshipForm() {
                             </div>
                         )}
 
-                        {/* 6. Descontos */}
+                        {/* 7. Descontos */}
                         <div className="space-y-4">
-                            <h2 className="text-lg font-semibold text-gray-800 border-b pb-2">6. Descontos de Inscrição</h2>
+                            <h2 className="text-lg font-semibold text-gray-800 border-b pb-2">7. Descontos de Inscrição</h2>
 
                             {/* PCD */}
                             <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-4">

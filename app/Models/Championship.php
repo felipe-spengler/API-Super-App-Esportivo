@@ -36,7 +36,15 @@ class Championship extends Model
         'allow_shopping_registration',
         'regulation_path',
         'remove_bg_on_art',
-        'tiebreaker_priority'
+        'tiebreaker_priority',
+        'include_repescagem_goals',
+        'include_repescagem_assists',
+        'include_repescagem_cards',
+        'include_repescagem_standings',
+        'include_knockout_standings',
+        'include_knockout_goals',
+        'include_knockout_assists',
+        'include_knockout_cards'
     ];
 
     protected $casts = [
@@ -48,6 +56,15 @@ class Championship extends Model
         'art_generator_settings' => 'array',
         'art_settings' => 'array',
         'awards' => 'array',
+        'include_repescagem_goals' => 'boolean',
+        'include_repescagem_assists' => 'boolean',
+        'include_repescagem_cards' => 'boolean',
+        'include_repescagem_standings' => 'boolean',
+        'include_knockout_standings' => 'boolean',
+        'include_knockout_goals' => 'boolean',
+        'include_knockout_assists' => 'boolean',
+        'include_knockout_cards' => 'boolean'
+    ];
         'is_status_auto' => 'boolean',
         'has_pcd_discount' => 'boolean',
         'pcd_discount_percentage' => 'decimal:2',

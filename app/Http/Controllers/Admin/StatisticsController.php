@@ -22,11 +22,26 @@ class StatisticsController extends Controller
     {
         $championship = Championship::findOrFail($championshipId);
 
-        $goals = MatchEvent::where('event_type', 'goal')
+        $query = MatchEvent::where('event_type', 'goal')
             ->whereHas('gameMatch', function ($query) use ($championshipId) {
                 $query->where('championship_id', $championshipId);
-            })
-            ->select('player_id', DB::raw('count(*) as total_goals'))
+            });
+
+        // Exclude repescagem if not included
+        if (!($championship->include_repescagem_goals ?? false)) {
+            $query->whereHas('gameMatch', function ($subQuery) {
+                $subQuery->where('round_name', '!=', 'Repescagem');
+            });
+        }
+
+        // Exclude knockout if not included
+        if (!($championship->include_knockout_goals ?? false)) {
+            $query->whereHas('gameMatch', function ($subQuery) {
+                $subQuery->where('is_knockout', '!=', true);
+            });
+        }
+
+        $goals = $query->select('player_id', DB::raw('count(*) as total_goals'))
             ->groupBy('player_id')
             ->orderBy('total_goals', 'desc')
             ->with('player:id,name,photo_path')
@@ -43,11 +58,27 @@ class StatisticsController extends Controller
     {
         $limit = $request->input('limit', 10);
 
-        $scorers = MatchEvent::where('event_type', 'goal')
+        $query = MatchEvent::where('event_type', 'goal')
             ->whereHas('gameMatch', function ($query) use ($championshipId) {
                 $query->where('championship_id', $championshipId);
-            })
-            ->select('player_id', DB::raw('count(*) as goals'))
+            });
+
+        // Exclude repescagem if not included
+        $championship = Championship::findOrFail($championshipId);
+        if (!($championship->include_repescagem_goals ?? false)) {
+            $query->whereHas('gameMatch', function ($subQuery) {
+                $subQuery->where('round_name', '!=', 'Repescagem');
+            });
+        }
+
+        // Exclude knockout if not included
+        if (!($championship->include_knockout_goals ?? false)) {
+            $query->whereHas('gameMatch', function ($subQuery) {
+                $subQuery->where('is_knockout', '!=', true);
+            });
+        }
+
+        $scorers = $query->select('player_id', DB::raw('count(*) as goals'))
             ->groupBy('player_id')
             ->orderBy('goals', 'desc')
             ->limit($limit)
@@ -62,11 +93,28 @@ class StatisticsController extends Controller
      */
     public function assistsByPlayer(Request $request, $championshipId)
     {
-        $assists = MatchEvent::where('event_type', 'assist')
+        $championship = Championship::findOrFail($championshipId);
+
+        $query = MatchEvent::where('event_type', 'assist')
             ->whereHas('gameMatch', function ($query) use ($championshipId) {
                 $query->where('championship_id', $championshipId);
-            })
-            ->select('player_id', DB::raw('count(*) as total_assists'))
+            });
+
+        // Exclude repescagem if not included
+        if (!($championship->include_repescagem_assists ?? false)) {
+            $query->whereHas('gameMatch', function ($subQuery) {
+                $subQuery->where('round_name', '!=', 'Repescagem');
+            });
+        }
+
+        // Exclude knockout if not included
+        if (!($championship->include_knockout_assists ?? false)) {
+            $query->whereHas('gameMatch', function ($subQuery) {
+                $subQuery->where('is_knockout', '!=', true);
+            });
+        }
+
+        $assists = $query->select('player_id', DB::raw('count(*) as total_assists'))
             ->groupBy('player_id')
             ->orderBy('total_assists', 'desc')
             ->with('player:id,name,photo_path')
@@ -81,11 +129,28 @@ class StatisticsController extends Controller
      */
     public function cardsByPlayer(Request $request, $championshipId)
     {
-        $cards = MatchEvent::whereIn('event_type', ['yellow_card', 'red_card'])
+        $championship = Championship::findOrFail($championshipId);
+
+        $query = MatchEvent::whereIn('event_type', ['yellow_card', 'red_card'])
             ->whereHas('gameMatch', function ($query) use ($championshipId) {
                 $query->where('championship_id', $championshipId);
-            })
-            ->select(
+            });
+
+        // Exclude repescagem if not included
+        if (!($championship->include_repescagem_cards ?? true)) {
+            $query->whereHas('gameMatch', function ($subQuery) {
+                $subQuery->where('round_name', '!=', 'Repescagem');
+            });
+        }
+
+        // Exclude knockout if not included
+        if (!($championship->include_knockout_cards ?? true)) {
+            $query->whereHas('gameMatch', function ($subQuery) {
+                $subQuery->where('is_knockout', '!=', true);
+            });
+        }
+
+        $cards = $query->select(
                 'player_id',
                 DB::raw('SUM(CASE WHEN event_type = "yellow_card" THEN 1 ELSE 0 END) as yellow_cards'),
                 DB::raw('SUM(CASE WHEN event_type = "red_card" THEN 1 ELSE 0 END) as red_cards'),
@@ -108,10 +173,20 @@ class StatisticsController extends Controller
         $championship = Championship::findOrFail($championshipId);
 
         // Busca todas as partidas finalizadas
-        $matches = GameMatch::where('championship_id', $championshipId)
-            ->where('status', 'finished')
-            // ->with(['homeTeam', 'awayTeam']) // Optimization
-            ->get();
+        $query = GameMatch::where('championship_id', $championshipId)
+            ->where('status', 'finished');
+
+        // Exclude repescagem if not included in standings
+        if (!($championship->include_repescagem_standings ?? false)) {
+            $query->where('round_name', '!=', 'Repescagem');
+        }
+
+        // Exclude knockout if not included
+        if (!($championship->include_knockout_standings ?? false)) {
+            $query->where('is_knockout', '!=', true);
+        }
+
+        $matches = $query->get();
 
         $standings = [];
 
@@ -283,8 +358,14 @@ class StatisticsController extends Controller
                 ->where('status', 'finished')
                 ->count(),
             'total_goals' => MatchEvent::where('event_type', 'goal')
-                ->whereHas('gameMatch', function ($query) use ($championshipId) {
+                ->whereHas('gameMatch', function ($query) use ($championshipId, $championship) {
                     $query->where('championship_id', $championshipId);
+                    if (!($championship->include_repescagem_goals ?? false)) {
+                        $query->where('round_name', '!=', 'Repescagem');
+                    }
+                    if (!($championship->include_knockout_goals ?? false)) {
+                        $query->where('is_knockout', '!=', true);
+                    }
                 })
                 ->count(),
             'total_players' => MatchEvent::whereHas('gameMatch', function ($query) use ($championshipId) {

@@ -110,6 +110,16 @@ class EventController extends Controller
                 ->with(['homeTeam', 'awayTeam'])
                 ->where('status', 'finished');
 
+            // Exclude repescagem if not included in standings
+            if (!($champ->include_repescagem_standings ?? false)) {
+                $query->where('round_name', '!=', 'Repescagem');
+            }
+
+            // Exclude knockout if not included
+            if (!($champ->include_knockout_standings ?? false)) {
+                $query->where('is_knockout', '!=', true);
+            }
+
             if ($request->filled('category_id') && $request->category_id != 'null') {
                 $query->where('category_id', $request->category_id);
             }
@@ -436,12 +446,31 @@ class EventController extends Controller
 
         // Query Events directly
         $events = \App\Models\MatchEvent::whereIn('event_type', $dbTypes)
-            ->whereHas('gameMatch', function ($q) use ($championshipId, $request) {
+            ->whereHas('gameMatch', function ($q) use ($championshipId, $request, $type) {
                 $q->where('championship_id', $championshipId)
                     ->whereIn('status', ['finished', 'live', 'ongoing']);
 
                 if ($request->filled('category_id') && $request->category_id != 'null') {
                     $q->where('category_id', $request->category_id);
+                }
+
+                // Check championship settings for repescagem
+                $championship = \App\Models\Championship::find($championshipId);
+                $includeRepescagem = false;
+                $includeKnockout = false;
+                if ($type === 'goals' || $type === 'assists') {
+                    $includeRepescagem = $championship->include_repescagem_goals ?? false;
+                    $includeKnockout = $championship->include_knockout_goals ?? false;
+                } elseif (in_array($type, ['yellow_cards', 'red_cards', 'blue_cards'])) {
+                    $includeRepescagem = $championship->include_repescagem_cards ?? true;
+                    $includeKnockout = $championship->include_knockout_cards ?? true;
+                }
+
+                if (!$includeRepescagem) {
+                    $q->where('round_name', '!=', 'Repescagem');
+                }
+                if (!$includeKnockout) {
+                    $q->where('is_knockout', '!=', true);
                 }
             })
             ->with(['team', 'player', 'gameMatch.homeTeam', 'gameMatch.awayTeam']) // Load team and player
