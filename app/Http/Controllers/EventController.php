@@ -112,12 +112,16 @@ class EventController extends Controller
 
             // Exclude repescagem if not included in standings
             if (!($champ->include_repescagem_standings ?? false)) {
-                $query->where('round_name', '!=', 'Repescagem');
+                $query->where(function($q) {
+                    $q->where('round_name', '!=', 'Repescagem')->orWhereNull('round_name');
+                });
             }
 
             // Exclude knockout if not included
             if (!($champ->include_knockout_standings ?? false)) {
-                $query->where('is_knockout', '!=', true);
+                $query->where(function($q) {
+                    $q->where('is_knockout', '!=', true)->orWhereNull('is_knockout');
+                });
             }
 
             if ($request->filled('category_id') && $request->category_id != 'null') {
@@ -467,10 +471,14 @@ class EventController extends Controller
                 }
 
                 if (!$includeRepescagem) {
-                    $q->where('round_name', '!=', 'Repescagem');
+                    $q->where(function($sq) {
+                        $sq->where('round_name', '!=', 'Repescagem')->orWhereNull('round_name');
+                    });
                 }
                 if (!$includeKnockout) {
-                    $q->where('is_knockout', '!=', true);
+                    $q->where(function($sq) {
+                        $sq->where('is_knockout', '!=', true)->orWhereNull('is_knockout');
+                    });
                 }
             })
             ->with(['team', 'player', 'gameMatch.homeTeam', 'gameMatch.awayTeam']) // Load team and player
@@ -536,6 +544,29 @@ class EventController extends Controller
 
         if ($request->filled('category_id') && $request->category_id != 'null') {
             $matchesWithJson->where('category_id', $request->category_id);
+        }
+
+        // Get championship for settings
+        $championship = \App\Models\Championship::find($championshipId);
+        $includeRepescagem = false;
+        $includeKnockout = false;
+        if ($type === 'goals' || $type === 'assists') {
+            $includeRepescagem = $championship->include_repescagem_goals ?? false;
+            $includeKnockout = $championship->include_knockout_goals ?? false;
+        } elseif (in_array($type, ['yellow_cards', 'red_cards', 'blue_cards'])) {
+            $includeRepescagem = $championship->include_repescagem_cards ?? true;
+            $includeKnockout = $championship->include_knockout_cards ?? true;
+        }
+
+        if (!$includeRepescagem) {
+            $matchesWithJson->where(function($q) {
+                $q->where('round_name', '!=', 'Repescagem')->orWhereNull('round_name');
+            });
+        }
+        if (!$includeKnockout) {
+            $matchesWithJson->where(function($q) {
+                $q->where('is_knockout', '!=', true)->orWhereNull('is_knockout');
+            });
         }
 
         $matches = $matchesWithJson->get();
