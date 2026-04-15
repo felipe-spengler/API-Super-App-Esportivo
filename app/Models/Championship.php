@@ -63,8 +63,7 @@ class Championship extends Model
         'include_knockout_standings' => 'boolean',
         'include_knockout_goals' => 'boolean',
         'include_knockout_assists' => 'boolean',
-        'include_knockout_cards' => 'boolean'
-    ];
+        'include_knockout_cards' => 'boolean',
         'is_status_auto' => 'boolean',
         'has_pcd_discount' => 'boolean',
         'pcd_discount_percentage' => 'decimal:2',
