@@ -3,6 +3,8 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { Header } from '../components/Header';
 
+import { PendingMatchesAlert } from '../components/PendingMatchesAlert';
+
 export function AdminLayout() {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const location = useLocation();
@@ -34,6 +36,9 @@ export function AdminLayout() {
                     </div>
                 </main>
             </div>
+
+            {/* Alertas flutuantes */}
+            <PendingMatchesAlert />
         </div>
     );
 }

@@ -186,6 +186,7 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::prefix('admin')->middleware(['admin'])->group(function () {
         Route::get('/dashboard', [AdminController::class, 'dashboard']);
         Route::get('/stats', [AdminDashboardController::class, 'index']);
+        Route::get('/alerts/pending-matches', [AdminDashboardController::class, 'getPendingMatchesAlert']);
 
 
         // Gestão de Campeonatos (NEW)

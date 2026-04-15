@@ -191,6 +191,28 @@ class AdminDashboardController extends Controller
         }
     }
 
+    public function getPendingMatchesAlert(Request $request)
+    {
+        try {
+            $user = $request->user();
+            $clubId = $user->club_id;
+
+            $query = GameMatch::whereIn('status', ['live', 'ongoing', 'in_progress'])
+                ->where('start_time', '<=', now()->subHours(24))
+                ->with(['homeTeam', 'awayTeam', 'championship.sport']);
+
+            if ($clubId) {
+                $query->whereHas('championship', fn($c) => $c->where('club_id', $clubId));
+            }
+
+            $matches = $query->get();
+
+            return response()->json($matches);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
     private function getTimeAgo($dateTime)
     {
         $now = now();

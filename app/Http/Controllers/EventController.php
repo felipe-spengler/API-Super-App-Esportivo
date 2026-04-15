@@ -110,17 +110,28 @@ class EventController extends Controller
                 ->with(['homeTeam', 'awayTeam'])
                 ->where('status', 'finished');
 
-            // Exclude repescagem if not included in standings
+            // Excluir repescagem se não estiver configurado para contar na classificação
             if (!($champ->include_repescagem_standings ?? false)) {
                 $query->where(function($q) {
-                    $q->where('round_name', '!=', 'Repescagem')->orWhereNull('round_name');
+                    $q->where('round_name', '!=', 'Repescagem')
+                      ->where('round_name', 'not like', '%Repescagem%')
+                      ->orWhereNull('round_name');
                 });
             }
 
-            // Exclude knockout if not included
+            // Excluir mata-mata se não estiver configurado para contar na classificação
             if (!($champ->include_knockout_standings ?? false)) {
                 $query->where(function($q) {
-                    $q->where('is_knockout', '!=', true)->orWhereNull('is_knockout');
+                    $q->where('is_knockout', '!=', true)
+                      ->where('is_knockout', '!=', 1)
+                      ->where(function($sq) {
+                          $sq->whereNull('round_name')
+                             ->orWhere('round_name', 'not like', '%Final%')
+                             ->where('round_name', 'not like', '%Semi%')
+                             ->where('round_name', 'not like', '%Quartas%')
+                             ->where('round_name', 'not like', '%Oitavas%');
+                      })
+                      ->orWhereNull('is_knockout');
                 });
             }
 
@@ -472,12 +483,23 @@ class EventController extends Controller
 
                 if (!$includeRepescagem) {
                     $q->where(function($sq) {
-                        $sq->where('round_name', '!=', 'Repescagem')->orWhereNull('round_name');
+                        $sq->where('round_name', '!=', 'Repescagem')
+                          ->where('round_name', 'not like', '%Repescagem%')
+                          ->orWhereNull('round_name');
                     });
                 }
                 if (!$includeKnockout) {
                     $q->where(function($sq) {
-                        $sq->where('is_knockout', '!=', true)->orWhereNull('is_knockout');
+                        $sq->where('is_knockout', '!=', true)
+                          ->where('is_knockout', '!=', 1)
+                          ->where(function($ssq) {
+                              $ssq->whereNull('round_name')
+                                 ->orWhere('round_name', 'not like', '%Final%')
+                                 ->where('round_name', 'not like', '%Semi%')
+                                 ->where('round_name', 'not like', '%Quartas%')
+                                 ->where('round_name', 'not like', '%Oitavas%');
+                          })
+                          ->orWhereNull('is_knockout');
                     });
                 }
             })
