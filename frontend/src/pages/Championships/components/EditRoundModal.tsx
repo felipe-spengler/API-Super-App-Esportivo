@@ -179,13 +179,13 @@ export function EditRoundModal({
                                 </div>
                             </div>
                         </div>
-                    ) : (
+                    ) : selectedType === 'phase' ? (
                         <div className="space-y-3 animate-in fade-in duration-200">
                             <label className="block text-xs font-black text-gray-400 uppercase tracking-wider">
                                 Selecionar Fase
                             </label>
                             <div className="grid grid-cols-2 gap-2">
-                                {PHASES.map((phase) => (
+                                {PHASES.filter(p => p.value !== 'Repescagem' && p.value !== 'repescagem').map((phase) => (
                                     <button
                                         key={phase.value}
                                         onClick={() => setSelectedPhase(phase.value)}
@@ -201,7 +201,7 @@ export function EditRoundModal({
                                 ))}
                             </div>
                         </div>
-                    )}
+                    ) : null}
 
                     {/* Final Preview Overlay */}
                     <div className="bg-indigo-600 rounded-2xl p-4 text-white shadow-xl shadow-indigo-100 flex items-center justify-between">

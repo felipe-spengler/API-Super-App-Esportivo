@@ -236,7 +236,7 @@ export function AdminMatchCreateModal({
                                         <div className="space-y-2 animate-in fade-in">
                                             <label className="block text-xs font-black text-gray-500 uppercase">Selecionar Fase</label>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                                {PHASES.map((phase) => (
+                                                {PHASES.filter(p => (p.value !== 'Repescagem' && p.value !== 'repescagem')).map((phase) => (
                                                     <button
                                                         key={phase.value}
                                                         onClick={() => setSelectedPhase(phase.value)}
