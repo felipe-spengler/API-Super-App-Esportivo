@@ -15,6 +15,7 @@ export const PHASES: Phase[] = [
     { value: 'third_place', label: 'Disputa 3º Lugar' },
     { value: 'final', label: 'Final' },
     { value: 'Grande Final', label: 'Grande Final' },
+    { value: 'Repescagem', label: 'Repescagem' },
 ];
 
 /**

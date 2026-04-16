@@ -20,7 +20,7 @@ export function EditRoundModal({
     editingRound,
     onSave
 }: EditRoundModalProps) {
-    const [selectedType, setSelectedType] = useState<'round' | 'elimination' | 'phase'>('round');
+    const [selectedType, setSelectedType] = useState<'round' | 'elimination' | 'phase' | 'repescagem'>('round');
     const [roundNumber, setRoundNumber] = useState('1');
     const [eliminationNumber, setEliminationNumber] = useState('1');
     const [selectedPhase, setSelectedPhase] = useState('round_of_16');
@@ -40,6 +40,8 @@ export function EditRoundModal({
             } else if (elimMatch) {
                 setSelectedType('elimination');
                 setEliminationNumber(elimMatch[1]);
+            } else if (currentName === 'Repescagem') {
+                setSelectedType('repescagem');
             } else if (PHASES.some(p => p.value === currentName)) {
                 setSelectedType('phase');
                 setSelectedPhase(currentName);
@@ -63,6 +65,9 @@ export function EditRoundModal({
         }
         if (selectedType === 'elimination') {
             return `Eliminatória ${eliminationNumber}`;
+        }
+        if (selectedType === 'repescagem') {
+            return 'Repescagem';
         }
         return selectedPhase;
     };
@@ -126,6 +131,15 @@ export function EditRoundModal({
                         >
                             <span className="text-xs leading-none">🏆</span>
                             MATA-MATA
+                        </button>
+                        <button
+                            onClick={() => setSelectedType('repescagem')}
+                            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-[11px] font-bold transition-all ${
+                                selectedType === 'repescagem' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                        >
+                            <span className="text-xs leading-none">🔄</span>
+                            REPESCAGEM
                         </button>
                     </div>
 
@@ -196,7 +210,7 @@ export function EditRoundModal({
                             <p className="text-xl font-black">{getPhaseDisplayName(getFinalName())}</p>
                         </div>
                         <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-xl">
-                            {selectedType === 'round' ? '📅' : selectedType === 'elimination' ? '⚔️' : '🏆'}
+                            {selectedType === 'round' ? '📅' : selectedType === 'elimination' ? '⚔️' : selectedType === 'repescagem' ? '🔄' : '🏆'}
                         </div>
                     </div>
                 </div>

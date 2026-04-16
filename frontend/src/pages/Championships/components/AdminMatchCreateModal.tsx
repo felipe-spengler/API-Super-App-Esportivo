@@ -44,7 +44,7 @@ export function AdminMatchCreateModal({
     ]);
 
     // Round type selection
-    const [selectedType, setSelectedType] = useState<'round' | 'elimination' | 'phase'>('round');
+    const [selectedType, setSelectedType] = useState<'round' | 'elimination' | 'phase' | 'repescagem'>('round');
     const [roundNumber, setRoundNumber] = useState(String(initialData.round_number || 1));
     const [eliminationNumber, setEliminationNumber] = useState('1');
     const [selectedPhase, setSelectedPhase] = useState('round_of_16');
@@ -60,6 +60,9 @@ export function AdminMatchCreateModal({
         }
         if (selectedType === 'elimination') {
             return `Eliminatória ${eliminationNumber}`;
+        }
+        if (selectedType === 'repescagem') {
+            return 'Repescagem';
         }
         return selectedPhase; 
     };
@@ -187,6 +190,14 @@ export function AdminMatchCreateModal({
                                                 >
                                                     <span className="text-base leading-none">🏆</span> MATA-MATA
                                                 </button>
+                                                <button
+                                                    onClick={() => setSelectedType('repescagem')}
+                                                    className={`flex-1 flex items-center justify-center gap-1.5 py-3 rounded-lg text-xs font-bold transition-all ${
+                                                        selectedType === 'repescagem' ? 'bg-white text-indigo-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                                                    }`}
+                                                >
+                                                    <span className="text-base leading-none">🔄</span> REPESCAGEM
+                                                </button>
                                             </>
                                         )}
                                     </div>
@@ -251,7 +262,7 @@ export function AdminMatchCreateModal({
                                     <p className="text-2xl font-black">{getPhaseDisplayName(getFinalRoundName())}</p>
                                 </div>
                                 <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center text-2xl">
-                                    {selectedExistingRound ? '✅' : selectedType === 'round' ? '📅' : selectedType === 'elimination' ? '⚔️' : '🏆'}
+                                    {selectedExistingRound ? '✅' : selectedType === 'round' ? '📅' : selectedType === 'elimination' ? '⚔️' : selectedType === 'repescagem' ? '🔄' : '🏆'}
                                 </div>
                             </div>
                         </div>
