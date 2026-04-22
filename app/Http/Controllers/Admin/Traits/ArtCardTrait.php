@@ -641,6 +641,8 @@ trait ArtCardTrait
             'artilheiro' => 'fundo_melhor_artilheiro.jpg',
             'zagueiro' => 'fundo_melhor_zagueiro.jpg',
             'lateral' => 'fundo_melhor_lateral.jpg',
+            'lateral_direito' => 'fundo_melhor_lateral.jpg',
+            'lateral_esquerdo' => 'fundo_melhor_lateral.jpg',
             'volante' => 'fundo_melhor_volante.jpg',
             'meia' => 'fundo_melhor_meia.jpg',
             'atacante' => 'fundo_melhor_atacante.jpg',

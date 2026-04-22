@@ -130,6 +130,20 @@ export function AdminChampionshipAwards() {
             ];
         }
         
+        if (sport.includes('futebol 7') || sport.includes('fut7') || sport.includes('society')) {
+            return [
+                 { key: 'craque', label: 'Craque do Jogo (MVP)' },
+                 { key: 'goleiro', label: 'Melhor Goleiro' },
+                 { key: 'zagueiro', label: 'Melhor Zagueiro' },
+                 { key: 'lateral_direito', label: 'Melhor Lateral Direito' },
+                 { key: 'lateral_esquerdo', label: 'Melhor Lateral Esquerdo' },
+                 { key: 'atacante', label: 'Melhor Atacante' },
+                 { key: 'artilheiro', label: 'Artilheiro' },
+                 { key: 'assistencia', label: 'Rei das Assistências' },
+                 { key: 'estreante', label: 'Estreante' }
+            ];
+        }
+
         if (sport.includes('futsal') || sport.includes('indoor')) {
             return [
                  { key: 'craque', label: 'Craque do Campeonato' },
