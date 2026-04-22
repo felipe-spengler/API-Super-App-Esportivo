@@ -644,6 +644,7 @@ trait ArtCardTrait
             'lateral_direito' => 'fundo_melhor_lateral.jpg',
             'lateral_esquerdo' => 'fundo_melhor_lateral.jpg',
             'volante' => 'fundo_melhor_volante.jpg',
+            'cabeca_de_area' => 'fundo_melhor_volante.jpg',
             'meia' => 'fundo_melhor_meia.jpg',
             'atacante' => 'fundo_melhor_atacante.jpg',
             'assistencia' => 'fundo_melhor_assistencia.jpg',

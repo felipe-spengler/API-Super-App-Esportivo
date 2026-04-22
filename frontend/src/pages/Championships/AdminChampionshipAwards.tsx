@@ -137,6 +137,8 @@ export function AdminChampionshipAwards() {
                  { key: 'zagueiro', label: 'Melhor Zagueiro' },
                  { key: 'lateral_direito', label: 'Melhor Lateral Direito' },
                  { key: 'lateral_esquerdo', label: 'Melhor Lateral Esquerdo' },
+                 { key: 'cabeca_de_area', label: 'Melhor Cabeça de Área' },
+                 { key: 'meia', label: 'Melhor Meia' },
                  { key: 'atacante', label: 'Melhor Atacante' },
                  { key: 'artilheiro', label: 'Artilheiro' },
                  { key: 'assistencia', label: 'Rei das Assistências' },

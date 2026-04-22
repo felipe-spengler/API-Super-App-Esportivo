@@ -119,6 +119,7 @@ export function EventAwards() {
             'lateral_esquerdo': 'Melhor Lateral Esquerdo',
             'zagueiro': 'Melhor Zagueiro(a)',
             'volante': 'Melhor Volante',
+            'cabeca_de_area': 'Melhor Cabeça de Área',
             'meia': 'Melhor Meia',
             'atacante': 'Melhor Atacante',
             'artilheiro': 'Artilheiro(a)',

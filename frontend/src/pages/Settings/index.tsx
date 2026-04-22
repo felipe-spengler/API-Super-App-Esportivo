@@ -83,6 +83,8 @@ export function Settings() {
                 { key: 'zagueiro', label: 'Melhor Zagueiro', defaultFile: 'fundo_melhor_zagueiro.jpg' },
                 { key: 'lateral_direito', label: 'Melhor Lateral Direito', defaultFile: 'fundo_melhor_lateral.jpg' },
                 { key: 'lateral_esquerdo', label: 'Melhor Lateral Esquerdo', defaultFile: 'fundo_melhor_lateral.jpg' },
+                { key: 'cabeca_de_area', label: 'Melhor Cabeça de Área', defaultFile: 'fundo_melhor_volante.jpg' },
+                { key: 'meia', label: 'Melhor Meia', defaultFile: 'fundo_melhor_meia.jpg' },
                 { key: 'atacante', label: 'Melhor Atacante', defaultFile: 'fundo_melhor_atacante.jpg' },
                 { key: 'artilheiro', label: 'Artilheiro', defaultFile: 'fundo_melhor_artilheiro.jpg' },
                 { key: 'assistencia', label: 'Rei das Assistências', defaultFile: 'fundo_melhor_assistencia.jpg' },
