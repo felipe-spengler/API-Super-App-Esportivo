@@ -55,6 +55,7 @@ import { EventMVP } from './pages/Public/EventMVP';
 import { EventParticipants } from './pages/Public/EventParticipants';
 import { EventArts } from './pages/Public/EventArts';
 import { EventAwards } from './pages/Public/EventAwards';
+import { EventDefense } from './pages/Public/EventDefense';
 
 import { PublicLayout } from './layouts/PublicLayout';
 import { SumulaLayout } from './layouts/SumulaLayout';
@@ -124,6 +125,7 @@ function App() {
             <Route path="/events/:id/mvp" element={<EventMVP />} />
             <Route path="/events/:id/participants" element={<EventParticipants />} />
             <Route path="/events/:id/awards" element={<EventArts />} />
+            <Route path="/events/:id/defense" element={<EventDefense />} />
             <Route path="/events/:id/tourney-awards" element={<EventAwards />} />
             <Route path="/register" element={<Register />} />
             <Route path="/inscription/:id" element={<ChampionshipInscription />} />

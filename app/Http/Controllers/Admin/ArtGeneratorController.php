@@ -14,7 +14,10 @@ use App\Http\Controllers\Admin\Traits\ArtMatchTrait;
 
 class ArtGeneratorController extends Controller
 {
-    use ArtGdTrait, ArtCardTrait, ArtMatchTrait;
+    use ArtGdTrait, ArtCardTrait {
+        getDefaultTemplate as getTraitDefaultTemplate;
+    }
+    use ArtMatchTrait;
 
     private $fontPath;
     private $secondaryFontPath;
@@ -228,6 +231,7 @@ class ArtGeneratorController extends Controller
             'Colocação do Atleta' => 'art_layout_individual_placement',
             'Perna de Pau' => 'art_layout_perna_vertical',
             'Perna de Pau (Geral)' => 'art_layout_perna_vertical',
+            'Defesa Menos Vazada' => 'art_layout_defense_vertical',
         ];
         return $map[$name] ?? 'art_layout_custom_' . Str::slug($name);
     }
@@ -321,6 +325,53 @@ class ArtGeneratorController extends Controller
         $this->drawCenteredText($img, 50, 1700, $primaryColor, $text, true);
 
         return $this->outputImage($img, 'classificacao_' . $championshipId);
+    }
+    
+    /** Gera Arte de Defesa Menos Vazada */
+    public function defenseArt($championshipId, Request $request)
+    {
+        $championship = \App\Models\Championship::with(['sport', 'club'])->findOrFail($championshipId);
+        $this->loadClubResources($championship->club);
+
+        $teamId = $request->query('team_id');
+        $categoryId = $request->query('category_id');
+        
+        if (!$teamId) {
+            // Se não informou o time, vamos calcular o melhor no backend agora
+            $statsRequest = new Request(['type' => 'defense', 'category_id' => $categoryId]);
+            $eventController = new \App\Http\Controllers\EventController();
+            $statsRes = $eventController->stats($statsRequest, $championshipId);
+            $stats = json_decode($statsRes->getContent(), true);
+            
+            if (empty($stats)) {
+                return response('Nenhuma estatística de defesa encontrada.', 404);
+            }
+            $teamId = $stats[0]['id'];
+        }
+
+        $team = \App\Models\Team::findOrFail($teamId);
+        $sport = strtolower($championship->sport->name ?? 'futebol');
+        
+        // Vamos usar o createCard adaptado para times
+        // Mas o createCard espera um "Player" (User). 
+        // Vou passar um objeto genérico que simule o player, usando os dados do time.
+        $fakePlayer = (object)[
+            'id' => $team->id,
+            'name' => $team->name,
+            'nickname' => $team->name,
+            'photo_path' => $team->logo_path,
+            'photo_url' => $team->logo_url
+        ];
+
+        $catName = '';
+        if ($categoryId) {
+            $cat = \App\Models\Category::find($categoryId);
+            if ($cat) $catName = $cat->name;
+        }
+
+        return $this->createCard($fakePlayer, $championship, $sport, 'defesa_menos_vazada', null, null, $team, $championship->club, [
+            '{CATEGORIA}' => mb_strtoupper($catName)
+        ]);
     }
 
     /**
@@ -446,6 +497,27 @@ class ArtGeneratorController extends Controller
         }
 
         return url('api/storage/' . ltrim($clean, '/'));
+    }
+
+    private function getDefaultTemplate($key)
+    {
+        if ($key === 'art_layout_defense_vertical') {
+            return [
+                "elements" => [
+                    ["id" => "team_logo", "type" => "image", "x" => 540, "y" => 750, "width" => 700, "height" => 700, "label" => "Logo do Time", "zIndex" => 1, "content" => "player_photo"],
+                    ["id" => "team_name", "type" => "text", "x" => 540, "y" => 1200, "fontSize" => 80, "color" => "#FFB700", "align" => "center", "label" => "Nome do Time", "zIndex" => 2, "content" => "{JOGADOR}", "fontFamily" => "Roboto-Bold"],
+                    ["id" => "title", "type" => "text", "x" => 540, "y" => 1320, "fontSize" => 50, "color" => "#FFFFFF", "align" => "center", "label" => "Título", "zIndex" => 2, "content" => "DEFESA MENOS VAZADA", "fontFamily" => "Roboto"],
+                    ["id" => "championship", "type" => "text", "x" => 540, "y" => 1650, "fontSize" => 40, "color" => "#FFFFFF", "align" => "center", "label" => "Campeonato", "zIndex" => 2, "content" => "{CAMPEONATO}"],
+                    ["id" => "category", "type" => "text", "x" => 540, "y" => 1720, "fontSize" => 35, "color" => "#AAAAAA", "align" => "center", "label" => "Categoria", "zIndex" => 2, "content" => "{CATEGORIA}"]
+                ],
+                "canvas" => ["width" => 1080, "height" => 1920],
+                "bg_url" => null,
+                "name" => "Defesa Menos Vazada"
+            ];
+        }
+
+        // Fallback to traits
+        return $this->getTraitDefaultTemplate($key);
     }
 
     private function urlToPath($url)

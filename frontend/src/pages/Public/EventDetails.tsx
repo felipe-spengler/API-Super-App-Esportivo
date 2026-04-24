@@ -15,7 +15,8 @@ import {
     Star,
     Images,
     Hand,
-    Medal
+    Medal,
+    Shield
 } from 'lucide-react';
 import api from '../../services/api';
 
@@ -28,6 +29,7 @@ const SPORT_MENUS: any = {
         { label: 'Equipes', icon: Users, route: 'participants', color: 'indigo' },
         { label: 'Artilharia', icon: Target, route: 'stats', params: { type: 'goals', title: 'Artilharia' }, color: 'gray' },
         { label: 'Assistências', icon: HandMetal, route: 'stats', params: { type: 'assists', title: 'Assistências' }, color: 'indigo' },
+        { label: 'Melhor Defesa', icon: Shield, route: 'defense', color: 'blue' },
         { label: 'Cartões', icon: Square, iconColor: '#EF4444', route: 'stats', params: { type: 'cards', title: 'Cartões' }, color: 'red' },
         { label: 'MVP', icon: Crown, route: 'mvp', color: 'black' },
         { label: 'Premiações', icon: Medal, route: 'tourney-awards', color: 'purple' },

@@ -405,6 +405,73 @@ class EventController extends Controller
     {
         $type = $request->query('type', 'goals');
 
+        if ($type === 'defense') {
+            // Team-based stat: Least Conceded Goals (Defesa Menos Vazada)
+            $champ = \App\Models\Championship::with(['teams'])->findOrFail($championshipId);
+            $query = \App\Models\GameMatch::where('championship_id', $championshipId)
+                ->whereIn('status', ['finished', 'live', 'ongoing']);
+
+            if ($request->filled('category_id') && $request->category_id != 'null') {
+                $query->where('category_id', $request->category_id);
+            }
+
+            $matches = $query->get();
+            $teamStats = [];
+
+            // Initialize teams from pivot to ensure all teams are shown even with 0 games
+            $teamsQuery = $champ->teams();
+            if ($request->filled('category_id') && $request->category_id != 'null') {
+                $teamsQuery->wherePivot('category_id', $request->category_id);
+            }
+            $allTeams = $teamsQuery->get();
+
+            foreach ($allTeams as $team) {
+                $teamStats[$team->id] = [
+                    'id' => $team->id,
+                    'player_name' => $team->name, // Using player_name for frontend compatibility
+                    'team_name' => $team->name,
+                    'team_logo' => $team->logo_url,
+                    'photo_url' => $team->logo_url,
+                    'value' => 0,
+                    'matches_played' => 0,
+                    'average' => 0,
+                    'details' => []
+                ];
+            }
+
+            foreach ($matches as $match) {
+                $hId = $match->home_team_id;
+                $aId = $match->away_team_id;
+
+                if ($hId && isset($teamStats[$hId])) {
+                    $teamStats[$hId]['value'] += (int)$match->away_score;
+                    $teamStats[$hId]['matches_played']++;
+                }
+                if ($aId && isset($teamStats[$aId])) {
+                    $teamStats[$aId]['value'] += (int)$match->home_score;
+                    $teamStats[$aId]['matches_played']++;
+                }
+            }
+
+            foreach ($teamStats as &$stat) {
+                if ($stat['matches_played'] > 0) {
+                    $stat['average'] = round($stat['value'] / $stat['matches_played'], 2);
+                }
+            }
+
+            $sortedStats = array_values($teamStats);
+            usort($sortedStats, function ($a, $b) {
+                // Primary: Least goals
+                if ($a['value'] !== $b['value']) {
+                    return $a['value'] <=> $b['value'];
+                }
+                // Secondary: Most matches played (more impressive)
+                return $b['matches_played'] <=> $a['matches_played'];
+            });
+
+            return response()->json($sortedStats);
+        }
+
         // Map request type to DB event_type
         $dbTypes = [];
         if ($type === 'goals')

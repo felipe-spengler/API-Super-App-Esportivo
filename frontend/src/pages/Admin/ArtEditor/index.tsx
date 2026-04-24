@@ -96,6 +96,7 @@ export function ArtEditor() {
             return `${baseUrl}/assets-templates/fundo_confronto.jpg`;
         }
         if (name === 'Confronto') return `${baseUrl}/assets-templates/fundo_confronto.jpg`;
+        if (name === 'Defesa Menos Vazada') return `${baseUrl}/assets-templates/fundo_craque_do_jogo.jpg`;
         return null; // fallback
     };
 
@@ -128,6 +129,14 @@ export function ArtEditor() {
 
                 { id: 'date', type: 'text', x: 540, y: 1500, fontSize: 50, color: '#FFB700', align: 'center', label: 'Data', zIndex: 2, content: 'DD/MM HH:MM', fontFamily: 'Roboto' },
                 { id: 'local', type: 'text', x: 540, y: 1600, fontSize: 35, color: '#FFFFFF', align: 'center', label: 'Local', zIndex: 2, content: 'Local da Partida', fontFamily: 'Roboto' },
+            ]);
+        } else if (name === 'Defesa Menos Vazada') {
+            setElements([
+                { id: 'team_logo', type: 'image', x: 540, y: 750, width: 700, height: 700, label: 'Logo do Time', zIndex: 1, content: 'player_photo' },
+                { id: 'team_name', type: 'text', x: 540, y: 1200, fontSize: 80, color: '#FFB700', align: 'center', label: 'Nome do Time', zIndex: 2, content: '{JOGADOR}', fontFamily: 'Roboto-Bold' },
+                { id: 'title', type: 'text', x: 540, y: 1320, fontSize: 50, color: '#FFFFFF', align: 'center', label: 'Título', zIndex: 2, content: 'DEFESA MENOS VAZADA', fontFamily: 'Roboto' },
+                { id: 'championship', type: 'text', x: 540, y: 1650, fontSize: 40, color: '#FFFFFF', align: 'center', label: 'Campeonato', zIndex: 2, content: '{CAMPEONATO}' },
+                { id: 'category', type: 'text', x: 540, y: 1720, fontSize: 35, color: '#AAAAAA', align: 'center', label: 'Categoria', zIndex: 2, content: '{CATEGORIA}' }
             ]);
         } else {
             setElements([]);
@@ -430,6 +439,7 @@ export function ArtEditor() {
                                     <option>Craque do Jogo</option>
                                     <option>Jogo Programado</option>
                                     <option>Confronto</option>
+                                    <option>Defesa Menos Vazada</option>
                                 </select>
 
                                 <label className="text-xs font-bold text-gray-500 block mb-1 pt-2">ESPORTE (Visualização)</label>
