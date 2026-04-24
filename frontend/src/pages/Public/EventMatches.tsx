@@ -129,7 +129,7 @@ export function EventMatches() {
         'Oitavas de Final': 102,
         'Quartas de Final': 103,
         'Semifinal': 104,
-        'Disputa de 3º Lugar': 105,
+        'Disputa 3º Lugar': 105,
         'Final': 106,
     };
 
