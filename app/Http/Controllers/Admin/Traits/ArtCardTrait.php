@@ -666,7 +666,7 @@ trait ArtCardTrait
         if ($key === 'art_layout_defense_vertical') {
             return [
                 "elements" => [
-                    ["id" => "player_photo", "type" => "image", "x" => 540, "y" => 750, "width" => 700, "height" => 700, "label" => "Logo do Time", "zIndex" => 1, "content" => "player_photo"],
+                    ["id" => "player_photo", "type" => "image", "x" => 540, "y" => 750, "width" => 700, "height" => 700, "label" => "Logo do Time", "zIndex" => 1, "content" => "team_logo"],
                     ["id" => "player_name", "type" => "text", "x" => 540, "y" => 1200, "fontSize" => 80, "color" => "#FFB700", "align" => "center", "label" => "Nome do Time", "zIndex" => 2, "content" => "{JOGADOR}", "fontFamily" => "Roboto-Bold"],
                     ["id" => "title", "type" => "text", "x" => 540, "y" => 1320, "fontSize" => 50, "color" => "#FFFFFF", "align" => "center", "label" => "Título", "zIndex" => 2, "content" => "DEFESA MENOS VAZADA", "fontFamily" => "Roboto"],
                     ["id" => "championship", "type" => "text", "x" => 540, "y" => 1650, "fontSize" => 40, "color" => "#FFFFFF", "align" => "center", "label" => "Nome Campeonato", "zIndex" => 2, "content" => "{CAMPEONATO}"],

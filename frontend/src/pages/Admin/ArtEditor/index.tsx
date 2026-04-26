@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Save, Upload, Type, Image as ImageIcon, Layout, Move, Plus, Trash2, Smartphone, Monitor, X, ChevronDown, ChevronRight } from 'lucide-react';
 import api from '../../../services/api';
 import toast from 'react-hot-toast';
+import { compressImage } from '../../../utils/imageCompressor';
 
 // Default canvas size (Stories 9:16)
 const CANVAS_WIDTH = 1080;
@@ -132,7 +133,7 @@ export function ArtEditor() {
             ]);
         } else if (name === 'Defesa Menos Vazada') {
             setElements([
-                { id: 'team_logo', type: 'image', x: 540, y: 750, width: 700, height: 700, label: 'Logo do Time', zIndex: 1, content: 'player_photo' },
+                { id: 'team_logo', type: 'image', x: 540, y: 750, width: 700, height: 700, label: 'Logo do Time', zIndex: 1, content: 'team_logo' },
                 { id: 'team_name', type: 'text', x: 540, y: 1200, fontSize: 80, color: '#FFB700', align: 'center', label: 'Nome do Time', zIndex: 2, content: '{JOGADOR}', fontFamily: 'Roboto-Bold' },
                 { id: 'title', type: 'text', x: 540, y: 1320, fontSize: 50, color: '#FFFFFF', align: 'center', label: 'Título', zIndex: 2, content: 'DEFESA MENOS VAZADA', fontFamily: 'Roboto' },
                 { id: 'championship', type: 'text', x: 540, y: 1650, fontSize: 40, color: '#FFFFFF', align: 'center', label: 'Campeonato', zIndex: 2, content: '{CAMPEONATO}' },
@@ -249,13 +250,18 @@ export function ArtEditor() {
     const handleBgUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files || e.target.files.length === 0) return;
         const file = e.target.files[0];
-        const formData = new FormData();
-        formData.append('image', file);
-        formData.append('folder', 'art-backgrounds');
-
-        const toastId = toast.loading('Enviando fundo...');
+        const toastId = toast.loading('Processando e enviando fundo...');
         try {
-            const res = await api.post('/admin/upload/generic', formData);
+            // Comprime a imagem se necessário (5MB limit) para evitar erros de servidor
+            const compressed = await compressImage(file, 5 * 1024 * 1024, 3000, 0.9);
+
+            const formData = new FormData();
+            formData.append('image', compressed);
+            formData.append('folder', 'art-backgrounds');
+
+            const res = await api.post('/admin/upload/generic', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
             if (res.data && res.data.url) {
                 setBgImage(res.data.url);
                 setPersistedBgUrl(res.data.url);

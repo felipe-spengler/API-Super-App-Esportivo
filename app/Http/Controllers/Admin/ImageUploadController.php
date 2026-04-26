@@ -318,17 +318,22 @@ class ImageUploadController extends Controller
     public function uploadGeneric(Request $request)
     {
         try {
-            if (!$request->hasFile('image')) {
+            $file = $request->file('image') ?: $request->file('file');
+            
+            if (!$file) {
+                \Log::warning("Upload Generic - Nenhum arquivo encontrado. Campos: " . implode(', ', array_keys($request->allFiles())));
                 return response()->json(['message' => 'Nenhum arquivo enviado.'], 400);
             }
 
+            $fieldName = $request->hasFile('image') ? 'image' : 'file';
+
             $request->validate([
-                'image' => 'required|image|mimes:jpeg,png,jpg,webp,jfif|max:5120',
+                $fieldName => 'required|image|mimes:jpeg,png,jpg,webp,jfif|max:5120',
                 'folder' => 'nullable|string',
             ]);
 
             $folder = $request->input('folder', 'uploads');
-            $file = $request->file('image');
+            $file = $request->file($fieldName);
 
             // Prevent path traversal
             if (str_contains($folder, '..')) {
