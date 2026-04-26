@@ -14,6 +14,7 @@ export function EventDefense() {
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [champName, setChampName] = useState('');
     const [generatingArt, setGeneratingArt] = useState(false);
+    const [selectedArtUrl, setSelectedArtUrl] = useState<string | null>(null);
 
     useEffect(() => {
         async function loadData() {
@@ -43,23 +44,24 @@ export function EventDefense() {
         loadData();
     }, [id, selectedCategory]);
 
-    const handleDownloadArt = async (teamId?: number) => {
-        setGeneratingArt(true);
+    const handleShowArt = (teamId?: number) => {
+        const url = `${import.meta.env.VITE_API_URL || '/api'}/public/art/championship/${id}/defense?category_id=${selectedCategory}${teamId ? `&team_id=${teamId}` : ''}`;
+        setSelectedArtUrl(url);
+    };
+
+    const handleDownloadBlob = async (url: string) => {
         try {
-            const url = `${import.meta.env.VITE_API_URL || '/api'}/public/art/championship/${id}/defense?category_id=${selectedCategory}${teamId ? `&team_id=${teamId}` : ''}`;
-            
+            setGeneratingArt(true);
             const response = await fetch(url);
             const blob = await response.blob();
             const downloadUrl = window.URL.createObjectURL(blob);
-            const link = document.createElement('a');
+            const link = document.body.appendChild(document.createElement('a'));
             link.href = downloadUrl;
-            link.download = `melhor-defesa-${teamId || 'geral'}.jpg`;
-            document.body.appendChild(link);
+            link.download = `melhor-defesa-${Date.now()}.jpg`;
             link.click();
             document.body.removeChild(link);
         } catch (error) {
-            console.error("Erro ao gerar arte", error);
-            alert("Erro ao gerar arte de defesa.");
+            console.error("Erro ao baixar", error);
         } finally {
             setGeneratingArt(false);
         }
@@ -77,6 +79,43 @@ export function EventDefense() {
                     <p className="text-xs text-gray-500 mt-1">{champName}</p>
                 </div>
             </div>
+
+            {/* Modal de Visualização */}
+            {selectedArtUrl && (
+                <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4" onClick={() => setSelectedArtUrl(null)}>
+                    <div className="relative max-w-lg w-full bg-white rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+                        <div className="p-5 border-b flex justify-between items-center bg-gray-50">
+                            <h3 className="font-bold text-gray-900">Visualizar Arte</h3>
+                            <button onClick={() => setSelectedArtUrl(null)} className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-500">✕</button>
+                        </div>
+                        <div className="p-6">
+                            <div className="aspect-[4/5] bg-gray-100 rounded-2xl overflow-hidden mb-6 border border-gray-100 shadow-inner">
+                                <img 
+                                    src={selectedArtUrl} 
+                                    alt="Melhor Defesa" 
+                                    className="w-full h-full object-contain"
+                                />
+                            </div>
+                            <div className="flex gap-3">
+                                <button 
+                                    onClick={() => handleDownloadBlob(selectedArtUrl)}
+                                    disabled={generatingArt}
+                                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-blue-100 transition-all active:scale-95 disabled:opacity-50"
+                                >
+                                    <Download className="w-5 h-5" /> 
+                                    {generatingArt ? 'Baixando...' : 'Baixar Imagem'}
+                                </button>
+                                <button 
+                                    onClick={() => setSelectedArtUrl(null)}
+                                    className="px-6 py-4 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold rounded-2xl transition-all"
+                                >
+                                    Fechar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div className="max-w-2xl mx-auto p-4">
                 {/* Categories Filter */}
@@ -131,12 +170,11 @@ export function EventDefense() {
                                 </div>
                                 <div className="mt-6 flex gap-2">
                                     <button 
-                                        onClick={() => handleDownloadArt(stats[0].id)}
-                                        disabled={generatingArt}
-                                        className="flex-1 bg-white text-blue-700 py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-blue-50 transition-colors shadow-lg active:scale-95 disabled:opacity-50"
+                                        onClick={() => handleShowArt(stats[0].id)}
+                                        className="flex-1 bg-white text-blue-700 py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-blue-50 transition-colors shadow-lg active:scale-95"
                                     >
                                         <ImageIcon className="w-4 h-4" /> 
-                                        {generatingArt ? 'Gerando...' : 'Gerar Arte (Story)'}
+                                        Visualizar Arte (Story)
                                     </button>
                                 </div>
                             </div>
@@ -170,11 +208,11 @@ export function EventDefense() {
                                             <div className="text-[9px] text-gray-400 font-bold uppercase mt-1">Gols</div>
                                         </div>
                                         <button 
-                                            onClick={() => handleDownloadArt(item.id)}
+                                            onClick={() => handleShowArt(item.id)}
                                             className="ml-4 p-2 text-gray-400 hover:text-blue-600 transition-colors"
-                                            title="Gerar Arte"
+                                            title="Visualizar Arte"
                                         >
-                                            <Download className="w-4 h-4" />
+                                            <ImageIcon className="w-4 h-4" />
                                         </button>
                                     </div>
                                 ))}

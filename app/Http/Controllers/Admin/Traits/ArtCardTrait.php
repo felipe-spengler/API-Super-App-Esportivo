@@ -262,6 +262,8 @@ trait ArtCardTrait
             $templateKey = 'art_layout_individual_confirmed';
         } elseif ($category === 'colocacao') {
             $templateKey = 'art_layout_individual_placement';
+        } elseif ($category === 'defesa_menos_vazada') {
+            $templateKey = 'art_layout_defense_vertical';
         }
 
         $bgFileFromSettings = $this->getBackgroundFile($sport, $category, $club, $championship);
@@ -272,6 +274,10 @@ trait ArtCardTrait
             $templateData = $championship->art_settings['templates'][$templateKey];
         } elseif ($templateKey && $club && !empty($club->art_settings['templates'][$templateKey])) {
             $templateData = $club->art_settings['templates'][$templateKey];
+        }
+
+        if (!$templateData && $templateKey) {
+            $templateData = $this->getDefaultTemplate($templateKey);
         }
 
         // Only override with template background if we didn't find a specific one for the category/sport in settings
@@ -649,13 +655,29 @@ trait ArtCardTrait
             'atacante' => 'fundo_melhor_atacante.jpg',
             'assistencia' => 'fundo_melhor_assistencia.jpg',
             'estreante' => 'fundo_melhor_estreiante.jpg',
+            'defesa_menos_vazada' => 'fundo_craque_do_jogo.jpg',
         ];
 
         return $map[$category] ?? 'fundo_craque_do_jogo.jpg';
     }
 
-    private function getDefaultTemplate($key)
+    protected function getDefaultTemplate($key)
     {
+        if ($key === 'art_layout_defense_vertical') {
+            return [
+                "elements" => [
+                    ["id" => "player_photo", "type" => "image", "x" => 540, "y" => 750, "width" => 700, "height" => 700, "label" => "Logo do Time", "zIndex" => 1, "content" => "player_photo"],
+                    ["id" => "player_name", "type" => "text", "x" => 540, "y" => 1200, "fontSize" => 80, "color" => "#FFB700", "align" => "center", "label" => "Nome do Time", "zIndex" => 2, "content" => "{JOGADOR}", "fontFamily" => "Roboto-Bold"],
+                    ["id" => "title", "type" => "text", "x" => 540, "y" => 1320, "fontSize" => 50, "color" => "#FFFFFF", "align" => "center", "label" => "Título", "zIndex" => 2, "content" => "DEFESA MENOS VAZADA", "fontFamily" => "Roboto"],
+                    ["id" => "championship", "type" => "text", "x" => 540, "y" => 1650, "fontSize" => 40, "color" => "#FFFFFF", "align" => "center", "label" => "Nome Campeonato", "zIndex" => 2, "content" => "{CAMPEONATO}"],
+                    ["id" => "category", "type" => "text", "x" => 540, "y" => 1720, "fontSize" => 35, "color" => "#AAAAAA", "align" => "center", "label" => "Categoria", "zIndex" => 2, "content" => "{CATEGORIA}"]
+                ],
+                "canvas" => ["width" => 1080, "height" => 1920],
+                "bg_url" => null,
+                "name" => "Defesa Menos Vazada"
+            ];
+        }
+
         if ($key === 'art_layout_scheduled_feed') {
             return [
                 "elements" => [

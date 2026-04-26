@@ -499,7 +499,7 @@ class ArtGeneratorController extends Controller
         return url('api/storage/' . ltrim($clean, '/'));
     }
 
-    private function getDefaultTemplate($key)
+    protected function getDefaultTemplate($key)
     {
         if ($key === 'art_layout_defense_vertical') {
             return [

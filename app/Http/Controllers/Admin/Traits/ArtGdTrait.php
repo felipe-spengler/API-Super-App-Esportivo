@@ -64,6 +64,7 @@ trait ArtGdTrait
 
     private function outputImage($img, $filename)
     {
+        if (ob_get_level() > 0) ob_clean(); 
         ob_start();
         imagejpeg($img, null, 90);
         $content = ob_get_clean();
