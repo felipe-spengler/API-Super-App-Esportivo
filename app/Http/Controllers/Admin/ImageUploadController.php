@@ -19,7 +19,7 @@ class ImageUploadController extends Controller
     {
         try {
             $request->validate([
-                'logo' => 'required|image|mimes:jpeg,png,jpg,webp|max:4096', // Max 4MB
+                'logo' => 'required|image|mimes:jpeg,png,jpg,webp,jfif|max:4096', // Max 4MB
             ]);
 
             $team = Team::findOrFail($teamId);
@@ -77,7 +77,7 @@ class ImageUploadController extends Controller
     {
         try {
             $request->validate([
-                'photo' => 'required|image|mimes:jpeg,png,jpg,webp|max:4096',
+                'photo' => 'required|image|mimes:jpeg,png,jpg,webp,jfif|max:4096',
                 'index' => 'nullable|integer|min:0|max:2', // Validar índice (0, 1, 2)
             ]);
 
@@ -202,7 +202,7 @@ class ImageUploadController extends Controller
     {
         try {
             $request->validate([
-                'logo' => 'required|image|mimes:jpeg,png,jpg,webp|max:5120', // 5MB
+                'logo' => 'required|image|mimes:jpeg,png,jpg,webp,jfif|max:5120', // 5MB
             ]);
 
             $championship = Championship::findOrFail($championshipId);
@@ -250,7 +250,7 @@ class ImageUploadController extends Controller
     public function uploadChampionshipBanner(Request $request, $championshipId)
     {
         $request->validate([
-            'banner' => 'required|image|mimes:jpeg,png,jpg|max:5120', // 5MB
+            'banner' => 'required|image|mimes:jpeg,png,jpg,webp,jfif|max:5120', // 5MB
         ]);
 
         $championship = Championship::findOrFail($championshipId);
@@ -295,7 +295,7 @@ class ImageUploadController extends Controller
     public function uploadAwardPhoto(Request $request)
     {
         $request->validate([
-            'photo' => 'required|image|mimes:jpeg,png,jpg|max:3072',
+            'photo' => 'required|image|mimes:jpeg,png,jpg,webp,jfif|max:3072',
             'type' => 'required|string|in:mvp,artilheiro,goleiro,destaque,custom',
         ]);
 
@@ -323,7 +323,7 @@ class ImageUploadController extends Controller
             }
 
             $request->validate([
-                'image' => 'required|image|mimes:jpeg,png,jpg,webp|max:5120',
+                'image' => 'required|image|mimes:jpeg,png,jpg,webp,jfif|max:5120',
                 'folder' => 'nullable|string',
             ]);
 
@@ -526,7 +526,7 @@ class ImageUploadController extends Controller
     {
         try {
             $request->validate([
-                'photo' => 'required|image|mimes:jpeg,png,jpg|max:4096',
+                'photo' => 'required|image|mimes:jpeg,png,jpg,webp,jfif|max:4096',
             ]);
 
             // Aumenta o tempo de execução para evitar timeout
@@ -627,7 +627,7 @@ class ImageUploadController extends Controller
     {
         try {
             $request->validate([
-                'file' => 'required|image|mimes:jpeg,png,jpg|max:4096',
+                'file' => 'required|image|mimes:jpeg,png,jpg,webp,jfif|max:4096',
                 'type' => 'required|string|in:player,team,championship',
                 'id' => 'required|integer',
             ]);

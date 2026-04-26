@@ -255,7 +255,7 @@ export function ArtEditor() {
 
         const toastId = toast.loading('Enviando fundo...');
         try {
-            const res = await api.post('/admin/upload-image', formData);
+            const res = await api.post('/admin/upload/generic', formData);
             if (res.data && res.data.url) {
                 setBgImage(res.data.url);
                 setPersistedBgUrl(res.data.url);

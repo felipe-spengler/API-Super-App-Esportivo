@@ -57,7 +57,7 @@ class CategoryController extends Controller
         }
 
         $request->validate([
-            'image' => 'required|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'image' => 'required|image|mimes:jpeg,png,jpg,webp,jfif|max:5120',
         ]);
 
         if ($request->hasFile('image')) {

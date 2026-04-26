@@ -131,6 +131,7 @@ Route::get('/art/match/{matchId}/scheduled', [\App\Http\Controllers\Admin\ArtGen
 Route::get('/art/match/{matchId}/mvp', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'downloadMvpArt']);
 Route::get('/art/championship/{championshipId}/award/{category}', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'championshipAwardArt']);
 Route::get('/art/championship/{championshipId}/defense', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'defenseArt']);
+Route::get('/public/art/championship/{championshipId}/defense', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'defenseArt']);
 Route::get('/art/championship/{championshipId}/individual/{athleteId}/{category}', [\App\Http\Controllers\Admin\IndividualArtController::class, 'individualAthleteArt']);
 
 // Loja (Público)
