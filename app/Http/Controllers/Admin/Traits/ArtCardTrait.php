@@ -204,6 +204,9 @@ trait ArtCardTrait
         } elseif ($photoInfo['mime'] == 'image/png') {
             $playerImg = @imagecreatefrompng($photoPath);
             $isPng = true;
+        } elseif ($photoInfo['mime'] == 'image/webp') {
+            $playerImg = @imagecreatefromwebp($photoPath);
+            $isPng = true;
         }
 
         if ($playerImg) {

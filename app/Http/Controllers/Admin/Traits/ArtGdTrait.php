@@ -59,6 +59,9 @@ trait ArtGdTrait
         if ($info['mime'] == 'image/png') {
             return @imagecreatefrompng($path);
         }
+        if ($info['mime'] == 'image/webp') {
+            return @imagecreatefromwebp($path);
+        }
         return @imagecreatefromjpeg($path);
     }
 
@@ -144,6 +147,8 @@ trait ArtGdTrait
                     $badgeImg = @imagecreatefromjpeg($badgePath);
                 elseif ($info['mime'] == 'image/png')
                     $badgeImg = @imagecreatefrompng($badgePath);
+                elseif ($info['mime'] == 'image/webp')
+                    $badgeImg = @imagecreatefromwebp($badgePath);
 
                 if ($badgeImg) {
                     imagealphablending($img, true);
@@ -310,6 +315,9 @@ trait ArtGdTrait
                         if ($info && $info['mime'] == 'image/png') {
                             $sourceImage = @imagecreatefrompng($res);
                             $sourceIsPng = true;
+                        } elseif ($info && $info['mime'] == 'image/webp') {
+                            $sourceImage = @imagecreatefromwebp($res);
+                            $sourceIsPng = true; // WebP também pode ter transparência
                         } else {
                             $sourceImage = @imagecreatefromjpeg($res);
                         }
