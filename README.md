@@ -2,7 +2,7 @@
 
 Uma solução completa e moderna para gerenciamento de ligas, campeonatos, times e atletas, com recursos avançados de automação e inteligência artificial.
 
-![Banner do Projeto](https://placehold.co/1200x400/indigo/white?text=App+Esportivo)
+
 
 ## ✨ Principais Funcionalidades
 

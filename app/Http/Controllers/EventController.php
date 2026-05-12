@@ -41,9 +41,8 @@ class EventController extends Controller
                 $query->whereIn('status', ['upcoming', 'scheduled', 'Agendado']);
             }
         } else {
-            // Default (Todos Ativos): Anything NOT in 'draft' or 'finished'
-            // We want to show 'upcoming', 'registrations_open', 'ongoing', 'scheduled', etc.
-            $query->whereNotIn('status', ['draft', 'finished']);
+            // Default (Todos): Exclude only 'draft'
+            $query->whereNotIn('status', ['draft']);
         }
 
         if ($request->has('sport_id')) {

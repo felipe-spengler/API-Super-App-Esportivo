@@ -75,7 +75,7 @@ class AdminChampionshipController extends Controller
                 ['championship_id' => $championship->id],
                 [
                     'start_datetime' => $championship->start_date,
-                    'location_name' => 'A definir',
+                    'location_name' => $request->location_name ?? 'A definir',
                     'kits_info' => 'Informações do kit em breve'
                 ]
             );

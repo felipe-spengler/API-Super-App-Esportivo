@@ -38,4 +38,6 @@ frontend/node_modules/
 capacitor-welcome.md
 *.sql
 vps/
+dump_explicado.pdf
+dump_explicado.html
 
