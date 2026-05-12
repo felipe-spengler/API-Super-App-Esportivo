@@ -321,12 +321,7 @@ export function ChampionshipForm() {
                         <div className="space-y-4">
                             <h2 className="text-lg font-semibold text-gray-800 border-b pb-2">3. Configuração de Inscrições</h2>
 
-                            {formData.format === 'racing' ? (
-                                <div className="bg-indigo-50 border border-indigo-200 p-4 rounded-xl">
-                                    <p className="font-bold text-indigo-800">Evento Modalidade: Corrida/Individual</p>
-                                    <p className="text-sm text-indigo-600 mt-1">As inscrições são únicas por atleta e não dependem de times.</p>
-                                </div>
-                            ) : (
+
                                 <div className="space-y-3">
                                     <label className="text-sm font-semibold text-gray-700">Tipo de Inscrição</label>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -335,8 +330,14 @@ export function ChampionshipForm() {
                                             onClick={() => setFormData({ ...formData, registration_type: 'individual' })}
                                             className={`p-4 rounded-xl border text-left transition-all ${formData.registration_type === 'individual' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
                                         >
-                                            <span className={`block font-bold mb-1 ${formData.registration_type === 'individual' ? 'text-indigo-700' : 'text-gray-900'}`}>Individual (Sorteio)</span>
-                                            <span className="text-xs text-gray-500">Atletas se inscrevem individualmente e o sistema sorteia os times.</span>
+                                            <span className={`block font-bold mb-1 ${formData.registration_type === 'individual' ? 'text-indigo-700' : 'text-gray-900'}`}>
+                                                {formData.format === 'racing' || formData.format === 'time_ranking' ? 'Individual' : 'Individual (Sorteio)'}
+                                            </span>
+                                            <span className="text-xs text-gray-500">
+                                                {formData.format === 'racing' || formData.format === 'time_ranking' 
+                                                    ? 'Atletas competem por si mesmos, sem equipe.' 
+                                                    : 'Atletas se inscrevem individualmente e o sistema sorteia os times.'}
+                                            </span>
                                         </button>
 
                                         <button
@@ -345,11 +346,14 @@ export function ChampionshipForm() {
                                             className={`p-4 rounded-xl border text-left transition-all ${formData.registration_type === 'team' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
                                         >
                                             <span className={`block font-bold mb-1 ${formData.registration_type === 'team' ? 'text-indigo-700' : 'text-gray-900'}`}>Por Equipes</span>
-                                            <span className="text-xs text-gray-500">Um líder inscreve o time completo.</span>
+                                            <span className="text-xs text-gray-500">
+                                                {formData.format === 'racing' || formData.format === 'time_ranking'
+                                                    ? 'Atletas competem representando uma equipe/time.'
+                                                    : 'Um líder inscreve o time ou equipe completa.'}
+                                            </span>
                                         </button>
                                     </div>
                                 </div>
-                            )}
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
                                 <div className="space-y-2">
@@ -583,6 +587,7 @@ export function ChampionshipForm() {
                                     </div>
                                 </div>
                             </div>
+                        </div>
                         )}
 
                         {/* 6. Identidade Visual */}
