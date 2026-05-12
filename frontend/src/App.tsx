@@ -161,6 +161,7 @@ function App() {
               <Route path="championships" element={<Championships />} />
               <Route path="championships/new" element={<NewEventSelection />} />
               <Route path="championships/new/team-sports" element={<ChampionshipForm />} />
+              <Route path="championships/new/time-teams" element={<ChampionshipForm />} />
               <Route path="championships/:id" element={<AdminChampionshipDetails />} />
               <Route path="championships/:id/edit" element={<ChampionshipForm />} />
               <Route path="championships/:id/categories" element={<AdminCategoryManager />} />

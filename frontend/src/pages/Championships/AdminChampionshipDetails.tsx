@@ -202,7 +202,8 @@ export function AdminChampionshipDetails() {
                     </Link>
 
                     {/* Card Tabela / Jogos */}
-                    <Link to={appendCat(`/admin/championships/${id}/matches`)} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow group">
+                    {championship.format !== 'time_ranking' && (
+                        <Link to={appendCat(`/admin/championships/${id}/matches`)} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow group">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="font-bold text-gray-900 flex items-center gap-2">
                                 <Calendar className="w-5 h-5 text-orange-500" />
@@ -213,7 +214,8 @@ export function AdminChampionshipDetails() {
                         <p className="text-sm text-gray-500">
                             Sorteie a tabela da {selectedCategory?.name}, defina datas e horários das partidas e lance os resultados.
                         </p>
-                    </Link>
+                        </Link>
+                    )}
 
                     {/* Card Cronômetro / Natação */}
                     {championship.format === 'time_ranking' && (

@@ -11,7 +11,7 @@ export function NewEventSelection() {
                 <p className="text-xl text-gray-500">O sistema adapta as ferramentas de gestão conforme a modalidade escolhida.</p>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-8 max-w-5xl w-full">
+            <div className="grid md:grid-cols-3 gap-8 max-w-7xl w-full">
                 {/* CARD 1: Campeonato de Times (Futebol, Volei) */}
                 <button
                     onClick={() => navigate('/admin/championships/new/team-sports')}
@@ -37,7 +37,32 @@ export function NewEventSelection() {
                     </div>
                 </button>
 
-                {/* CARD 2: Corrida / Prova (Running, Swim) */}
+                {/* CARD 2: Competicao Tempo Equipe (Natação) */}
+                <button
+                    onClick={() => navigate('/admin/championships/new/time-teams')}
+                    className="group relative bg-white rounded-3xl p-8 shadow-xl border-2 border-transparent hover:border-blue-500 text-left transition-all hover:-translate-y-2 hover:shadow-2xl flex flex-col"
+                >
+                    <div className="bg-blue-100 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-blue-600 transition-colors">
+                        <Timer className="w-8 h-8 text-blue-600 group-hover:text-white transition-colors" />
+                    </div>
+
+                    <h3 className="text-2xl font-bold text-gray-900 mb-2">Competição por Tempo (Equipes)</h3>
+                    <p className="text-gray-500 mb-6 flex-1">
+                        Ideal para <strong>Natação, Atletismo e Revezamento</strong> com cadastro de Equipes/Times e Cronômetro em vez de Tabela de Jogos.
+                    </p>
+
+                    <div className="flex flex-wrap gap-2 mb-8">
+                        {['Natação', 'Atletismo Equipes', 'Revezamento', 'Ciclismo Equipes'].map(s => (
+                            <span key={s} className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-bold uppercase">{s}</span>
+                        ))}
+                    </div>
+
+                    <div className="flex items-center text-blue-600 font-bold group-hover:gap-2 transition-all">
+                        Criar Competição <ArrowRight className="w-5 h-5 ml-2" />
+                    </div>
+                </button>
+
+                {/* CARD 3: Corrida / Prova (Running, Swim) */}
                 <button
                     onClick={() => navigate('/admin/races/new')}
                     className="group relative bg-white rounded-3xl p-8 shadow-xl border-2 border-transparent hover:border-emerald-500 text-left transition-all hover:-translate-y-2 hover:shadow-2xl flex flex-col"

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
 import { Save, ArrowLeft, Trophy, Loader2, ImageIcon, Upload, X, CheckCircle2, MapPin } from 'lucide-react';
 import api from '../../services/api';
 
@@ -11,7 +11,9 @@ interface Sport {
 export function ChampionshipForm() {
     const navigate = useNavigate();
     const { id } = useParams();
+    const location = useLocation();
     const isEditing = !!id;
+    const isTimeTeamsRoute = location.pathname.includes('time-teams');
 
     const [loading, setLoading] = useState(false);
     const [fetching, setFetching] = useState(true); // Default true until initial load
@@ -26,7 +28,7 @@ export function ChampionshipForm() {
         registration_end_date: '',
         registration_type: 'team', // 'individual' | 'team'
         description: '',
-        format: 'league', // Default to league
+        format: isTimeTeamsRoute ? 'time_ranking' : 'league', // Default to league
         has_pcd_discount: false,
         pcd_discount_percentage: 0,
         has_elderly_discount: false,
@@ -321,39 +323,45 @@ export function ChampionshipForm() {
                         <div className="space-y-4">
                             <h2 className="text-lg font-semibold text-gray-800 border-b pb-2">3. Configuração de Inscrições</h2>
 
-
-                                <div className="space-y-3">
-                                    <label className="text-sm font-semibold text-gray-700">Tipo de Inscrição</label>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <button
-                                            type="button"
-                                            onClick={() => setFormData({ ...formData, registration_type: 'individual' })}
-                                            className={`p-4 rounded-xl border text-left transition-all ${formData.registration_type === 'individual' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
-                                        >
-                                            <span className={`block font-bold mb-1 ${formData.registration_type === 'individual' ? 'text-indigo-700' : 'text-gray-900'}`}>
-                                                {formData.format === 'racing' || formData.format === 'time_ranking' ? 'Individual' : 'Individual (Sorteio)'}
-                                            </span>
-                                            <span className="text-xs text-gray-500">
-                                                {formData.format === 'racing' || formData.format === 'time_ranking' 
-                                                    ? 'Atletas competem por si mesmos, sem equipe.' 
-                                                    : 'Atletas se inscrevem individualmente e o sistema sorteia os times.'}
-                                            </span>
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            onClick={() => setFormData({ ...formData, registration_type: 'team' })}
-                                            className={`p-4 rounded-xl border text-left transition-all ${formData.registration_type === 'team' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
-                                        >
-                                            <span className={`block font-bold mb-1 ${formData.registration_type === 'team' ? 'text-indigo-700' : 'text-gray-900'}`}>Por Equipes</span>
-                                            <span className="text-xs text-gray-500">
-                                                {formData.format === 'racing' || formData.format === 'time_ranking'
-                                                    ? 'Atletas competem representando uma equipe/time.'
-                                                    : 'Um líder inscreve o time ou equipe completa.'}
-                                            </span>
-                                        </button>
-                                    </div>
+                            {formData.format === 'time_ranking' ? (
+                                <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl">
+                                    <p className="font-bold text-blue-800">Competição por Tempo (Equipes)</p>
+                                    <p className="text-sm text-blue-600 mt-1">Este formato agrupa os atletas em Equipes/Times. A classificação final será definida pelos tempos registrados no Cronômetro oficial do evento.</p>
                                 </div>
+                            ) : (
+                                <div className="space-y-3">
+                                <label className="text-sm font-semibold text-gray-700">Tipo de Inscrição</label>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData({ ...formData, registration_type: 'individual' })}
+                                        className={`p-4 rounded-xl border text-left transition-all ${formData.registration_type === 'individual' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
+                                    >
+                                        <span className={`block font-bold mb-1 ${formData.registration_type === 'individual' ? 'text-indigo-700' : 'text-gray-900'}`}>
+                                            {formData.format === 'racing' || formData.format === 'time_ranking' ? 'Individual' : 'Individual (Sorteio)'}
+                                        </span>
+                                        <span className="text-xs text-gray-500">
+                                            {formData.format === 'racing' || formData.format === 'time_ranking'
+                                                ? 'Atletas competem por si mesmos, sem equipe.'
+                                                : 'Atletas se inscrevem individualmente e o sistema sorteia os times.'}
+                                        </span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData({ ...formData, registration_type: 'team' })}
+                                        className={`p-4 rounded-xl border text-left transition-all ${formData.registration_type === 'team' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
+                                    >
+                                        <span className={`block font-bold mb-1 ${formData.registration_type === 'team' ? 'text-indigo-700' : 'text-gray-900'}`}>Por Equipes</span>
+                                        <span className="text-xs text-gray-500">
+                                            {formData.format === 'racing' || formData.format === 'time_ranking'
+                                                ? 'Atletas competem representando uma equipe/time.'
+                                                : 'Um líder inscreve o time ou equipe completa.'}
+                                        </span>
+                                    </button>
+                                </div>
+                            </div>
+                            )}
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
                                 <div className="space-y-2">
@@ -393,7 +401,7 @@ export function ChampionshipForm() {
                         </div>
 
                         {/* 4. Formato */}
-                        {formData.format !== 'racing' && (
+                        {formData.format !== 'racing' && formData.format !== 'time_ranking' && (
                             <div className="space-y-4">
                                 <h2 className="text-lg font-semibold text-gray-800 border-b pb-2">4. Formato de Disputa</h2>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -451,143 +459,137 @@ export function ChampionshipForm() {
                                 <h2 className="text-lg font-semibold text-gray-800 border-b pb-2">5. Configurações de Estatísticas</h2>
                                 <p className="text-sm text-gray-600 mb-4">Configure quais tipos de partidas contam para as estatísticas do campeonato (artilharia, assistências, cartões, classificação).</p>
 
-                            {/* Repescagem */}
-                            <div className="bg-amber-50 border border-amber-200 p-6 rounded-xl space-y-4">
-                                <h3 className="font-bold text-amber-800 text-base">Partidas de Repescagem</h3>
-                                <p className="text-sm text-amber-700 mb-3">Configure se as partidas marcadas como "Repescagem" contam para as estatísticas.</p>
+                                {/* Repescagem */}
+                                <div className="bg-amber-50 border border-amber-200 p-6 rounded-xl space-y-4">
+                                    <h3 className="font-bold text-amber-800 text-base">Partidas de Repescagem</h3>
+                                    <p className="text-sm text-amber-700 mb-3">Configure se as partidas marcadas como "Repescagem" contam para as estatísticas.</p>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                    <label className="flex items-center gap-3 cursor-pointer p-3 bg-white rounded-lg border border-amber-200 hover:bg-amber-25 transition-colors">
-                                        <input
-                                            type="checkbox"
-                                            checked={formData.include_repescagem_goals}
-                                            onChange={e => setFormData({ ...formData, include_repescagem_goals: e.target.checked })}
-                                            className="w-5 h-5 text-amber-600 rounded"
-                                        />
-                                        <div>
-                                            <span className="font-semibold text-gray-800">Gols/Pontos/Cestas</span>
-                                            <p className="text-xs text-gray-500">Contam para artilharia</p>
-                                        </div>
-                                    </label>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                        <label className="flex items-center gap-3 cursor-pointer p-3 bg-white rounded-lg border border-amber-200 hover:bg-amber-25 transition-colors">
+                                            <input
+                                                type="checkbox"
+                                                checked={formData.include_repescagem_goals}
+                                                onChange={e => setFormData({ ...formData, include_repescagem_goals: e.target.checked })}
+                                                className="w-5 h-5 text-amber-600 rounded"
+                                            />
+                                            <div>
+                                                <span className="font-semibold text-gray-800">Gols/Pontos/Cestas</span>
+                                                <p className="text-xs text-gray-500">Contam para artilharia</p>
+                                            </div>
+                                        </label>
 
-                                    <label className="flex items-center gap-3 cursor-pointer p-3 bg-white rounded-lg border border-amber-200 hover:bg-amber-25 transition-colors">
-                                        <input
-                                            type="checkbox"
-                                            checked={formData.include_repescagem_assists}
-                                            onChange={e => setFormData({ ...formData, include_repescagem_assists: e.target.checked })}
-                                            className="w-5 h-5 text-amber-600 rounded"
-                                        />
-                                        <div>
-                                            <span className="font-semibold text-gray-800">Assistências</span>
-                                            <p className="text-xs text-gray-500">Contam para ranking</p>
-                                        </div>
-                                    </label>
+                                        <label className="flex items-center gap-3 cursor-pointer p-3 bg-white rounded-lg border border-amber-200 hover:bg-amber-25 transition-colors">
+                                            <input
+                                                type="checkbox"
+                                                checked={formData.include_repescagem_assists}
+                                                onChange={e => setFormData({ ...formData, include_repescagem_assists: e.target.checked })}
+                                                className="w-5 h-5 text-amber-600 rounded"
+                                            />
+                                            <div>
+                                                <span className="font-semibold text-gray-800">Assistências</span>
+                                                <p className="text-xs text-gray-500">Contam para ranking</p>
+                                            </div>
+                                        </label>
 
-                                    <label className="flex items-center gap-3 cursor-pointer p-3 bg-white rounded-lg border border-amber-200 hover:bg-amber-25 transition-colors">
-                                        <input
-                                            type="checkbox"
-                                            checked={formData.include_repescagem_cards}
-                                            onChange={e => setFormData({ ...formData, include_repescagem_cards: e.target.checked })}
-                                            className="w-5 h-5 text-amber-600 rounded"
-                                        />
-                                        <div>
-                                            <span className="font-semibold text-gray-800">Cartões</span>
-                                            <p className="text-xs text-gray-500">Amarelo/Vermelho/Azul</p>
-                                        </div>
-                                    </label>
+                                        <label className="flex items-center gap-3 cursor-pointer p-3 bg-white rounded-lg border border-amber-200 hover:bg-amber-25 transition-colors">
+                                            <input
+                                                type="checkbox"
+                                                checked={formData.include_repescagem_cards}
+                                                onChange={e => setFormData({ ...formData, include_repescagem_cards: e.target.checked })}
+                                                className="w-5 h-5 text-amber-600 rounded"
+                                            />
+                                            <div>
+                                                <span className="font-semibold text-gray-800">Cartões</span>
+                                                <p className="text-xs text-gray-500">Amarelo/Vermelho/Azul</p>
+                                            </div>
+                                        </label>
 
-                                    <label className="flex items-center gap-3 cursor-pointer p-3 bg-white rounded-lg border border-amber-200 hover:bg-amber-25 transition-colors">
-                                        <input
-                                            type="checkbox"
-                                            checked={formData.include_repescagem_standings}
-                                            onChange={e => setFormData({ ...formData, include_repescagem_standings: e.target.checked })}
-                                            className="w-5 h-5 text-amber-600 rounded"
-                                        />
-                                        <div>
-                                            <span className="font-semibold text-gray-800">Pontos</span>
-                                            <p className="text-xs text-gray-500">Contam para classificação</p>
-                                        </div>
-                                    </label>
-                                </div>
-                            </div>
-
-                            {/* Mata-mata */}
-                            <div className="bg-red-50 border border-red-200 p-6 rounded-xl space-y-4">
-                                <h3 className="font-bold text-red-800 text-base">Partidas de Mata-mata</h3>
-                                <p className="text-sm text-red-700 mb-3">Configure se as partidas da fase eliminatória contam para as estatísticas.</p>
-
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                    <label className="flex items-center gap-3 cursor-pointer p-3 bg-white rounded-lg border border-red-200 hover:bg-red-25 transition-colors">
-                                        <input
-                                            type="checkbox"
-                                            checked={formData.include_knockout_standings}
-                                            onChange={e => setFormData({ ...formData, include_knockout_standings: e.target.checked })}
-                                            className="w-5 h-5 text-red-600 rounded"
-                                        />
-                                        <div>
-                                            <span className="font-semibold text-gray-800">Pontos</span>
-                                            <p className="text-xs text-gray-500">Classificação</p>
-                                        </div>
-                                    </label>
-
-                                    <label className="flex items-center gap-3 cursor-pointer p-3 bg-white rounded-lg border border-red-200 hover:bg-red-25 transition-colors">
-                                        <input
-                                            type="checkbox"
-                                            checked={formData.include_knockout_goals}
-                                            onChange={e => setFormData({ ...formData, include_knockout_goals: e.target.checked })}
-                                            className="w-5 h-5 text-red-600 rounded"
-                                        />
-                                        <div>
-                                            <span className="font-semibold text-gray-800">Gols/Pontos/Cestas</span>
-                                            <p className="text-xs text-gray-500">Artilharia</p>
-                                        </div>
-                                    </label>
-
-                                    <label className="flex items-center gap-3 cursor-pointer p-3 bg-white rounded-lg border border-red-200 hover:bg-red-25 transition-colors">
-                                        <input
-                                            type="checkbox"
-                                            checked={formData.include_knockout_assists}
-                                            onChange={e => setFormData({ ...formData, include_knockout_assists: e.target.checked })}
-                                            className="w-5 h-5 text-red-600 rounded"
-                                        />
-                                        <div>
-                                            <span className="font-semibold text-gray-800">Assistências</span>
-                                            <p className="text-xs text-gray-500">Ranking</p>
-                                        </div>
-                                    </label>
-
-                                    <label className="flex items-center gap-3 cursor-pointer p-3 bg-white rounded-lg border border-red-200 hover:bg-red-25 transition-colors">
-                                        <input
-                                            type="checkbox"
-                                            checked={formData.include_knockout_cards}
-                                            onChange={e => setFormData({ ...formData, include_knockout_cards: e.target.checked })}
-                                            className="w-5 h-5 text-red-600 rounded"
-                                        />
-                                        <div>
-                                            <span className="font-semibold text-gray-800">Cartões</span>
-                                            <p className="text-xs text-gray-500">Amarelo/Vermelho/Azul</p>
-                                        </div>
-                                    </label>
-                                </div>
-                            </div>
-
-                            <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl">
-                                <div className="flex items-start gap-3">
-                                    <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center mt-0.5">
-                                        <span className="text-white text-xs font-bold">ℹ</span>
+                                        <label className="flex items-center gap-3 cursor-pointer p-3 bg-white rounded-lg border border-amber-200 hover:bg-amber-25 transition-colors">
+                                            <input
+                                                type="checkbox"
+                                                checked={formData.include_repescagem_standings}
+                                                onChange={e => setFormData({ ...formData, include_repescagem_standings: e.target.checked })}
+                                                className="w-5 h-5 text-amber-600 rounded"
+                                            />
+                                            <div>
+                                                <span className="font-semibold text-gray-800">Pontos</span>
+                                                <p className="text-xs text-gray-500">Contam para classificação</p>
+                                            </div>
+                                        </label>
                                     </div>
-                                    <div>
-                                        <h4 className="font-semibold text-blue-800 mb-1">Como Funciona</h4>
-                                        <ul className="text-sm text-blue-700 space-y-1">
-                                            <li>• <strong>Repescagem:</strong> Partidas marcadas como "Repescagem" no round_name</li>
-                                            <li>• <strong>Mata-mata:</strong> Partidas com is_knockout = true (fase eliminatória)</li>
-                                            <li>• <strong>Padrão:</strong> Repescagem não conta para gols/assistências, mas conta cartões</li>
-                                            <li>• <strong>Mata-mata:</strong> Não conta para nada por padrão (compatibilidade)</li>
-                                        </ul>
+                                </div>
+
+                                {/* Mata-mata */}
+                                <div className="bg-red-50 border border-red-200 p-6 rounded-xl space-y-4">
+                                    <h3 className="font-bold text-red-800 text-base">Partidas de Mata-mata</h3>
+                                    <p className="text-sm text-red-700 mb-3">Configure se as partidas da fase eliminatória contam para as estatísticas.</p>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                        <label className="flex items-center gap-3 cursor-pointer p-3 bg-white rounded-lg border border-red-200 hover:bg-red-25 transition-colors">
+                                            <input
+                                                type="checkbox"
+                                                checked={formData.include_knockout_standings}
+                                                onChange={e => setFormData({ ...formData, include_knockout_standings: e.target.checked })}
+                                                className="w-5 h-5 text-red-600 rounded"
+                                            />
+                                            <div>
+                                                <span className="font-semibold text-gray-800">Pontos</span>
+                                                <p className="text-xs text-gray-500">Classificação</p>
+                                            </div>
+                                        </label>
+
+                                        <label className="flex items-center gap-3 cursor-pointer p-3 bg-white rounded-lg border border-red-200 hover:bg-red-25 transition-colors">
+                                            <input
+                                                type="checkbox"
+                                                checked={formData.include_knockout_goals}
+                                                onChange={e => setFormData({ ...formData, include_knockout_goals: e.target.checked })}
+                                                className="w-5 h-5 text-red-600 rounded"
+                                            />
+                                            <div>
+                                                <span className="font-semibold text-gray-800">Gols/Pontos/Cestas</span>
+                                                <p className="text-xs text-gray-500">Artilharia</p>
+                                            </div>
+                                        </label>
+
+                                        <label className="flex items-center gap-3 cursor-pointer p-3 bg-white rounded-lg border border-red-200 hover:bg-red-25 transition-colors">
+                                            <input
+                                                type="checkbox"
+                                                checked={formData.include_knockout_assists}
+                                                onChange={e => setFormData({ ...formData, include_knockout_assists: e.target.checked })}
+                                                className="w-5 h-5 text-red-600 rounded"
+                                            />
+                                            <div>
+                                                <span className="font-semibold text-gray-800">Assistências</span>
+                                                <p className="text-xs text-gray-500">Ranking</p>
+                                            </div>
+                                        </label>
+
+                                        <label className="flex items-center gap-3 cursor-pointer p-3 bg-white rounded-lg border border-red-200 hover:bg-red-25 transition-colors">
+                                            <input
+                                                type="checkbox"
+                                                checked={formData.include_knockout_cards}
+                                                onChange={e => setFormData({ ...formData, include_knockout_cards: e.target.checked })}
+                                                className="w-5 h-5 text-red-600 rounded"
+                                            />
+                                            <div>
+                                                <span className="font-semibold text-gray-800">Cartões</span>
+                                                <p className="text-xs text-gray-500">Amarelo/Vermelho/Azul</p>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl">
+                                    <div className="flex items-start gap-3">
+                                        <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center mt-0.5">
+                                            <span className="text-white text-xs font-bold">ℹ</span>
+                                        </div>
+                                        <div>
+
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
                         )}
 
                         {/* 6. Identidade Visual */}
