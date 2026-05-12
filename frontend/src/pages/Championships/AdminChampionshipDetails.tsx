@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
 import {
     ArrowLeft, Trophy, Users, Calendar, Settings,
     Tv, List, Medal, Edit, ImageIcon, ChevronRight, PlusCircle, AlertCircle,
-    UsersRound
+    UsersRound, Timer
 } from 'lucide-react';
 import api from '../../services/api';
 
@@ -214,6 +214,22 @@ export function AdminChampionshipDetails() {
                             Sorteie a tabela da {selectedCategory?.name}, defina datas e horários das partidas e lance os resultados.
                         </p>
                     </Link>
+
+                    {/* Card Cronômetro / Natação */}
+                    {championship.format === 'time_ranking' && (
+                        <Link to={appendCat(`/admin/championships/${id}/times`)} className="bg-gradient-to-br from-cyan-500 to-blue-600 p-6 rounded-xl shadow-lg hover:shadow-xl transition-all group text-white">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="font-bold flex items-center gap-2">
+                                    <Timer className="w-5 h-5" />
+                                    Cronômetro / Tempos
+                                </h3>
+                                <ChevronRight className="w-5 h-5 opacity-70 group-hover:translate-x-1 transition-transform" />
+                            </div>
+                            <p className="text-sm text-white/80">
+                                Inicie o cronômetro para os competidores da {selectedCategory?.name} e grave os tempos para o ranking.
+                            </p>
+                        </Link>
+                    )}
 
                     {/* Card Classificação */}
                     <Link to={`/events/${id}/leaderboard?category_id=${selectedCategoryId}`} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow group">

@@ -12,6 +12,7 @@ import { AdminGroupManager } from './pages/Championships/AdminGroupManager';
 import { AdminCategoryManager } from './pages/Championships/AdminCategoryManager';
 import { AdminTeamChampionshipManager } from './pages/Championships/AdminTeamChampionshipManager';
 import { AdminChampionshipAwards } from './pages/Championships/AdminChampionshipAwards';
+import { AdminChampionshipTimes } from './pages/Championships/AdminChampionshipTimes';
 import { GroupDraw } from './pages/Championships/GroupDraw';
 import { Teams } from './pages/Teams';
 import { TeamForm } from './pages/Teams/TeamForm';
@@ -167,6 +168,7 @@ function App() {
               <Route path="championships/:id/matches" element={<AdminMatchManager />} />
               <Route path="championships/:id/groups" element={<AdminGroupManager />} />
               <Route path="championships/:id/awards" element={<AdminChampionshipAwards />} />
+              <Route path="championships/:id/times" element={<AdminChampionshipTimes />} />
               <Route path="championships/:id/draw" element={<GroupDraw />} />
               <Route path="races/new" element={<CreateRaceWizard />} />
               <Route path="races/:id/results" element={<RaceResults />} />

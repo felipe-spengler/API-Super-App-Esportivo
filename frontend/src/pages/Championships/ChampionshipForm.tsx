@@ -442,9 +442,10 @@ export function ChampionshipForm() {
                         )}
 
                         {/* 5. Configurações de Estatísticas */}
-                        <div className="space-y-4">
-                            <h2 className="text-lg font-semibold text-gray-800 border-b pb-2">5. Configurações de Estatísticas</h2>
-                            <p className="text-sm text-gray-600 mb-4">Configure quais tipos de partidas contam para as estatísticas do campeonato (artilharia, assistências, cartões, classificação).</p>
+                        {formData.registration_type === 'team' && formData.format !== 'racing' && formData.format !== 'time_ranking' && (
+                            <div className="space-y-4">
+                                <h2 className="text-lg font-semibold text-gray-800 border-b pb-2">5. Configurações de Estatísticas</h2>
+                                <p className="text-sm text-gray-600 mb-4">Configure quais tipos de partidas contam para as estatísticas do campeonato (artilharia, assistências, cartões, classificação).</p>
 
                             {/* Repescagem */}
                             <div className="bg-amber-50 border border-amber-200 p-6 rounded-xl space-y-4">
@@ -582,7 +583,7 @@ export function ChampionshipForm() {
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        )}
 
                         {/* 6. Identidade Visual */}
                         {isEditing && (

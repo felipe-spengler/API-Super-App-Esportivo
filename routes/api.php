@@ -201,6 +201,11 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
         Route::get('/championships/{id}/categories', [AdminChampionshipController::class, 'categories']);
         Route::put('/championships/{id}/awards', [AdminChampionshipController::class, 'updateAwards']);
         Route::post('/championships/{id}/tiebreaker-priority', [AdminChampionshipController::class, 'updateTiebreakerPriority']);
+        
+        // Tempos / Natação
+        Route::get('/championships/{id}/times', [\App\Http\Controllers\Admin\AdminCompetitorTimeController::class, 'index']);
+        Route::post('/championships/{id}/times', [\App\Http\Controllers\Admin\AdminCompetitorTimeController::class, 'store']);
+        Route::delete('/championships/{id}/times/{timeId}', [\App\Http\Controllers\Admin\AdminCompetitorTimeController::class, 'destroy']);
 
         // Gestão de Partidas (NEW)
         Route::get('/matches', [AdminMatchController::class, 'index']);
