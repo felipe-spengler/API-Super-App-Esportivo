@@ -41,17 +41,23 @@
   }
 
   /* Custom horizontal/vertical scrollbar */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f8fafc;
+  }
+
   .custom-scrollbar::-webkit-scrollbar {
     height: 10px;
     width: 10px;
   }
   .custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
+    background: #f8fafc;
+    border-radius: 20px;
   }
   .custom-scrollbar::-webkit-scrollbar-thumb {
     background-color: #cbd5e1;
     border-radius: 20px;
-    border: 3px solid transparent;
+    border: 2px solid #f8fafc;
     background-clip: padding-box;
   }
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {

@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { Trophy, Calendar, MapPin } from 'lucide-react';
+import React, { useRef, useState, useEffect } from 'react';
+import { Trophy, Calendar, MapPin, ChevronLeft, ChevronRight, Move } from 'lucide-react';
 
 export interface BracketMatch {
     id: number;
@@ -25,6 +25,91 @@ interface TournamentBracketProps {
 }
 
 export function TournamentBracket({ matches, emptyMessage = "Chaveamento ainda não disponível." }: TournamentBracketProps) {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [showLeftBtn, setShowLeftBtn] = useState(false);
+    const [showRightBtn, setShowRightBtn] = useState(false);
+
+    // Verifica a posição do scroll para exibir/esconder botões de navegação
+    const checkScroll = () => {
+        const container = containerRef.current;
+        if (container) {
+            const { scrollLeft, scrollWidth, clientWidth } = container;
+            setShowLeftBtn(scrollLeft > 10);
+            setShowRightBtn(scrollLeft < scrollWidth - clientWidth - 10);
+        }
+    };
+
+    useEffect(() => {
+        const container = containerRef.current;
+        if (!container) return;
+
+        // Checa scroll inicial e em eventos
+        checkScroll();
+        container.addEventListener('scroll', checkScroll);
+        window.addEventListener('resize', checkScroll);
+
+        // Lógica de Arrastar para Scroll (Desktop)
+        let isDown = false;
+        let startX: number;
+        let scrollLeft: number;
+
+        const handleMouseDown = (e: MouseEvent) => {
+            isDown = true;
+            container.style.cursor = 'grabbing';
+            startX = e.pageX - container.offsetLeft;
+            scrollLeft = container.scrollLeft;
+        };
+
+        const handleMouseLeave = () => {
+            if (!isDown) return;
+            isDown = false;
+            container.style.cursor = 'grab';
+        };
+
+        const handleMouseUp = () => {
+            isDown = false;
+            container.style.cursor = 'grab';
+        };
+
+        const handleMouseMove = (e: MouseEvent) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.pageX - container.offsetLeft;
+            const walk = (x - startX) * 1.5; // Multiplicador de velocidade de arraste
+            container.scrollLeft = scrollLeft - walk;
+        };
+
+        // Estilo padrão de cursor
+        container.style.cursor = 'grab';
+        container.style.userSelect = 'none';
+        
+        container.addEventListener('mousedown', handleMouseDown);
+        container.addEventListener('mouseleave', handleMouseLeave);
+        container.addEventListener('mouseup', handleMouseUp);
+        container.addEventListener('mousemove', handleMouseMove);
+
+        // Timeout para garantir que o DOM terminou de renderizar ao alternar dados
+        const timer = setTimeout(checkScroll, 150);
+
+        return () => {
+            container.removeEventListener('scroll', checkScroll);
+            window.removeEventListener('resize', checkScroll);
+            container.removeEventListener('mousedown', handleMouseDown);
+            container.removeEventListener('mouseleave', handleMouseLeave);
+            container.removeEventListener('mouseup', handleMouseUp);
+            container.removeEventListener('mousemove', handleMouseMove);
+            clearTimeout(timer);
+        };
+    }, [matches]);
+
+    const scroll = (direction: 'left' | 'right') => {
+        const container = containerRef.current;
+        if (container) {
+            const scrollAmount = direction === 'left' ? -340 : 340; // Largura aproximada da coluna + gap
+            container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+        }
+    };
+
     if (!matches || matches.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center p-12 bg-white rounded-xl border border-gray-100 shadow-sm text-center">
@@ -78,7 +163,40 @@ export function TournamentBracket({ matches, emptyMessage = "Chaveamento ainda n
     const sortedRoundKeys = Object.keys(roundsMap).sort((a, b) => getRoundIndex(a) - getRoundIndex(b));
 
     return (
-        <div className="overflow-x-auto pb-12 pt-4 -mx-4 px-4 custom-scrollbar">
+        <div className="relative w-full group/bracket">
+            {/* Mensagem de dica sutil (apenas Desktop) */}
+            <div className="hidden md:flex items-center justify-end gap-2 text-[10px] font-bold text-slate-400 mb-2 px-1 uppercase tracking-widest select-none">
+                <Move className="w-3.5 h-3.5 animate-pulse text-indigo-400" />
+                <span>Segure e arraste para navegar</span>
+            </div>
+
+            {/* Botão de Navegação Esquerda */}
+            {showLeftBtn && (
+                <button
+                    onClick={() => scroll('left')}
+                    className="hidden md:flex absolute -left-4 top-[110px] z-30 items-center justify-center w-12 h-12 rounded-full bg-white shadow-xl shadow-indigo-900/10 border border-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white hover:scale-110 hover:-translate-x-1 transition-all duration-300 active:scale-95 group"
+                    aria-label="Scroll Left"
+                >
+                    <ChevronLeft className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                </button>
+            )}
+
+            {/* Botão de Navegação Direita */}
+            {showRightBtn && (
+                <button
+                    onClick={() => scroll('right')}
+                    className="hidden md:flex absolute -right-4 top-[110px] z-30 items-center justify-center w-12 h-12 rounded-full bg-white shadow-xl shadow-indigo-900/10 border border-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white hover:scale-110 hover:translate-x-1 transition-all duration-300 active:scale-95 group"
+                    aria-label="Scroll Right"
+                >
+                    <ChevronRight className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                </button>
+            )}
+
+            <div 
+                ref={containerRef}
+                className="overflow-x-auto pb-12 pt-4 -mx-4 px-4 custom-scrollbar select-none active:cursor-grabbing"
+                style={{ WebkitOverflowScrolling: 'touch' }}
+            >
             <div className="flex gap-4 sm:gap-8 min-w-max px-2">
                 {sortedRoundKeys.map((roundKey, roundIdx) => {
                     const roundMatches = roundsMap[roundKey];
@@ -191,5 +309,6 @@ export function TournamentBracket({ matches, emptyMessage = "Chaveamento ainda n
                 })}
             </div>
         </div>
+    </div>
     );
 }
