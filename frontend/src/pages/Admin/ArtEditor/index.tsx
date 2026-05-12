@@ -139,6 +139,15 @@ export function ArtEditor() {
                 { id: 'championship', type: 'text', x: 540, y: 1650, fontSize: 40, color: '#FFFFFF', align: 'center', label: 'Campeonato', zIndex: 2, content: '{CAMPEONATO}' },
                 { id: 'category', type: 'text', x: 540, y: 1720, fontSize: 35, color: '#AAAAAA', align: 'center', label: 'Categoria', zIndex: 2, content: '{CATEGORIA}' }
             ]);
+        } else if (name === 'Premiação (Jogador)') {
+            setElements([
+                { id: 'player_photo', type: 'image', x: 540, y: 600, width: 800, height: 800, label: 'Foto do Jogador', zIndex: 1, content: 'player_photo', borderRadius: 0 },
+                { id: 'player_name', type: 'text', x: 540, y: 1200, fontSize: 80, color: '#FFB700', align: 'center', label: 'Nome do Jogador', zIndex: 2, content: '{JOGADOR}', fontFamily: 'Roboto-Bold' },
+                { id: 'team_badge', type: 'image', x: 540, y: 1000, width: 200, height: 200, label: 'Brasão do Time', zIndex: 2, content: 'team_logo' },
+                { id: 'award_name', type: 'text', x: 540, y: 1350, fontSize: 60, color: '#FFFFFF', align: 'center', label: 'Nome do Prêmio', zIndex: 2, content: '{PREMIO}', fontFamily: 'Roboto' },
+                { id: 'championship', type: 'text', x: 540, y: 1650, fontSize: 40, color: '#FFFFFF', align: 'center', label: 'Campeonato', zIndex: 2, content: '{CAMPEONATO}' },
+                { id: 'category', type: 'text', x: 540, y: 1720, fontSize: 35, color: '#AAAAAA', align: 'center', label: 'Categoria', zIndex: 2, content: '{CATEGORIA}' }
+            ]);
         } else {
             setElements([]);
         }
@@ -225,6 +234,45 @@ export function ArtEditor() {
         setElements(prev => [...prev, newEl]);
         setActiveElementId(newEl.id);
         setShowElements(true);
+    };
+
+    const handleAddImageElement = () => {
+        const newEl: Element = {
+            id: 'new_img_' + Date.now(),
+            type: 'image',
+            x: CANVAS_WIDTH / 2,
+            y: CANVAS_HEIGHT / 2,
+            width: 300,
+            height: 300,
+            label: 'Nova Imagem Livre',
+            zIndex: elements.length + 1,
+            content: 'custom_image',
+            borderRadius: 0
+        };
+        setElements(prev => [...prev, newEl]);
+        setActiveElementId(newEl.id);
+        setShowElements(true);
+    };
+
+    const handleCustomImageUpload = async (id: string, file: File) => {
+        const toastId = toast.loading('Enviando imagem...');
+        try {
+            const compressed = await compressImage(file, 5 * 1024 * 1024, 2000, 0.9);
+            const formData = new FormData();
+            formData.append('image', compressed);
+            formData.append('folder', 'art-elements');
+
+            const res = await api.post('/admin/upload/generic', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            if (res.data && res.data.url) {
+                handleElementChange(id, { content: res.data.url });
+                toast.success('Imagem enviada!', { id: toastId });
+            }
+        } catch (err) {
+            console.error(err);
+            toast.error('Erro ao enviar imagem', { id: toastId });
+        }
     };
 
 
@@ -333,7 +381,8 @@ export function ArtEditor() {
                                 style={{ borderRadius: (el.borderRadius || 0) * scale }}
                             >
                                 {el.content === 'player_photo' ? <img src="https://ui-avatars.com/api/?name=Jogador&background=random&size=512" className="w-full h-full object-cover" /> :
-                                    el.content?.includes('team') ? <div className="text-[10px] font-bold">Logo</div> : null}
+                                 el.content?.includes('http') || el.content?.includes('data:image') ? <img src={el.content} className="w-full h-full object-contain" /> :
+                                 el.content?.includes('team') ? <div className="text-[10px] font-bold">Logo</div> : <div className="text-[10px] font-bold text-gray-500">Imagem</div>}
                             </div>
                         ) : (
                             <span>{el.content}</span>
@@ -368,7 +417,8 @@ export function ArtEditor() {
                             <div className="w-full h-full bg-gray-200/50 flex items-center justify-center overflow-hidden"
                                 style={{ borderRadius: (el.borderRadius || 0) * scale }}
                             >
-                                {el.content === 'player_photo' ? <img src="https://ui-avatars.com/api/?name=Jogador&background=random&size=512" className="w-full h-full object-cover" /> : null}
+                                {el.content === 'player_photo' ? <img src="https://ui-avatars.com/api/?name=Jogador&background=random&size=512" className="w-full h-full object-cover" /> : 
+                                 el.content?.includes('http') || el.content?.includes('data:image') ? <img src={el.content} className="w-full h-full object-contain" /> : null}
                                 {el.content?.includes('team') ? <div className="text-sm font-bold opacity-50">Logo</div> : null}
                             </div>
                         ) : (
@@ -446,6 +496,7 @@ export function ArtEditor() {
                                     <option>Jogo Programado</option>
                                     <option>Confronto</option>
                                     <option>Defesa Menos Vazada</option>
+                                    <option>Premiação (Jogador)</option>
                                 </select>
 
                                 <label className="text-xs font-bold text-gray-500 block mb-1 pt-2">ESPORTE (Visualização)</label>
@@ -512,8 +563,12 @@ export function ArtEditor() {
                             <div className="flex items-center gap-2">
                                 <span className="p-1 hover:bg-indigo-50 rounded text-indigo-600 cursor-pointer" onClick={(e) => {
                                     e.stopPropagation();
+                                    handleAddImageElement();
+                                }} title="Adicionar nova imagem livre"><ImageIcon size={14} /></span>
+                                <span className="p-1 hover:bg-indigo-50 rounded text-indigo-600 cursor-pointer" onClick={(e) => {
+                                    e.stopPropagation();
                                     handleAddElement();
-                                }} title="Adicionar novo elemento de texto"><Plus size={14} /></span>
+                                }} title="Adicionar novo elemento de texto"><Type size={14} /></span>
                                 {showElements ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                             </div>
                         </button>
@@ -681,6 +736,32 @@ export function ArtEditor() {
                                                         onChange={e => handleElementChange(activeElement.id, { height: parseInt(e.target.value) })}
                                                         className="w-full p-1 border rounded text-xs font-mono"
                                                     />
+                                                </div>
+                                                <div className="col-span-2">
+                                                    <label className="text-[9px] text-gray-700 font-bold block mb-0.5">Tipo/Upload de Imagem</label>
+                                                    <div className="flex flex-col gap-1">
+                                                        <select
+                                                            value={activeElement.content?.includes('http') ? 'custom_image' : activeElement.content}
+                                                            onChange={e => handleElementChange(activeElement.id, { content: e.target.value })}
+                                                            className="w-full p-1 border rounded text-xs font-mono"
+                                                        >
+                                                            <option value="player_photo">Foto do Jogador (Sistema)</option>
+                                                            <option value="team_a">Brasão Mandante (Sistema)</option>
+                                                            <option value="team_b">Brasão Visitante (Sistema)</option>
+                                                            <option value="team_logo">Logo do Time Único (Sistema)</option>
+                                                            <option value="custom_image">Imagem Livre (Mascote/Icone)</option>
+                                                        </select>
+                                                        {(!activeElement.content || activeElement.content === 'custom_image' || activeElement.content.includes('http')) && (
+                                                            <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-600 rounded py-1 flex items-center justify-center gap-2 text-xs border border-gray-200">
+                                                                <Upload size={12} /> Escolher Imagem
+                                                                <input type="file" className="hidden" accept="image/*" onChange={(e) => {
+                                                                    if (e.target.files && e.target.files[0]) {
+                                                                        handleCustomImageUpload(activeElement.id, e.target.files[0]);
+                                                                    }
+                                                                }} />
+                                                            </label>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </>
                                         )}

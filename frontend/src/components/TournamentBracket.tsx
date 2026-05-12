@@ -78,7 +78,7 @@ export function TournamentBracket({ matches, emptyMessage = "Chaveamento ainda n
     const sortedRoundKeys = Object.keys(roundsMap).sort((a, b) => getRoundIndex(a) - getRoundIndex(b));
 
     return (
-        <div className="overflow-x-auto pb-12 pt-4 -mx-4 px-4 scrollbar-hide no-scrollbar">
+        <div className="overflow-x-auto pb-12 pt-4 -mx-4 px-4 custom-scrollbar">
             <div className="flex gap-4 sm:gap-8 min-w-max px-2">
                 {sortedRoundKeys.map((roundKey, roundIdx) => {
                     const roundMatches = roundsMap[roundKey];

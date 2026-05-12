@@ -39,4 +39,22 @@
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
+
+  /* Custom horizontal/vertical scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    height: 10px;
+    width: 10px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 20px;
+    border: 3px solid transparent;
+    background-clip: padding-box;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: #94a3b8;
+  }
 }

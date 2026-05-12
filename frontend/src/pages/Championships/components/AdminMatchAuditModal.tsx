@@ -37,18 +37,29 @@ export function MatchAuditModal({ isOpen, onClose, match }: MatchAuditModalProps
                                         'field_goal_2': { label: 'Cesta de 2 Pontos', icon: '🏀' },
                                         'field_goal_3': { label: 'Cesta de 3 Pontos', icon: '🎯' },
                                         'free_throw': { label: 'Lance Livre', icon: '🗑️' },
-                                        'foul': { label: 'Falta Comum', icon: '⚠️' },
+                                        'foul': { label: 'Falta', icon: '🚩' },
                                         'technical_foul': { label: 'Falta Técnica', icon: '🟨' },
                                         'unsportsmanlike_foul': { label: 'Falta Antidesportiva', icon: '🟧' },
                                         'disqualifying_foul': { label: 'Falta Desqualificante', icon: '🟥' },
-                                        'timeout': { label: 'Pedido de Tempo', icon: '⏱️' },
+                                        'timeout': { label: 'Tempo Técnico', icon: '⏱️' },
                                         'substitution': { label: 'Substituição', icon: '🔄' },
                                         'period_start': { label: 'Início de Período', icon: '🏁' },
                                         'period_end': { label: 'Fim de Período', icon: '🏁' },
-                                        'match_start': { label: 'Início da Partida', icon: '🏀' },
+                                        'match_start': { label: 'Início da Partida', icon: '▶️' },
                                         'match_end': { label: 'Fim da Partida', icon: '🏆' },
+                                        'goal': { label: 'Gol', icon: '⚽' },
+                                        'yellow_card': { label: 'Cartão Amarelo', icon: '🟨' },
+                                        'red_card': { label: 'Cartão Vermelho', icon: '🟥' },
+                                        'blue_card': { label: 'Cartão Azul', icon: '🟦' },
+                                        'assist': { label: 'Assistência', icon: '👟' },
+                                        'mvp': { label: 'Craque do Jogo', icon: '⭐' },
+                                        'shootout_goal': { label: 'Pênalti (Gol)', icon: '⚽' },
+                                        'shootout_miss': { label: 'Pênalti (Erro)', icon: '❌' },
+                                        'point': { label: 'Ponto', icon: '🏐' },
+                                        'ace': { label: 'Ace', icon: '🏐' },
+                                        'block': { label: 'Bloqueio', icon: '🤚' },
                                     };
-                                    return map[t] || { label: type, icon: '🏀' };
+                                    return map[t] || { label: type, icon: '📋' };
                                 };
 
                                 const display = getFriendlyEvent(event.event_type);

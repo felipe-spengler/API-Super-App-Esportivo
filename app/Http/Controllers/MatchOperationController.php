@@ -300,7 +300,7 @@ class MatchOperationController extends Controller
                 'position' => $player->pivot->position,
                 'participated_sets' => $participatedSets
             ];
-        });
+        })->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)->values();
     }
 
     // LANÇAR EVENTO (GOL, PONTO, CARTÃO)

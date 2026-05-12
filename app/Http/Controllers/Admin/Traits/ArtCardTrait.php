@@ -267,6 +267,9 @@ trait ArtCardTrait
             $templateKey = 'art_layout_individual_placement';
         } elseif ($category === 'defesa_menos_vazada') {
             $templateKey = 'art_layout_defense_vertical';
+        } else {
+            // Se for uma categoria de premiação genérica (artilheiro, goleiro, etc), tenta usar o layout de premiação
+            $templateKey = 'art_layout_custom_premiacao-jogador';
         }
 
         $bgFileFromSettings = $this->getBackgroundFile($sport, $category, $club, $championship);
@@ -314,6 +317,7 @@ trait ArtCardTrait
                 '{DATA}' => $championship->start_date ? $championship->start_date->format('d/m/Y') : '',
                 '{HORA}' => $championship->start_time ?? '',
                 '{COLOCACAO}' => '', // To be filled by context
+                '{PREMIO}' => mb_strtoupper(str_replace('_', ' ', $category)), // Replace premio name
                 '{RODADA}' => $roundName ? mb_strtoupper($roundName) : '',
                 'X' => 'X',
                 '3' => '3',
