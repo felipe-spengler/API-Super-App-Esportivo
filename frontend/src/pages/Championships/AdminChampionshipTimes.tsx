@@ -21,6 +21,17 @@ export function AdminChampionshipTimes() {
     // Lap state
     const [currentLap, setCurrentLap] = useState(1);
 
+    // Global Countdown State
+    const [showCountdown, setShowCountdown] = useState(false);
+    const [countdownMinutesInput, setCountdownMinutesInput] = useState(12);
+    const [countdownTimeLeft, setCountdownTimeLeft] = useState(12 * 60); // in seconds
+    const [isCountdownRunning, setIsCountdownRunning] = useState(false);
+    const [isCountdownFinished, setIsCountdownFinished] = useState(false);
+    const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Bulk Lap/Distance Input State (userId -> laps)
+    const [bulkLaps, setBulkLaps] = useState<Record<string, number>>({});
+
     useEffect(() => {
         loadData();
     }, [id]);
@@ -165,6 +176,94 @@ export function AdminChampionshipTimes() {
         return ms;
     };
 
+    const startCountdown = () => {
+        if (countdownTimeLeft <= 0) {
+            setCountdownTimeLeft(countdownMinutesInput * 60);
+        }
+        setIsCountdownRunning(true);
+        setIsCountdownFinished(false);
+        countdownIntervalRef.current = setInterval(() => {
+            setCountdownTimeLeft(prev => {
+                if (prev <= 1) {
+                    clearInterval(countdownIntervalRef.current!);
+                    setIsCountdownRunning(false);
+                    setIsCountdownFinished(true);
+                    playBeep();
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+    };
+
+    const pauseCountdown = () => {
+        setIsCountdownRunning(false);
+        if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    };
+
+    const resetCountdown = () => {
+        setIsCountdownRunning(false);
+        setIsCountdownFinished(false);
+        if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+        setCountdownTimeLeft(countdownMinutesInput * 60);
+        setBulkLaps({});
+    };
+
+    const playBeep = () => {
+        try {
+            const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            oscillator.type = 'sine';
+            oscillator.frequency.value = 800;
+            gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.5);
+            oscillator.start(audioCtx.currentTime);
+            oscillator.stop(audioCtx.currentTime + 1.5);
+        } catch (e) {
+            console.error("Audio beep failed", e);
+        }
+    };
+
+    const formatCountdown = (seconds: number) => {
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    };
+
+    const saveBulkResults = async () => {
+        setLoading(true);
+        try {
+            const entries = Object.entries(bulkLaps).filter(([_, laps]) => laps > 0);
+            
+            const promises = entries.map(([userId, laps]) => {
+                const participant = participants.find(p => p.user_id.toString() === userId);
+                return api.post(`/admin/championships/${id}/times`, {
+                    user_id: participant?.user_id,
+                    team_id: participant?.team_id,
+                    category_id: participant?.category_id,
+                    time_ms: countdownMinutesInput * 60 * 1000,
+                    lap: laps,
+                    status: 'completed'
+                });
+            });
+
+            await Promise.all(promises);
+            
+            alert('Todos os resultados foram salvos com sucesso!');
+            setShowCountdown(false);
+            resetCountdown();
+            loadData();
+        } catch (error) {
+            console.error(error);
+            alert('Erro ao salvar resultados em lote.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const saveManualTime = async () => {
         if (!selectedParticipant) {
             alert('Selecione um competidor.');
@@ -266,6 +365,15 @@ export function AdminChampionshipTimes() {
                                 <Play size={18} />
                                 Cronometrar
                             </button>
+                            {isLapsFormat && (
+                                <button
+                                    onClick={() => { resetCountdown(); setShowCountdown(true); }}
+                                    className="flex items-center gap-2 bg-orange-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-orange-700 shadow-lg shadow-orange-200 transition-all"
+                                >
+                                    <Timer size={18} />
+                                    Temporizador Fixo
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -442,6 +550,110 @@ export function AdminChampionshipTimes() {
                             >
                                 <Save size={24} /> SALVAR REGISTRO
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Global Countdown Modal */}
+            {showCountdown && (
+                <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+                    <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl animate-in zoom-in-95 duration-200 my-8">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-orange-50 rounded-t-3xl">
+                            <h2 className="text-xl font-black text-orange-900 flex items-center gap-2">
+                                <Timer className="text-orange-600" />
+                                Temporizador Global (Teste Fixo)
+                            </h2>
+                            <button onClick={() => { pauseCountdown(); setShowCountdown(false); }} className="text-slate-400 hover:text-slate-600 font-bold">FECHAR</button>
+                        </div>
+                        
+                        <div className="p-8">
+                            {!isCountdownRunning && !isCountdownFinished && countdownTimeLeft === countdownMinutesInput * 60 && (
+                                <div className="mb-8 p-4 bg-slate-50 rounded-2xl border border-slate-200 text-center">
+                                    <label className="block text-sm font-black text-slate-500 uppercase tracking-wider mb-3">Definir Tempo da Prova (Minutos)</label>
+                                    <input 
+                                        type="number"
+                                        min="1"
+                                        value={countdownMinutesInput}
+                                        onChange={e => {
+                                            setCountdownMinutesInput(parseInt(e.target.value) || 1);
+                                            setCountdownTimeLeft((parseInt(e.target.value) || 1) * 60);
+                                        }}
+                                        className="w-32 text-center p-3 bg-white border border-slate-300 rounded-xl font-black text-2xl outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
+                                    />
+                                </div>
+                            )}
+
+                            <div className="text-center mb-10">
+                                <div className={`font-mono text-8xl font-black tracking-tighter tabular-nums mb-2 transition-colors ${isCountdownFinished ? 'text-red-500 animate-pulse' : 'text-slate-900'}`}>
+                                    {formatCountdown(countdownTimeLeft)}
+                                </div>
+                                <p className="text-slate-400 font-bold uppercase tracking-widest text-sm">
+                                    {isCountdownFinished ? 'Tempo Esgotado!' : 'Contagem Regressiva'}
+                                </p>
+                            </div>
+
+                            {!isCountdownFinished ? (
+                                <div className="grid grid-cols-2 gap-4">
+                                    {!isCountdownRunning ? (
+                                        <button 
+                                            onClick={startCountdown}
+                                            className="flex items-center justify-center gap-2 bg-emerald-500 text-white p-5 rounded-2xl font-black text-xl hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-200"
+                                        >
+                                            <Play size={28} /> INICIAR PROVA
+                                        </button>
+                                    ) : (
+                                        <button 
+                                            onClick={pauseCountdown}
+                                            className="flex items-center justify-center gap-2 bg-rose-500 text-white p-5 rounded-2xl font-black text-xl hover:bg-rose-600 transition-colors shadow-[0_0_20px_rgba(244,63,94,0.4)]"
+                                        >
+                                            <Square size={28} /> PAUSAR
+                                        </button>
+                                    )}
+                                    <button 
+                                        onClick={resetCountdown}
+                                        className="flex items-center justify-center gap-2 bg-slate-100 text-slate-600 p-5 rounded-2xl font-black text-xl hover:bg-slate-200 transition-colors"
+                                    >
+                                        <RotateCcw size={28} /> REINICIAR
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="animate-in fade-in duration-500">
+                                    <div className="bg-orange-50 border border-orange-200 rounded-2xl p-6 mb-6">
+                                        <h3 className="font-black text-orange-800 text-lg mb-4 text-center">Fim do Tempo! Registre o resultado de cada atleta:</h3>
+                                        
+                                        <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar">
+                                            {participants.map(p => (
+                                                <div key={p.user_id} className="flex items-center justify-between bg-white p-3 rounded-xl border border-orange-100 shadow-sm">
+                                                    <div>
+                                                        <p className="font-bold text-slate-900">{p.name}</p>
+                                                        {p.team && <p className="text-xs text-orange-600 font-bold uppercase">{p.team.name}</p>}
+                                                    </div>
+                                                    <div className="flex items-center gap-3">
+                                                        <label className="text-[10px] font-bold text-slate-400 uppercase leading-tight text-right">Voltas/<br/>Distância:</label>
+                                                        <input 
+                                                            type="number"
+                                                            min="0"
+                                                            placeholder="0"
+                                                            value={bulkLaps[p.user_id] === undefined ? '' : bulkLaps[p.user_id]}
+                                                            onChange={e => setBulkLaps(prev => ({...prev, [p.user_id]: parseInt(e.target.value) || 0}))}
+                                                            className="w-24 p-2 bg-slate-50 border border-slate-200 rounded-lg font-black text-center text-slate-700 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <button 
+                                        onClick={saveBulkResults}
+                                        disabled={loading}
+                                        className="w-full flex items-center justify-center gap-2 bg-orange-600 text-white p-5 rounded-2xl font-black text-xl hover:bg-orange-700 transition-colors shadow-xl shadow-orange-200 disabled:opacity-70"
+                                    >
+                                        <Save size={28} /> SALVAR TODOS OS RESULTADOS
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

@@ -473,7 +473,7 @@ export function ChampionshipForm() {
                         </div>
 
                         {/* 5. Configurações de Estatísticas */}
-                        {formData.registration_type === 'team' && formData.format !== 'racing' && formData.format !== 'time_ranking' && (
+                        {formData.registration_type === 'team' && !['racing', 'time_ranking', 'laps'].includes(formData.format) && (
                             <div className="space-y-4">
                                 <h2 className="text-lg font-semibold text-gray-800 border-b pb-2">5. Configurações de Estatísticas</h2>
                                 <p className="text-sm text-gray-600 mb-4">Configure quais tipos de partidas contam para as estatísticas do campeonato (artilharia, assistências, cartões, classificação).</p>
