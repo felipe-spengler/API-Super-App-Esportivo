@@ -133,93 +133,12 @@ export function AdminChampionshipTimes() {
         return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${centiseconds.toString().padStart(2, '0')}`;
     };
 
-    return (
-        <div className="bg-slate-50 min-h-screen pb-20">
-            <div className="bg-white border-b border-slate-200 px-6 py-6 mb-8">
-                <div className="max-w-4xl mx-auto">
-                    <button onClick={() => navigate(`/admin/championships/${id}`)} className="flex items-center text-slate-400 hover:text-slate-900 mb-4 transition-colors text-sm font-bold">
-                        <ArrowLeft className="w-4 h-4 mr-1" />
-                        Voltar para o Campeonato
-                    </button>
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <div className="w-14 h-14 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 border border-indigo-100">
-                                <Timer size={28} />
-                            </div>
-                            <div>
-                                <h1 className="text-2xl font-black text-slate-900 leading-tight">Cronômetro / Tempos</h1>
-                                <p className="text-slate-500 font-medium">Registre o tempo de cada atleta em tempo real.</p>
-                            </div>
-                        </div>
-                        <button
-                            onClick={() => setShowStopwatch(true)}
-                            className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all"
-                        >
-                            <Play size={18} />
-                            Abrir Cronômetro
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <div className="max-w-4xl mx-auto px-6">
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div className="p-4 border-b border-slate-100 bg-slate-50/50">
-                        <h2 className="font-bold text-slate-700">Tempos Registrados</h2>
-                    </div>
-                    {loading ? (
-                        <div className="p-12 text-center text-slate-400 font-bold italic">Carregando...</div>
-                    ) : times.length === 0 ? (
-                        <div className="p-12 text-center text-slate-400 font-bold">Nenhum tempo registrado ainda.</div>
-                    ) : (
-                        <table className="w-full text-left">
-                            <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 text-xs uppercase font-black">
-                                <tr>
-                                    <th className="px-6 py-4">Atleta / Equipe</th>
-                                    {isLapsFormat && <th className="px-6 py-4 text-center">Volta</th>}
-                                    <th className="px-6 py-4">Tempo</th>
-                                    <th className="px-6 py-4">Status</th>
-                                    <th className="px-6 py-4 text-right">Ação</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {times.map(t => (
-                                    <tr key={t.id} className="hover:bg-slate-50">
-                                        <td className="px-6 py-4">
-                                            <p className="font-bold text-slate-900">{t.user?.name || 'Desconhecido'}</p>
-                                            {t.team && <p className="text-xs text-indigo-600 font-bold uppercase">{t.team.name}</p>}
-                                        </td>
-                                        {isLapsFormat && (
-                                            <td className="px-6 py-4 text-center">
-                                                <span className="bg-amber-100 text-amber-800 font-black px-3 py-1 rounded-full text-sm">
-                                                    #{t.lap || 1}
-                                                </span>
-                                            </td>
-                                        )}
-                                        <td className="px-6 py-4 font-mono font-black text-slate-700 text-lg">
-                                            {formatTime(t.time_ms)}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded text-xs font-bold uppercase flex items-center gap-1 w-max">
-                                                <CheckCircle2 size={12} /> OK
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <button onClick={() => deleteTime(t.id)} className="text-red-500 hover:text-red-700 text-sm font-bold underline">Remover</button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    )}
-                </div>
-            </div>
-
-    // ... UI State for Manual Time ...
+    // UI State for Manual Time
     const [showManualTime, setShowManualTime] = useState(false);
     const [manualTimeStr, setManualTimeStr] = useState('');
+    const [manualLap, setManualLap] = useState(1);
     
-    // ... Computed Teams ...
+    // Computed Teams
     const isTeam = participants.some(p => p.team_id !== null);
     const teams = isTeam ? Array.from(new Set(participants.map(p => p.team_id))).map(tid => {
         const p = participants.find(x => x.team_id === tid);
@@ -245,8 +164,6 @@ export function AdminChampionshipTimes() {
         }
         return ms;
     };
-
-    const [manualLap, setManualLap] = useState(1);
 
     const saveManualTime = async () => {
         if (!selectedParticipant) {
@@ -355,7 +272,6 @@ export function AdminChampionshipTimes() {
             </div>
 
             <div className="max-w-4xl mx-auto px-6">
-                {/* ... existing table code ... */}
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                     <div className="p-4 border-b border-slate-100 bg-slate-50/50">
                         <h2 className="font-bold text-slate-700">Tempos Registrados</h2>
@@ -369,6 +285,7 @@ export function AdminChampionshipTimes() {
                             <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 text-xs uppercase font-black">
                                 <tr>
                                     <th className="px-6 py-4">Atleta / Equipe</th>
+                                    {isLapsFormat && <th className="px-6 py-4 text-center">Volta</th>}
                                     <th className="px-6 py-4">Tempo</th>
                                     <th className="px-6 py-4">Status</th>
                                     <th className="px-6 py-4 text-right">Ação</th>
@@ -381,6 +298,13 @@ export function AdminChampionshipTimes() {
                                             <p className="font-bold text-slate-900">{t.user?.name || 'Desconhecido'}</p>
                                             {t.team && <p className="text-xs text-indigo-600 font-bold uppercase">{t.team.name}</p>}
                                         </td>
+                                        {isLapsFormat && (
+                                            <td className="px-6 py-4 text-center">
+                                                <span className="bg-amber-100 text-amber-800 font-black px-3 py-1 rounded-full text-sm">
+                                                    #{t.lap || 1}
+                                                </span>
+                                            </td>
+                                        )}
                                         <td className="px-6 py-4 font-mono font-black text-slate-700 text-lg">
                                             {formatTime(t.time_ms)}
                                         </td>
