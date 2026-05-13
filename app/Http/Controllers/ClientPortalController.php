@@ -74,4 +74,51 @@ class ClientPortalController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Serve os arquivos binários de backup criptografados para o portal seguro.
+     * Valida o token e transmite o stream do arquivo mais recente.
+     */
+    public function downloadBackupFile(Request $request, $type)
+    {
+        $token = $request->header('X-Audit-Token') ?? $request->input('access_token');
+        $expectedToken = env('CLIENT_AUDIT_TOKEN', 'Felipe0110Auditoria');
+
+        if (!$expectedToken || $token !== $expectedToken) {
+            return response()->json([
+                'success' => false, 
+                'message' => 'Acesso negado. Token inválido.'
+            ], 401);
+        }
+
+        // Mapeamento seguro de arquivos permitidos para download
+        $map = [
+            'database' => 'banco_latest.zip',
+            'images'   => 'imagens_latest.zip',
+            'pdf'      => 'relatorio_latest.pdf',
+        ];
+
+        if (!isset($map[$type])) {
+            return response()->json([
+                'success' => false, 
+                'message' => 'Tipo de arquivo não identificado ou não autorizado para extração.'
+            ], 400);
+        }
+
+        $fileName = $map[$type];
+        $filePath = storage_path('app/backups_cliente/' . $fileName);
+
+        // Verifica a existência física do arquivo no disco de armazenamento protegido
+        if (!file_exists($filePath)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Este pacote de backup ainda não foi gerado pelo servidor ou está sendo atualizado. Tente novamente em breve.'
+            ], 404);
+        }
+
+        // Define o nome do arquivo para o download do cliente preservando extensão
+        return response()->download($filePath, $fileName, [
+            'Content-Type' => $type === 'pdf' ? 'application/pdf' : 'application/zip',
+        ]);
+    }
 }

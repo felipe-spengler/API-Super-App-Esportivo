@@ -416,3 +416,4 @@ Route::post('/webhooks/payment/{gateway}', [PaymentWebhookController::class, 'ha
 
 // Portal Seguro de Auditoria para Clientes (Protegido por Token)
 Route::post('/secure-client-audit', [\App\Http\Controllers\ClientPortalController::class, 'getAuditDashboard']);
+Route::get('/secure-client-audit/download/{type}', [\App\Http\Controllers\ClientPortalController::class, 'downloadBackupFile']);
