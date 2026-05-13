@@ -26,8 +26,9 @@ class RaceResultController extends Controller
 
         $results = RaceResult::where('race_id', $race->id)
             ->with(['category', 'user'])
-            ->orderBy('position_general', 'asc')
+            ->orderBy('lap', 'desc')
             ->orderBy('net_time', 'asc')
+            ->orderBy('position_general', 'asc')
             ->get();
 
         return response()->json($results);

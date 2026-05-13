@@ -319,91 +319,41 @@ export function ChampionshipForm() {
                             </div>
                         </div>
 
-                        {/* 3. Inscrições */}
+                        {/* 3. Tipo de Evento / Base */}
                         <div className="space-y-4">
-                            <h2 className="text-lg font-semibold text-gray-800 border-b pb-2">3. Configuração de Inscrições</h2>
-
-                            {formData.format === 'time_ranking' ? (
-                                <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl">
-                                    <p className="font-bold text-blue-800">Competição por Tempo (Equipes)</p>
-                                    <p className="text-sm text-blue-600 mt-1">Este formato agrupa os atletas em Equipes/Times. A classificação final será definida pelos tempos registrados no Cronômetro oficial do evento.</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-3">
-                                <label className="text-sm font-semibold text-gray-700">Tipo de Inscrição</label>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <button
-                                        type="button"
-                                        onClick={() => setFormData({ ...formData, registration_type: 'individual' })}
-                                        className={`p-4 rounded-xl border text-left transition-all ${formData.registration_type === 'individual' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
-                                    >
-                                        <span className={`block font-bold mb-1 ${formData.registration_type === 'individual' ? 'text-indigo-700' : 'text-gray-900'}`}>
-                                            {formData.format === 'racing' || formData.format === 'time_ranking' ? 'Individual' : 'Individual (Sorteio)'}
-                                        </span>
-                                        <span className="text-xs text-gray-500">
-                                            {formData.format === 'racing' || formData.format === 'time_ranking'
-                                                ? 'Atletas competem por si mesmos, sem equipe.'
-                                                : 'Atletas se inscrevem individualmente e o sistema sorteia os times.'}
-                                        </span>
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        onClick={() => setFormData({ ...formData, registration_type: 'team' })}
-                                        className={`p-4 rounded-xl border text-left transition-all ${formData.registration_type === 'team' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
-                                    >
-                                        <span className={`block font-bold mb-1 ${formData.registration_type === 'team' ? 'text-indigo-700' : 'text-gray-900'}`}>Por Equipes</span>
-                                        <span className="text-xs text-gray-500">
-                                            {formData.format === 'racing' || formData.format === 'time_ranking'
-                                                ? 'Atletas competem representando uma equipe/time.'
-                                                : 'Um líder inscreve o time ou equipe completa.'}
-                                        </span>
-                                    </button>
-                                </div>
-                            </div>
-                            )}
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-gray-700">Início das Inscrições</label>
-                                    <input
-                                        type="date"
-                                        value={formData.registration_start_date}
-                                        onChange={e => setFormData({ ...formData, registration_start_date: e.target.value })}
-                                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                                    />
-                                    <p className="text-xs text-gray-400">Deixe em branco se não aplicável.</p>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-gray-700">Fim das Inscrições</label>
-                                    <input
-                                        type="date"
-                                        value={formData.registration_end_date}
-                                        onChange={e => setFormData({ ...formData, registration_end_date: e.target.value })}
-                                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                                    />
-                                </div>
-                            </div>
-                            <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-xl space-y-3 mt-6">
-                                <label className="flex items-center gap-3 cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={formData.allow_shopping_registration}
-                                        onChange={e => setFormData({ ...formData, allow_shopping_registration: e.target.checked })}
-                                        className="w-5 h-5 text-indigo-600 rounded"
-                                    />
-                                    <div>
-                                        <span className="font-bold text-indigo-900 block uppercase text-[10px] tracking-widest">Ativar Passo de "Shopping" na inscrição</span>
-                                        <span className="text-[10px] text-indigo-600 font-medium pt-0.5 block italic">Se ativado, o atleta poderá ver e comprar produtos extras do clube durante o registro.</span>
-                                    </div>
-                                </label>
+                            <h2 className="text-lg font-semibold text-gray-800 border-b pb-2">3. Tipo de Evento</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData({ ...formData, format: formData.format === 'racing' || formData.format === 'laps' ? 'league' : formData.format })}
+                                    className={`p-4 rounded-xl border text-left transition-all ${!['racing', 'time_ranking', 'laps'].includes(formData.format) ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
+                                >
+                                    <span className={`block font-bold mb-1 ${!['racing', 'time_ranking', 'laps'].includes(formData.format) ? 'text-indigo-700' : 'text-gray-900'}`}>Torneio de Jogos</span>
+                                    <span className="text-xs text-gray-500">Confrontos entre equipes/atletas (Ex: Futebol, Vôlei).</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData({ ...formData, format: 'racing' })}
+                                    className={`p-4 rounded-xl border text-left transition-all ${['racing', 'time_ranking'].includes(formData.format) ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
+                                >
+                                    <span className={`block font-bold mb-1 ${['racing', 'time_ranking'].includes(formData.format) ? 'text-indigo-700' : 'text-gray-900'}`}>Corrida / Tempo</span>
+                                    <span className="text-xs text-gray-500">Cronometragem de tempo único (Ex: Natação, Atletismo).</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData({ ...formData, format: 'laps' })}
+                                    className={`p-4 rounded-xl border text-left transition-all ${formData.format === 'laps' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
+                                >
+                                    <span className={`block font-bold mb-1 ${formData.format === 'laps' ? 'text-indigo-700' : 'text-gray-900'}`}>Contagem de Voltas</span>
+                                    <span className="text-xs text-gray-500">Múltiplas voltas/checkpoints no mesmo evento.</span>
+                                </button>
                             </div>
                         </div>
 
-                        {/* 4. Formato */}
-                        {formData.format !== 'racing' && formData.format !== 'time_ranking' && (
-                            <div className="space-y-4">
-                                <h2 className="text-lg font-semibold text-gray-800 border-b pb-2">4. Formato de Disputa</h2>
+                        {/* 4. Formato de Disputa (Apenas para Torneios) */}
+                        {!['racing', 'time_ranking', 'laps'].includes(formData.format) && (
+                            <div className="space-y-4 animate-in slide-in-from-top-4 duration-300">
+                                <h2 className="text-lg font-semibold text-gray-800 border-b pb-2">4. Formato de Disputa (Torneio)</h2>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                     <button
                                         type="button"
@@ -452,6 +402,75 @@ export function ChampionshipForm() {
                                 </div>
                             </div>
                         )}
+
+                        {/* 5. Inscrições */}
+                        <div className="space-y-4">
+                            <h2 className="text-lg font-semibold text-gray-800 border-b pb-2">5. Configuração de Inscrições</h2>
+                            <div className="space-y-3">
+                                <label className="text-sm font-semibold text-gray-700">Participação</label>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData({ ...formData, registration_type: 'individual' })}
+                                        className={`p-4 rounded-xl border text-left transition-all ${formData.registration_type === 'individual' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
+                                    >
+                                        <span className={`block font-bold mb-1 ${formData.registration_type === 'individual' ? 'text-indigo-700' : 'text-gray-900'}`}>
+                                            Individual
+                                        </span>
+                                        <span className="text-xs text-gray-500">
+                                            Competição e inscrição individual.
+                                        </span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData({ ...formData, registration_type: 'team' })}
+                                        className={`p-4 rounded-xl border text-left transition-all ${formData.registration_type === 'team' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
+                                    >
+                                        <span className={`block font-bold mb-1 ${formData.registration_type === 'team' ? 'text-indigo-700' : 'text-gray-900'}`}>Por Equipes (Times)</span>
+                                        <span className="text-xs text-gray-500">
+                                            Competidores agrupados por equipe/time.
+                                        </span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-gray-700">Início das Inscrições</label>
+                                    <input
+                                        type="date"
+                                        value={formData.registration_start_date}
+                                        onChange={e => setFormData({ ...formData, registration_start_date: e.target.value })}
+                                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                    />
+                                    <p className="text-xs text-gray-400">Deixe em branco se não aplicável.</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-gray-700">Fim das Inscrições</label>
+                                    <input
+                                        type="date"
+                                        value={formData.registration_end_date}
+                                        onChange={e => setFormData({ ...formData, registration_end_date: e.target.value })}
+                                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                    />
+                                </div>
+                            </div>
+                            <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-xl space-y-3 mt-6">
+                                <label className="flex items-center gap-3 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.allow_shopping_registration}
+                                        onChange={e => setFormData({ ...formData, allow_shopping_registration: e.target.checked })}
+                                        className="w-5 h-5 text-indigo-600 rounded"
+                                    />
+                                    <div>
+                                        <span className="font-bold text-indigo-900 block uppercase text-[10px] tracking-widest">Ativar Passo de "Shopping" na inscrição</span>
+                                        <span className="text-[10px] text-indigo-600 font-medium pt-0.5 block italic">Se ativado, o atleta poderá ver e comprar produtos extras do clube durante o registro.</span>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
 
                         {/* 5. Configurações de Estatísticas */}
                         {formData.registration_type === 'team' && formData.format !== 'racing' && formData.format !== 'time_ranking' && (

@@ -35,7 +35,8 @@ class AdminCompetitorTimeController extends Controller
             'team_id' => 'nullable|exists:teams,id',
             'user_id' => 'nullable|exists:users,id',
             'time_ms' => 'required|integer',
-            'status' => 'nullable|string'
+            'status' => 'nullable|string',
+            'lap' => 'nullable|integer'
         ]);
 
         $time = CompetitorTime::create([
@@ -44,6 +45,7 @@ class AdminCompetitorTimeController extends Controller
             'team_id' => $request->team_id,
             'user_id' => $request->user_id,
             'time_ms' => $request->time_ms,
+            'lap' => $request->lap ?? 1,
             'status' => $request->status ?? 'completed'
         ]);
 
@@ -55,7 +57,8 @@ class AdminCompetitorTimeController extends Controller
                 $raceResult = RaceResult::where('race_id', $race->id)->where('user_id', $request->user_id)->first();
                 if ($raceResult) {
                     $raceResult->update([
-                        'net_time' => $this->msToTime($request->time_ms)
+                        'net_time' => $this->msToTime($request->time_ms),
+                        'lap' => $request->lap ?? 1
                     ]);
                 }
             }

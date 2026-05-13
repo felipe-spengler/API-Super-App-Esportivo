@@ -95,8 +95,8 @@ export function Explore() {
                         {championships.map(item => (
                             <Link
                                 key={item.id}
-                                to={item.format === 'racing' ? `/races/${item.id}` : `/events/${item.id}`}
-                                className="block bg-white rounded-[2rem] shadow-xl shadow-slate-100 overflow-hidden border border-slate-50 hover:shadow-2xl hover:shadow-indigo-50 hover:border-indigo-200 transition-all active:scale-[0.98] group"
+                                to={['racing', 'laps'].includes(item.format) ? `/races/${item.id}` : `/events/${item.id}`}
+                                className="group relative bg-white rounded-3xl overflow-hidden shadow-lg border border-slate-100 hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 flex flex-col h-full"
                             >
                                 <div className="p-6">
                                     <div className="flex justify-between items-start mb-6">

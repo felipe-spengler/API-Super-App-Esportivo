@@ -8,6 +8,7 @@ export function AdminChampionshipTimes() {
     const navigate = useNavigate();
     const [times, setTimes] = useState<any[]>([]);
     const [participants, setParticipants] = useState<any[]>([]);
+    const [championship, setChampionship] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     
     // Stopwatch state
@@ -17,6 +18,9 @@ export function AdminChampionshipTimes() {
     const [timeMs, setTimeMs] = useState(0);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
 
+    // Lap state
+    const [currentLap, setCurrentLap] = useState(1);
+
     useEffect(() => {
         loadData();
     }, [id]);
@@ -24,18 +28,22 @@ export function AdminChampionshipTimes() {
     async function loadData() {
         try {
             setLoading(true);
-            const [timesRes, participantsRes] = await Promise.all([
+            const [timesRes, participantsRes, champRes] = await Promise.all([
                 api.get(`/admin/championships/${id}/times`),
-                api.get(`/championships/${id}/participants`) // Assume this exists or we can use another route
+                api.get(`/championships/${id}/participants`), // Assume this exists or we can use another route
+                api.get(`/championships/${id}`)
             ]);
             setTimes(timesRes.data);
             setParticipants(participantsRes.data || []);
+            setChampionship(champRes.data);
         } catch (error) {
             console.error(error);
         } finally {
             setLoading(false);
         }
     }
+
+    const isLapsFormat = championship?.format === 'laps';
 
     const startTimer = () => {
         if (!selectedParticipant) {
@@ -58,6 +66,7 @@ export function AdminChampionshipTimes() {
         setIsRunning(false);
         if (timerRef.current) clearInterval(timerRef.current);
         setTimeMs(0);
+        setCurrentLap(1);
     };
 
     const saveTime = async () => {
@@ -69,6 +78,7 @@ export function AdminChampionshipTimes() {
                 team_id: participant?.team_id,
                 category_id: participant?.category_id,
                 time_ms: timeMs,
+                lap: currentLap,
                 status: 'completed'
             });
             setShowStopwatch(false);
@@ -78,6 +88,30 @@ export function AdminChampionshipTimes() {
         } catch (error) {
             console.error(error);
             alert('Erro ao salvar tempo.');
+        }
+    };
+
+    const recordLap = async () => {
+        if (!selectedParticipant) return;
+        try {
+            const participant = participants.find(p => p.user_id.toString() === selectedParticipant);
+            await api.post(`/admin/championships/${id}/times`, {
+                user_id: participant?.user_id,
+                team_id: participant?.team_id,
+                category_id: participant?.category_id,
+                time_ms: timeMs,
+                lap: currentLap,
+                status: 'completed'
+            });
+            setCurrentLap(prev => prev + 1);
+            // We do NOT reset the timer if it's running, so the next lap is accumulated
+            // Actually, if it's LAPS format, usually "Lap" resets the timer for the NEXT lap, OR it's continuous.
+            // Let's just record the current total time and increment the lap counter.
+            alert(`Volta ${currentLap} salva com sucesso! O cronômetro continua rodando.`);
+            loadData();
+        } catch (error) {
+            console.error(error);
+            alert('Erro ao salvar volta.');
         }
     };
 
@@ -142,6 +176,7 @@ export function AdminChampionshipTimes() {
                             <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 text-xs uppercase font-black">
                                 <tr>
                                     <th className="px-6 py-4">Atleta / Equipe</th>
+                                    {isLapsFormat && <th className="px-6 py-4 text-center">Volta</th>}
                                     <th className="px-6 py-4">Tempo</th>
                                     <th className="px-6 py-4">Status</th>
                                     <th className="px-6 py-4 text-right">Ação</th>
@@ -154,6 +189,13 @@ export function AdminChampionshipTimes() {
                                             <p className="font-bold text-slate-900">{t.user?.name || 'Desconhecido'}</p>
                                             {t.team && <p className="text-xs text-indigo-600 font-bold uppercase">{t.team.name}</p>}
                                         </td>
+                                        {isLapsFormat && (
+                                            <td className="px-6 py-4 text-center">
+                                                <span className="bg-amber-100 text-amber-800 font-black px-3 py-1 rounded-full text-sm">
+                                                    #{t.lap || 1}
+                                                </span>
+                                            </td>
+                                        )}
                                         <td className="px-6 py-4 font-mono font-black text-slate-700 text-lg">
                                             {formatTime(t.time_ms)}
                                         </td>
@@ -204,6 +246,8 @@ export function AdminChampionshipTimes() {
         return ms;
     };
 
+    const [manualLap, setManualLap] = useState(1);
+
     const saveManualTime = async () => {
         if (!selectedParticipant) {
             alert('Selecione um competidor.');
@@ -222,11 +266,13 @@ export function AdminChampionshipTimes() {
                 team_id: participant?.team_id,
                 category_id: participant?.category_id,
                 time_ms: ms,
+                lap: isLapsFormat ? manualLap : 1,
                 status: 'completed'
             });
             setShowManualTime(false);
             setManualTimeStr('');
             setSelectedParticipant('');
+            setManualLap(1);
             loadData();
         } catch (error) {
             console.error(error);
@@ -373,7 +419,9 @@ export function AdminChampionshipTimes() {
                                 <div className="font-mono text-7xl font-black text-slate-900 tracking-tighter tabular-nums mb-2">
                                     {formatTime(timeMs)}
                                 </div>
-                                <p className="text-slate-400 font-bold uppercase tracking-widest text-sm">Minutos : Segundos . Milésimos</p>
+                                <p className="text-slate-400 font-bold uppercase tracking-widest text-sm">
+                                    {isLapsFormat ? `Volta Atual: ${currentLap}` : 'Minutos : Segundos . Milésimos'}
+                                </p>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
@@ -402,6 +450,15 @@ export function AdminChampionshipTimes() {
                                 </button>
                             </div>
                             
+                            {isLapsFormat && isRunning && (
+                                <button 
+                                    onClick={recordLap}
+                                    className="w-full mt-4 flex items-center justify-center gap-2 bg-amber-500 text-white p-4 rounded-2xl font-black text-lg hover:bg-amber-600 transition-colors shadow-lg shadow-amber-200"
+                                >
+                                    <Save size={24} /> MARCAR VOLTA {currentLap}
+                                </button>
+                            )}
+
                             {timeMs > 0 && !isRunning && (
                                 <button 
                                     onClick={saveTime}
@@ -421,7 +478,7 @@ export function AdminChampionshipTimes() {
                     <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden">
                         <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                             <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
-                                <Edit3 className="text-indigo-600" />
+                                <Timer className="text-indigo-600" />
                                 Definir Tempo Manual
                             </h2>
                             <button onClick={() => setShowManualTime(false)} className="text-slate-400 hover:text-slate-600 font-bold">FECHAR</button>
@@ -429,6 +486,19 @@ export function AdminChampionshipTimes() {
                         
                         <div className="p-8">
                             <SelectorUI />
+
+                            {isLapsFormat && (
+                                <div className="mb-4">
+                                    <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Número da Volta</label>
+                                    <input 
+                                        type="number"
+                                        min="1"
+                                        className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xl font-black text-center text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                        value={manualLap}
+                                        onChange={e => setManualLap(parseInt(e.target.value) || 1)}
+                                    />
+                                </div>
+                            )}
 
                             <div className="mb-8">
                                 <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Tempo (Formato HH:MM:SS ou MM:SS)</label>

@@ -182,8 +182,8 @@ export function PublicRaceResults() {
 
                         <div className="grid gap-4">
                             {filtered.map((r, index) => {
-                                // Determinamos a posição relativa para o estilo (se houver filtro de categoria é a real da categoria, se não é a geral)
-                                const displayRank = selectedCategory !== 'all' ? r.position_category : r.position_general;
+                                // For Laps or dynamically sorted formats, index + 1 is the true rank
+                                const displayRank = index + 1;
                                 const isTop3 = displayRank <= 3;
 
                                 return (
@@ -232,10 +232,13 @@ export function PublicRaceResults() {
                                         <div className="flex items-center justify-between md:justify-end gap-6 pl-16 md:pl-0">
                                             <div className="text-left md:text-right">
                                                 <div className="flex items-center gap-2 font-mono font-black text-2xl text-slate-900 italic leading-none">
+                                                    {championship?.format === 'laps' && (
+                                                        <span className="bg-amber-100 text-amber-800 text-sm px-2 py-0.5 rounded-md mr-2">V: {r.lap || 1}</span>
+                                                    )}
                                                     <Timer size={18} className="text-indigo-600" />
                                                     {r.net_time || '--:--:--'}
                                                 </div>
-                                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-1">Tempo Líquido Oficinal</p>
+                                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-1">Tempo Líquido Oficial</p>
                                             </div>
 
                                             <div className="flex items-center gap-2">

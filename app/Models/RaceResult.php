@@ -14,6 +14,7 @@ class RaceResult extends Model
         'name',
         'net_time',
         'gross_time',
+        'lap',
         'position_general',
         'position_category',
         'chip_id',

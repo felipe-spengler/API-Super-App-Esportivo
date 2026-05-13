@@ -15,6 +15,7 @@ class CompetitorTime extends Model
         'team_id',
         'user_id',
         'time_ms',
+        'lap',
         'status',
     ];
 

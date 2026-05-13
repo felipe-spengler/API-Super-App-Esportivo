@@ -120,8 +120,8 @@ export function ClubExplore() {
                         {championships.map(item => (
                             <Link
                                 key={item.id}
-                                to={item.format === 'racing' ? `/races/${item.id}` : `/events/${item.id}`}
-                                className="block bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 hover:shadow-md transition-all active:scale-[0.99]"
+                                to={['racing', 'laps'].includes(item.format) ? `/races/${item.id}` : `/events/${item.id}`}
+                                className="block bg-white rounded-[2rem] shadow-xl shadow-slate-100 overflow-hidden border border-slate-50 hover:shadow-2xl hover:shadow-indigo-50 hover:border-indigo-200 transition-all active:scale-[0.98] group"
                             >
                                 <div className="h-2 w-full bg-indigo-600" />
                                 <div className="p-4">
