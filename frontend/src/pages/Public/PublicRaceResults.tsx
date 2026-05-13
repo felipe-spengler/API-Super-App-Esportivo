@@ -16,6 +16,7 @@ interface RaceResult {
         parent?: { name: string }
     };
     net_time: string;
+    lap?: number;
     position_general: number;
     position_category: number;
 }
