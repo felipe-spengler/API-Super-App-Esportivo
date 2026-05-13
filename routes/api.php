@@ -413,3 +413,6 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
 
 // Webhooks (Público)
 Route::post('/webhooks/payment/{gateway}', [PaymentWebhookController::class, 'handle']);
+
+// Portal Seguro de Auditoria para Clientes (Protegido por Token)
+Route::post('/secure-client-audit', [\App\Http\Controllers\ClientPortalController::class, 'getAuditDashboard']);
