@@ -76,11 +76,18 @@ export function IndividualResultManager() {
                         Importar CSV
                     </button>
                     <button
-                        onClick={() => navigate(`/admin/individual/championships/${id}/results/manual`)}
-                        className="flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-bold transition-all shadow-lg"
+                        onClick={() => navigate(`/admin/championships/${id}/times`)}
+                        className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 font-bold transition-all shadow-sm"
                     >
                         <Edit3 size={18} />
                         Definir Manual
+                    </button>
+                    <button
+                        onClick={() => navigate(`/admin/championships/${id}/times`)}
+                        className="flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-bold transition-all shadow-lg"
+                    >
+                        <Timer size={18} />
+                        Cronometrar
                     </button>
                 </div>
             </div>
@@ -171,7 +178,7 @@ export function IndividualResultManager() {
                                                     </a>
                                                 )}
                                                 <button
-                                                    onClick={() => navigate(`/admin/individual/championships/${id}/results/manual`)}
+                                                    onClick={() => navigate(`/admin/championships/${id}/times`)}
                                                     className="p-2 text-slate-300 hover:text-indigo-600 transition-colors"
                                                 >
                                                     <ChevronRight size={20} />

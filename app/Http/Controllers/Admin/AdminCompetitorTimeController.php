@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\CompetitorTime;
 use App\Models\Championship;
+use App\Models\Race;
+use App\Models\RaceResult;
 
 class AdminCompetitorTimeController extends Controller
 {
@@ -15,6 +17,15 @@ class AdminCompetitorTimeController extends Controller
             ->where('championship_id', $championshipId)
             ->get();
         return response()->json($times);
+    }
+
+    private function msToTime($ms) {
+        $seconds = floor($ms / 1000);
+        $minutes = floor($seconds / 60);
+        $hours = floor($minutes / 60);
+        $minutes = $minutes % 60;
+        $seconds = $seconds % 60;
+        return sprintf('%02d:%02d:%02d', $hours, $minutes, $seconds);
     }
 
     public function store(Request $request, $championshipId)
@@ -35,6 +46,20 @@ class AdminCompetitorTimeController extends Controller
             'time_ms' => $request->time_ms,
             'status' => $request->status ?? 'completed'
         ]);
+
+        // Auto-sync com RaceResult se for campeonato individual
+        $championship = Championship::find($championshipId);
+        if ($championship && $championship->registration_type !== 'team' && $request->user_id) {
+            $race = Race::where('championship_id', $championshipId)->first();
+            if ($race) {
+                $raceResult = RaceResult::where('race_id', $race->id)->where('user_id', $request->user_id)->first();
+                if ($raceResult) {
+                    $raceResult->update([
+                        'net_time' => $this->msToTime($request->time_ms)
+                    ]);
+                }
+            }
+        }
 
         return response()->json($time, 201);
     }

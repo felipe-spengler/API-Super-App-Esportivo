@@ -759,7 +759,48 @@ class EventController extends Controller
     }
     public function participants($championshipId)
     {
-        return response()->json([]);
+        $championship = \App\Models\Championship::findOrFail($championshipId);
+        $participants = [];
+
+        if ($championship->registration_type === 'team') {
+            $teams = \App\Models\Team::whereHas('championships', function($q) use ($championshipId) {
+                $q->where('championship_id', $championshipId);
+            })->with('players.user')->get();
+
+            foreach ($teams as $team) {
+                foreach ($team->players as $player) {
+                    if ($player->user) {
+                        $participants[] = [
+                            'user_id' => $player->user->id,
+                            'name' => $player->user->name,
+                            'team_id' => $team->id,
+                            'team' => ['name' => $team->name],
+                            'category_id' => null, // Opcional, pode ser extraído se a equipe estiver associada a categoria
+                        ];
+                    }
+                }
+            }
+        } else {
+            $race = \App\Models\Race::where('championship_id', $championshipId)->first();
+            if ($race) {
+                $results = \App\Models\RaceResult::with(['user', 'category'])->where('race_id', $race->id)->get();
+                foreach ($results as $result) {
+                    if ($result->user) {
+                        $participants[] = [
+                            'user_id' => $result->user->id,
+                            'name' => $result->name ?: $result->user->name,
+                            'bib_number' => $result->bib_number,
+                            'team_id' => null,
+                            'team' => null,
+                            'category_id' => $result->category_id,
+                            'category' => $result->category ? ['name' => $result->category->name] : null,
+                        ];
+                    }
+                }
+            }
+        }
+
+        return response()->json($participants);
     }
     public function raceDetails($championshipId)
     {

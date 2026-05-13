@@ -173,6 +173,187 @@ export function AdminChampionshipTimes() {
                 </div>
             </div>
 
+    // ... UI State for Manual Time ...
+    const [showManualTime, setShowManualTime] = useState(false);
+    const [manualTimeStr, setManualTimeStr] = useState('');
+    
+    // ... Computed Teams ...
+    const isTeam = participants.some(p => p.team_id !== null);
+    const teams = isTeam ? Array.from(new Set(participants.map(p => p.team_id))).map(tid => {
+        const p = participants.find(x => x.team_id === tid);
+        return { id: tid, name: p?.team?.name || 'Equipe' };
+    }) : [];
+
+    const [selectedTeam, setSelectedTeam] = useState('');
+
+    const availableParticipants = isTeam 
+        ? participants.filter(p => p.team_id?.toString() === selectedTeam)
+        : participants;
+
+    // Helper to parse HH:MM:SS or MM:SS to milliseconds
+    const parseTimeToMs = (timeStr: string) => {
+        const parts = timeStr.split(':').map(Number);
+        let ms = 0;
+        if (parts.length === 3) {
+            ms = (parts[0] * 3600 + parts[1] * 60 + parts[2]) * 1000;
+        } else if (parts.length === 2) {
+            ms = (parts[0] * 60 + parts[1]) * 1000;
+        } else if (parts.length === 1) {
+            ms = parts[0] * 1000;
+        }
+        return ms;
+    };
+
+    const saveManualTime = async () => {
+        if (!selectedParticipant) {
+            alert('Selecione um competidor.');
+            return;
+        }
+        const ms = parseTimeToMs(manualTimeStr);
+        if (ms <= 0) {
+            alert('Digite um tempo válido (ex: 01:23:45 ou 15:30).');
+            return;
+        }
+        
+        try {
+            const participant = participants.find(p => p.user_id.toString() === selectedParticipant);
+            await api.post(`/admin/championships/${id}/times`, {
+                user_id: participant?.user_id,
+                team_id: participant?.team_id,
+                category_id: participant?.category_id,
+                time_ms: ms,
+                status: 'completed'
+            });
+            setShowManualTime(false);
+            setManualTimeStr('');
+            setSelectedParticipant('');
+            loadData();
+        } catch (error) {
+            console.error(error);
+            alert('Erro ao salvar tempo.');
+        }
+    };
+
+    const SelectorUI = () => (
+        <div className="space-y-4 mb-8">
+            {isTeam && (
+                <div>
+                    <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Equipe</label>
+                    <select 
+                        className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none"
+                        value={selectedTeam}
+                        onChange={e => { setSelectedTeam(e.target.value); setSelectedParticipant(''); }}
+                        disabled={isRunning}
+                    >
+                        <option value="">Selecione a equipe...</option>
+                        {teams.map(t => (
+                            <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                    </select>
+                </div>
+            )}
+            <div>
+                <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Competidor</label>
+                <select 
+                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none disabled:opacity-50"
+                    value={selectedParticipant}
+                    onChange={e => setSelectedParticipant(e.target.value)}
+                    disabled={isRunning || (isTeam && !selectedTeam)}
+                >
+                    <option value="">Selecione quem vai competir...</option>
+                    {availableParticipants.map(p => (
+                        <option key={p.user_id} value={p.user_id}>
+                            {p.name} {p.bib_number ? `(Peito: ${p.bib_number})` : ''}
+                        </option>
+                    ))}
+                </select>
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="bg-slate-50 min-h-screen pb-20">
+            <div className="bg-white border-b border-slate-200 px-6 py-6 mb-8">
+                <div className="max-w-4xl mx-auto">
+                    <button onClick={() => navigate(`/admin/championships/${id}`)} className="flex items-center text-slate-400 hover:text-slate-900 mb-4 transition-colors text-sm font-bold">
+                        <ArrowLeft className="w-4 h-4 mr-1" />
+                        Voltar para o Campeonato
+                    </button>
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className="w-14 h-14 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 border border-indigo-100">
+                                <Timer size={28} />
+                            </div>
+                            <div>
+                                <h1 className="text-2xl font-black text-slate-900 leading-tight">Cronômetro / Tempos</h1>
+                                <p className="text-slate-500 font-medium">Registre o tempo de cada atleta em tempo real.</p>
+                            </div>
+                        </div>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setShowManualTime(true)}
+                                className="flex items-center gap-2 bg-white border border-slate-200 text-slate-700 px-6 py-3 rounded-xl font-bold hover:bg-slate-50 transition-all shadow-sm"
+                            >
+                                Definir Manual
+                            </button>
+                            <button
+                                onClick={() => setShowStopwatch(true)}
+                                className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all"
+                            >
+                                <Play size={18} />
+                                Cronometrar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="max-w-4xl mx-auto px-6">
+                {/* ... existing table code ... */}
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="p-4 border-b border-slate-100 bg-slate-50/50">
+                        <h2 className="font-bold text-slate-700">Tempos Registrados</h2>
+                    </div>
+                    {loading ? (
+                        <div className="p-12 text-center text-slate-400 font-bold italic">Carregando...</div>
+                    ) : times.length === 0 ? (
+                        <div className="p-12 text-center text-slate-400 font-bold">Nenhum tempo registrado ainda.</div>
+                    ) : (
+                        <table className="w-full text-left">
+                            <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 text-xs uppercase font-black">
+                                <tr>
+                                    <th className="px-6 py-4">Atleta / Equipe</th>
+                                    <th className="px-6 py-4">Tempo</th>
+                                    <th className="px-6 py-4">Status</th>
+                                    <th className="px-6 py-4 text-right">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {times.map(t => (
+                                    <tr key={t.id} className="hover:bg-slate-50">
+                                        <td className="px-6 py-4">
+                                            <p className="font-bold text-slate-900">{t.user?.name || 'Desconhecido'}</p>
+                                            {t.team && <p className="text-xs text-indigo-600 font-bold uppercase">{t.team.name}</p>}
+                                        </td>
+                                        <td className="px-6 py-4 font-mono font-black text-slate-700 text-lg">
+                                            {formatTime(t.time_ms)}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded text-xs font-bold uppercase flex items-center gap-1 w-max">
+                                                <CheckCircle2 size={12} /> OK
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <button onClick={() => deleteTime(t.id)} className="text-red-500 hover:text-red-700 text-sm font-bold underline">Remover</button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
+            </div>
+
             {/* Stopwatch Modal */}
             {showStopwatch && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -186,22 +367,7 @@ export function AdminChampionshipTimes() {
                         </div>
                         
                         <div className="p-8">
-                            <div className="mb-8">
-                                <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Competidor na Raia/Pista</label>
-                                <select 
-                                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none"
-                                    value={selectedParticipant}
-                                    onChange={e => setSelectedParticipant(e.target.value)}
-                                    disabled={isRunning}
-                                >
-                                    <option value="">Selecione quem vai competir...</option>
-                                    {participants.map(p => (
-                                        <option key={p.user_id} value={p.user_id}>
-                                            {p.user?.name || p.name} {p.team ? `(${p.team.name})` : ''}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
+                            <SelectorUI />
 
                             <div className="text-center mb-10">
                                 <div className="font-mono text-7xl font-black text-slate-900 tracking-tighter tabular-nums mb-2">
@@ -244,6 +410,44 @@ export function AdminChampionshipTimes() {
                                     <Save size={24} /> SALVAR TEMPO FINAL
                                 </button>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Manual Time Modal */}
+            {showManualTime && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
+                                <Edit3 className="text-indigo-600" />
+                                Definir Tempo Manual
+                            </h2>
+                            <button onClick={() => setShowManualTime(false)} className="text-slate-400 hover:text-slate-600 font-bold">FECHAR</button>
+                        </div>
+                        
+                        <div className="p-8">
+                            <SelectorUI />
+
+                            <div className="mb-8">
+                                <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Tempo (Formato HH:MM:SS ou MM:SS)</label>
+                                <input 
+                                    type="text"
+                                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xl font-black text-center text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    placeholder="00:00:00"
+                                    value={manualTimeStr}
+                                    onChange={e => setManualTimeStr(e.target.value)}
+                                />
+                            </div>
+
+                            <button 
+                                onClick={saveManualTime}
+                                disabled={!selectedParticipant || !manualTimeStr}
+                                className="w-full flex items-center justify-center gap-2 bg-indigo-600 text-white p-4 rounded-2xl font-black text-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                            >
+                                <Save size={24} /> SALVAR REGISTRO
+                            </button>
                         </div>
                     </div>
                 </div>
