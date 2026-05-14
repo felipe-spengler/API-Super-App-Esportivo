@@ -8,6 +8,7 @@ use App\Models\CompetitorTime;
 use App\Models\Championship;
 use App\Models\Race;
 use App\Models\RaceResult;
+use App\Events\ChampionshipTimesUpdated;
 
 class AdminCompetitorTimeController extends Controller
 {
@@ -64,12 +65,15 @@ class AdminCompetitorTimeController extends Controller
             }
         }
 
+        broadcast(new ChampionshipTimesUpdated($championshipId));
+
         return response()->json($time, 201);
     }
     
     public function destroy($championshipId, $id)
     {
         CompetitorTime::where('championship_id', $championshipId)->where('id', $id)->delete();
+        broadcast(new ChampionshipTimesUpdated($championshipId));
         return response()->json(['message' => 'Deleted']);
     }
 }

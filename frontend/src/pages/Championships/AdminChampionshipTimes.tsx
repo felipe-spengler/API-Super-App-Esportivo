@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Timer, ArrowLeft, Play, Square, Save, RotateCcw, User, CheckCircle2 } from 'lucide-react';
 import api from '../../services/api';
+import echo from '../../services/echo';
 
 export function AdminChampionshipTimes() {
     const { id } = useParams();
@@ -34,11 +35,23 @@ export function AdminChampionshipTimes() {
 
     useEffect(() => {
         loadData();
+
+        if (id) {
+            const channelName = `championship.${id}`;
+            const channel = echo.channel(channelName);
+            channel.listen('ChampionshipTimesUpdated', () => {
+                loadData(false); // reload without global loader
+            });
+
+            return () => {
+                echo.leave(channelName);
+            };
+        }
     }, [id]);
 
-    async function loadData() {
+    async function loadData(showLoader = true) {
         try {
-            setLoading(true);
+            if (showLoader) setLoading(true);
             const [timesRes, participantsRes, champRes] = await Promise.all([
                 api.get(`/admin/championships/${id}/times`),
                 api.get(`/championships/${id}/participants`), // Assume this exists or we can use another route
@@ -261,6 +274,29 @@ export function AdminChampionshipTimes() {
             alert('Erro ao salvar resultados em lote.');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const addOneLap = async (userId: string) => {
+        try {
+            const participant = participants.find(p => p.user_id.toString() === userId);
+            const userTimes = times.filter(t => t.user_id?.toString() === userId);
+            const nextLap = userTimes.length + 1;
+            
+            const elapsedMs = ((countdownMinutesInput * 60) - countdownTimeLeft) * 1000;
+
+            await api.post(`/admin/championships/${id}/times`, {
+                user_id: participant?.user_id,
+                team_id: participant?.team_id,
+                category_id: participant?.category_id,
+                time_ms: elapsedMs,
+                lap: nextLap,
+                status: 'completed'
+            });
+            // Reverb vai atualizar a tela para todos
+        } catch (error) {
+            console.error(error);
+            alert('Erro ao salvar volta.');
         }
     };
 
@@ -617,6 +653,37 @@ export function AdminChampionshipTimes() {
                                         <RotateCcw size={28} /> REINICIAR
                                     </button>
                                 </div>
+
+                                {isCountdownRunning && (
+                                    <div className="mt-8 animate-in fade-in duration-500">
+                                        <h3 className="font-black text-slate-800 text-lg mb-4 text-center">Registro Rápido (+1 Volta)</h3>
+                                        <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar text-left">
+                                            {participants.map(p => {
+                                                const userLaps = times.filter(t => t.user_id === p.user_id).length;
+                                                return (
+                                                    <div key={p.user_id} className="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                                                        <div>
+                                                            <p className="font-bold text-slate-900">{p.name}</p>
+                                                            {p.team && <p className="text-xs text-indigo-600 font-bold uppercase">{p.team.name}</p>}
+                                                        </div>
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="text-center px-3 border-r border-slate-100">
+                                                                <span className="block text-[10px] font-bold text-slate-400 uppercase leading-none mb-1">Voltas</span>
+                                                                <span className="block text-xl font-black text-slate-700 leading-none">{userLaps}</span>
+                                                            </div>
+                                                            <button 
+                                                                onClick={() => addOneLap(p.user_id.toString())}
+                                                                className="bg-indigo-100 text-indigo-700 hover:bg-indigo-600 hover:text-white px-4 py-3 rounded-xl font-black transition-all active:scale-95"
+                                                            >
+                                                                +1 VOLTA
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
                             ) : (
                                 <div className="animate-in fade-in duration-500">
                                     <div className="bg-orange-50 border border-orange-200 rounded-2xl p-6 mb-6">
