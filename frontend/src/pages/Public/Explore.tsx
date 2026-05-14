@@ -29,8 +29,12 @@ export function Explore() {
 
                 if (sportName && sportName !== 'Todos') {
                     filtered = filtered.filter((c: any) => {
-                        const s = c.sport?.name || c.sport?.slug || c.sport_name || '';
-                        return s.toString().toLowerCase() === sportName.toLowerCase();
+                        const name = (c.sport?.name || c.sport_name || '').toString().toLowerCase();
+                        const slug = (c.sport?.slug || '').toString().toLowerCase();
+                        const search = sportName.toLowerCase();
+                        const normalize = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                        
+                        return name === search || slug === search || normalize(name) === normalize(search);
                     });
                 }
                 setChampionships(filtered);
