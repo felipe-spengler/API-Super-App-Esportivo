@@ -28,8 +28,8 @@ export function AdminChampionshipDetails() {
             const data = response.data;
             setChampionship(data);
 
-            // Redireciona para a nova área individual se for esporte individual ou corrida
-            if (data.registration_type === 'individual' || data.format === 'racing') {
+            // Redireciona para a nova área individual se for esporte individual
+            if (data.registration_type === 'individual') {
                 navigate(`/admin/individual/championships/${id}`, { replace: true });
                 return;
             }
@@ -202,7 +202,7 @@ export function AdminChampionshipDetails() {
                     </Link>
 
                     {/* Card Tabela / Jogos */}
-                    {championship.format !== 'time_ranking' && (
+                    {!['time_ranking', 'laps', 'racing'].includes(championship.format) && (
                         <Link to={appendCat(`/admin/championships/${id}/matches`)} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow group">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="font-bold text-gray-900 flex items-center gap-2">
@@ -218,7 +218,7 @@ export function AdminChampionshipDetails() {
                     )}
 
                     {/* Card Cronômetro / Natação */}
-                    {championship.format === 'time_ranking' && (
+                    {['time_ranking', 'laps', 'racing'].includes(championship.format) && (
                         <Link to={appendCat(`/admin/championships/${id}/times`)} className="bg-gradient-to-br from-cyan-500 to-blue-600 p-6 rounded-xl shadow-lg hover:shadow-xl transition-all group text-white">
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="font-bold flex items-center gap-2">
