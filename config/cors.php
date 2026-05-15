@@ -23,7 +23,8 @@ return [
     'allowed_origins' => [
         'https://esportivo.techinteligente.site',  // web produção
         'http://localhost:5173',                    // dev local Vite
-        'http://localhost',                         // Android WebView (Capacitor)
+        'http://localhost',                         // Android WebView (Capacitor antigo)
+        'https://localhost',                        // Android WebView (Capacitor novo)
         'capacitor://localhost',                    // iOS Capacitor
         'ionic://localhost',                        // Ionic compat
         'http://gg8sko0ook088www8s0cswgo.72.61.37.70.sslip.io', // Novo frontend (Coolify temp)
