@@ -128,7 +128,7 @@ export function PublicLayout() {
               * 5. All text uses translate='no' to prevent Safari's auto-translate from replacing menu labels
               */}
             <div
-                className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 border-t border-slate-100 z-[9999] shadow-[0_-8px_30px_rgb(0,0,0,0.04)]"
+                className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 border-t border-slate-100 z-40 shadow-[0_-8px_30px_rgb(0,0,0,0.04)]"
                 style={{
                     paddingBottom: 'env(safe-area-inset-bottom, 0px)',
                     WebkitTransform: 'translateZ(0)',

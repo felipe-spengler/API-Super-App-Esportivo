@@ -1,0 +1,9 @@
+Relatório de Teste Fechado - Play Store
+
+Problemas Encontrados e Resolvidos:
+
+1. Problema: Falha de Conexão no Aplicativo Mobile (WebView)
+   Descrição: Durante os testes, o aplicativo Android apresentou falhas ao tentar se comunicar com a API do backend, impedindo o carregamento dos dados e o funcionamento do app.
+   Resolução: O problema foi identificado como uma restrição nas políticas de CORS (Cross-Origin Resource Sharing). Atualizamos as configurações de CORS no servidor para permitir que as requisições originadas pela WebView do aplicativo móvel fossem aceitas com segurança, normalizando completamente a comunicação.
+
+[Este arquivo será atualizado com outros apontamentos conforme a progressão do teste fechado]
