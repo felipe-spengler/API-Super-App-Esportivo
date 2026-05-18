@@ -763,21 +763,21 @@ class EventController extends Controller
         $participants = [];
 
         if ($championship->registration_type === 'team') {
-            $teams = \App\Models\Team::whereHas('championships', function($q) use ($championshipId) {
-                $q->where('championship_id', $championshipId);
-            })->with('players.user')->get();
+            $teams = $championship->teams()->with([
+                'players' => function($q) use ($championshipId) {
+                    $q->where('team_players.championship_id', $championshipId);
+                }
+            ])->get();
 
             foreach ($teams as $team) {
                 foreach ($team->players as $player) {
-                    if ($player->user) {
-                        $participants[] = [
-                            'user_id' => $player->user->id,
-                            'name' => $player->user->name,
-                            'team_id' => $team->id,
-                            'team' => ['name' => $team->name],
-                            'category_id' => null, // Opcional, pode ser extraído se a equipe estiver associada a categoria
-                        ];
-                    }
+                    $participants[] = [
+                        'user_id' => $player->id,
+                        'name' => $player->name,
+                        'team_id' => $team->id,
+                        'team' => ['name' => $team->name],
+                        'category_id' => $team->pivot->category_id ?? null,
+                    ];
                 }
             }
         } else {

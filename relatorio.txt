@@ -6,4 +6,8 @@ Problemas Encontrados e Resolvidos:
    Descrição: Durante os testes, o aplicativo Android apresentou falhas ao tentar se comunicar com a API do backend, impedindo o carregamento dos dados e o funcionamento do app.
    Resolução: O problema foi identificado como uma restrição nas políticas de CORS (Cross-Origin Resource Sharing). Atualizamos as configurações de CORS no servidor para permitir que as requisições originadas pela WebView do aplicativo móvel fossem aceitas com segurança, normalizando completamente a comunicação.
 
+2. Problema: Times e Jogadores não aparecem no modal de Cronômetro Real-time
+   Descrição: O modal de iniciar cronômetro ficava em branco, impedindo a seleção de competidores (times e atletas). No console, o endpoint `/api/championships/{championship_id}/participants` retornava erro 500.
+   Resolução: Identificamos um erro no backend ao tentar carregar uma relação inexistente `.user` no modelo `User` (pois `$team->players` já retorna objetos da classe `User`). Ajustamos a query do Eloquent para carregar os participantes corretamente e buscar o `category_id` associado dinamicamente a partir do pivot da relação `championship_team`.
+
 [Este arquivo será atualizado com outros apontamentos conforme a progressão do teste fechado]
