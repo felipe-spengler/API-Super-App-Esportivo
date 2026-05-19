@@ -103,7 +103,7 @@ export function AdminChampionshipTimes() {
     const saveTime = async () => {
         if (!selectedParticipant) return;
         try {
-            const participant = participants.find(p => p.user_id.toString() === selectedParticipant);
+            const participant = participants.find(p => p.user_id?.toString() === selectedParticipant);
             await api.post(`/admin/championships/${id}/times`, {
                 user_id: participant?.user_id,
                 team_id: participant?.team_id,
@@ -130,7 +130,7 @@ export function AdminChampionshipTimes() {
         }
 
         try {
-            const currentPart = participants.find(p => p.user_id.toString() === selectedParticipant);
+            const currentPart = participants.find(p => p.user_id?.toString() === selectedParticipant);
             
             // Save time for current competitor
             await api.post(`/admin/championships/${id}/times`, {
@@ -160,7 +160,7 @@ export function AdminChampionshipTimes() {
     const recordLap = async () => {
         if (!selectedParticipant) return;
         try {
-            const participant = participants.find(p => p.user_id.toString() === selectedParticipant);
+            const participant = participants.find(p => p.user_id?.toString() === selectedParticipant);
             await api.post(`/admin/championships/${id}/times`, {
                 user_id: participant?.user_id,
                 team_id: participant?.team_id,
@@ -294,7 +294,7 @@ export function AdminChampionshipTimes() {
             const entries = Object.entries(bulkLaps).filter(([_, laps]) => laps > 0);
             
             const promises = entries.map(([userId, laps]) => {
-                const participant = participants.find(p => p.user_id.toString() === userId);
+                const participant = participants.find(p => p.user_id?.toString() === userId);
                 return api.post(`/admin/championships/${id}/times`, {
                     user_id: participant?.user_id,
                     team_id: participant?.team_id,
@@ -321,7 +321,7 @@ export function AdminChampionshipTimes() {
 
     const addOneLap = async (userId: string) => {
         try {
-            const participant = participants.find(p => p.user_id.toString() === userId);
+            const participant = participants.find(p => p.user_id?.toString() === userId);
             const userTimes = times.filter(t => t.user_id?.toString() === userId);
             const nextLap = userTimes.length + 1;
             
@@ -354,7 +354,7 @@ export function AdminChampionshipTimes() {
         }
         
         try {
-            const participant = participants.find(p => p.user_id.toString() === selectedParticipant);
+            const participant = participants.find(p => p.user_id?.toString() === selectedParticipant);
             await api.post(`/admin/championships/${id}/times`, {
                 user_id: participant?.user_id,
                 team_id: participant?.team_id,
@@ -597,7 +597,7 @@ export function AdminChampionshipTimes() {
                                         >
                                             <option value="">Selecione o próximo...</option>
                                             {participants
-                                                .filter(p => p.user_id.toString() !== selectedParticipant)
+                                                .filter(p => p.user_id?.toString() !== selectedParticipant)
                                                 .map(p => (
                                                     <option key={p.user_id} value={p.user_id}>{p.name}</option>
                                                 ))
@@ -840,7 +840,7 @@ export function AdminChampionshipTimes() {
                                                                     <span className="block text-xl font-black text-slate-700 leading-none">{userLapsCount}</span>
                                                                 </div>
                                                                 <button 
-                                                                    onClick={() => addOneLap(p.user_id.toString())}
+                                                                    onClick={() => addOneLap(p.user_id?.toString())}
                                                                     className="bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-widest px-4 py-3 rounded-xl transition-all shadow-md shadow-indigo-150 active:scale-95"
                                                                 >
                                                                     +1 Volta

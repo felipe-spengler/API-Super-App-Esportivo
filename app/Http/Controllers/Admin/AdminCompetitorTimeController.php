@@ -40,15 +40,21 @@ class AdminCompetitorTimeController extends Controller
             'lap' => 'nullable|integer'
         ]);
 
-        $time = CompetitorTime::create([
+        $insertData = [
             'championship_id' => $championshipId,
             'category_id' => $request->category_id,
             'team_id' => $request->team_id,
             'user_id' => $request->user_id,
             'time_ms' => $request->time_ms,
-            'lap' => $request->lap ?? 1,
             'status' => $request->status ?? 'completed'
-        ]);
+        ];
+
+        // Check if the 'lap' column exists (in case the production VPS hasn't run the migrations yet!)
+        if (\Schema::hasColumn('competitor_times', 'lap')) {
+            $insertData['lap'] = $request->lap ?? 1;
+        }
+
+        $time = CompetitorTime::create($insertData);
 
         // Auto-sync com RaceResult se for campeonato individual
         $championship = Championship::find($championshipId);
