@@ -348,24 +348,45 @@ export function AdminChampionshipTimes() {
     };
 
     const addOneLap = async (userId: string) => {
-        try {
-            const participant = participants.find(p => p.user_id?.toString() === userId);
-            const userTimes = times.filter(t => t.user_id?.toString() === userId);
-            const nextLap = userTimes.length + 1;
-            
-            const elapsedMs = ((countdownMinutesInput * 60) - countdownTimeLeft) * 1000;
+        const participant = participants.find(p => p.user_id?.toString() === userId);
+        if (!participant) return;
 
-            await api.post(`/admin/championships/${id}/times`, {
-                user_id: participant?.user_id,
-                team_id: participant?.team_id,
-                category_id: participant?.category_id,
+        const userTimes = times.filter(t => t.user_id?.toString() === userId);
+        const nextLap = userTimes.length + 1;
+        const elapsedMs = ((countdownMinutesInput * 60) - countdownTimeLeft) * 1000;
+
+        const optimisticId = `optimistic-${Date.now()}`;
+        const optimisticTime = {
+            id: optimisticId,
+            user_id: participant.user_id,
+            team_id: participant.team_id,
+            category_id: participant.category_id,
+            time_ms: elapsedMs,
+            lap: nextLap,
+            status: 'completed',
+            user: { name: participant.name }
+        };
+
+        // UI updates INSTANTLY (0ms delay!)
+        setTimes(prev => [...prev, optimisticTime]);
+
+        try {
+            // Save to database in the background without blocking the main thread
+            const res = await api.post(`/admin/championships/${id}/times`, {
+                user_id: participant.user_id,
+                team_id: participant.team_id,
+                category_id: participant.category_id,
                 time_ms: elapsedMs,
                 lap: nextLap,
                 status: 'completed'
             });
-            // Reverb vai atualizar a tela para todos
+
+            // Replace local optimistic item with the database record once returned
+            setTimes(prev => prev.map(t => t.id === optimisticId ? res.data : t));
         } catch (error) {
             console.error(error);
+            // Revert state if the API fails
+            setTimes(prev => prev.filter(t => t.id !== optimisticId));
             alert('Erro ao salvar volta.');
         }
     };
@@ -801,7 +822,11 @@ export function AdminChampionshipTimes() {
                                             <p className="text-xs text-slate-400 italic font-medium">Nenhuma volta registrada ainda nesta prova.</p>
                                         ) : (
                                             [...times]
-                                                .sort((a, b) => b.id - a.id)
+                                                .sort((a, b) => {
+                                                    const idA = typeof a.id === 'string' ? 999999999 + parseInt(a.id.split('-')[1] || '0') : a.id;
+                                                    const idB = typeof b.id === 'string' ? 999999999 + parseInt(b.id.split('-')[1] || '0') : b.id;
+                                                    return idB - idA;
+                                                })
                                                 .slice(0, 4)
                                                 .map(t => (
                                                     <div key={t.id} className="flex justify-between items-center bg-white p-3 rounded-xl border border-slate-100 shadow-sm text-xs animate-in slide-in-from-bottom-2 duration-250">
@@ -815,7 +840,8 @@ export function AdminChampionshipTimes() {
                                                             <span className="font-mono font-black text-slate-500">{formatTime(t.time_ms)}</span>
                                                             <button 
                                                                 onClick={() => deleteTime(t.id)} 
-                                                                className="text-slate-300 hover:text-rose-600 transition-colors p-1 rounded hover:bg-rose-50"
+                                                                disabled={typeof t.id === 'string'}
+                                                                className="text-slate-300 hover:text-rose-600 transition-colors p-1 rounded hover:bg-rose-50 disabled:opacity-30"
                                                             >
                                                                 <Trash2 size={14} />
                                                             </button>
