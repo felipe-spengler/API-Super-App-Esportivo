@@ -10,4 +10,8 @@ Problemas Encontrados e Resolvidos:
    Descrição: O modal de iniciar cronômetro ficava em branco, impedindo a seleção de competidores (times e atletas). No console, o endpoint `/api/championships/{championship_id}/participants` retornava erro 500.
    Resolução: Identificamos um erro no backend ao tentar carregar uma relação inexistente `.user` no modelo `User` (pois `$team->players` já retorna objetos da classe `User`). Ajustamos a query do Eloquent para carregar os participantes corretamente e buscar o `category_id` associado dinamicamente a partir do pivot da relação `championship_team`.
 
+3. Problema: Erro 500 ao salvar tempo final no cronômetro
+   Descrição: Ao clicar em "Salvar Tempo Final", o sistema retornava erro 500 interno.
+   Resolução: O erro ocorria na transmissão síncrona do evento WebSocket `ChampionshipTimesUpdated` (`ShouldBroadcastNow`), devido a falhas de comunicação interna com o servidor Reverb na VPS (a porta 9090 não fica aberta externamente para a rede pública da VPS). Envolvemos todas as chamadas de transmissão (`broadcast`) em blocos `try-catch` para registrar avisos em log sem interromper a execução do fluxo e nem causar falhas na gravação dos dados no banco.
+
 [Este arquivo será atualizado com outros apontamentos conforme a progressão do teste fechado]

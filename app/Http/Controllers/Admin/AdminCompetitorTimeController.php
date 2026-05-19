@@ -65,7 +65,11 @@ class AdminCompetitorTimeController extends Controller
             }
         }
 
-        broadcast(new ChampionshipTimesUpdated($championshipId));
+        try {
+            broadcast(new ChampionshipTimesUpdated($championshipId));
+        } catch (\Exception $e) {
+            \Log::warning("Erro ao transmitir evento de atualizacao de tempos: " . $e->getMessage());
+        }
 
         return response()->json($time, 201);
     }
@@ -73,7 +77,11 @@ class AdminCompetitorTimeController extends Controller
     public function destroy($championshipId, $id)
     {
         CompetitorTime::where('championship_id', $championshipId)->where('id', $id)->delete();
-        broadcast(new ChampionshipTimesUpdated($championshipId));
+        try {
+            broadcast(new ChampionshipTimesUpdated($championshipId));
+        } catch (\Exception $e) {
+            \Log::warning("Erro ao transmitir evento de exclusao de tempos: " . $e->getMessage());
+        }
         return response()->json(['message' => 'Deleted']);
     }
 }
