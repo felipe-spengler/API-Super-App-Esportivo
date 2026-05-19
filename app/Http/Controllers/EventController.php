@@ -763,14 +763,33 @@ class EventController extends Controller
         $participants = [];
 
         if ($championship->registration_type === 'team') {
-            $teams = $championship->teams()->with([
-                'players' => function($q) use ($championshipId) {
-                    $q->where('team_players.championship_id', $championshipId);
-                }
-            ])->get();
+            try {
+                // Try to filter players by championship_id OR null (global team players)
+                $teams = $championship->teams()->with([
+                    'players' => function($q) use ($championshipId) {
+                        $q->where(function($sq) use ($championshipId) {
+                            $sq->where('team_players.championship_id', $championshipId)
+                               ->orWhereNull('team_players.championship_id');
+                        });
+                    }
+                ])->get();
+            } catch (\Throwable $e) {
+                // Fallback: If migration hasn't been run on server yet, load all rostered players
+                \Log::warning("Erro ao carregar jogadores com championship_id, usando fallback: " . $e->getMessage());
+                $teams = $championship->teams()->with('players')->get();
+            }
 
             foreach ($teams as $team) {
-                foreach ($team->players as $player) {
+                $players = $team->players;
+                // If the filtered query returned no players, load all team roster as fallback
+                if ($players->isEmpty()) {
+                    $fullTeam = \App\Models\Team::with('players')->find($team->id);
+                    if ($fullTeam) {
+                        $players = $fullTeam->players;
+                    }
+                }
+
+                foreach ($players as $player) {
                     $participants[] = [
                         'user_id' => $player->id,
                         'name' => $player->name,

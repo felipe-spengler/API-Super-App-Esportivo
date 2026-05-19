@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Timer, ArrowLeft, Play, Square, Save, RotateCcw, User, CheckCircle2 } from 'lucide-react';
+import { Timer, ArrowLeft, Play, Square, Save, RotateCcw, User, CheckCircle2, Trash2, Search } from 'lucide-react';
 import api from '../../services/api';
 import echo from '../../services/echo';
 
@@ -32,6 +32,12 @@ export function AdminChampionshipTimes() {
 
     // Bulk Lap/Distance Input State (userId -> laps)
     const [bulkLaps, setBulkLaps] = useState<Record<string, number>>({});
+    const [searchTerm, setSearchTerm] = useState('');
+
+    // Relay state
+    const [isRelayMode, setIsRelayMode] = useState(false);
+    const [nextParticipant, setNextParticipant] = useState('');
+    const [relayHistory, setRelayHistory] = useState<{ name: string; time: number }[]>([]);
 
     useEffect(() => {
         loadData();
@@ -91,6 +97,7 @@ export function AdminChampionshipTimes() {
         if (timerRef.current) clearInterval(timerRef.current);
         setTimeMs(0);
         setCurrentLap(1);
+        setRelayHistory([]);
     };
 
     const saveTime = async () => {
@@ -112,6 +119,41 @@ export function AdminChampionshipTimes() {
         } catch (error) {
             console.error(error);
             alert('Erro ao salvar tempo.');
+        }
+    };
+
+    const passBaton = async () => {
+        if (!selectedParticipant) return;
+        if (!nextParticipant) {
+            alert('Selecione o próximo competidor para passar o bastão!');
+            return;
+        }
+
+        try {
+            const currentPart = participants.find(p => p.user_id.toString() === selectedParticipant);
+            
+            // Save time for current competitor
+            await api.post(`/admin/championships/${id}/times`, {
+                user_id: currentPart?.user_id,
+                team_id: currentPart?.team_id,
+                category_id: currentPart?.category_id,
+                time_ms: timeMs,
+                lap: currentLap,
+                status: 'completed'
+            });
+
+            // Add to local relay history
+            setRelayHistory(prev => [...prev, { name: currentPart?.name || 'Atleta', time: timeMs }]);
+
+            // Switch to next competitor and keep timer running!
+            setSelectedParticipant(nextParticipant);
+            setNextParticipant('');
+            
+            // Trigger a data reload in the background
+            loadData(false);
+        } catch (error) {
+            console.error(error);
+            alert('Erro ao passar o bastão.');
         }
     };
 
@@ -481,6 +523,23 @@ export function AdminChampionshipTimes() {
                         </div>
                         
                         <div className="p-8">
+                            <div className="flex items-center justify-between bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 mb-6">
+                                <div className="text-left">
+                                    <span className="block font-black text-slate-800 text-sm">Modo Revezamento 🏃💨</span>
+                                    <span className="block text-[10px] text-slate-500 font-bold">Alternar atleta sem parar o tempo</span>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={isRelayMode} 
+                                        onChange={e => setIsRelayMode(e.target.checked)} 
+                                        className="sr-only peer"
+                                        disabled={isRunning}
+                                    />
+                                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                                </label>
+                            </div>
+
                             <SelectorUI />
 
                             <div className="text-center mb-10">
@@ -525,6 +584,51 @@ export function AdminChampionshipTimes() {
                                 >
                                     <Save size={24} /> MARCAR VOLTA {currentLap}
                                 </button>
+                            )}
+
+                            {isRelayMode && isRunning && (
+                                <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-2xl animate-in slide-in-from-top-2 duration-200 text-left">
+                                    <label className="block text-[10px] font-black text-amber-800 uppercase tracking-wider mb-2">Próximo Atleta (Passar Bastão)</label>
+                                    <div className="flex gap-2">
+                                        <select 
+                                            className="flex-1 p-3 bg-white border border-amber-200 rounded-xl font-bold text-slate-700 outline-none focus:ring-2 focus:ring-amber-500"
+                                            value={nextParticipant}
+                                            onChange={e => setNextParticipant(e.target.value)}
+                                        >
+                                            <option value="">Selecione o próximo...</option>
+                                            {participants
+                                                .filter(p => p.user_id.toString() !== selectedParticipant)
+                                                .map(p => (
+                                                    <option key={p.user_id} value={p.user_id}>{p.name}</option>
+                                                ))
+                                            }
+                                        </select>
+                                        <button
+                                            onClick={passBaton}
+                                            disabled={!nextParticipant}
+                                            className="bg-amber-500 text-white font-black px-4 py-3 rounded-xl hover:bg-amber-600 transition-all flex items-center gap-1 text-sm disabled:opacity-50"
+                                        >
+                                            Passar Bastão 🏃
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {isRelayMode && relayHistory.length > 0 && (
+                                <div className="mt-6 border-t border-slate-150 pt-4 text-left">
+                                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-3">Tempos do Revezamento</h4>
+                                    <div className="space-y-2 max-h-[140px] overflow-y-auto pr-1">
+                                        {relayHistory.map((item, idx) => (
+                                            <div key={idx} className="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-100 text-xs">
+                                                <div>
+                                                    <span className="font-bold text-slate-800">{item.name}</span>
+                                                    <span className="ml-2 bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded-full text-[10px] font-black">Segmento #{idx + 1}</span>
+                                                </div>
+                                                <span className="font-mono font-black text-slate-650">{formatTime(item.time)}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
                             )}
 
                             {timeMs > 0 && !isRunning && (
@@ -594,135 +698,171 @@ export function AdminChampionshipTimes() {
             {/* Global Countdown Modal */}
             {showCountdown && (
                 <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-                    <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl animate-in zoom-in-95 duration-200 my-8">
-                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-orange-50 rounded-t-3xl">
+                    <div className="bg-white rounded-3xl w-full max-w-4xl shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden my-8">
+                        {/* Header */}
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-orange-50">
                             <h2 className="text-xl font-black text-orange-900 flex items-center gap-2">
-                                <Timer className="text-orange-600" />
-                                Temporizador Global (Teste Fixo)
+                                <Timer className="text-orange-600 animate-pulse" />
+                                Painel de Controle de Voltas (Tempo Regressivo)
                             </h2>
-                            <button onClick={() => { pauseCountdown(); setShowCountdown(false); }} className="text-slate-400 hover:text-slate-600 font-bold">FECHAR</button>
+                            <button onClick={() => { pauseCountdown(); setShowCountdown(false); }} className="text-slate-400 hover:text-slate-600 font-bold transition-colors">FECHAR</button>
                         </div>
-                        
-                        <div className="p-8">
-                            {!isCountdownRunning && !isCountdownFinished && countdownTimeLeft === countdownMinutesInput * 60 && (
-                                <div className="mb-8 p-4 bg-slate-50 rounded-2xl border border-slate-200 text-center">
-                                    <label className="block text-sm font-black text-slate-500 uppercase tracking-wider mb-3">Definir Tempo da Prova (Minutos)</label>
-                                    <input 
-                                        type="number"
-                                        min="1"
-                                        value={countdownMinutesInput}
-                                        onChange={e => {
-                                            setCountdownMinutesInput(parseInt(e.target.value) || 1);
-                                            setCountdownTimeLeft((parseInt(e.target.value) || 1) * 60);
-                                        }}
-                                        className="w-32 text-center p-3 bg-white border border-slate-300 rounded-xl font-black text-2xl outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
-                                    />
-                                </div>
-                            )}
 
-                            <div className="text-center mb-10">
-                                <div className={`font-mono text-8xl font-black tracking-tighter tabular-nums mb-2 transition-colors ${isCountdownFinished ? 'text-red-500 animate-pulse' : 'text-slate-900'}`}>
-                                    {formatCountdown(countdownTimeLeft)}
-                                </div>
-                                <p className="text-slate-400 font-bold uppercase tracking-widest text-sm">
-                                    {isCountdownFinished ? 'Tempo Esgotado!' : 'Contagem Regressiva'}
-                                </p>
-                            </div>
+                        {/* Dashboard Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-12 divide-y md:divide-y-0 md:divide-x divide-slate-100">
+                            {/* Left Column: Timer & Controls (5 cols) */}
+                            <div className="col-span-1 md:col-span-5 p-8 flex flex-col justify-between bg-slate-50/50">
+                                <div>
+                                    {!isCountdownRunning && !isCountdownFinished && countdownTimeLeft === countdownMinutesInput * 60 && (
+                                        <div className="mb-6 p-4 bg-white rounded-2xl border border-slate-200 text-center shadow-sm">
+                                            <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Tempo da Prova (Minutos)</label>
+                                            <input 
+                                                type="number"
+                                                min="1"
+                                                value={countdownMinutesInput}
+                                                onChange={e => {
+                                                    const val = parseInt(e.target.value) || 1;
+                                                    setCountdownMinutesInput(val);
+                                                    setCountdownTimeLeft(val * 60);
+                                                }}
+                                                className="w-24 text-center p-2 bg-slate-50 border border-slate-200 rounded-xl font-black text-xl outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                            />
+                                        </div>
+                                    )}
 
-                            {!isCountdownFinished ? (
-                                <>
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="text-center py-8 bg-white rounded-3xl border border-slate-100 shadow-sm mb-6">
+                                        <div className={`font-mono text-6xl md:text-7xl font-black tracking-tighter tabular-nums mb-2 transition-colors ${isCountdownFinished ? 'text-rose-600 animate-pulse' : 'text-slate-900'}`}>
+                                            {formatCountdown(countdownTimeLeft)}
+                                        </div>
+                                        <p className="text-xs text-slate-400 font-black uppercase tracking-widest">
+                                            {isCountdownFinished ? 'Tempo Esgotado!' : 'Contagem Regressiva'}
+                                        </p>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3 mb-6">
                                         {!isCountdownRunning ? (
                                             <button 
                                                 onClick={startCountdown}
-                                                className="flex items-center justify-center gap-2 bg-emerald-500 text-white p-5 rounded-2xl font-black text-xl hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-200"
+                                                className="flex items-center justify-center gap-1.5 bg-emerald-500 text-white py-3.5 px-4 rounded-xl font-black hover:bg-emerald-600 transition-all shadow-md shadow-emerald-100"
                                             >
-                                                <Play size={28} /> INICIAR PROVA
+                                                <Play size={18} /> INICIAR
                                             </button>
                                         ) : (
                                             <button 
                                                 onClick={pauseCountdown}
-                                                className="flex items-center justify-center gap-2 bg-rose-500 text-white p-5 rounded-2xl font-black text-xl hover:bg-rose-600 transition-colors shadow-[0_0_20px_rgba(244,63,94,0.4)]"
+                                                className="flex items-center justify-center gap-1.5 bg-rose-500 text-white py-3.5 px-4 rounded-xl font-black hover:bg-rose-600 transition-all shadow-md shadow-rose-100"
                                             >
-                                                <Square size={28} /> PAUSAR
+                                                <Square size={18} /> PAUSAR
                                             </button>
                                         )}
                                         <button 
                                             onClick={resetCountdown}
-                                            className="flex items-center justify-center gap-2 bg-slate-100 text-slate-600 p-5 rounded-2xl font-black text-xl hover:bg-slate-200 transition-colors"
+                                            className="flex items-center justify-center gap-1.5 bg-slate-200 text-slate-600 py-3.5 px-4 rounded-xl font-black hover:bg-slate-300 transition-all"
                                         >
-                                            <RotateCcw size={28} /> REINICIAR
+                                            <RotateCcw size={18} /> REINICIAR
                                         </button>
                                     </div>
+                                </div>
 
-                                    {isCountdownRunning && (
-                                        <div className="mt-8 animate-in fade-in duration-500">
-                                            <h3 className="font-black text-slate-800 text-lg mb-4 text-center">Registro Rápido (+1 Volta)</h3>
-                                            <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar text-left">
-                                                {participants.map(p => {
-                                                    const userLaps = times.filter(t => t.user_id === p.user_id).length;
+                                {/* Last Laps Feed */}
+                                <div className="mt-4 border-t border-slate-200 pt-6">
+                                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider mb-3">Últimas Voltas Salvas</h3>
+                                    <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                                        {times.length === 0 ? (
+                                            <p className="text-xs text-slate-400 italic font-medium">Nenhuma volta registrada ainda nesta prova.</p>
+                                        ) : (
+                                            [...times]
+                                                .sort((a, b) => b.id - a.id)
+                                                .slice(0, 4)
+                                                .map(t => (
+                                                    <div key={t.id} className="flex justify-between items-center bg-white p-3 rounded-xl border border-slate-100 shadow-sm text-xs animate-in slide-in-from-bottom-2 duration-250">
+                                                        <div>
+                                                            <p className="font-bold text-slate-800 leading-tight">{t.user?.name || 'Atleta'}</p>
+                                                            <span className="inline-block mt-1 bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-[10px] font-black">
+                                                                Volta #{t.lap}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex items-center gap-3">
+                                                            <span className="font-mono font-black text-slate-500">{formatTime(t.time_ms)}</span>
+                                                            <button 
+                                                                onClick={() => deleteTime(t.id)} 
+                                                                className="text-slate-300 hover:text-rose-600 transition-colors p-1 rounded hover:bg-rose-50"
+                                                            >
+                                                                <Trash2 size={14} />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Right Column: Competitors List & Filter (7 cols) */}
+                            <div className="col-span-1 md:col-span-7 p-8 flex flex-col bg-white">
+                                {/* Search */}
+                                <div className="flex items-center justify-between gap-4 mb-6">
+                                    <div className="relative flex-1">
+                                        <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                        <input 
+                                            type="text"
+                                            placeholder="Buscar competidor pelo nome ou peito..."
+                                            value={searchTerm}
+                                            onChange={e => setSearchTerm(e.target.value)}
+                                            className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Competitors List */}
+                                <div className="flex-1 overflow-y-auto max-h-[50vh] pr-2 custom-scrollbar">
+                                    {participants.length === 0 ? (
+                                        <div className="text-center py-12 text-slate-400 font-bold">Nenhum competidor cadastrado.</div>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            {participants
+                                                .filter(p => 
+                                                    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                                    (p.team?.name && p.team.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                                                )
+                                                .map(p => {
+                                                    const userTimes = times.filter(t => t.user_id === p.user_id);
+                                                    const userLapsCount = userTimes.length;
                                                     return (
-                                                        <div key={p.user_id} className="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-                                                            <div>
-                                                                <p className="font-bold text-slate-900">{p.name}</p>
-                                                                {p.team && <p className="text-xs text-indigo-600 font-bold uppercase">{p.team.name}</p>}
+                                                        <div key={p.user_id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 shadow-sm transition-all hover:bg-slate-100/50">
+                                                            <div className="flex-1 min-w-0 pr-4">
+                                                                <p className="font-black text-slate-800 truncate text-sm">{p.name}</p>
+                                                                {p.team && <p className="text-xs text-indigo-600 font-black uppercase tracking-wider">{p.team.name}</p>}
                                                             </div>
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="text-center px-3 border-r border-slate-100">
-                                                                    <span className="block text-[10px] font-bold text-slate-400 uppercase leading-none mb-1">Voltas</span>
-                                                                    <span className="block text-xl font-black text-slate-700 leading-none">{userLaps}</span>
+                                                            <div className="flex items-center gap-4">
+                                                                <div className="text-center px-4 border-r border-slate-200">
+                                                                    <span className="block text-[9px] font-black text-slate-400 uppercase leading-none mb-1">Voltas</span>
+                                                                    <span className="block text-xl font-black text-slate-700 leading-none">{userLapsCount}</span>
                                                                 </div>
                                                                 <button 
                                                                     onClick={() => addOneLap(p.user_id.toString())}
-                                                                    className="bg-indigo-100 text-indigo-700 hover:bg-indigo-600 hover:text-white px-4 py-3 rounded-xl font-black transition-all active:scale-95"
+                                                                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-widest px-4 py-3 rounded-xl transition-all shadow-md shadow-indigo-150 active:scale-95"
                                                                 >
-                                                                    +1 VOLTA
+                                                                    +1 Volta
                                                                 </button>
                                                             </div>
                                                         </div>
-                                                    )
+                                                    );
                                                 })}
-                                            </div>
                                         </div>
                                     )}
-                                </>
-                            ) : (
-                                <div className="animate-in fade-in duration-500">
-                                    <div className="bg-orange-50 border border-orange-200 rounded-2xl p-6 mb-6">
-                                        <h3 className="font-black text-orange-800 text-lg mb-4 text-center">Fim do Tempo! Registre o resultado de cada atleta:</h3>
-                                        
-                                        <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar">
-                                            {participants.map(p => (
-                                                <div key={p.user_id} className="flex items-center justify-between bg-white p-3 rounded-xl border border-orange-100 shadow-sm">
-                                                    <div>
-                                                        <p className="font-bold text-slate-900">{p.name}</p>
-                                                        {p.team && <p className="text-xs text-orange-600 font-bold uppercase">{p.team.name}</p>}
-                                                    </div>
-                                                    <div className="flex items-center gap-3">
-                                                        <label className="text-[10px] font-bold text-slate-400 uppercase leading-tight text-right">Voltas/<br/>Distância:</label>
-                                                        <input 
-                                                            type="number"
-                                                            min="0"
-                                                            placeholder="0"
-                                                            value={bulkLaps[p.user_id] === undefined ? '' : bulkLaps[p.user_id]}
-                                                            onChange={e => setBulkLaps(prev => ({...prev, [p.user_id]: parseInt(e.target.value) || 0}))}
-                                                            className="w-24 p-2 bg-slate-50 border border-slate-200 rounded-lg font-black text-center text-slate-700 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
-                                                        />
-                                                    </div>
-                                                </div>
-                                            ))}
+                                </div>
+
+                                {/* Bulk Save / Finish */}
+                                {isCountdownFinished && (
+                                    <div className="mt-6 border-t border-slate-150 pt-6 animate-in slide-in-from-bottom-4 duration-300">
+                                        <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4 mb-4 text-center">
+                                            <h4 className="font-black text-orange-950 text-sm mb-1">Tempo de Prova Esgotado!</h4>
+                                            <p className="text-xs text-orange-850 font-medium">Você pode continuar registrando voltas tardias ou fechar o painel.</p>
                                         </div>
                                     </div>
-
-                                    <button 
-                                        onClick={saveBulkResults}
-                                        disabled={loading}
-                                        className="w-full flex items-center justify-center gap-2 bg-orange-600 text-white p-5 rounded-2xl font-black text-xl hover:bg-orange-700 transition-colors shadow-xl shadow-orange-200 disabled:opacity-70"
-                                    >
-                                        <Save size={28} /> SALVAR TODOS OS RESULTADOS
-                                    </button>
-                                </div>
-                            )}
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
