@@ -38,6 +38,8 @@ export function AdminChampionshipTimes() {
     const [isRelayMode, setIsRelayMode] = useState(false);
     const [nextParticipant, setNextParticipant] = useState('');
     const [relayHistory, setRelayHistory] = useState<{ name: string; time: number }[]>([]);
+    const [lastBatonTimeMs, setLastBatonTimeMs] = useState(0);
+    const [saving, setSaving] = useState(false);
 
     useEffect(() => {
         loadData();
@@ -90,6 +92,18 @@ export function AdminChampionshipTimes() {
     const stopTimer = () => {
         setIsRunning(false);
         if (timerRef.current) clearInterval(timerRef.current);
+
+        // In relay mode, log the final athlete's segment in history
+        if (isRelayMode && selectedParticipant) {
+            const currentPart = participants.find(p => p.user_id?.toString() === selectedParticipant);
+            const segmentTime = timeMs - lastBatonTimeMs;
+            // Prevent adding duplicate final entry if already added
+            setRelayHistory(prev => {
+                const alreadyAdded = prev.some(h => h.name === currentPart?.name && h.time === segmentTime);
+                if (alreadyAdded) return prev;
+                return [...prev, { name: currentPart?.name || 'Atleta', time: segmentTime }];
+            });
+        }
     };
 
     const resetTimer = () => {
@@ -98,17 +112,24 @@ export function AdminChampionshipTimes() {
         setTimeMs(0);
         setCurrentLap(1);
         setRelayHistory([]);
+        setLastBatonTimeMs(0);
+        setSaving(false);
     };
 
     const saveTime = async () => {
-        if (!selectedParticipant) return;
+        if (!selectedParticipant || saving) return;
+        setSaving(true);
         try {
             const participant = participants.find(p => p.user_id?.toString() === selectedParticipant);
+            
+            // In relay mode, calculate the final athlete's segment time
+            const finalTimeMs = isRelayMode ? (timeMs - lastBatonTimeMs) : timeMs;
+
             await api.post(`/admin/championships/${id}/times`, {
                 user_id: participant?.user_id,
                 team_id: participant?.team_id,
                 category_id: participant?.category_id,
-                time_ms: timeMs,
+                time_ms: finalTimeMs,
                 lap: currentLap,
                 status: 'completed'
             });
@@ -119,31 +140,36 @@ export function AdminChampionshipTimes() {
         } catch (error) {
             console.error(error);
             alert('Erro ao salvar tempo.');
+        } finally {
+            setSaving(false);
         }
     };
 
     const passBaton = async () => {
-        if (!selectedParticipant) return;
-        if (!nextParticipant) {
-            alert('Selecione o próximo competidor para passar o bastão!');
-            return;
-        }
+        if (!selectedParticipant || !nextParticipant || saving) return;
+        setSaving(true);
 
         try {
             const currentPart = participants.find(p => p.user_id?.toString() === selectedParticipant);
             
-            // Save time for current competitor
+            // Calculate individual segment time for the current athlete
+            const segmentTime = timeMs - lastBatonTimeMs;
+
+            // Save individual segment time
             await api.post(`/admin/championships/${id}/times`, {
                 user_id: currentPart?.user_id,
                 team_id: currentPart?.team_id,
                 category_id: currentPart?.category_id,
-                time_ms: timeMs,
+                time_ms: segmentTime,
                 lap: currentLap,
                 status: 'completed'
             });
 
-            // Add to local relay history
-            setRelayHistory(prev => [...prev, { name: currentPart?.name || 'Atleta', time: timeMs }]);
+            // Add individual time to local relay history
+            setRelayHistory(prev => [...prev, { name: currentPart?.name || 'Atleta', time: segmentTime }]);
+
+            // Update cumulative baseline time for next athlete
+            setLastBatonTimeMs(timeMs);
 
             // Switch to next competitor and keep timer running!
             setSelectedParticipant(nextParticipant);
@@ -154,6 +180,8 @@ export function AdminChampionshipTimes() {
         } catch (error) {
             console.error(error);
             alert('Erro ao passar o bastão.');
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -605,10 +633,10 @@ export function AdminChampionshipTimes() {
                                         </select>
                                         <button
                                             onClick={passBaton}
-                                            disabled={!nextParticipant}
+                                            disabled={!nextParticipant || saving}
                                             className="bg-amber-500 text-white font-black px-4 py-3 rounded-xl hover:bg-amber-600 transition-all flex items-center gap-1 text-sm disabled:opacity-50"
                                         >
-                                            Passar Bastão 🏃
+                                            {saving ? 'Gravando...' : 'Passar Bastão 🏃'}
                                         </button>
                                     </div>
                                 </div>
@@ -634,9 +662,10 @@ export function AdminChampionshipTimes() {
                             {timeMs > 0 && !isRunning && (
                                 <button 
                                     onClick={saveTime}
-                                    className="w-full mt-4 flex items-center justify-center gap-2 bg-indigo-600 text-white p-4 rounded-2xl font-black text-lg hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200"
+                                    disabled={saving}
+                                    className="w-full mt-4 flex items-center justify-center gap-2 bg-indigo-600 text-white p-4 rounded-2xl font-black text-lg hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200 disabled:opacity-50"
                                 >
-                                    <Save size={24} /> SALVAR TEMPO FINAL
+                                    <Save size={24} /> {saving ? 'SALVANDO...' : 'SALVAR TEMPO FINAL'}
                                 </button>
                             )}
                         </div>
