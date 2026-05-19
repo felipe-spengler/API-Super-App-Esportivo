@@ -6,6 +6,7 @@ interface Participant {
     id: number;
     user_id: number;
     team_id: number;
+    category_id?: number;
     name: string;
     bib_number?: string;
     team?: {

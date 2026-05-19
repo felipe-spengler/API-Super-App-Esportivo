@@ -6,6 +6,7 @@ interface Participant {
     id: number;
     user_id: number;
     team_id: number;
+    category_id?: number;
     name: string;
     bib_number?: string;
     team?: {
@@ -36,7 +37,7 @@ export function CountdownModal({
     const [countdownTimeLeft, setCountdownTimeLeft] = useState(12 * 60); // in seconds
     const [isCountdownRunning, setIsCountdownRunning] = useState(false);
     const [isCountdownFinished, setIsCountdownFinished] = useState(false);
-    const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const countdownIntervalRef = useRef<any>(null);
     const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {

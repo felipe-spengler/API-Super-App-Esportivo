@@ -6,6 +6,7 @@ interface Participant {
     id: number;
     user_id: number;
     team_id: number;
+    category_id?: number;
     name: string;
     bib_number?: string;
     team?: {
@@ -34,7 +35,7 @@ export function StopwatchModal({
     const [selectedTeam, setSelectedTeam] = useState('');
     const [isRunning, setIsRunning] = useState(false);
     const [timeMs, setTimeMs] = useState(0);
-    const timerRef = useRef<NodeJS.Timeout | null>(null);
+    const timerRef = useRef<any>(null);
 
     // Lap state
     const [currentLap, setCurrentLap] = useState(1);
