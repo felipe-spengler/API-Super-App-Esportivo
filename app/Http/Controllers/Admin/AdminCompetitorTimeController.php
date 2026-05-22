@@ -12,11 +12,16 @@ use App\Events\ChampionshipTimesUpdated;
 
 class AdminCompetitorTimeController extends Controller
 {
-    public function index($championshipId)
+    public function index(Request $request, $championshipId)
     {
-        $times = CompetitorTime::with(['user', 'team', 'category'])
-            ->where('championship_id', $championshipId)
-            ->get();
+        $query = CompetitorTime::with(['user', 'team', 'category'])
+            ->where('championship_id', $championshipId);
+
+        if ($request->has('game_match_id') && $request->game_match_id !== 'null' && $request->game_match_id !== '') {
+            $query->where('game_match_id', $request->game_match_id);
+        }
+
+        $times = $query->get();
         return response()->json($times);
     }
 
@@ -37,7 +42,8 @@ class AdminCompetitorTimeController extends Controller
             'user_id' => 'nullable|exists:users,id',
             'time_ms' => 'required|integer',
             'status' => 'nullable|string',
-            'lap' => 'nullable|integer'
+            'lap' => 'nullable|integer',
+            'game_match_id' => 'nullable|exists:game_matches,id'
         ]);
 
         $insertData = [
@@ -48,6 +54,10 @@ class AdminCompetitorTimeController extends Controller
             'time_ms' => $request->time_ms,
             'status' => $request->status ?? 'completed'
         ];
+
+        if ($request->has('game_match_id') && $request->game_match_id !== 'null' && $request->game_match_id !== '') {
+            $insertData['game_match_id'] = $request->game_match_id;
+        }
 
         // Check if the 'lap' column exists (in case the production VPS hasn't run the migrations yet!)
         if (\Schema::hasColumn('competitor_times', 'lap')) {

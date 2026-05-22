@@ -73,6 +73,7 @@ const SPORT_MENUS: any = {
     // 2. CORRIDA / TEMPO (RACING)
     corrida: [
         { label: 'Resultados', icon: Trophy, route: 'results', color: 'orange' },
+        { label: 'Etapas / Baterias', icon: CalendarDays, route: 'matches', color: 'indigo' },
         { label: 'Inscritos', icon: Users, route: 'participants', color: 'blue' },
         { label: 'Categorias', icon: ListOrdered, route: 'categories', color: 'cyan' },
         { label: 'Premiações', icon: Medal, route: 'tourney-awards', color: 'purple' },

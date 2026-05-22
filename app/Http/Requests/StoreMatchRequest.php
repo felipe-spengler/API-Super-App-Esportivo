@@ -13,10 +13,8 @@ class StoreMatchRequest extends FormRequest
 
     public function rules(): array
     {
-        return [
+        $rules = [
             'championship_id' => 'required|exists:championships,id',
-            'home_team_id' => 'required|exists:teams,id|different:away_team_id',
-            'away_team_id' => 'required|exists:teams,id',
             'start_time' => 'required|date',
             'location' => 'nullable|string|max:255',
             'round_name' => 'nullable|string|max:100',
@@ -24,6 +22,20 @@ class StoreMatchRequest extends FormRequest
             'category_id' => 'nullable|exists:categories,id',
             'group_name' => 'nullable|string|max:255',
         ];
+
+        $championshipId = $this->input('championship_id');
+        $championship = \App\Models\Championship::find($championshipId);
+        $isTimeOrLap = $championship && in_array($championship->format, ['racing', 'time_ranking', 'laps']);
+
+        if ($isTimeOrLap) {
+            $rules['home_team_id'] = 'nullable|exists:teams,id|different:away_team_id';
+            $rules['away_team_id'] = 'nullable|exists:teams,id';
+        } else {
+            $rules['home_team_id'] = 'required|exists:teams,id|different:away_team_id';
+            $rules['away_team_id'] = 'required|exists:teams,id';
+        }
+
+        return $rules;
     }
 
     public function messages(): array

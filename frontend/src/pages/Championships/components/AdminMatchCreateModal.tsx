@@ -52,6 +52,7 @@ export function AdminMatchCreateModal({
     const [selectedExistingRound, setSelectedExistingRound] = useState<string>('');
 
     const isLeague = championship?.format === 'league';
+    const isTimeOrLap = ['time_ranking', 'laps', 'racing'].includes(championship?.format);
 
     const getFinalRoundName = () => {
         if (selectedExistingRound) return selectedExistingRound;
@@ -129,7 +130,7 @@ export function AdminMatchCreateModal({
                         <span className="bg-indigo-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs">
                             {step}
                         </span>
-                        {step === 1 ? 'Configurar Rodada / Fase' : 'Adicionar Jogos'}
+                        {step === 1 ? 'Configurar Rodada / Fase' : (isTimeOrLap ? 'Adicionar Baterias / Etapas' : 'Adicionar Jogos')}
                     </h3>
                     <button onClick={onClose} className="p-1 hover:bg-gray-200 rounded-full transition-colors flex-shrink-0">
                         <X size={20} />
@@ -289,7 +290,7 @@ export function AdminMatchCreateModal({
                                         <span className="bg-indigo-600 text-white w-6 h-6 rounded-full flex items-center justify-center leading-none">
                                             {index + 1}
                                         </span>
-                                        JOGO
+                                        {isTimeOrLap ? 'BATERIA / ETAPA' : 'JOGO'}
                                     </div>
 
                                     <div className="space-y-4">
@@ -317,52 +318,64 @@ export function AdminMatchCreateModal({
                                             </div>
                                         )}
 
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Time Mandante</label>
-                                                <select
-                                                    value={matchData.home_team_id}
-                                                    onChange={e => updateMatchField(matchData.id, 'home_team_id', e.target.value)}
-                                                    className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-indigo-500 transition-all font-bold text-gray-700 text-sm"
-                                                >
-                                                    <option value="">Selecione...</option>
-                                                    {(teams || [])
-                                                        .filter(t => {
-                                                            if (!matchData.group_name || matchData.group_name === 'null' || matchData.group_name === '') return true;
-                                                            const rawTeamGroup = String(groupAssignments[t.id] || '');
-                                                            if (!rawTeamGroup) return false;
-                                                            const teamG = rawTeamGroup.toLowerCase().replace(/grupo/g, '').trim();
-                                                            const selG = String(matchData.group_name).toLowerCase().replace(/grupo/g, '').trim();
-                                                            return teamG === selG || (teamG && selG && (teamG.includes(selG) || selG.includes(teamG)));
-                                                        })
-                                                        .map((t: any) => (
-                                                            <option key={t.id} value={t.id}>{t.name}</option>
-                                                        ))}
-                                                </select>
+                                        {isTimeOrLap ? (
+                                            <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100 rounded-xl p-4 flex gap-3">
+                                                <span className="text-xl shrink-0">⏱️</span>
+                                                <div>
+                                                    <p className="text-sm font-bold text-indigo-900">Disputa Simultânea / Bateria de Tempo</p>
+                                                    <p className="text-xs text-indigo-700/90 mt-0.5 leading-relaxed">
+                                                        Este campeonato utiliza o formato de <strong>Tempo ou Voltas</strong>. Não é necessário selecionar times adversários (Mandante x Visitante). Todos os inscritos podem disputar os tempos em conjunto nesta etapa/bateria.
+                                                    </p>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Time Visitante</label>
-                                                <select
-                                                    value={matchData.away_team_id}
-                                                    onChange={e => updateMatchField(matchData.id, 'away_team_id', e.target.value)}
-                                                    className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-indigo-500 transition-all font-bold text-gray-700 text-sm"
-                                                >
-                                                    <option value="">Selecione...</option>
-                                                    {(teams || [])
-                                                        .filter(t => {
-                                                            if (!matchData.group_name || matchData.group_name === 'null' || matchData.group_name === '') return true;
-                                                            const rawTeamGroup = String(groupAssignments[t.id] || '');
-                                                            if (!rawTeamGroup) return false;
-                                                            const teamG = rawTeamGroup.toLowerCase().replace(/grupo/g, '').trim();
-                                                            const selG = String(matchData.group_name).toLowerCase().replace(/grupo/g, '').trim();
-                                                            return teamG === selG || (teamG && selG && (teamG.includes(selG) || selG.includes(teamG)));
-                                                        })
-                                                        .map((t: any) => (
-                                                            <option key={t.id} value={t.id}>{t.name}</option>
-                                                        ))}
-                                                </select>
+                                        ) : (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Time Mandante</label>
+                                                    <select
+                                                        value={matchData.home_team_id}
+                                                        onChange={e => updateMatchField(matchData.id, 'home_team_id', e.target.value)}
+                                                        className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-indigo-500 transition-all font-bold text-gray-700 text-sm"
+                                                    >
+                                                        <option value="">Selecione...</option>
+                                                        {(teams || [])
+                                                            .filter(t => {
+                                                                if (!matchData.group_name || matchData.group_name === 'null' || matchData.group_name === '') return true;
+                                                                const rawTeamGroup = String(groupAssignments[t.id] || '');
+                                                                if (!rawTeamGroup) return false;
+                                                                const teamG = rawTeamGroup.toLowerCase().replace(/grupo/g, '').trim();
+                                                                const selG = String(matchData.group_name).toLowerCase().replace(/grupo/g, '').trim();
+                                                                return teamG === selG || (teamG && selG && (teamG.includes(selG) || selG.includes(teamG)));
+                                                            })
+                                                            .map((t: any) => (
+                                                                <option key={t.id} value={t.id}>{t.name}</option>
+                                                            ))}
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Time Visitante</label>
+                                                    <select
+                                                        value={matchData.away_team_id}
+                                                        onChange={e => updateMatchField(matchData.id, 'away_team_id', e.target.value)}
+                                                        className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-indigo-500 transition-all font-bold text-gray-700 text-sm"
+                                                    >
+                                                        <option value="">Selecione...</option>
+                                                        {(teams || [])
+                                                            .filter(t => {
+                                                                if (!matchData.group_name || matchData.group_name === 'null' || matchData.group_name === '') return true;
+                                                                const rawTeamGroup = String(groupAssignments[t.id] || '');
+                                                                if (!rawTeamGroup) return false;
+                                                                const teamG = rawTeamGroup.toLowerCase().replace(/grupo/g, '').trim();
+                                                                const selG = String(matchData.group_name).toLowerCase().replace(/grupo/g, '').trim();
+                                                                return teamG === selG || (teamG && selG && (teamG.includes(selG) || selG.includes(teamG)));
+                                                            })
+                                                            .map((t: any) => (
+                                                                <option key={t.id} value={t.id}>{t.name}</option>
+                                                            ))}
+                                                    </select>
+                                                </div>
                                             </div>
-                                        </div>
+                                        )}
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div>
@@ -393,7 +406,7 @@ export function AdminMatchCreateModal({
                                 onClick={addMatchField}
                                 className="w-full py-4 border-2 border-dashed border-indigo-300 bg-indigo-50/80 rounded-2xl text-indigo-600 font-bold text-sm tracking-wide hover:bg-indigo-100 hover:border-indigo-400 transition-all flex items-center justify-center gap-2"
                             >
-                                <Plus size={18} /> IMPLANTAR MAIS UM JOGO NESTA FASE
+                                <Plus size={18} /> {isTimeOrLap ? 'ADICIONAR OUTRA BATERIA/ETAPA NESTA FASE' : 'IMPLANTAR MAIS UM JOGO NESTA FASE'}
                             </button>
                         </div>
                     )}
@@ -415,7 +428,7 @@ export function AdminMatchCreateModal({
                                 &laquo; Voltar
                             </button>
                             <button onClick={handleConfirm} className="w-full sm:flex-1 px-4 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 shadow-lg shadow-green-200 transition-all text-base sm:text-lg order-1 sm:order-2">
-                                Confirmar {matches.length} Jogo(s)
+                                Confirmar {matches.length} {isTimeOrLap ? 'Bateria(s)/Etapa(s)' : 'Jogo(s)'}
                             </button>
                         </>
                     )}

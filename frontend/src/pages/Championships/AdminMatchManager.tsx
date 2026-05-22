@@ -10,6 +10,7 @@ import { AdminMatchEditModal } from './components/AdminMatchEditModal';
 import { EditRoundModal } from './components/EditRoundModal';
 import { AdminMatchArbitrationModal } from './components/AdminMatchArbitrationModal';
 import { getRoundDisplayName } from '../../utils/phaseNames';
+import { AdminMatchCard } from './components/AdminMatchCard';
 
 interface Match {
     id: number;
@@ -403,34 +404,40 @@ export function AdminMatchManager() {
         return date.toISOString().slice(0, 16);
     };
 
+    const isTimeOrLap = ['time_ranking', 'laps', 'racing'].includes(championship?.format);
+
     const handleSaveAdd = async (matchesData: any[]) => {
         if (!matchesData || matchesData.length === 0) return;
 
         try {
             // Loop through each match and make a POST request
             for (const match of matchesData) {
-                if (!match.home_team_id || !match.away_team_id || !match.start_time) {
-                    continue; // Skip invalid matches if any
+                if (isTimeOrLap) {
+                    if (!match.start_time) continue;
+                } else {
+                    if (!match.home_team_id || !match.away_team_id || !match.start_time) {
+                        continue; // Skip invalid matches if any
+                    }
                 }
 
                 await api.post('/admin/matches', {
-                    home_team_id: match.home_team_id,
-                    away_team_id: match.away_team_id,
+                    home_team_id: isTimeOrLap ? null : match.home_team_id,
+                    away_team_id: isTimeOrLap ? null : match.away_team_id,
                     location: match.location,
                     round_number: match.round_number,
                     round_name: match.round_name || null,
                     start_time: toUTCString(match.start_time),
                     championship_id: id,
-                    category_id: selectedCategoryId,
+                    category_id: selectedCategoryId === 'no-category' ? null : selectedCategoryId,
                     group_name: match.group_name || null
                 });
             }
 
-            alert('Jogo(s) criado(s) com sucesso!');
+            alert(isTimeOrLap ? 'Bateria(s)/Etapa(s) criada(s) com sucesso!' : 'Jogo(s) criado(s) com sucesso!');
             setShowAddModal(false);
             loadMatches();
         } catch (err) {
-            alert('Erro ao criar jogo(s).');
+            alert(isTimeOrLap ? 'Erro ao criar bateria(s)/etapa(s).' : 'Erro ao criar jogo(s).');
         }
     };
 
@@ -711,7 +718,7 @@ export function AdminMatchManager() {
                             <ArrowLeft className="w-6 h-6 text-gray-600" />
                         </button>
                         <div>
-                            <h1 className="text-2xl font-bold text-gray-900">Gerenciar Jogos</h1>
+                            <h1 className="text-2xl font-bold text-gray-900">{isTimeOrLap ? 'Gerenciar Etapas e Baterias' : 'Gerenciar Jogos'}</h1>
                             <p className="text-gray-500">{championship?.name}</p>
 
                         </div>
@@ -756,9 +763,9 @@ export function AdminMatchManager() {
                                     });
                                     setShowAddModal(true);
                                 }}
-                                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 shadow-sm transition-all active:scale-95"
+                                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 shadow-sm transition-all active:scale-95 text-xs sm:text-sm font-bold"
                             >
-                                <Plus className="w-4 h-4" /> Nova Rodada (+{matches.length > 0 ? Math.max(...matches.map(m => m.round_number || 1)) + 1 : 1})
+                                <Plus className="w-4 h-4" /> {isTimeOrLap ? `Nova Bateria/Etapa (+${matches.length > 0 ? Math.max(...matches.map(m => m.round_number || 1)) + 1 : 1})` : `Nova Rodada (+${matches.length > 0 ? Math.max(...matches.map(m => m.round_number || 1)) + 1 : 1})`}
                             </button>
 
                         </div>
@@ -803,9 +810,11 @@ export function AdminMatchManager() {
                         <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-6">
                             <Calendar className="w-10 h-10 text-indigo-600" />
                         </div>
-                        <h2 className="text-xl font-bold text-gray-900 mb-2">Nenhum jogo criado ainda</h2>
+                        <h2 className="text-xl font-bold text-gray-900 mb-2">{isTimeOrLap ? "Nenhuma bateria ou etapa criada ainda" : "Nenhum jogo criado ainda"}</h2>
                         <p className="text-gray-500 max-w-md mx-auto mb-8">
-                            {championship?.format
+                            {isTimeOrLap
+                                ? "Este campeonato utiliza o formato de tempos/voltas. Adicione etapas ou baterias de disputa manualmente para gerenciar os tempos registrados dos atletas."
+                                : championship?.format
                                 ? `O campeonato está configurado como "${championship.format}". Clique no botão abaixo para gerar a tabela de jogos automaticamente ou crie jogos manualmente.`
                                 : "O campeonato ainda não possui partidas. Configure o formato nas configurações do campeonato ou adicione jogos manualmente."}
                         </p>
@@ -864,7 +873,7 @@ export function AdminMatchManager() {
                                 }}
                                 className="px-8 py-4 bg-white border-2 border-indigo-600 text-indigo-600 font-bold text-lg rounded-lg hover:bg-indigo-50 transition-all"
                             >
-                                Criar Primeiro Jogo
+                                {isTimeOrLap ? 'Criar Primeira Bateria' : 'Criar Primeiro Jogo'}
                             </button>
                         </div>
                     </div>
@@ -900,7 +909,7 @@ export function AdminMatchManager() {
                                                     return <>{display}</>;
                                                 })()}
                                             </h3>
-                                            <span className="text-[10px] font-bold text-gray-500 bg-gray-200 px-2 py-1 rounded-full uppercase tracking-wider">{roundMatches.length} JOGOS</span>
+                                            <span className="text-[10px] font-bold text-gray-500 bg-gray-200 px-2 py-1 rounded-full uppercase tracking-wider">{roundMatches.length} {isTimeOrLap ? 'BATERIAS' : 'JOGOS'}</span>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <button
@@ -931,7 +940,7 @@ export function AdminMatchManager() {
                                                 }}
                                                 className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-indigo-200 text-indigo-600 rounded-lg hover:bg-indigo-50 hover:border-indigo-300 text-xs font-bold uppercase transition-all shadow-sm"
                                             >
-                                                <Plus className="w-3 h-3" /> Adicionar Jogo
+                                                <Plus className="w-3 h-3" /> {isTimeOrLap ? 'Adicionar Bateria' : 'Adicionar Jogo'}
                                             </button>
                                         </div>
                                     </div>
@@ -946,139 +955,18 @@ export function AdminMatchManager() {
                                                 )}
 
                                                 {matchesByGroup[groupName].map((match) => (
-                                                    <div key={match.id} className="p-4 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors">
-                                                        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-
-                                                            {/* Date / Location */}
-                                                            <div className="w-full md:w-40 flex flex-row md:flex-col items-center md:items-start justify-between md:justify-start border-b md:border-b-0 pb-2 md:pb-0 mb-2 md:mb-0">
-                                                                <div>
-                                                                    <div className="text-[11px] font-bold text-indigo-600 flex items-center gap-1">
-                                                                        <Calendar size={12} /> {new Date(match.start_time).toLocaleDateString('pt-BR')}
-                                                                    </div>
-                                                                    <div className="text-[10px] text-gray-500 flex items-center gap-1">
-                                                                        <ClockIcon size={12} /> {new Date(match.start_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                                                                    </div>
-                                                                </div>
-                                                                {match.location && (
-                                                                    <div className="text-[10px] text-gray-400 flex items-center gap-1 truncate max-w-[120px] md:max-w-[150px] bg-gray-50 px-2 py-1 rounded md:bg-transparent md:p-0">
-                                                                        <MapPin size={10} /> {match.location}
-                                                                    </div>
-                                                                )}
-                                                            </div>
-
-                                                            {/* Scoreboard */}
-                                                            <div className="flex flex-row items-center gap-2 md:gap-4 flex-1 justify-center w-full px-2">
-                                                                {/* Home Team */}
-                                                                <div className="flex flex-col md:flex-row items-center gap-1 md:gap-3 text-center md:text-right flex-1 justify-center md:justify-end min-w-0">
-                                                                    <div className="order-1 md:order-2">
-                                                                        {match.home_team?.logo_url ? (
-                                                                            <img src={match.home_team.logo_url} className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white shadow-sm border p-0.5" />
-                                                                        ) : (
-                                                                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-400 border border-dashed">T1</div>
-                                                                        )}
-                                                                    </div>
-                                                                    <span
-                                                                        className="text-[11px] md:text-sm font-bold text-gray-900 order-2 md:order-1 truncate max-w-[80px] md:max-w-[150px] lg:max-w-[180px]"
-                                                                        title={match.home_team?.name || 'Time A'}
-                                                                    >
-                                                                        {match.home_team?.name || 'Time A'}
-                                                                    </span>
-                                                                </div>
-
-                                                                {/* Score */}
-                                                                <div className="flex flex-col items-center">
-                                                                    <div className="flex items-center gap-2 md:gap-4 bg-white px-3 md:px-6 py-1.5 md:py-2 rounded-xl border border-gray-200 shadow-sm min-w-[90px] md:min-w-[120px] justify-center">
-                                                                        {['live', 'finished', 'ongoing'].includes(match.status) && match.home_score !== null && match.away_score !== null ? (
-                                                                            <>
-                                                                                <span className="text-xl md:text-2xl font-black text-gray-900">
-                                                                                    {match.home_score}
-                                                                                </span>
-                                                                                <span className="text-gray-300 font-bold text-[10px]">X</span>
-                                                                                <span className="text-xl md:text-2xl font-black text-gray-900">
-                                                                                    {match.away_score}
-                                                                                </span>
-                                                                            </>
-                                                                        ) : (
-                                                                            <span className="text-gray-300 font-bold text-lg md:text-xl">VS</span>
-                                                                        )}
-                                                                    </div>
-                                                                    {(match.home_penalty_score != null || match.away_penalty_score != null) && (match.home_penalty_score > 0 || match.away_penalty_score > 0) && (
-                                                                        <span className="text-[10px] font-bold text-gray-500 mt-1">
-                                                                            ({match.home_penalty_score} x {match.away_penalty_score} Pen.)
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-
-                                                                {/* Away Team */}
-                                                                <div className="flex flex-col md:flex-row items-center gap-1 md:gap-3 text-center md:text-left flex-1 justify-center md:justify-start min-w-0">
-                                                                    <div className="">
-                                                                        {match.away_team?.logo_url ? (
-                                                                            <img src={match.away_team.logo_url} className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white shadow-sm border p-0.5" />
-                                                                        ) : (
-                                                                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-400 border border-dashed">T2</div>
-                                                                        )}
-                                                                    </div>
-                                                                    <span
-                                                                        className="text-[11px] md:text-sm font-bold text-gray-900 truncate max-w-[80px] md:max-w-[150px] lg:max-w-[180px]"
-                                                                        title={match.away_team?.name || 'Time B'}
-                                                                    >
-                                                                        {match.away_team?.name || 'Time B'}
-                                                                    </span>
-                                                                </div>
-                                                            </div>
-
-                                                            {/* Actions */}
-                                                            <div className="w-full md:w-auto flex justify-around md:justify-end gap-2 border-t md:border-t-0 pt-3 md:pt-0 mt-2 md:mt-0 flex-shrink-0 min-w-max">
-                                                                <button
-                                                                    onClick={() => openMatchSumula(match)}
-                                                                    className={`flex-1 md:flex-none flex items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all border ${match.status === 'finished' ? 'text-green-600 bg-green-50 border-green-100' : 'text-indigo-600 bg-indigo-50 border-indigo-100'}`}
-                                                                >
-                                                                    {match.status === 'finished' ? <CheckCircle className="w-4 h-4" /> : <List className="w-4 h-4" />}
-                                                                    <span className="text-[10px] font-bold uppercase md:hidden">{match.status === 'finished' ? 'Resumo' : 'Súmula'}</span>
-                                                                </button>
-
-                                                                <button
-                                                                    onClick={() => {
-                                                                        setSelectedMatch(match);
-                                                                        setIsAuditOpen(true);
-                                                                    }}
-                                                                    className="flex-1 md:flex-none flex items-center justify-center gap-1 px-3 py-2 text-blue-600 bg-blue-50 border border-blue-100 rounded-lg transition-all hover:bg-blue-100"
-                                                                    title="Auditoria de Voz e Logs"
-                                                                >
-                                                                    <ShieldCheck className="w-4 h-4" />
-                                                                    <span className="text-[10px] font-bold uppercase md:hidden">Auditar</span>
-                                                                </button>
-
-
-
-                                                                <button
-                                                                    onClick={() => openEditModal(match)}
-                                                                    className="flex-1 md:flex-none flex items-center justify-center gap-1 px-3 py-2 text-gray-500 bg-gray-50 border border-gray-200 rounded-lg transition-all"
-                                                                >
-                                                                    <Edit2 className="w-4 h-4" />
-                                                                    <span className="text-[10px] font-bold uppercase md:hidden">Editar</span>
-                                                                </button>
-
-                                                                <button
-                                                                    onClick={() => window.open(`${api.defaults.baseURL}/public/art/match/${match.id}/scheduled`, '_blank')}
-                                                                    className="flex-1 md:flex-none flex items-center justify-center gap-1 px-3 py-2 text-orange-600 bg-orange-50 border border-orange-100 rounded-lg transition-all hover:bg-orange-100"
-                                                                    title="Gerar Arte Jogo Programado"
-                                                                >
-                                                                    <ImageIcon className="w-4 h-4" />
-                                                                    <span className="text-[10px] font-bold uppercase md:hidden">Arte</span>
-                                                                </button>
-
-                                                                <button
-                                                                    onClick={() => handleDeleteMatch(match.id)}
-                                                                    className="flex-1 md:flex-none flex items-center justify-center gap-1 px-3 py-2 text-red-500 bg-red-50 border border-red-200 rounded-lg transition-all hover:bg-red-100"
-                                                                    title="Excluir Confronto"
-                                                                >
-                                                                    <Trash2 className="w-4 h-4" />
-                                                                    <span className="text-[10px] font-bold uppercase md:hidden">Excluir</span>
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
+                                                    <AdminMatchCard
+                                                        key={match.id}
+                                                        match={match}
+                                                        championshipId={id!}
+                                                        isTimeOrLap={isTimeOrLap}
+                                                        selectedCategoryId={selectedCategoryId}
+                                                        openMatchSumula={openMatchSumula}
+                                                        setSelectedMatch={setSelectedMatch}
+                                                        setIsAuditOpen={setIsAuditOpen}
+                                                        openEditModal={openEditModal}
+                                                        handleDeleteMatch={handleDeleteMatch}
+                                                    />
                                                 ))}
                                             </div>
                                         ))}

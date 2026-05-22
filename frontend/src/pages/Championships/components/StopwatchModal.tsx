@@ -21,6 +21,7 @@ interface StopwatchModalProps {
     participants: Participant[];
     isLapsFormat: boolean;
     onSaveSuccess: () => void;
+    gameMatchId?: number | string;
 }
 
 export function StopwatchModal({
@@ -29,7 +30,8 @@ export function StopwatchModal({
     championshipId,
     participants,
     isLapsFormat,
-    onSaveSuccess
+    onSaveSuccess,
+    gameMatchId
 }: StopwatchModalProps) {
     const [selectedParticipant, setSelectedParticipant] = useState('');
     const [selectedTeam, setSelectedTeam] = useState('');
@@ -127,7 +129,8 @@ export function StopwatchModal({
                 category_id: participant?.category_id,
                 time_ms: finalTimeMs,
                 lap: currentLap,
-                status: 'completed'
+                status: 'completed',
+                game_match_id: gameMatchId
             });
             resetTimer();
             setSelectedParticipant('');
@@ -159,7 +162,8 @@ export function StopwatchModal({
                 category_id: currentPart?.category_id,
                 time_ms: segmentTime,
                 lap: currentLap,
-                status: 'completed'
+                status: 'completed',
+                game_match_id: gameMatchId
             });
 
             // Add individual time to local relay history
@@ -193,7 +197,8 @@ export function StopwatchModal({
                 category_id: participant?.category_id,
                 time_ms: timeMs,
                 lap: currentLap,
-                status: 'completed'
+                status: 'completed',
+                game_match_id: gameMatchId
             });
             setCurrentLap(prev => prev + 1);
             alert(`Volta ${currentLap} salva com sucesso! O cronômetro continua rodando.`);

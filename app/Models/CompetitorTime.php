@@ -11,6 +11,7 @@ class CompetitorTime extends Model
 
     protected $fillable = [
         'championship_id',
+        'game_match_id',
         'category_id',
         'team_id',
         'user_id',
@@ -22,6 +23,11 @@ class CompetitorTime extends Model
     public function championship()
     {
         return $this->belongsTo(Championship::class);
+    }
+
+    public function gameMatch()
+    {
+        return $this->belongsTo(GameMatch::class, 'game_match_id');
     }
 
     public function category()

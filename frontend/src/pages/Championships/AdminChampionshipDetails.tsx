@@ -201,19 +201,32 @@ export function AdminChampionshipDetails() {
                         </div>
                     </Link>
 
-                    {/* Card Tabela / Jogos */}
-                    {!['time_ranking', 'laps', 'racing'].includes(championship.format) && (
+                    {/* Card Tabela / Jogos ou Etapas / Disputas */}
+                    {['time_ranking', 'laps', 'racing'].includes(championship.format) ? (
                         <Link to={appendCat(`/admin/championships/${id}/matches`)} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow group">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                                <Calendar className="w-5 h-5 text-orange-500" />
-                                Tabela de Jogos
-                            </h3>
-                            <span className="text-sm text-gray-400 group-hover:text-orange-500 transition-colors">Acessar →</span>
-                        </div>
-                        <p className="text-sm text-gray-500">
-                            Sorteie a tabela da {selectedCategory?.name}, defina datas e horários das partidas e lance os resultados.
-                        </p>
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                                    <Calendar className="w-5 h-5 text-orange-500" />
+                                    Etapas e Baterias
+                                </h3>
+                                <span className="text-sm text-gray-400 group-hover:text-orange-500 transition-colors">Gerenciar →</span>
+                            </div>
+                            <p className="text-sm text-gray-500">
+                                Crie e organize as etapas, baterias ou rodadas de disputas da categoria {selectedCategory?.name} para registrar tempos específicos de cada evento.
+                            </p>
+                        </Link>
+                    ) : (
+                        <Link to={appendCat(`/admin/championships/${id}/matches`)} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow group">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                                    <Calendar className="w-5 h-5 text-orange-500" />
+                                    Tabela de Jogos
+                                </h3>
+                                <span className="text-sm text-gray-400 group-hover:text-orange-500 transition-colors">Acessar →</span>
+                            </div>
+                            <p className="text-sm text-gray-500">
+                                Sorteie a tabela da {selectedCategory?.name}, defina datas e horários das partidas e lance os resultados.
+                            </p>
                         </Link>
                     )}
 

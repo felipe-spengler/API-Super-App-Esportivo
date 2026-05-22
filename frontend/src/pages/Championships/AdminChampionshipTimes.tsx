@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Timer, ArrowLeft, Play, CheckCircle2 } from 'lucide-react';
 import api from '../../services/api';
 import echo from '../../services/echo';
@@ -10,6 +10,10 @@ import { CountdownModal } from './components/CountdownModal';
 export function AdminChampionshipTimes() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const gameMatchId = searchParams.get('game_match_id');
+    const [matchDetails, setMatchDetails] = useState<any>(null);
+    
     const [times, setTimes] = useState<any[]>([]);
     const [participants, setParticipants] = useState<any[]>([]);
     const [championship, setChampionship] = useState<any>(null);
@@ -39,14 +43,25 @@ export function AdminChampionshipTimes() {
     async function loadData(showLoader = true) {
         try {
             if (showLoader) setLoading(true);
-            const [timesRes, participantsRes, champRes] = await Promise.all([
-                api.get(`/admin/championships/${id}/times`),
-                api.get(`/championships/${id}/participants`),
-                api.get(`/championships/${id}`)
+            
+            const timesPromise = api.get(gameMatchId ? `/admin/championships/${id}/times?game_match_id=${gameMatchId}` : `/admin/championships/${id}/times`);
+            const participantsPromise = api.get(`/championships/${id}/participants`);
+            const champPromise = api.get(`/championships/${id}`);
+            const matchPromise = gameMatchId ? api.get(`/admin/matches/${gameMatchId}`) : Promise.resolve(null);
+
+            const [timesRes, participantsRes, champRes, matchRes] = await Promise.all([
+                timesPromise,
+                participantsPromise,
+                champPromise,
+                matchPromise
             ]);
+
             setTimes(timesRes.data);
             setParticipants(participantsRes.data || []);
             setChampionship(champRes.data);
+            if (matchRes) {
+                setMatchDetails(matchRes.data);
+            }
         } catch (error) {
             console.error(error);
         } finally {
@@ -78,9 +93,9 @@ export function AdminChampionshipTimes() {
         <div className="bg-slate-50 min-h-screen pb-20">
             <div className="bg-white border-b border-slate-200 px-6 py-6 mb-8">
                 <div className="max-w-4xl mx-auto">
-                    <button onClick={() => navigate(`/admin/championships/${id}`)} className="flex items-center text-slate-400 hover:text-slate-900 mb-4 transition-colors text-sm font-bold">
+                    <button onClick={() => navigate(gameMatchId ? `/admin/championships/${id}/matches` : `/admin/championships/${id}`)} className="flex items-center text-slate-400 hover:text-slate-900 mb-4 transition-colors text-sm font-bold">
                         <ArrowLeft className="w-4 h-4 mr-1" />
-                        Voltar para o Campeonato
+                        {gameMatchId ? 'Voltar para Etapas e Baterias' : 'Voltar para o Campeonato'}
                     </button>
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
@@ -88,8 +103,12 @@ export function AdminChampionshipTimes() {
                                 <Timer size={28} />
                             </div>
                             <div>
-                                <h1 className="text-2xl font-black text-slate-900 leading-tight">Cronômetro / Tempos</h1>
-                                <p className="text-slate-500 font-medium">Registre o tempo de cada atleta em tempo real.</p>
+                                <h1 className="text-2xl font-black text-slate-900 leading-tight">
+                                    {matchDetails ? (matchDetails.round_name || `Bateria ${matchDetails.round_number}`) : 'Cronômetro / Tempos'}
+                                </h1>
+                                <p className="text-slate-500 font-medium">
+                                    {matchDetails ? `Etapa/Bateria do campeonato ${championship?.name}` : 'Registre o tempo de cada atleta em tempo real.'}
+                                </p>
                             </div>
                         </div>
                         <div className="flex gap-2">
@@ -181,6 +200,7 @@ export function AdminChampionshipTimes() {
                 participants={participants}
                 isLapsFormat={isLapsFormat}
                 onSaveSuccess={loadData}
+                gameMatchId={gameMatchId || undefined}
             />
 
             <StopwatchModal 
@@ -190,6 +210,7 @@ export function AdminChampionshipTimes() {
                 participants={participants}
                 isLapsFormat={isLapsFormat}
                 onSaveSuccess={loadData}
+                gameMatchId={gameMatchId || undefined}
             />
 
             <CountdownModal 

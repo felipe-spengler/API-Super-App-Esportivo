@@ -3,6 +3,11 @@ import { X, Calendar, Clock, MapPin, Trophy, User, Share2, FileText, ChevronRigh
 import api from '../services/api';
 import echo from '../services/echo';
 import { getMatchPhrase } from '../utils/matchPhrases';
+import { MatchArtTab } from './MatchArtTab';
+import { MatchMvpTab } from './MatchMvpTab';
+import { MatchPernaTab } from './MatchPernaTab';
+import { MatchReportTab } from './MatchReportTab';
+import { MatchFaceoffTab } from './MatchFaceoffTab';
 
 interface MatchDetailsModalProps {
     matchId: string | number | null;
@@ -683,235 +688,15 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                 </div>
                             )}
 
-                            {activeTab === 'mvp' && (
-                                <div className="flex flex-col items-center justify-center py-6">
-                                    {match?.mvp ? (
-                                        <div className="w-full max-w-sm flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-300">
-                                            <a
-                                                href={`${api.defaults.baseURL}/public/art/match/${match.id}/mvp`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="relative w-full aspect-[4/5] bg-gray-200 rounded-2xl overflow-hidden shadow-xl border border-white hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] group cursor-pointer"
-                                            >
-                                                <img
-                                                    src={`${api.defaults.baseURL}/public/art/match/${match.id}/mvp`}
-                                                    className="w-full h-full object-cover"
-                                                    alt="Arte do Craque do Jogo"
-                                                    onError={(e: any) => {
-                                                        e.target.src = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22400%22%20height%3D%22500%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23f3f4f6%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20font-family%3D%22Arial%22%20font-size%3D%2224%22%20fill%3D%22%239ca3af%22%20text-anchor%3D%22middle%22%20dy%3D%22.3em%22%3EArte%20do%20Craque%3C%2Ftext%3E%3C%2Fsvg%3E';
-                                                    }}
-                                                />
-                                                {/* Overlay on hover */}
-                                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-300 flex items-center justify-center">
-                                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-bold text-gray-800 shadow-lg">
-                                                        🔍 Clique para ampliar
-                                                    </div>
-                                                </div>
-                                            </a>
-                                            <div className="text-center">
-                                                <h3 className="text-xl font-black text-indigo-900 uppercase italic tracking-tighter">
-                                                    {match.mvp.name}
-                                                </h3>
-                                                <p className="text-gray-500 text-sm font-medium mb-3">Eleito o melhor da partida</p>
-                                                <a
-                                                    href={`${api.defaults.baseURL}/public/art/match/${match.id}/mvp`}
-                                                    download={`craque-${match.id}-${match.mvp.name}.jpg`}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="inline-flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-600/30 hover:bg-indigo-700 transition-all active:scale-95 text-sm"
-                                                >
-                                                    <Share2 size={16} /> Baixar Arte
-                                                </a>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="text-center py-20">
-                                            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                                <User size={32} className="text-gray-300" />
-                                            </div>
-                                            <p className="text-gray-500 font-medium">Nenhum craque definido ainda.</p>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
+                            {activeTab === 'mvp' && <MatchMvpTab match={match} />}
 
-                            {activeTab === 'perna' && (
-                                <div className="flex flex-col items-center justify-center py-6">
-                                    {match?.perna_de_pau ? (
-                                        <div className="w-full max-w-sm flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-300">
-                                            <a
-                                                href={`${api.defaults.baseURL}/public/art/match/${match.id}/perna-de-pau`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="relative w-full aspect-[4/5] bg-gray-200 rounded-2xl overflow-hidden shadow-xl border border-white hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] group cursor-pointer"
-                                            >
-                                                <img
-                                                    src={`${api.defaults.baseURL}/public/art/match/${match.id}/perna-de-pau`}
-                                                    className="w-full h-full object-cover"
-                                                    alt="Arte do Perna de Pau"
-                                                    onError={(e: any) => {
-                                                        e.target.src = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22400%22%20height%3D%22500%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23fee2e2%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20font-family%3D%22Arial%22%20font-size%3D%2224%22%20fill%3D%22%23ef4444%22%20text-anchor%3D%22middle%22%20dy%3D%22.3em%22%3EArte%20do%20Perna%20de%20Pau%3C%2Ftext%3E%3C%2Fsvg%3E';
-                                                    }}
-                                                />
-                                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-300 flex items-center justify-center">
-                                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-bold text-gray-800 shadow-lg">
-                                                        🔍 Clique para ampliar
-                                                    </div>
-                                                </div>
-                                            </a>
-                                            <div className="text-center">
-                                                <h3 className="text-xl font-black text-red-900 uppercase italic tracking-tighter">
-                                                    {match.perna_de_pau.name}
-                                                </h3>
-                                                <p className="text-gray-500 text-sm font-medium mb-3">O famigerado Perna de Pau da partida</p>
-                                                <a
-                                                    href={`${api.defaults.baseURL}/public/art/match/${match.id}/perna-de-pau`}
-                                                    download={`perna-de-pau-${match.id}-${match.perna_de_pau.name}.jpg`}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="inline-flex items-center gap-2 px-6 py-2.5 bg-red-600 text-white rounded-xl font-bold shadow-lg shadow-red-600/30 hover:bg-red-700 transition-all active:scale-95 text-sm"
-                                                >
-                                                    <Share2 size={16} /> Baixar Arte
-                                                </a>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="text-center py-20">
-                                            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                                <User size={32} className="text-gray-300" />
-                                            </div>
-                                            <p className="text-gray-500 font-medium">Ninguém foi eleito perna de pau hoje!</p>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
+                            {activeTab === 'perna' && <MatchPernaTab match={match} />}
 
-                            {activeTab === 'report' && (
-                                <div className="flex flex-col items-center justify-center py-12 text-center">
-                                    <div className="w-20 h-20 bg-indigo-50 rounded-3xl flex items-center justify-center mb-6 shadow-inner">
-                                        <Printer size={40} className="text-indigo-600" />
-                                    </div>
-                                    <h3 className="text-xl font-bold text-gray-900 mb-2">Súmula Oficial</h3>
-                                    <p className="text-gray-500 max-w-xs mb-8">
-                                        Clique abaixo para visualizar e imprimir o documento oficial desta partida.
-                                    </p>
-                                    <a
-                                        href={`/matches/${match.id}/print`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-2 px-8 py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-600/30 hover:bg-indigo-700 transition-all active:scale-95"
-                                    >
-                                        <Printer size={20} /> Imprimir Súmula
-                                    </a>
-                                </div>
-                            )}
+                            {activeTab === 'report' && <MatchReportTab match={match} />}
 
-                            {activeTab === 'art' && (
-                                <div className="flex flex-col items-center justify-center py-6">
-                                    <div className="w-full max-w-sm flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-300">
-                                        <a
-                                            href={`${api.defaults.baseURL}/public/art/match/${match.id}/scheduled?download=true`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="relative w-full aspect-video bg-gray-200 rounded-2xl overflow-hidden shadow-xl border border-white hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] group cursor-pointer"
-                                        >
-                                            <img
-                                                src={`${api.defaults.baseURL}/public/art/match/${match.id}/scheduled?t=${Date.now()}`}
-                                                className="w-full h-full object-cover"
-                                                alt="Arte do Jogo Programado"
-                                                onError={(e: any) => {
-                                                    e.target.src = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22400%22%20height%3D%22225%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23f3f4f6%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20font-family%3D%22Arial%22%20font-size%3D%2220%22%20fill%3D%22%239ca3af%22%20text-anchor%3D%22middle%22%20dy%3D%22.3em%22%3ECarregando%20Arte...%3C%2Ftext%3E%3C%2Fsvg%3E';
-                                                }}
-                                            />
-                                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-300 flex items-center justify-center">
-                                                <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-bold text-gray-800 shadow-lg">
-                                                    🔍 Clique para ampliar
-                                                </div>
-                                            </div>
-                                        </a>
-                                        <div className="text-center">
-                                            <h3 className="text-lg font-bold text-gray-900 mb-1">
-                                                Arte de Divulgação
-                                            </h3>
-                                            <p className="text-gray-500 text-sm mb-4">Compartilhe as informações do jogo!</p>
-                                            <a
-                                                href={`${api.defaults.baseURL}/public/art/match/${match.id}/scheduled?download=true`}
-                                                download={`jogo-${match.id}.jpg`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="inline-flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-600/30 hover:bg-indigo-700 transition-all active:scale-95 text-sm"
-                                            >
-                                                <Share2 size={16} /> Baixar Imagem
-                                            </a>
-                                            {/* @ts-ignore */}
-                                            {navigator.share && (
-                                                <button
-                                                    onClick={async () => {
-                                                        try {
-                                                            const response = await fetch(`${api.defaults.baseURL}/public/art/match/${match.id}/scheduled`);
-                                                            const blob = await response.blob();
-                                                            const file = new File([blob], `jogo-${match.id}.jpg`, { type: 'image/jpeg' });
-                                                            await navigator.share({
-                                                                title: `Jogo: ${match.home_team?.name} vs ${match.away_team?.name}`,
-                                                                text: 'Confira os detalhes da nossa próxima partida!',
-                                                                files: [file]
-                                                            });
+                            {activeTab === 'art' && <MatchArtTab match={match} />}
 
-                                                        } catch (err) {
-                                                            console.error('Error sharing:', err);
-                                                        }
-                                                    }}
-                                                    className="inline-flex items-center gap-2 px-6 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-50 transition-all active:scale-95 text-sm mt-2"
-                                                >
-                                                    <Share2 size={16} /> Compartilhar
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {activeTab === 'faceoff' && (
-                                <div className="flex flex-col items-center justify-center py-6">
-                                    <div className="w-full max-w-sm flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-300">
-                                        <a
-                                            href={`${api.defaults.baseURL}/public/art/match/${match.id}/faceoff`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="relative w-full aspect-[4/5] bg-gray-200 rounded-2xl overflow-hidden shadow-xl border border-white hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] group cursor-pointer"
-                                        >
-                                            <img
-                                                src={`${api.defaults.baseURL}/public/art/match/${match.id}/faceoff?t=${Date.now()}`}
-                                                className="w-full h-full object-cover"
-                                                alt="Arte do Confronto"
-                                                onError={(e: any) => {
-                                                    e.target.src = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22400%22%20height%3D%22500%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23f3f4f6%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20font-family%3D%22Arial%22%20font-size%3D%2224%22%20fill%3D%22%239ca3af%22%20text-anchor%3D%22middle%22%20dy%3D%22.3em%22%3EArte%20do%20Confronto%3C%2Ftext%3E%3C%2Fsvg%3E';
-                                                }}
-                                            />
-                                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-300 flex items-center justify-center">
-                                                <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-bold text-gray-800 shadow-lg">
-                                                    🔍 Clique para ampliar
-                                                </div>
-                                            </div>
-                                        </a>
-                                        <div className="text-center">
-                                            <h3 className="text-lg font-bold text-gray-900 mb-1">
-                                                Arte do Confronto
-                                            </h3>
-                                            <p className="text-gray-500 text-sm mb-4">Resultado final e goleadores!</p>
-                                            <a
-                                                href={`${api.defaults.baseURL}/public/art/match/${match.id}/faceoff`}
-                                                download={`confronto-${match.id}.jpg`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="inline-flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-600/30 hover:bg-indigo-700 transition-all active:scale-95 text-sm"
-                                            >
-                                                <Share2 size={16} /> Baixar Imagem
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
+                            {activeTab === 'faceoff' && <MatchFaceoffTab match={match} />}
                         </div>
                     </div>
                 )}

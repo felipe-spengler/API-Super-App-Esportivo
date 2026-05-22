@@ -149,4 +149,9 @@ class GameMatch extends Model
     {
         return $this->hasMany(MatchEvent::class);
     }
+
+    public function competitorTimes()
+    {
+        return $this->hasMany(CompetitorTime::class, 'game_match_id');
+    }
 }

@@ -21,6 +21,7 @@ interface ManualTimeModalProps {
     participants: Participant[];
     isLapsFormat: boolean;
     onSaveSuccess: () => void;
+    gameMatchId?: number | string;
 }
 
 export function ManualTimeModal({
@@ -29,7 +30,8 @@ export function ManualTimeModal({
     championshipId,
     participants,
     isLapsFormat,
-    onSaveSuccess
+    onSaveSuccess,
+    gameMatchId
 }: ManualTimeModalProps) {
     const [selectedParticipant, setSelectedParticipant] = useState('');
     const [selectedTeam, setSelectedTeam] = useState('');
@@ -82,7 +84,8 @@ export function ManualTimeModal({
                 category_id: participant?.category_id,
                 time_ms: ms,
                 lap: isLapsFormat ? manualLap : 1,
-                status: 'completed'
+                status: 'completed',
+                game_match_id: gameMatchId
             });
             setManualTimeStr('');
             setSelectedParticipant('');

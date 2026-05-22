@@ -171,111 +171,138 @@ export function EventMatches() {
     const filterByRound = (list: any[]) =>
         selectedRound === 'Todas' ? list : list.filter(m => getRoundLabel(m) === selectedRound);
 
-    const MatchCard = ({ match }: { match: any }) => (
-        <div
-            onClick={() => setSelectedMatchId(match.id)}
-            className="group bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-all mb-3 cursor-pointer relative"
-        >
-            {/* Live Indicator Strip */}
-            {match.status === 'live' && (
-                <div className="absolute top-0 left-0 right-0 h-1 bg-red-500 animate-pulse" />
-            )}
+    const MatchCard = ({ match }: { match: any }) => {
+        const isDisputeOnly = !match.home_team && !match.away_team;
+        return (
+            <div
+                onClick={() => setSelectedMatchId(match.id)}
+                className="group bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-all mb-3 cursor-pointer relative"
+            >
+                {/* Live Indicator Strip */}
+                {match.status === 'live' && (
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-red-500 animate-pulse" />
+                )}
 
-            {/* Match Header: Date & Place */}
-            <div className="bg-gray-50 px-4 py-2 flex justify-between items-center text-xs text-gray-500 border-b border-gray-100 mt-1">
-                <div className="flex items-center gap-1">
-                    <Calendar className="w-3 h-3" />
-                    <span>{match.start_time ? new Date(match.start_time).toLocaleDateString() : 'TBA'}</span>
-                    <span className="mx-1">•</span>
-                    <Clock className="w-3 h-3" />
-                    <span>{match.start_time ? new Date(match.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                    <MapPin className="w-3 h-3" />
-                    <span>{match.location || 'Local a definir'}</span>
-                </div>
-            </div>
-
-            {/* Match Content */}
-            <div className="p-4 relative">
-                {/* Hover Action Overlay Text (Optional, keeping it clean for mobile) */}
-
-                <div className="flex items-center justify-between">
-                    {/* Home Team */}
-                    <div className="flex-1 flex flex-col items-center text-center gap-2">
-                        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center overflow-hidden border border-gray-200 group-hover:border-indigo-200 transition-colors">
-                            {match.home_team?.logo || match.home_team?.logo_url ? (
-                                <img src={match.home_team.logo || match.home_team.logo_url} alt={match.home_team.name} className="w-full h-full object-cover" />
-                            ) : (
-                                <span className="text-xs font-bold text-gray-400">{match.home_team?.name?.substring(0, 2)}</span>
-                            )}
-                        </div>
-                        <span className="text-sm font-bold text-gray-800 leading-tight block w-full truncate">{match.home_team?.name || 'Mandante'}</span>
+                {/* Match Header: Date & Place */}
+                <div className="bg-gray-50 px-4 py-2 flex justify-between items-center text-xs text-gray-500 border-b border-gray-100 mt-1">
+                    <div className="flex items-center gap-1">
+                        <Calendar className="w-3 h-3" />
+                        <span>{match.start_time ? new Date(match.start_time).toLocaleDateString() : 'TBA'}</span>
+                        <span className="mx-1">•</span>
+                        <Clock className="w-3 h-3" />
+                        <span>{match.start_time ? new Date(match.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}</span>
                     </div>
+                    <div className="flex items-center gap-1">
+                        <MapPin className="w-3 h-3" />
+                        <span>{match.location || 'Local a definir'}</span>
+                    </div>
+                </div>
 
-                    {/* Score Board */}
-                    <div className="flex flex-col items-center px-4 w-28">
-                        <div className="flex items-center gap-3">
-                            {match.status === 'scheduled' || match.status === 'upcoming' ? (
-                                <div className="flex flex-col items-center">
-                                    <span className="text-xl font-black text-gray-300">VS</span>
-                                </div>
-                            ) : (
-                                <>
-                                    <div className="flex flex-col items-center">
-                                        <div className="flex items-center gap-3">
-                                            <span className={`text-2xl font-black ${match.home_score > match.away_score ? 'text-gray-900' : 'text-gray-600'}`}>
-                                                {match.home_score ?? '-'}
-                                            </span>
-                                            <span className="text-xs text-gray-400 font-bold">X</span>
-                                            <span className={`text-2xl font-black ${match.away_score > match.home_score ? 'text-gray-900' : 'text-gray-600'}`}>
-                                                {match.away_score ?? '-'}
-                                            </span>
-                                        </div>
-                                        {match.home_penalty_score !== null && match.away_penalty_score !== null && (match.home_penalty_score > 0 || match.away_penalty_score > 0) && (
-                                            <span className="text-[10px] font-bold text-indigo-500 mt-1">
-                                                ({match.home_penalty_score} x {match.away_penalty_score} Pen)
-                                            </span>
-                                        )}
-                                    </div>
-                                </>
-                            )}
+                {isDisputeOnly ? (
+                    /* Elegant stage dispute card */
+                    <div className="p-5 flex flex-col sm:flex-row justify-between items-center gap-4 bg-gradient-to-r from-indigo-50/20 to-white">
+                        <div className="flex items-center gap-4 text-left">
+                            <div className="w-12 h-12 bg-indigo-50 border border-indigo-100 rounded-xl flex items-center justify-center text-indigo-650 font-black text-xl shadow-sm">
+                                🏆
+                            </div>
+                            <div>
+                                <h3 className="font-extrabold text-slate-800 text-lg leading-tight">
+                                    {match.round_name || `Bateria ${match.round_number}`}
+                                </h3>
+                                <p className="text-[10px] text-indigo-500 font-bold uppercase mt-0.5 tracking-wider">
+                                    Etapa / Bateria / Disputa
+                                </p>
+                            </div>
                         </div>
-                        <div className="mt-2 text-center scale-90 origin-top">
+
+                        <div className="flex flex-col items-center sm:items-end gap-1">
                             {getStatusBadge(match)}
+                            <span className="flex items-center gap-1 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black transition-all shadow-md shadow-indigo-100 mt-2">
+                                <Eye size={12} /> Ver Resultados
+                            </span>
                         </div>
                     </div>
+                ) : (
+                    /* Traditional football team VS card */
+                    <div className="p-4 relative">
+                        <div className="flex items-center justify-between">
+                            {/* Home Team */}
+                            <div className="flex-1 flex flex-col items-center text-center gap-2">
+                                <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center overflow-hidden border border-gray-200 group-hover:border-indigo-200 transition-colors">
+                                    {match.home_team?.logo || match.home_team?.logo_url ? (
+                                        <img src={match.home_team.logo || match.home_team.logo_url} alt={match.home_team.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <span className="text-xs font-bold text-gray-400">{match.home_team?.name?.substring(0, 2)}</span>
+                                    )}
+                                </div>
+                                <span className="text-sm font-bold text-gray-800 leading-tight block w-full truncate">{match.home_team?.name || 'Mandante'}</span>
+                            </div>
 
-                    {/* Away Team */}
-                    <div className="flex-1 flex flex-col items-center text-center gap-2">
-                        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center overflow-hidden border border-gray-200 group-hover:border-indigo-200 transition-colors">
-                            {match.away_team?.logo || match.away_team?.logo_url ? (
-                                <img src={match.away_team.logo || match.away_team.logo_url} alt={match.away_team.name} className="w-full h-full object-cover" />
+                            {/* Score Board */}
+                            <div className="flex flex-col items-center px-4 w-28">
+                                <div className="flex items-center gap-3">
+                                    {match.status === 'scheduled' || match.status === 'upcoming' ? (
+                                        <div className="flex flex-col items-center">
+                                            <span className="text-xl font-black text-gray-300">VS</span>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div className="flex flex-col items-center">
+                                                <div className="flex items-center gap-3">
+                                                    <span className={`text-2xl font-black ${match.home_score > match.away_score ? 'text-gray-900' : 'text-gray-600'}`}>
+                                                        {match.home_score ?? '-'}
+                                                    </span>
+                                                    <span className="text-xs text-gray-400 font-bold">X</span>
+                                                    <span className={`text-2xl font-black ${match.away_score > match.home_score ? 'text-gray-900' : 'text-gray-600'}`}>
+                                                        {match.away_score ?? '-'}
+                                                    </span>
+                                                </div>
+                                                {match.home_penalty_score !== null && match.away_penalty_score !== null && (match.home_penalty_score > 0 || match.away_penalty_score > 0) && (
+                                                    <span className="text-[10px] font-bold text-indigo-500 mt-1">
+                                                        ({match.home_penalty_score} x {match.away_penalty_score} Pen)
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                                <div className="mt-2 text-center scale-90 origin-top">
+                                    {getStatusBadge(match)}
+                                </div>
+                            </div>
+
+                            {/* Away Team */}
+                            <div className="flex-1 flex flex-col items-center text-center gap-2">
+                                <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center overflow-hidden border border-gray-200 group-hover:border-indigo-200 transition-colors">
+                                    {match.away_team?.logo || match.away_team?.logo_url ? (
+                                        <img src={match.away_team.logo || match.away_team.logo_url} alt={match.away_team.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <span className="text-xs font-bold text-gray-400">{match.away_team?.name?.substring(0, 2)}</span>
+                                    )}
+                                </div>
+                                <span className="text-sm font-bold text-gray-800 leading-tight block w-full truncate">{match.away_team?.name || 'Visitante'}</span>
+                            </div>
+                        </div>
+
+                        {/* Call to Action Button */}
+                        <div className="mt-4 flex justify-center">
+                            {match.status === 'live' ? (
+                                <button className="flex items-center gap-2 px-4 py-1.5 bg-red-50 text-red-600 rounded-full text-xs font-bold hover:bg-red-100 transition-colors">
+                                    <Eye size={14} className="animate-pulse" /> Acompanhar Ao Vivo
+                                </button>
+                            ) : match.status === 'finished' ? (
+                                <button className="flex items-center gap-2 px-4 py-1.5 bg-gray-100 text-gray-600 rounded-full text-xs font-bold hover:bg-gray-200 transition-colors group-hover:bg-indigo-50 group-hover:text-indigo-600">
+                                    <FileText size={14} /> Ver Súmula e Detalhes
+                                </button>
                             ) : (
-                                <span className="text-xs font-bold text-gray-400">{match.away_team?.name?.substring(0, 2)}</span>
+                                <span className="text-[10px] text-gray-400">Clique para ver detalhes</span>
                             )}
                         </div>
-                        <span className="text-sm font-bold text-gray-800 leading-tight block w-full truncate">{match.away_team?.name || 'Visitante'}</span>
                     </div>
-                </div>
-
-                {/* Call to Action Button (Visible on Hover or Always small) */}
-                <div className="mt-4 flex justify-center">
-                    {match.status === 'live' ? (
-                        <button className="flex items-center gap-2 px-4 py-1.5 bg-red-50 text-red-600 rounded-full text-xs font-bold hover:bg-red-100 transition-colors">
-                            <Eye size={14} className="animate-pulse" /> Acompanhar Ao Vivo
-                        </button>
-                    ) : match.status === 'finished' ? (
-                        <button className="flex items-center gap-2 px-4 py-1.5 bg-gray-100 text-gray-600 rounded-full text-xs font-bold hover:bg-gray-200 transition-colors group-hover:bg-indigo-50 group-hover:text-indigo-600">
-                            <FileText size={14} /> Ver Súmula e Detalhes
-                        </button>
-                    ) : (
-                        <span className="text-[10px] text-gray-400">Clique para ver detalhes</span>
-                    )}
-                </div>
+                )}
             </div>
-        </div>
-    );
+        );
+    };
 
     const renderMatchesByRound = (matchesList: any[], emptyMessage: string) => {
         if (matchesList.length === 0) {
