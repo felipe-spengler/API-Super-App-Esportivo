@@ -22,6 +22,8 @@ interface StopwatchModalProps {
     isLapsFormat: boolean;
     onSaveSuccess: () => void;
     gameMatchId?: number | string;
+    times: any[];
+    setTimes: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
 export function StopwatchModal({
@@ -31,7 +33,9 @@ export function StopwatchModal({
     participants,
     isLapsFormat,
     onSaveSuccess,
-    gameMatchId
+    gameMatchId,
+    times,
+    setTimes
 }: StopwatchModalProps) {
     const [selectedParticipant, setSelectedParticipant] = useState('');
     const [selectedTeam, setSelectedTeam] = useState('');
@@ -115,99 +119,163 @@ export function StopwatchModal({
     };
 
     const saveTime = async () => {
-        if (!selectedParticipant || saving) return;
-        setSaving(true);
-        try {
-            const participant = participants.find(p => p.user_id?.toString() === selectedParticipant);
-            
-            // In relay mode, calculate the final athlete's segment time
-            const finalTimeMs = isRelayMode ? (timeMs - lastBatonTimeMs) : timeMs;
+        if (!selectedParticipant) return;
+        const participant = participants.find(p => p.user_id?.toString() === selectedParticipant);
+        if (!participant) return;
 
-            await api.post(`/admin/championships/${championshipId}/times`, {
-                user_id: participant?.user_id,
-                team_id: participant?.team_id,
-                category_id: participant?.category_id,
+        // In relay mode, calculate the final athlete's segment time
+        const finalTimeMs = isRelayMode ? (timeMs - lastBatonTimeMs) : timeMs;
+
+        const optimisticId = `optimistic-${Date.now()}-${Math.random()}`;
+        const optimisticTime = {
+            id: optimisticId,
+            user_id: participant.user_id,
+            team_id: participant.team_id,
+            category_id: participant.category_id,
+            time_ms: finalTimeMs,
+            lap: currentLap,
+            status: 'completed',
+            game_match_id: gameMatchId || null,
+            user: { name: participant.name },
+            team: participant.team ? { name: participant.team.name } : undefined
+        };
+
+        // UI updates INSTANTLY (0ms delay!)
+        setTimes(prev => [...prev, optimisticTime]);
+
+        // Reset state and close modal instantly
+        resetTimer();
+        setSelectedParticipant('');
+        setSelectedTeam('');
+        onClose();
+
+        try {
+            const res = await api.post(`/admin/championships/${championshipId}/times`, {
+                user_id: participant.user_id,
+                team_id: participant.team_id,
+                category_id: participant.category_id,
                 time_ms: finalTimeMs,
                 lap: currentLap,
                 status: 'completed',
-                game_match_id: gameMatchId
+                game_match_id: gameMatchId || null
             });
-            resetTimer();
-            setSelectedParticipant('');
-            setSelectedTeam('');
+
+            // Replace local optimistic item with the database record once returned
+            setTimes(prev => prev.map(t => t.id === optimisticId ? res.data : t));
             onSaveSuccess();
-            onClose();
         } catch (error) {
             console.error(error);
+            // Revert state if the API fails
+            setTimes(prev => prev.filter(t => t.id !== optimisticId));
             alert('Erro ao salvar tempo.');
-        } finally {
-            setSaving(false);
         }
     };
 
     const passBaton = async () => {
-        if (!selectedParticipant || !nextParticipant || saving) return;
-        setSaving(true);
+        if (!selectedParticipant || !nextParticipant) return;
+
+        const currentPart = participants.find(p => p.user_id?.toString() === selectedParticipant);
+        if (!currentPart) return;
+
+        // Calculate individual segment time for the current athlete
+        const segmentTime = timeMs - lastBatonTimeMs;
+
+        const optimisticId = `optimistic-${Date.now()}-${Math.random()}`;
+        const optimisticTime = {
+            id: optimisticId,
+            user_id: currentPart.user_id,
+            team_id: currentPart.team_id,
+            category_id: currentPart.category_id,
+            time_ms: segmentTime,
+            lap: currentLap,
+            status: 'completed',
+            game_match_id: gameMatchId || null,
+            user: { name: currentPart.name },
+            team: currentPart.team ? { name: currentPart.team.name } : undefined
+        };
+
+        // UI updates INSTANTLY (0ms delay!)
+        setTimes(prev => [...prev, optimisticTime]);
+
+        // Add individual time to local relay history
+        setRelayHistory(prev => [...prev, { name: currentPart.name || 'Atleta', time: segmentTime }]);
+
+        // Update cumulative baseline time for next athlete
+        setLastBatonTimeMs(timeMs);
+
+        // Switch to next competitor and keep timer running!
+        setSelectedParticipant(nextParticipant);
+        setNextParticipant('');
 
         try {
-            const currentPart = participants.find(p => p.user_id?.toString() === selectedParticipant);
-            
-            // Calculate individual segment time for the current athlete
-            const segmentTime = timeMs - lastBatonTimeMs;
-
-            // Save individual segment time
-            await api.post(`/admin/championships/${championshipId}/times`, {
-                user_id: currentPart?.user_id,
-                team_id: currentPart?.team_id,
-                category_id: currentPart?.category_id,
+            const res = await api.post(`/admin/championships/${championshipId}/times`, {
+                user_id: currentPart.user_id,
+                team_id: currentPart.team_id,
+                category_id: currentPart.category_id,
                 time_ms: segmentTime,
                 lap: currentLap,
                 status: 'completed',
-                game_match_id: gameMatchId
+                game_match_id: gameMatchId || null
             });
 
-            // Add individual time to local relay history
-            setRelayHistory(prev => [...prev, { name: currentPart?.name || 'Atleta', time: segmentTime }]);
-
-            // Update cumulative baseline time for next athlete
-            setLastBatonTimeMs(timeMs);
-
-            // Switch to next competitor and keep timer running!
-            setSelectedParticipant(nextParticipant);
-            setNextParticipant('');
-            
-            // Trigger a data reload in the background
+            // Replace local optimistic item with the database record once returned
+            setTimes(prev => prev.map(t => t.id === optimisticId ? res.data : t));
             onSaveSuccess();
         } catch (error) {
             console.error(error);
+            // Revert state if the API fails
+            setTimes(prev => prev.filter(t => t.id !== optimisticId));
             alert('Erro ao passar o bastão.');
-        } finally {
-            setSaving(false);
         }
     };
 
     const recordLap = async () => {
-        if (!selectedParticipant || saving) return;
-        setSaving(true);
+        if (!selectedParticipant) return;
+
+        const participant = participants.find(p => p.user_id?.toString() === selectedParticipant);
+        if (!participant) return;
+
+        const optimisticId = `optimistic-${Date.now()}-${Math.random()}`;
+        const optimisticTime = {
+            id: optimisticId,
+            user_id: participant.user_id,
+            team_id: participant.team_id,
+            category_id: participant.category_id,
+            time_ms: timeMs,
+            lap: currentLap,
+            status: 'completed',
+            game_match_id: gameMatchId || null,
+            user: { name: participant.name },
+            team: participant.team ? { name: participant.team.name } : undefined
+        };
+
+        // UI updates INSTANTLY (0ms delay!)
+        setTimes(prev => [...prev, optimisticTime]);
+
+        // Increment local lap
+        const recordedLapNum = currentLap;
+        setCurrentLap(prev => prev + 1);
+
         try {
-            const participant = participants.find(p => p.user_id?.toString() === selectedParticipant);
-            await api.post(`/admin/championships/${championshipId}/times`, {
-                user_id: participant?.user_id,
-                team_id: participant?.team_id,
-                category_id: participant?.category_id,
+            const res = await api.post(`/admin/championships/${championshipId}/times`, {
+                user_id: participant.user_id,
+                team_id: participant.team_id,
+                category_id: participant.category_id,
                 time_ms: timeMs,
-                lap: currentLap,
+                lap: recordedLapNum,
                 status: 'completed',
-                game_match_id: gameMatchId
+                game_match_id: gameMatchId || null
             });
-            setCurrentLap(prev => prev + 1);
-            alert(`Volta ${currentLap} salva com sucesso! O cronômetro continua rodando.`);
+
+            // Replace local optimistic item with the database record once returned
+            setTimes(prev => prev.map(t => t.id === optimisticId ? res.data : t));
             onSaveSuccess();
         } catch (error) {
             console.error(error);
+            // Revert state if the API fails and decrement lap counter
+            setTimes(prev => prev.filter(t => t.id !== optimisticId));
+            setCurrentLap(prev => Math.max(1, prev - 1));
             alert('Erro ao salvar volta.');
-        } finally {
-            setSaving(false);
         }
     };
 

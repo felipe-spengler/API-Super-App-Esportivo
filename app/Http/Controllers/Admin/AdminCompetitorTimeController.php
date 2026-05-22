@@ -87,7 +87,7 @@ class AdminCompetitorTimeController extends Controller
             \Log::warning("Erro ao transmitir evento de atualizacao de tempos: " . $e->getMessage());
         }
 
-        return response()->json($time, 201);
+        return response()->json($time->load(['user', 'team', 'category']), 201);
     }
     
     public function destroy($championshipId, $id)

@@ -22,6 +22,7 @@ interface CountdownModalProps {
     times: any[];
     setTimes: React.Dispatch<React.SetStateAction<any[]>>;
     deleteTime: (id: any) => void;
+    gameMatchId?: string;
 }
 
 export function CountdownModal({
@@ -31,7 +32,8 @@ export function CountdownModal({
     participants,
     times,
     setTimes,
-    deleteTime
+    deleteTime,
+    gameMatchId
 }: CountdownModalProps) {
     const [countdownMinutesInput, setCountdownMinutesInput] = useState(12);
     const [countdownTimeLeft, setCountdownTimeLeft] = useState(12 * 60); // in seconds
@@ -109,6 +111,7 @@ export function CountdownModal({
             time_ms: elapsedMs,
             lap: nextLap,
             status: 'completed',
+            game_match_id: gameMatchId || null,
             user: { name: participant.name }
         };
 
@@ -123,7 +126,8 @@ export function CountdownModal({
                 category_id: participant.category_id,
                 time_ms: elapsedMs,
                 lap: nextLap,
-                status: 'completed'
+                status: 'completed',
+                game_match_id: gameMatchId || null
             });
 
             // Replace local optimistic item with the database record once returned

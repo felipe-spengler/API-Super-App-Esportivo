@@ -73,10 +73,12 @@ export function AdminChampionshipTimes() {
 
     const deleteTime = async (timeId: number) => {
         if (confirm('Deseja excluir este tempo?')) {
+            setTimes(prev => prev.filter(t => t.id !== timeId));
             try {
                 await api.delete(`/admin/championships/${id}/times/${timeId}`);
-                loadData();
+                loadData(false);
             } catch (err) {
+                loadData(false);
                 alert('Erro ao excluir');
             }
         }
@@ -209,8 +211,10 @@ export function AdminChampionshipTimes() {
                 championshipId={id!}
                 participants={participants}
                 isLapsFormat={isLapsFormat}
-                onSaveSuccess={loadData}
+                onSaveSuccess={() => loadData(false)}
                 gameMatchId={gameMatchId || undefined}
+                times={times}
+                setTimes={setTimes}
             />
 
             <CountdownModal 
@@ -221,6 +225,7 @@ export function AdminChampionshipTimes() {
                 times={times}
                 setTimes={setTimes}
                 deleteTime={deleteTime}
+                gameMatchId={gameMatchId || undefined}
             />
         </div>
     );
