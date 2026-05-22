@@ -33,4 +33,9 @@ class ChampionshipTimesUpdated implements ShouldBroadcastNow
     {
         return new Channel('championship.' . $this->championshipId);
     }
+
+    public function broadcastAs()
+    {
+        return 'ChampionshipTimesUpdated';
+    }
 }

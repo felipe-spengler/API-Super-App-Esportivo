@@ -36,6 +36,8 @@ class AdminCompetitorTimeController extends Controller
 
     public function store(Request $request, $championshipId)
     {
+        \Log::info("DEBUG STORE TIMES REQUEST: " . json_encode($request->all()));
+
         $request->validate([
             'category_id' => 'nullable|exists:categories,id',
             'team_id' => 'nullable|exists:teams,id',

@@ -1030,7 +1030,10 @@ class EventController extends Controller
             },
             'awayTeam.players' => function ($q) use ($champId) {
                 $q->where('team_players.championship_id', $champId);
-            }
+            },
+            'competitorTimes.user',
+            'competitorTimes.team',
+            'competitorTimes.category'
         ]);
 
         $details = $match->match_details ?? [];

@@ -81,6 +81,23 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
         }
     }, [isOpen, matchId]);
 
+    // Real-time updates for competitor times (WebSockets via Reverb)
+    useEffect(() => {
+        const champId = match?.championship_id;
+        if (isOpen && champId) {
+            const channelName = `championship.${champId}`;
+            echo.channel(channelName)
+                .listen('.ChampionshipTimesUpdated', () => {
+                    console.log("Real-time competitor times update received, reloading...");
+                    loadMatchDetails(true); // Silent reload
+                });
+
+            return () => {
+                echo.leave(channelName);
+            };
+        }
+    }, [isOpen, match?.championship_id]);
+
     // Sync local timer with server data
     const localTimeRef = useRef(localTime);
     const isTimerRunningRef = useRef(isTimerRunning);
@@ -220,6 +237,28 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
         });
     };
 
+    const isTimesOrLapsFormat = match?.championship?.format === 'time_ranking' || match?.championship?.format === 'laps';
+
+    const getSortedCompetitorTimes = () => {
+        if (!match?.competitor_times) return [];
+        return [...match.competitor_times].sort((a, b) => {
+            if (match?.championship?.format === 'laps') {
+                if (a.lap !== b.lap) {
+                    return (b.lap || 1) - (a.lap || 1);
+                }
+            }
+            return a.time_ms - b.time_ms;
+        });
+    };
+
+    const formatMsToTime = (ms: number) => {
+        if (!ms) return '--:--.--';
+        const minutes = Math.floor(ms / 60000);
+        const seconds = Math.floor((ms % 60000) / 1000);
+        const centiseconds = Math.floor((ms % 1000) / 10);
+        return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${centiseconds.toString().padStart(2, '0')}`;
+    };
+
     const getStatusText = (status: string) => {
         switch (status) {
             case 'live': return 'AO VIVO';
@@ -248,102 +287,117 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                         <span className="truncate">{match?.championship?.name || 'Campeonato'}</span>
                     </div>
 
-                    <div className="flex items-center gap-2 sm:gap-8 w-full px-4 sm:px-8 justify-between mt-6 sm:mt-4">
-                        {/* Home Team */}
-                        <div className="flex flex-col items-center gap-1 sm:gap-2 flex-1 min-w-0">
-                            <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white/10 rounded-full p-1.5 sm:p-2 backdrop-blur-sm border border-white/20 shrink-0">
-                                {match?.home_team?.logo || match?.home_team?.logo_url ? (
-                                    <img src={match.home_team.logo || match.home_team.logo_url} className="w-full h-full object-contain" />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-white font-bold text-lg sm:text-xl">
-                                        {match?.home_team?.name?.substring(0, 2)}
-                                    </div>
-                                )}
+                    {isTimesOrLapsFormat ? (
+                        <div className="flex flex-col items-center justify-center w-full px-6 mt-6 sm:mt-4">
+                            <div className="flex items-center gap-3 bg-indigo-500/10 border border-indigo-500/30 px-4 py-1.5 rounded-full backdrop-blur-md shadow-lg shadow-indigo-500/5 mb-2">
+                                <Timer size={18} className="text-indigo-400 animate-pulse" />
+                                <span className="text-white font-black uppercase tracking-widest text-xs sm:text-sm">
+                                    {match?.round_name || `Bateria ${match?.round_number}`}
+                                </span>
                             </div>
-                            <span className="text-white font-bold text-[10px] sm:text-sm text-center leading-tight line-clamp-2 w-full">
-                                {match?.home_team?.name}
-                            </span>
-                        </div>
-
-                        {/* Score */}
-                        <div className="flex flex-col items-center pb-2 min-w-[100px] sm:min-w-[120px] shrink-0">
-                            {(isLive || isFinished) && (
-                                <div className="mb-1 sm:mb-2 flex flex-col items-center">
-                                    <div className="text-yellow-400 font-mono text-xl sm:text-2xl font-bold drop-shadow-md flex items-center gap-1.5 line-height-none">
-                                        <Timer size={16} className={isTimerRunning ? "animate-pulse" : "opacity-30"} />
-                                        {localTime !== null ? formatMatchTime(localTime) : "--:--"}
-                                    </div>
-                                    <div className="flex items-center gap-1 mt-0.5">
-                                        {currentPeriod ? (
-                                            <span className="text-[8px] sm:text-[10px] text-white/60 font-bold uppercase tracking-widest">{currentPeriod}</span>
-                                        ) : (
-                                            isLive && <span className="text-[8px] text-white/30 font-bold uppercase tracking-widest">Aguardando Sinc.</span>
-                                        )}
-                                        {isLive && localTime !== null && !isTimerRunning && (
-                                            <span className="text-[7px] sm:text-[8px] bg-yellow-500/20 text-yellow-500 px-1 rounded font-black border border-yellow-500/30 shrink-0">PARADO</span>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-
-                            {!loading && (
-                                <div className="flex flex-col items-center">
-                                    <div className="flex items-center gap-2 sm:gap-4">
-                                        <span className="text-3xl sm:text-5xl font-black text-white tabular-nums">{match?.home_score ?? 0}</span>
-                                        <span className="text-white/40 text-xl sm:text-2xl font-light">x</span>
-                                        <span className="text-3xl sm:text-5xl font-black text-white tabular-nums">{match?.away_score ?? 0}</span>
-                                    </div>
-
-                                    {/* Placar de pontos do set atual (Vôlei) */}
-                                    {match?.championship?.sport?.slug === 'volei' && details?.volley_state && (
-                                        <div className="flex items-center gap-1.5 mt-[-2px] mb-1">
-                                            <span className="text-[10px] sm:text-xs font-bold text-white/50 bg-white/5 px-2 py-0.5 rounded border border-white/5 shadow-inner tabular-nums">
-                                                {details.volley_state.home_score ?? 0}
-                                            </span>
-                                            <span className="text-[8px] text-white/20 font-black">PONTOS</span>
-                                            <span className="text-[10px] sm:text-xs font-bold text-white/50 bg-white/5 px-2 py-0.5 rounded border border-white/5 shadow-inner tabular-nums">
-                                                {details.volley_state.away_score ?? 0}
-                                            </span>
-                                        </div>
-                                    )}
-
-                                    {/* Placar de Sets/Games para Tênis/Vôlei/Beach Tennis */}
-                                    {['tenis', 'volei', 'beach-tennis', 'volei-praia', 'tenis-mesa'].includes(match?.championship?.sport?.slug) && details?.sets?.length > 0 && (
-                                        <div className="flex items-center gap-1 mt-1">
-                                            {details.sets.map((set: any, i: number) => (
-                                                <div key={i} className="flex flex-col items-center px-1 border-x border-white/10 first:border-l-0 last:border-r-0">
-                                                    <span className="text-[7px] text-white/40 font-bold leading-none">{i + 1}º</span>
-                                                    <span className="text-[9px] text-yellow-400 font-black leading-none">{set.home_score}-{set.away_score}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                            <div className={`mt-2 px-2 sm:px-3 py-0.5 rounded-full text-[8px] sm:text-[10px] font-black tracking-widest uppercase border ${isLive ? 'bg-red-500/20 text-red-400 border-red-500/50 animate-pulse' :
-                                isFinished ? 'bg-white/10 text-white/60 border-white/10' :
-                                    'bg-blue-500/20 text-blue-400 border-blue-500/30'
-                                }`}>
+                            <span className="text-white/60 font-medium text-[10px] sm:text-xs flex items-center gap-1">
+                                <span className={`inline-block w-2 h-2 rounded-full ${isLive ? 'bg-red-500 animate-pulse' : isFinished ? 'bg-slate-500' : 'bg-blue-500'}`} />
                                 {getStatusText(match?.status)}
-                            </div>
-                        </div>
-
-                        {/* Away Team */}
-                        <div className="flex flex-col items-center gap-1 sm:gap-2 flex-1 min-w-0">
-                            <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white/10 rounded-full p-1.5 sm:p-2 backdrop-blur-sm border border-white/20 shrink-0">
-                                {match?.away_team?.logo || match?.away_team?.logo_url ? (
-                                    <img src={match.away_team.logo || match.away_team.logo_url} className="w-full h-full object-contain" />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-white font-bold text-lg sm:text-xl">
-                                        {match?.away_team?.name?.substring(0, 2)}
-                                    </div>
-                                )}
-                            </div>
-                            <span className="text-white font-bold text-[10px] sm:text-sm text-center leading-tight line-clamp-2 w-full">
-                                {match?.away_team?.name}
                             </span>
                         </div>
-                    </div>
+                    ) : (
+                        <div className="flex items-center gap-2 sm:gap-8 w-full px-4 sm:px-8 justify-between mt-6 sm:mt-4">
+                            {/* Home Team */}
+                            <div className="flex flex-col items-center gap-1 sm:gap-2 flex-1 min-w-0">
+                                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white/10 rounded-full p-1.5 sm:p-2 backdrop-blur-sm border border-white/20 shrink-0">
+                                    {match?.home_team?.logo || match?.home_team?.logo_url ? (
+                                        <img src={match.home_team.logo || match.home_team.logo_url} className="w-full h-full object-contain" />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-white font-bold text-lg sm:text-xl">
+                                            {match?.home_team?.name?.substring(0, 2)}
+                                        </div>
+                                    )}
+                                </div>
+                                <span className="text-white font-bold text-[10px] sm:text-sm text-center leading-tight line-clamp-2 w-full">
+                                    {match?.home_team?.name}
+                                </span>
+                            </div>
+
+                            {/* Score */}
+                            <div className="flex flex-col items-center pb-2 min-w-[100px] sm:min-w-[120px] shrink-0">
+                                {(isLive || isFinished) && (
+                                    <div className="mb-1 sm:mb-2 flex flex-col items-center">
+                                        <div className="text-yellow-400 font-mono text-xl sm:text-2xl font-bold drop-shadow-md flex items-center gap-1.5 line-height-none">
+                                            <Timer size={16} className={isTimerRunning ? "animate-pulse" : "opacity-30"} />
+                                            {localTime !== null ? formatMatchTime(localTime) : "--:--"}
+                                        </div>
+                                        <div className="flex items-center gap-1 mt-0.5">
+                                            {currentPeriod ? (
+                                                <span className="text-[8px] sm:text-[10px] text-white/60 font-bold uppercase tracking-widest">{currentPeriod}</span>
+                                            ) : (
+                                                isLive && <span className="text-[8px] text-white/30 font-bold uppercase tracking-widest">Aguardando Sinc.</span>
+                                            )}
+                                            {isLive && localTime !== null && !isTimerRunning && (
+                                                <span className="text-[7px] sm:text-[8px] bg-yellow-500/20 text-yellow-500 px-1 rounded font-black border border-yellow-500/30 shrink-0">PARADO</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {!loading && (
+                                    <div className="flex flex-col items-center">
+                                        <div className="flex items-center gap-2 sm:gap-4">
+                                            <span className="text-3xl sm:text-5xl font-black text-white tabular-nums">{match?.home_score ?? 0}</span>
+                                            <span className="text-white/40 text-xl sm:text-2xl font-light">x</span>
+                                            <span className="text-3xl sm:text-5xl font-black text-white tabular-nums">{match?.away_score ?? 0}</span>
+                                        </div>
+
+                                        {/* Placar de pontos do set atual (Vôlei) */}
+                                        {match?.championship?.sport?.slug === 'volei' && details?.volley_state && (
+                                            <div className="flex items-center gap-1.5 mt-[-2px] mb-1">
+                                                <span className="text-[10px] sm:text-xs font-bold text-white/50 bg-white/5 px-2 py-0.5 rounded border border-white/5 shadow-inner tabular-nums">
+                                                    {details.volley_state.home_score ?? 0}
+                                                </span>
+                                                <span className="text-[8px] text-white/20 font-black">PONTOS</span>
+                                                <span className="text-[10px] sm:text-xs font-bold text-white/50 bg-white/5 px-2 py-0.5 rounded border border-white/5 shadow-inner tabular-nums">
+                                                    {details.volley_state.away_score ?? 0}
+                                                </span>
+                                            </div>
+                                        )}
+
+                                        {/* Placar de Sets/Games para Tênis/Vôlei/Beach Tennis */}
+                                        {['tenis', 'volei', 'beach-tennis', 'volei-praia', 'tenis-mesa'].includes(match?.championship?.sport?.slug) && details?.sets?.length > 0 && (
+                                            <div className="flex items-center gap-1 mt-1">
+                                                {details.sets.map((set: any, i: number) => (
+                                                    <div key={i} className="flex flex-col items-center px-1 border-x border-white/10 first:border-l-0 last:border-r-0">
+                                                        <span className="text-[7px] text-white/40 font-bold leading-none">{i + 1}º</span>
+                                                        <span className="text-[9px] text-yellow-400 font-black leading-none">{set.home_score}-{set.away_score}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                                <div className={`mt-2 px-2 sm:px-3 py-0.5 rounded-full text-[8px] sm:text-[10px] font-black tracking-widest uppercase border ${isLive ? 'bg-red-500/20 text-red-400 border-red-500/50 animate-pulse' :
+                                    isFinished ? 'bg-white/10 text-white/60 border-white/10' :
+                                        'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                                    }`}>
+                                    {getStatusText(match?.status)}
+                                </div>
+                            </div>
+
+                            {/* Away Team */}
+                            <div className="flex flex-col items-center gap-1 sm:gap-2 flex-1 min-w-0">
+                                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white/10 rounded-full p-1.5 sm:p-2 backdrop-blur-sm border border-white/20 shrink-0">
+                                    {match?.away_team?.logo || match?.away_team?.logo_url ? (
+                                        <img src={match.away_team.logo || match.away_team.logo_url} className="w-full h-full object-contain" />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-white font-bold text-lg sm:text-xl">
+                                            {match?.away_team?.name?.substring(0, 2)}
+                                        </div>
+                                    )}
+                                </div>
+                                <span className="text-white font-bold text-[10px] sm:text-sm text-center leading-tight line-clamp-2 w-full">
+                                    {match?.away_team?.name}
+                                </span>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Sub-header Info */}
@@ -382,59 +436,184 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                 {!loading && (
                     <div className="flex-1 flex flex-col overflow-hidden">
                         {/* Tabs (Show MVP and Report only when finished) */}
-                        <div className="flex border-b border-gray-100 shrink-0 bg-white">
-                            <button
-                                onClick={() => setActiveTab('summary')}
-                                className={`flex-1 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors ${activeTab === 'summary' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
-                            >
-                                Resumo
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('art')}
-                                className={`flex-1 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors ${activeTab === 'art' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
-                            >
-                                🎨 Arte
-                            </button>
-                            {(isFinished || match?.mvp || match?.status === 'live') && (
-                                <>
-                                    <button
-                                        onClick={() => setActiveTab('mvp')}
-                                        className={`flex-1 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors ${activeTab === 'mvp' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
-                                    >
-                                        ⭐ Craque
-                                    </button>
-                                    {match?.perna_de_pau && (
+                        {!isTimesOrLapsFormat && (
+                            <div className="flex border-b border-gray-100 shrink-0 bg-white">
+                                <button
+                                    onClick={() => setActiveTab('summary')}
+                                    className={`flex-1 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors ${activeTab === 'summary' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                                >
+                                    Resumo
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('art')}
+                                    className={`flex-1 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors ${activeTab === 'art' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                                >
+                                    🎨 Arte
+                                </button>
+                                {(isFinished || match?.mvp || match?.status === 'live') && (
+                                    <>
                                         <button
-                                            onClick={() => setActiveTab('perna')}
-                                            className={`flex-1 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors ${activeTab === 'perna' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                                            onClick={() => setActiveTab('mvp')}
+                                            className={`flex-1 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors ${activeTab === 'mvp' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
                                         >
-                                            🤡 Perna de Pau
+                                            ⭐ Craque
                                         </button>
-                                    )}
-                                    <button
-                                        onClick={() => setActiveTab('faceoff')}
-                                        className={`flex-1 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors ${activeTab === 'faceoff' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
-                                    >
-                                        🖼️ Confronto
-                                    </button>
-                                    <button
-                                        onClick={() => setActiveTab('report')}
-                                        className={`flex-1 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors ${activeTab === 'report' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
-                                    >
-                                        📄 Súmula
-                                    </button>
-                                </>
-                            )}
-                        </div>
+                                        {match?.perna_de_pau && (
+                                            <button
+                                                onClick={() => setActiveTab('perna')}
+                                                className={`flex-1 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors ${activeTab === 'perna' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                                            >
+                                                🤡 Perna de Pau
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={() => setActiveTab('faceoff')}
+                                            className={`flex-1 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors ${activeTab === 'faceoff' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                                        >
+                                            🖼️ Confronto
+                                        </button>
+                                        <button
+                                            onClick={() => setActiveTab('report')}
+                                            className={`flex-1 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors ${activeTab === 'report' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                                        >
+                                            📄 Súmula
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                        )}
 
                         {/* Tab Panels */}
                         <div className="flex-1 overflow-y-auto p-3 sm:p-4 bg-gray-50/50">
                             {activeTab === 'summary' && (
                                 <div className="space-y-6">
-                                    {/* Timeline */}
-                                    <div className="relative">
-                                        {/* Center Line */}
-                                        <div className="absolute left-8 sm:left-1/2 top-0 bottom-0 w-px bg-gray-200 -ml-px" />
+                                    {isTimesOrLapsFormat ? (
+                                        /* Timing/Lap Leaderboard */
+                                        <div className="bg-slate-900 rounded-2xl border border-slate-800 shadow-xl overflow-hidden text-white font-sans animate-in fade-in duration-300">
+                                            <div className="px-5 py-4 border-b border-slate-800 bg-slate-950 flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <Timer className="text-indigo-400 animate-pulse w-5 h-5" />
+                                                    <span className="font-black tracking-wider text-xs sm:text-sm uppercase text-slate-200">
+                                                        Tabela de Classificação
+                                                    </span>
+                                                </div>
+                                                <span className="text-[10px] text-slate-400 font-bold bg-slate-800/50 px-2.5 py-1 rounded border border-slate-700">
+                                                    {match?.competitor_times?.length || 0} Registrados
+                                                </span>
+                                            </div>
+
+                                            {getSortedCompetitorTimes().length === 0 ? (
+                                                <div className="text-center py-12 text-slate-500 text-sm font-semibold">
+                                                    🏁 Nenhum tempo registrado ainda nesta bateria.
+                                                </div>
+                                            ) : (
+                                                <div className="overflow-x-auto">
+                                                    <table className="w-full text-left border-collapse">
+                                                        <thead>
+                                                            <tr className="bg-slate-950/60 border-b border-slate-800 text-[10px] sm:text-xs font-black uppercase tracking-wider text-slate-400">
+                                                                <th className="px-4 py-3 text-center w-12">Pos</th>
+                                                                <th className="px-4 py-3">Atleta / Equipe</th>
+                                                                {match?.championship?.format === 'laps' && (
+                                                                    <th className="px-4 py-3 text-center">Volta</th>
+                                                                )}
+                                                                <th className="px-4 py-3">Melhor Tempo</th>
+                                                                <th className="px-4 py-3 text-right">Diferença</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-slate-800">
+                                                            {getSortedCompetitorTimes().map((t: any, idx: number) => {
+                                                                const isTop3 = idx < 3;
+                                                                const position = idx + 1;
+                                                                
+                                                                // Calculate Gap
+                                                                const leader = getSortedCompetitorTimes()[0];
+                                                                let gapText = '--';
+                                                                
+                                                                if (idx > 0 && leader) {
+                                                                    if (match?.championship?.format === 'laps') {
+                                                                        const leaderLap = leader.lap || 1;
+                                                                        const currentLap = t.lap || 1;
+                                                                        if (leaderLap > currentLap) {
+                                                                            const diff = leaderLap - currentLap;
+                                                                            gapText = `+${diff} ${diff === 1 ? 'Volta' : 'Voltas'}`;
+                                                                        } else {
+                                                                            const diffMs = t.time_ms - leader.time_ms;
+                                                                            gapText = diffMs > 0 ? `+${(diffMs / 1000).toFixed(3)}s` : 'LÍDER';
+                                                                        }
+                                                                    } else {
+                                                                        const diffMs = t.time_ms - leader.time_ms;
+                                                                        gapText = diffMs > 0 ? `+${(diffMs / 1000).toFixed(3)}s` : 'LÍDER';
+                                                                    }
+                                                                } else if (idx === 0) {
+                                                                    gapText = 'LÍDER';
+                                                                }
+
+                                                                const podiumStyles = [
+                                                                    'bg-amber-500/10 hover:bg-amber-500/15 border-l-4 border-l-amber-500',
+                                                                    'bg-slate-400/5 hover:bg-slate-400/10 border-l-4 border-l-slate-400',
+                                                                    'bg-amber-700/10 hover:bg-amber-700/15 border-l-4 border-l-amber-700',
+                                                                ];
+
+                                                                const rankBadgeColor = [
+                                                                    'bg-amber-500/20 text-amber-300 border border-amber-500/30',
+                                                                    'bg-slate-400/20 text-slate-300 border border-slate-400/30',
+                                                                    'bg-amber-700/20 text-amber-400 border border-amber-700/30',
+                                                                ];
+
+                                                                return (
+                                                                    <tr 
+                                                                        key={t.id || idx} 
+                                                                        className={`transition-all duration-150 hover:bg-slate-800/30 ${isTop3 ? podiumStyles[idx] : 'hover:translate-x-0.5'}`}
+                                                                    >
+                                                                        <td className="px-4 py-3.5 text-center font-mono">
+                                                                            {isTop3 ? (
+                                                                                <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full font-black text-xs ${rankBadgeColor[idx]}`}>
+                                                                                    {position}º
+                                                                                </span>
+                                                                            ) : (
+                                                                                <span className="text-slate-500 font-bold text-sm">
+                                                                                    {position}
+                                                                                </span>
+                                                                            )}
+                                                                        </td>
+                                                                        <td className="px-4 py-3.5">
+                                                                            <div className="font-bold text-slate-100 text-xs sm:text-sm">
+                                                                                {t.user?.name || 'Piloto Desconhecido'}
+                                                                            </div>
+                                                                            {t.team && (
+                                                                                <div className="text-[10px] text-indigo-400 font-black tracking-widest uppercase mt-0.5">
+                                                                                    {t.team.name}
+                                                                                </div>
+                                                                            )}
+                                                                        </td>
+                                                                        {match?.championship?.format === 'laps' && (
+                                                                            <td className="px-4 py-3.5 text-center font-mono">
+                                                                                <span className="bg-slate-800 text-slate-300 font-black px-2.5 py-1 rounded-full text-xs border border-slate-700">
+                                                                                    #{t.lap || 1}
+                                                                                </span>
+                                                                            </td>
+                                                                        )}
+                                                                        <td className="px-4 py-3.5 font-mono font-black text-slate-200 text-sm sm:text-base">
+                                                                            {formatMsToTime(t.time_ms)}
+                                                                        </td>
+                                                                        <td className="px-4 py-3.5 text-right font-mono font-bold text-xs sm:text-sm text-slate-300">
+                                                                            <span className={idx === 0 ? "text-emerald-400 font-black" : "text-slate-400"}>
+                                                                                {gapText}
+                                                                            </span>
+                                                                        </td>
+                                                                    </tr>
+                                                                );
+                                                            })}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        /* Timeline */
+                                        <div className="relative">
+                                            {/* Center Line */}
+                                            <div className="absolute left-8 sm:left-1/2 top-0 bottom-0 w-px bg-gray-200 -ml-px" />
 
                                         {getSortedEvents().length === 0 ? (
                                             <div className="text-center py-10 text-gray-400 text-sm">

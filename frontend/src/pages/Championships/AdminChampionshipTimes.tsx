@@ -30,7 +30,7 @@ export function AdminChampionshipTimes() {
         if (id) {
             const channelName = `championship.${id}`;
             const channel = echo.channel(channelName);
-            channel.listen('ChampionshipTimesUpdated', () => {
+            channel.listen('.ChampionshipTimesUpdated', () => {
                 loadData(false); // reload without global loader
             });
 
