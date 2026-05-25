@@ -205,6 +205,17 @@ export function EventDetails() {
     const resolvedSlug = normalizeSlug(sportSlug);
     let gridItems = SPORT_MENUS[resolvedSlug] || SPORT_MENUS[sportSlug];
 
+    if (resolvedSlug === 'corrida' && champ.registration_type === 'team') {
+        gridItems = [
+            { label: 'Disputas', icon: Trophy, route: 'matches', color: 'orange' },
+            { label: 'Classificação', icon: ListOrdered, route: 'results', color: 'blue' },
+            { label: 'Equipes', icon: Users, route: 'participants', color: 'indigo' },
+            { label: 'Melhor Volta', icon: Target, route: 'stats', params: { type: 'best_lap', title: 'Melhor Volta' }, color: 'gray' },
+            { label: 'Premiações', icon: Medal, route: 'tourney-awards', color: 'purple' },
+            { label: 'Ver Artes', icon: Images, route: 'awards', color: 'green' },
+        ];
+    }
+
     // Fallback
     if (!gridItems) {
         gridItems = SPORT_MENUS['default'];

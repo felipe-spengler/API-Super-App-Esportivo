@@ -4,6 +4,7 @@ import { ArrowLeft, Play, Pause, Clock, Users, X, Trash2, Flag, Wifi, WifiOff, A
 import api from '../../services/api';
 import { useOfflineResilience } from '../../hooks/useOfflineResilience';
 import { getMatchPhrase } from '../../utils/matchPhrases';
+import { FoulsTimelineModal } from './components/FoulsTimelineModal';
 
 // ─── Componentes FORA do componente principal ─────────────────────────────────
 // Definir dentro causaria remontagem a cada tick do timer → tremor visual
@@ -66,6 +67,8 @@ export function SumulaFutebol7() {
     const [showEventModal, setShowEventModal] = useState(false);
     const [selectedTeam, setSelectedTeam] = useState<'home' | 'away' | null>(null);
     const [eventType, setEventType] = useState<'goal' | 'yellow_card' | 'red_card' | 'blue_card' | 'assist' | 'foul' | 'mvp' | null>(null);
+    const [foulsModalOpen, setFoulsModalOpen] = useState(false);
+    const [foulsModalTeam, setFoulsModalTeam] = useState<'home' | 'away'>('home');
     const [showShootoutOptions, setShowShootoutOptions] = useState(false);
     const [selectedPlayer, setSelectedPlayer] = useState<any>(null);
     const [isSelectingOwnGoal, setIsSelectingOwnGoal] = useState(false);
@@ -627,7 +630,15 @@ export function SumulaFutebol7() {
                             <div className="text-[10px] font-bold text-yellow-400 mt-0.5 bg-yellow-400/10 px-2 py-0.5 rounded-full">(Pên: {penaltyScore.home})</div>
                         )}
                         <div className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider mt-1.5 truncate max-w-[80px] text-center">{matchData.home_team?.name}</div>
-                        <div className="mt-1 mb-1"><FoulDots count={fouls.home} /></div>
+                        <div 
+                            className="mt-1 mb-1 cursor-pointer hover:brightness-125 transition-all"
+                            onClick={() => {
+                                setFoulsModalTeam('home');
+                                setFoulsModalOpen(true);
+                            }}
+                        >
+                            <FoulDots count={fouls.home} />
+                        </div>
                         <div className="flex gap-1 mt-1">
                             {['1º Tempo', '2º Tempo'].map(p => {
                                 const taken = (timeouts as any).home.some((t: any) => t.period === p);
@@ -657,7 +668,15 @@ export function SumulaFutebol7() {
                             <div className="text-[10px] font-bold text-yellow-400 mt-0.5 bg-yellow-400/10 px-2 py-0.5 rounded-full">(Pên: {penaltyScore.away})</div>
                         )}
                         <div className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider mt-1.5 truncate max-w-[80px] text-center">{matchData.away_team?.name}</div>
-                        <div className="mt-1 mb-1"><FoulDots count={fouls.away} /></div>
+                        <div 
+                            className="mt-1 mb-1 cursor-pointer hover:brightness-125 transition-all"
+                            onClick={() => {
+                                setFoulsModalTeam('away');
+                                setFoulsModalOpen(true);
+                            }}
+                        >
+                            <FoulDots count={fouls.away} />
+                        </div>
                         <div className="flex gap-1 mt-1">
                             {['1º Tempo', '2º Tempo'].map(p => {
                                 const taken = (timeouts as any).away.some((t: any) => t.period === p);
@@ -962,6 +981,15 @@ export function SumulaFutebol7() {
                     </div>
                 </div>
             )}
+            <FoulsTimelineModal 
+                isOpen={foulsModalOpen}
+                onClose={() => setFoulsModalOpen(false)}
+                teamName={foulsModalTeam === 'home' ? matchData.home_team?.name : matchData.away_team?.name}
+                teamKey={foulsModalTeam}
+                events={events}
+                onDeleteEvent={handleDeleteEvent}
+                currentPeriod={currentPeriod}
+            />
         </div>
     );
 }

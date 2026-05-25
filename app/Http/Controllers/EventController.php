@@ -404,6 +404,51 @@ class EventController extends Controller
     {
         $type = $request->query('type', 'goals');
 
+        if ($type === 'best_lap') {
+            $query = \App\Models\CompetitorTime::with(['user', 'team'])
+                ->where('championship_id', $championshipId)
+                ->where('status', 'completed');
+
+            if ($request->filled('category_id') && $request->category_id != 'null') {
+                $query->where('category_id', $request->category_id);
+            }
+
+            $times = $query->get();
+            $bestTimes = [];
+
+            foreach ($times as $time) {
+                $pName = $time->user ? ($time->user->nickname ?: $time->user->name) : 'Atleta Desconhecido';
+                $photo = $time->user ? ($time->user->photo_url ?? $time->user->photo) : null;
+                $tName = $time->team->name ?? 'Sem Equipe';
+                $athleteKey = $time->user_id ?? $pName;
+
+                if (!isset($bestTimes[$athleteKey]) || $time->time_ms < $bestTimes[$athleteKey]['value_raw']) {
+                    $seconds = floor($time->time_ms / 1000);
+                    $minutes = floor($seconds / 60);
+                    $seconds = $seconds % 60;
+                    $centiseconds = floor(($time->time_ms % 1000) / 10);
+                    $formatted = sprintf('%02d:%02d.%02d', $minutes, $seconds, $centiseconds);
+
+                    $bestTimes[$athleteKey] = [
+                        'player_name' => $pName,
+                        'team_name' => $tName,
+                        'team_logo' => $time->team->logo_url ?? $time->team->logo_path ?? null,
+                        'value_raw' => $time->time_ms,
+                        'photo_url' => $photo,
+                        'value' => $formatted,
+                        'lap' => $time->lap ?? 1
+                    ];
+                }
+            }
+
+            $sorted = array_values($bestTimes);
+            usort($sorted, function ($a, $b) {
+                return $a['value_raw'] <=> $b['value_raw'];
+            });
+
+            return response()->json($sorted);
+        }
+
         if ($type === 'defense') {
             // Team-based stat: Least Conceded Goals (Defesa Menos Vazada)
             $champ = \App\Models\Championship::with(['teams'])->findOrFail($championshipId);
@@ -1204,6 +1249,18 @@ class EventController extends Controller
                 'position' => $player->pivot->position
             ];
         });
+    }
+
+    public function times(Request $request, $championshipId)
+    {
+        $query = \App\Models\CompetitorTime::with(['user', 'team', 'category'])
+            ->where('championship_id', $championshipId);
+
+        if ($request->has('game_match_id') && $request->game_match_id !== 'null' && $request->game_match_id !== '') {
+            $query->where('game_match_id', $request->game_match_id);
+        }
+
+        return response()->json($query->get());
     }
 
     public function matchPdf($id)

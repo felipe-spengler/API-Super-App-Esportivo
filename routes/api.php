@@ -112,6 +112,7 @@ Route::get('/championships/{id}/brackets', [EventController::class, 'brackets'])
 Route::get('/championships/{id}/participants', [EventController::class, 'participants']);
 Route::get('/championships/{id}/race', [EventController::class, 'raceDetails']);
 Route::get('/championships/{id}/race-results', [EventController::class, 'raceResults']);
+Route::get('/championships/{id}/times', [EventController::class, 'times']);
 Route::post('/championships/{id}/race/register', [RaceInscriptionController::class, 'publicRegister']);
 Route::post('/championships/{id}/race/track', [RaceInscriptionController::class, 'publicTrackRegistration']);
 Route::post('/inscriptions/{id}/recreate-payment', [RacePaymentController::class, 'recreatePayment']);

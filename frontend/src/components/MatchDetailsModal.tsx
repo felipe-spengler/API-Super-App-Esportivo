@@ -864,8 +864,9 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                             </div>
                                         )}
                                     </div>
-                                </div>
-                            )}
+                                )}
+                            </div>
+                        )}
 
                             {activeTab === 'mvp' && <MatchMvpTab match={match} />}
 

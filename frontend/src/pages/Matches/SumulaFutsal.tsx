@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Icon } from '@iconify/react';
 import api from '../../services/api';
 import { useOfflineResilience } from '../../hooks/useOfflineResilience';
+import { FoulsTimelineModal } from './components/FoulsTimelineModal';
 
 // ActionButton FORA do componente — evita remontagem a cada segundo do timer (causa do tremor)
 const ActionButton = memo(({ onClick, icon, label }: { onClick: () => void; icon: string; label: string }) => (
@@ -58,6 +59,8 @@ export function SumulaFutsal() {
     const [showTeamModal, setShowTeamModal] = useState(false);
     const [selectedTeam, setSelectedTeam] = useState<'home' | 'away' | null>(null);
     const [eventType, setEventType] = useState<any>(null);
+    const [foulsModalOpen, setFoulsModalOpen] = useState(false);
+    const [foulsModalTeam, setFoulsModalTeam] = useState<'home' | 'away'>('home');
     const [isSelectingOwnGoal, setIsSelectingOwnGoal] = useState(false);
     const [confirmationEffect, setConfirmationEffect] = useState<string | null>(null);
 
@@ -181,7 +184,19 @@ export function SumulaFutsal() {
         const cur = timerRef.current; const type = eventType;
         const tid = selectedTeam === 'home' ? cur.matchData?.home_team_id : cur.matchData?.away_team_id;
         const pName = player ? (player.nickname || player.name) : 'Equipe';
-        const labelMap: Record<string, string> = { goal: isSelectingOwnGoal ? `Gol Contra: ${pName}` : `Gol: ${pName}`, yellow_card: `Cartão Amarelo: ${pName}`, red_card: `Cartão Vermelho: ${pName}`, blue_card: `Cartão Azul: ${pName}`, assist: `Assistência: ${pName}`, mvp: `Melhor em Campo: ${pName}` };
+        
+        const currentFouls = fouls[selectedTeam!];
+        const isFreekick = currentFouls >= 5;
+        
+        const labelMap: Record<string, string> = { 
+            goal: isSelectingOwnGoal ? `Gol Contra: ${pName}` : `Gol: ${pName}`, 
+            yellow_card: `Cartão Amarelo: ${pName}`, 
+            red_card: `Cartão Vermelho: ${pName}`, 
+            blue_card: `Cartão Azul: ${pName}`, 
+            assist: `Assistência: ${pName}`, 
+            mvp: `Melhor em Campo: ${pName}`,
+            foul: isFreekick ? `Tiro Livre Direto: ${pName}` : `Falta: ${pName}`
+        };
 
         // ⚠️ Aviso de 2º Cartão Amarelo
         if (type === 'yellow_card') {
@@ -200,10 +215,15 @@ export function SumulaFutsal() {
 
         const newEv = { id: 'temp-' + Date.now(), type, team: selectedTeam, time: formatTime(cur.time), period: cur.currentPeriod, player_name: pName, player_id: player?.id ?? null, own_goal: isSelectingOwnGoal };
         setEvents(prev => [newEv, ...prev]);
-        addToQueue('event', { event_type: type, team_id: tid, player_id: player?.id || null, minute: formatTime(cur.time), period: cur.currentPeriod, metadata: { label: labelMap[type] || type, own_goal: isSelectingOwnGoal } });
+        
+        if (type === 'foul') {
+            setFouls(prev => ({ ...prev, [selectedTeam!]: prev[selectedTeam!] + 1 }));
+        }
+
+        addToQueue('event', { event_type: type, team_id: tid, player_id: player?.id || null, minute: formatTime(cur.time), period: cur.currentPeriod, metadata: { label: labelMap[type] || type, own_goal: isSelectingOwnGoal, is_freekick: isFreekick } });
         setShowEventModal(false); setEventType(null);
         setConfirmationEffect(selectedTeam); setTimeout(() => setConfirmationEffect(null), 1000);
-    }, [eventType, selectedTeam, isSelectingOwnGoal, addToQueue, events]);
+    }, [eventType, selectedTeam, isSelectingOwnGoal, addToQueue, events, fouls]);
 
     const handleDeleteEvent = useCallback(async (evId: any) => {
         if (!window.confirm("Cancelar lançamento?")) return;
@@ -258,14 +278,20 @@ export function SumulaFutsal() {
                             <div className="text-6xl font-black text-white mb-3 drop-shadow-2xl tabular-nums w-16 text-center">{score}</div>
 
                             {/* Contador de faltas por tempo */}
-                            <div className="w-full mb-3 px-1">
+                            <div 
+                                className="w-full mb-3 px-1 cursor-pointer hover:brightness-125 transition-all"
+                                onClick={() => {
+                                    setFoulsModalTeam(t);
+                                    setFoulsModalOpen(true);
+                                }}
+                            >
                                 <FoulDots count={foulCount} />
                             </div>
 
                             <div className="grid grid-cols-2 gap-2 w-full">
                                 <ActionButton onClick={() => handleEvent(t, 'goal')} icon="solar:target-bold" label="Gol" />
                                 <ActionButton onClick={() => handleEvent(t, 'assist')} icon="solar:users-group-rounded-bold" label="Asst" />
-                                <ActionButton onClick={() => handleFoul(t)} icon="solar:danger-bold" label="Falta" />
+                                <ActionButton onClick={() => handleEvent(t, 'foul')} icon="solar:danger-bold" label="Falta" />
                                 <ActionButton onClick={() => handleEvent(t, 'card_selection')} icon="solar:card-bold" label="Card" />
                             </div>
                         </div>
@@ -365,6 +391,12 @@ export function SumulaFutsal() {
                                     {isSelectingOwnGoal ? 'SELECIONANDO GOL CONTRA' : 'MODO GOL CONTRA'}
                                 </button>
                             )}
+                            {eventType === 'foul' && (
+                                <button onClick={() => confirmEvent(null)} className="w-full py-5 mb-4 rounded-3xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-3 bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10 hover:text-white">
+                                    <Icon icon="solar:users-group-rounded-bold" className="w-5 h-5" />
+                                    Falta Coletiva / Da Equipe
+                                </button>
+                            )}
                             <div className="space-y-2">
                                 {(selectedTeam === 'home' ? rosters.home : rosters.away).sort((a: any, b: any) => parseInt(a.pivot?.number || a.number || 0) - parseInt(b.pivot?.number || b.number || 0)).map((p: any) => (
                                     <button key={p.id} onClick={() => confirmEvent(p)} className="w-full group px-6 py-4 bg-[#1a2234]/60 hover:bg-emerald-600/20 border border-white/5 hover:border-emerald-500/50 rounded-2xl transition-all flex items-center justify-between">
@@ -384,6 +416,15 @@ export function SumulaFutsal() {
                     </div>
                 </div>
             )}
+            <FoulsTimelineModal 
+                isOpen={foulsModalOpen}
+                onClose={() => setFoulsModalOpen(false)}
+                teamName={foulsModalTeam === 'home' ? matchData.home_team?.name : matchData.away_team?.name}
+                teamKey={foulsModalTeam}
+                events={events}
+                onDeleteEvent={handleDeleteEvent}
+                currentPeriod={currentPeriod}
+            />
         </div>
     );
 }

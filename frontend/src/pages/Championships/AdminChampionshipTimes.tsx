@@ -91,6 +91,26 @@ export function AdminChampionshipTimes() {
         return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${centiseconds.toString().padStart(2, '0')}`;
     };
 
+    const getLapDuration = (record: any) => {
+        if (!record.lap || record.lap === 1) {
+            return record.time_ms;
+        }
+        const prevRecord = times.find(x => 
+            (record.user_id ? x.user_id === record.user_id : x.team_id === record.team_id) && 
+            x.lap === record.lap - 1
+        );
+        if (prevRecord) {
+            return record.time_ms - prevRecord.time_ms;
+        }
+        const sameCompetitorTimes = times
+            .filter(x => (record.user_id ? x.user_id === record.user_id : x.team_id === record.team_id) && x.lap < record.lap)
+            .sort((a, b) => b.lap - a.lap);
+        if (sameCompetitorTimes.length > 0) {
+            return record.time_ms - sameCompetitorTimes[0].time_ms;
+        }
+        return record.time_ms;
+    };
+
     return (
         <div className="bg-slate-50 min-h-screen pb-20">
             <div className="bg-white border-b border-slate-200 px-6 py-6 mb-8">
@@ -175,8 +195,21 @@ export function AdminChampionshipTimes() {
                                                 </span>
                                             </td>
                                         )}
-                                        <td className="px-6 py-4 font-mono font-black text-slate-700 text-lg">
-                                            {formatTime(t.time_ms)}
+                                        <td className="px-6 py-4">
+                                            {isLapsFormat ? (
+                                                <div className="flex flex-col">
+                                                    <span className="font-mono font-black text-slate-900 text-lg">
+                                                        {formatTime(getLapDuration(t))}
+                                                    </span>
+                                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
+                                                        Acumulado: {formatTime(t.time_ms)}
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <span className="font-mono font-black text-slate-700 text-lg">
+                                                    {formatTime(t.time_ms)}
+                                                </span>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded text-xs font-bold uppercase flex items-center gap-1 w-max">

@@ -56,6 +56,7 @@ export function EventStats() {
             case 'blocks': return <Shield className="w-5 h-5 text-cyan-500" />;
             case 'aces': return <Star className="w-5 h-5 text-yellow-500" />;
             case 'points': return <Trophy className="w-5 h-5 text-orange-500" />;
+            case 'best_lap': return <Timer className="w-5 h-5 text-indigo-500" />;
             default: return <Target className="w-5 h-5 text-gray-500" />;
         }
     };
@@ -72,6 +73,7 @@ export function EventStats() {
             case 'blocks': return 'Bloq.';
             case 'aces': return 'Aces';
             case 'points': return 'Pts';
+            case 'best_lap': return 'Tempo';
             default: return 'Total';
         }
     };

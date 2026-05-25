@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Timer, Search, Medal, Trophy, Download, Eye, X, Share2, Award, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Timer, Search, Medal, Trophy, Download, Eye, X, Share2, Award, ExternalLink, ChevronDown, ChevronUp, Users, Calendar } from 'lucide-react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 
@@ -24,12 +24,21 @@ interface RaceResult {
 export function PublicRaceResults() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const [results, setResults] = useState<RaceResult[]>([]);
+    
+    // States
+    const [championship, setChampionship] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    const [championship, setChampionship] = useState<any>(null);
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
+    
+    // Individual Results State
+    const [results, setResults] = useState<RaceResult[]>([]);
     const [showArtModal, setShowArtModal] = useState<RaceResult | null>(null);
+    
+    // Team/Relay Results State
+    const [isTeamChampionship, setIsTeamChampionship] = useState(false);
+    const [teamResults, setTeamResults] = useState<any[]>([]);
+    const [expandedTeams, setExpandedTeams] = useState<Record<number, boolean>>({});
 
     useEffect(() => {
         loadData();
@@ -38,12 +47,49 @@ export function PublicRaceResults() {
     async function loadData() {
         try {
             setLoading(true);
-            const [champRes, resultsRes] = await Promise.all([
-                api.get(`/championships/${id}`),
-                api.get(`/races/${id}/results`)
-            ]);
-            setChampionship(champRes.data);
-            setResults(resultsRes.data);
+            const champRes = await api.get(`/championships/${id}`);
+            const champ = champRes.data;
+            setChampionship(champ);
+
+            if (champ.registration_type === 'team') {
+                setIsTeamChampionship(true);
+                const timesRes = await api.get(`/championships/${id}/times`);
+                const timesData = timesRes.data || [];
+                
+                // Group by team_id
+                const teamGroups: Record<number, any> = {};
+                timesData.forEach((record: any) => {
+                    if (!record.team_id) return;
+                    const teamId = record.team_id;
+                    if (!teamGroups[teamId]) {
+                        teamGroups[teamId] = {
+                            team_id: teamId,
+                            name: record.team?.name || 'Equipe Desconhecida',
+                            logo_url: record.team?.logo_url || record.team?.logo_path || '',
+                            category: record.category,
+                            times: [],
+                            totalTimeMs: 0
+                        };
+                    }
+                    teamGroups[teamId].times.push(record);
+                    teamGroups[teamId].totalTimeMs += record.time_ms;
+                });
+
+                // Sort individual segment times inside each team by lap/chronological sequence
+                const teamResultsArray = Object.values(teamGroups).map((tg: any) => {
+                    tg.times.sort((a: any, b: any) => (a.lap || 0) - (b.lap || 0));
+                    return tg;
+                });
+
+                // Sort teams ascending by total elapsed time (lower time wins)
+                teamResultsArray.sort((a: any, b: any) => a.totalTimeMs - b.totalTimeMs);
+
+                setTeamResults(teamResultsArray);
+            } else {
+                setIsTeamChampionship(false);
+                const resultsRes = await api.get(`/races/${id}/results`);
+                setResults(resultsRes.data);
+            }
         } catch (error) {
             console.error("Erro ao carregar resultados", error);
             toast.error("Erro ao carregar os resultados.");
@@ -52,16 +98,72 @@ export function PublicRaceResults() {
         }
     }
 
-    // Get unique categories for filtering
-    const categories = Array.from(new Set(results.map(r => {
-        const cat = r.category;
-        if (!cat) return null;
-        return cat.parent?.name ? `${cat.parent.name} - ${cat.name}` : cat.name;
-    }).filter(Boolean))) as string[];
+    // Helper for formatting time
+    const formatTime = (ms: number) => {
+        if (!ms) return '00:00.00';
+        const minutes = Math.floor(ms / 60000);
+        const seconds = Math.floor((ms % 60000) / 1000);
+        const centiseconds = Math.floor((ms % 1000) / 10);
+        return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${centiseconds.toString().padStart(2, '0')}`;
+    };
 
-    const filtered = results.filter(r => {
+    // Image parser helper
+    const getImageUrl = (path: string | null | undefined) => {
+        if (!path) return '';
+        const apiUrl = import.meta.env.VITE_API_URL || '';
+        const cleanApiUrl = apiUrl.replace(/\/$/, '');
+        const apiBase = cleanApiUrl.replace(/\/api$/, '');
+
+        if (path.includes('/storage/')) {
+            const storagePath = path.substring(path.indexOf('/storage/'));
+            return `${apiBase}/api${storagePath}`;
+        }
+        if (path.startsWith('http')) return path;
+        if (path.startsWith('/')) return path;
+        return `${cleanApiUrl}/storage/${path}`;
+    };
+
+    // Get initials for teams/athletes without logo
+    const getInitials = (name: string) => {
+        return name
+            .split(' ')
+            .filter(Boolean)
+            .map(w => w[0])
+            .slice(0, 2)
+            .join('')
+            .toUpperCase();
+    };
+
+    // Get unique categories list for filtering dropdown
+    const categories = Array.from(new Set(
+        isTeamChampionship
+            ? teamResults.map(r => {
+                const cat = r.category;
+                if (!cat) return null;
+                return cat.parent?.name ? `${cat.parent.name} - ${cat.name}` : cat.name;
+              }).filter(Boolean)
+            : results.map(r => {
+                const cat = r.category;
+                if (!cat) return null;
+                return cat.parent?.name ? `${cat.parent.name} - ${cat.name}` : cat.name;
+              }).filter(Boolean)
+    )) as string[];
+
+    // Filtering Individual Results
+    const filteredIndividual = results.filter(r => {
         const matchesSearch = (r.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
             (r.bib_number?.toString() || '').includes(searchTerm);
+
+        const catName = r.category?.parent?.name ? `${r.category.parent.name} - ${r.category.name}` : r.category?.name;
+        const matchesCategory = selectedCategory === 'all' || catName === selectedCategory;
+
+        return matchesSearch && matchesCategory;
+    });
+
+    // Filtering Team Results
+    const filteredTeams = teamResults.filter(r => {
+        const matchesSearch = (r.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+            r.times.some((t: any) => (t.user?.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()));
 
         const catName = r.category?.parent?.name ? `${r.category.parent.name} - ${r.category.name}` : r.category?.name;
         const matchesCategory = selectedCategory === 'all' || catName === selectedCategory;
@@ -92,6 +194,13 @@ export function PublicRaceResults() {
         }
     };
 
+    const toggleTeamExpand = (teamId: number) => {
+        setExpandedTeams(prev => ({
+            ...prev,
+            [teamId]: !prev[teamId]
+        }));
+    };
+
     return (
         <div className="min-h-screen bg-slate-50 pb-20 font-sans">
             {/* Header / Hero */}
@@ -109,14 +218,18 @@ export function PublicRaceResults() {
                             <span className="text-[10px] font-black uppercase tracking-[0.3em] bg-white text-indigo-600 px-3 py-1 rounded-full mb-3 inline-block shadow-lg shadow-black/10">Resultados Oficiais</span>
                             <h1 className="text-4xl md:text-5xl font-black uppercase italic leading-none tracking-tight">{championship?.name || 'Carregando...'}</h1>
                             <p className="text-indigo-100 font-bold mt-2 uppercase text-xs tracking-widest opacity-80 flex items-center gap-2">
-                                <Timer className="w-4 h-4" /> {new Date(championship?.start_date).toLocaleDateString()} • {championship?.location || 'Local a definir'}
+                                <Timer className="w-4 h-4" /> {championship?.start_date ? new Date(championship.start_date).toLocaleDateString() : ''} • {championship?.location || 'Local a definir'}
                             </p>
                         </div>
 
                         <div className="flex items-center gap-3">
                             <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10 text-center flex-1 md:flex-none min-w-[120px]">
-                                <p className="text-[9px] font-black uppercase tracking-widest text-indigo-200">Total Inscritos</p>
-                                <p className="text-2xl font-black italic">{results.length}</p>
+                                <p className="text-[9px] font-black uppercase tracking-widest text-indigo-200">
+                                    {isTeamChampionship ? 'Total Equipes' : 'Total Inscritos'}
+                                </p>
+                                <p className="text-2xl font-black italic">
+                                    {isTeamChampionship ? teamResults.length : results.length}
+                                </p>
                             </div>
                             <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10 text-center flex-1 md:flex-none min-w-[120px]">
                                 <p className="text-[9px] font-black uppercase tracking-widest text-indigo-200">Categorias</p>
@@ -135,7 +248,7 @@ export function PublicRaceResults() {
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                             <input
                                 type="text"
-                                placeholder="Buscar por número ou nome do atleta..."
+                                placeholder={isTeamChampionship ? "Buscar por equipe ou atleta..." : "Buscar por número ou nome do atleta..."}
                                 className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-sm transition-all"
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
@@ -161,16 +274,155 @@ export function PublicRaceResults() {
                         <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
                         <p className="text-slate-400 font-black uppercase text-xs tracking-[0.2em] animate-pulse">Cruzando a linha de chegada...</p>
                     </div>
-                ) : filtered.length === 0 ? (
+                ) : (isTeamChampionship ? filteredTeams.length === 0 : filteredIndividual.length === 0) ? (
                     <div className="py-20 text-center bg-white rounded-[2rem] border border-slate-100 shadow-sm">
                         <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
                             <Award className="text-slate-300 w-10 h-10" />
                         </div>
-                        <h3 className="text-xl font-black text-slate-900 uppercase italic">Nenhum atleta encontrado</h3>
+                        <h3 className="text-xl font-black text-slate-900 uppercase italic">Nenhum resultado encontrado</h3>
                         <p className="text-slate-400 max-w-xs mx-auto mt-2 font-medium">Os resultados podem não estar publicados ou sua busca não retornou dados.</p>
                         <button onClick={() => { setSearchTerm(''); setSelectedCategory('all'); }} className="mt-6 text-indigo-600 font-black uppercase text-xs tracking-widest">Limpar Filtros</button>
                     </div>
+                ) : isTeamChampionship ? (
+                    // ==========================================
+                    // TEAM / RELAY RESULTS DISPLAY
+                    // ==========================================
+                    <div className="space-y-6 animate-in fade-in duration-300">
+                        {selectedCategory !== 'all' && (
+                            <div className="flex items-center gap-4 mb-2">
+                                <div className="h-[2px] flex-1 bg-slate-200"></div>
+                                <h2 className="text-sm font-black text-slate-500 uppercase tracking-[0.3em] italic">{selectedCategory}</h2>
+                                <div className="h-[2px] flex-1 bg-slate-200"></div>
+                            </div>
+                        )}
+
+                        <div className="grid gap-4">
+                            {filteredTeams.map((team, index) => {
+                                const rank = index + 1;
+                                const isTop3 = rank <= 3;
+                                const isExpanded = !!expandedTeams[team.team_id];
+
+                                return (
+                                    <div 
+                                        key={team.team_id}
+                                        className={`group bg-white rounded-[2rem] border overflow-hidden transition-all duration-300 shadow-sm hover:shadow-md
+                                            ${isTop3 ? 'border-amber-200 shadow-lg shadow-amber-100/30' : 'border-slate-100'}
+                                        `}
+                                    >
+                                        {/* Main Team Info Header */}
+                                        <div 
+                                            onClick={() => toggleTeamExpand(team.team_id)}
+                                            className="p-5 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer select-none"
+                                        >
+                                            <div className="flex items-center gap-5">
+                                                {/* Medal / Rank display */}
+                                                <div className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center font-black shrink-0 transition-transform group-hover:scale-105
+                                                    ${rank === 1 ? 'bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-lg shadow-amber-200 scale-110' :
+                                                      rank === 2 ? 'bg-gradient-to-br from-slate-300 to-slate-500 text-white shadow-lg shadow-slate-200 scale-105' :
+                                                      rank === 3 ? 'bg-gradient-to-br from-orange-400 to-orange-600 text-white shadow-lg shadow-orange-200' :
+                                                      'bg-slate-50 text-slate-400 border border-slate-100'}
+                                                `}>
+                                                    <span className="text-xl italic leading-none">{rank}º</span>
+                                                    <Medal size={14} className="mt-1 opacity-50" />
+                                                </div>
+
+                                                {/* Team Logo & Names */}
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center border border-slate-100 shadow-inner overflow-hidden shrink-0">
+                                                        {team.logo_url ? (
+                                                            <img 
+                                                                src={getImageUrl(team.logo_url)} 
+                                                                alt={team.name}
+                                                                className="w-full h-full object-contain p-1"
+                                                                onError={(e) => {
+                                                                    (e.target as any).style.display = 'none';
+                                                                }}
+                                                            />
+                                                        ) : (
+                                                            <span className="text-xs font-black text-slate-400">{getInitials(team.name)}</span>
+                                                        )}
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="text-lg font-black text-slate-900 uppercase italic tracking-tight group-hover:text-indigo-650 transition-colors">
+                                                            {team.name}
+                                                        </h3>
+                                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
+                                                            {team.category?.parent?.name ? `${team.category.parent.name} - ${team.category.name}` : team.category?.name || 'Sem Categoria'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Times & Expand trigger */}
+                                            <div className="flex items-center justify-between md:justify-end gap-6 pl-16 md:pl-0">
+                                                <div className="text-left md:text-right">
+                                                    <div className="flex items-center gap-2 bg-slate-950 text-yellow-400 font-mono font-black text-2xl px-4 py-2 rounded-2xl border border-slate-900 shadow-inner leading-none italic tracking-tighter">
+                                                        <Timer size={18} className="text-yellow-500 shrink-0" />
+                                                        {formatTime(team.totalTimeMs)}
+                                                    </div>
+                                                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-1.5 mr-1">Tempo Total Acumulado</p>
+                                                </div>
+
+                                                <button 
+                                                    className={`w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 text-slate-400 hover:text-slate-950 hover:bg-slate-100 flex items-center justify-center transition-all
+                                                        ${isExpanded ? 'bg-indigo-50 border-indigo-100 text-indigo-600 hover:bg-indigo-100' : ''}
+                                                    `}
+                                                >
+                                                    {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Dropdown - Athletes Segment Timeline */}
+                                        {isExpanded && (
+                                            <div className="border-t border-slate-100 bg-slate-50/50 p-6 space-y-3 animate-in slide-in-from-top duration-300">
+                                                <h4 className="text-[10px] font-black text-slate-450 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                                                    <Users size={12} /> Ordem dos Revezadores e Parciais
+                                                </h4>
+                                                
+                                                <div className="grid gap-2">
+                                                    {team.times.map((lapRecord: any, idx: number) => {
+                                                        const pName = lapRecord.user?.name || 'Atleta não identificado';
+                                                        return (
+                                                            <div 
+                                                                key={lapRecord.id}
+                                                                className="flex items-center justify-between p-3.5 bg-white rounded-2xl border border-slate-100 shadow-sm"
+                                                            >
+                                                                <div className="flex items-center gap-4">
+                                                                    <span className="w-7 h-7 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-black italic flex items-center justify-center shadow-sm">
+                                                                        #{idx + 1}
+                                                                    </span>
+                                                                    <div>
+                                                                        <span className="block text-xs font-black text-slate-800 uppercase tracking-wide">
+                                                                            {pName}
+                                                                        </span>
+                                                                        <span className="block text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
+                                                                            Segmento de Revezamento
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-xs text-slate-400 font-bold uppercase tracking-widest mr-2">Tempo:</span>
+                                                                    <span className="font-mono font-black text-slate-900 text-base italic bg-slate-50 px-3 py-1 rounded-xl border border-slate-100 shadow-inner">
+                                                                        {formatTime(lapRecord.time_ms)}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
                 ) : (
+                    // ==========================================
+                    // INDIVIDUAL RESULTS DISPLAY
+                    // ==========================================
                     <div className="space-y-6">
                         {/* Highlighting Category Header if filtered */}
                         {selectedCategory !== 'all' && (
@@ -182,8 +434,7 @@ export function PublicRaceResults() {
                         )}
 
                         <div className="grid gap-4">
-                            {filtered.map((r, index) => {
-                                // For Laps or dynamically sorted formats, index + 1 is the true rank
+                            {filteredIndividual.map((r, index) => {
                                 const displayRank = index + 1;
                                 const isTop3 = displayRank <= 3;
 
@@ -217,7 +468,7 @@ export function PublicRaceResults() {
 
                                             <div className="min-w-0">
                                                 <div className="flex items-center gap-3 flex-wrap">
-                                                    <h3 className="text-lg font-black text-slate-900 uppercase italic tracking-tight truncate group-hover:text-indigo-600 transition-colors">
+                                                    <h3 className="text-lg font-black text-slate-900 uppercase italic tracking-tight truncate group-hover:text-indigo-655 transition-colors">
                                                         {r.name}
                                                     </h3>
                                                     <span className="bg-slate-900 text-white text-[9px] font-black px-2 py-0.5 rounded italic">#{String(r.bib_number).padStart(3, '0')}</span>

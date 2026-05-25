@@ -402,7 +402,7 @@ export function StopwatchModal({
                                     onChange={e => setNextParticipant(e.target.value)}
                                 >
                                     <option value="">Selecione o próximo...</option>
-                                    {participants
+                                    {availableParticipants
                                         .filter(p => p.user_id?.toString() !== selectedParticipant)
                                         .map(p => (
                                             <option key={p.user_id} value={p.user_id}>{p.name}</option>
