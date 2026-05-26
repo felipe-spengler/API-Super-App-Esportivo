@@ -205,7 +205,7 @@ export function EventDetails() {
     const resolvedSlug = normalizeSlug(sportSlug);
     let gridItems = SPORT_MENUS[resolvedSlug] || SPORT_MENUS[sportSlug];
 
-    if (resolvedSlug === 'corrida' && champ.registration_type === 'team') {
+    if ((resolvedSlug === 'corrida' || resolvedSlug === 'natacao') && champ.registration_type === 'team') {
         gridItems = [
             { label: 'Disputas', icon: Trophy, route: 'matches', color: 'orange' },
             { label: 'Classificação', icon: ListOrdered, route: 'results', color: 'blue' },

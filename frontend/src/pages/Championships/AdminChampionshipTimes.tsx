@@ -69,7 +69,7 @@ export function AdminChampionshipTimes() {
         }
     }
 
-    const isLapsFormat = championship?.format === 'laps';
+    const isLapsFormat = championship?.format === 'laps' || times.some(t => t.lap > 1);
 
     const deleteTime = async (timeId: number) => {
         if (confirm('Deseja excluir este tempo?')) {

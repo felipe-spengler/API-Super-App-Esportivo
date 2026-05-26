@@ -62,8 +62,8 @@ export function StopwatchModal({
     if (!isOpen) return null;
 
     // Computed Teams
-    const isTeam = participants.some(p => p.team_id !== null);
-    const teams = isTeam ? Array.from(new Set(participants.map(p => p.team_id))).map(tid => {
+    const isTeam = participants.some(p => p.team_id !== null && p.team_id !== undefined);
+    const teams = isTeam ? Array.from(new Set(participants.map(p => p.team_id).filter(Boolean))).map(tid => {
         const p = participants.find(x => x.team_id === tid);
         return { id: tid, name: p?.team?.name || 'Equipe' };
     }) : [];

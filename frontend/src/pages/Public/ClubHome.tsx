@@ -62,6 +62,7 @@ export function ClubHome() {
 
     // Helper para ícones
     const getIconForSport = (slug: string, iconName?: string) => {
+        const cleanSlug = String(slug || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const iconMap: Record<string, string> = {
             'futebol': 'fluent-emoji:soccer-ball',
             'volei': 'fluent-emoji:volleyball',
@@ -70,7 +71,6 @@ export function ClubHome() {
             'tenis': 'fluent-emoji:tennis',
             'lutas': 'fluent-emoji:boxing-glove',
             'natacao': 'fluent-emoji:person-swimming',
-            'natação': 'fluent-emoji:person-swimming',
             'padel': 'fluent-emoji:ping-pong',
             'futebol-7': 'fluent-emoji:soccer-ball',
             'futsal': 'fluent-emoji:soccer-ball',
@@ -79,7 +79,7 @@ export function ClubHome() {
             'futevolei': 'fluent-emoji:volleyball',
         };
 
-        if (iconMap[slug]) return iconMap[slug];
+        if (iconMap[cleanSlug]) return iconMap[cleanSlug];
         if (iconName) {
             // Se vier do banco algo como 'soccer', tenta mapear
             const genericMap: Record<string, string> = {
