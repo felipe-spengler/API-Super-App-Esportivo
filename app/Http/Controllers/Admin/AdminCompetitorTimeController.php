@@ -92,11 +92,11 @@ class AdminCompetitorTimeController extends Controller
         return response()->json($time->load(['user', 'team', 'category']), 201);
     }
     
-    public function destroy($championshipId, $id)
+    public function destroy($id, $timeId)
     {
-        CompetitorTime::where('championship_id', $championshipId)->where('id', $id)->delete();
+        CompetitorTime::where('championship_id', $id)->where('id', $timeId)->delete();
         try {
-            broadcast(new ChampionshipTimesUpdated($championshipId));
+            broadcast(new ChampionshipTimesUpdated($id));
         } catch (\Exception $e) {
             \Log::warning("Erro ao transmitir evento de exclusao de tempos: " . $e->getMessage());
         }

@@ -140,22 +140,42 @@ export function CountdownModal({
         }
     };
 
+    const getLapDuration = (record: any) => {
+        if (!record.lap || record.lap === 1) {
+            return record.time_ms;
+        }
+        const prevRecord = times.find(x => 
+            (record.user_id ? x.user_id === record.user_id : x.team_id === record.team_id) && 
+            x.lap === record.lap - 1
+        );
+        if (prevRecord) {
+            return record.time_ms - prevRecord.time_ms;
+        }
+        const sameCompetitorTimes = times
+            .filter(x => (record.user_id ? x.user_id === record.user_id : x.team_id === record.team_id) && x.lap < record.lap)
+            .sort((a, b) => b.lap - a.lap);
+        if (sameCompetitorTimes.length > 0) {
+            return record.time_ms - sameCompetitorTimes[0].time_ms;
+        }
+        return record.time_ms;
+    };
+
     return (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-            <div className="bg-white rounded-3xl w-full max-w-4xl shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden my-8">
+            <div className="bg-white rounded-3xl w-full max-w-4xl shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden my-4 md:my-8 flex flex-col max-h-[92vh]">
                 {/* Header */}
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-orange-50">
+                <div className="p-4 sm:p-6 border-b border-slate-100 flex justify-between items-center bg-orange-50 flex-shrink-0">
                     <h2 className="text-xl font-black text-orange-900 flex items-center gap-2">
                         <Timer className="text-orange-600 animate-pulse" />
                         Painel de Controle de Voltas (Tempo Regressivo)
                     </h2>
-                    <button onClick={() => { pauseCountdown(); onClose(); }} className="text-slate-400 hover:text-slate-600 font-bold transition-colors">FECHAR</button>
+                    <button onClick={() => { pauseCountdown(); onClose(); }} className="text-slate-400 hover:text-slate-605 font-bold transition-colors">FECHAR</button>
                 </div>
 
                 {/* Dashboard Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-12 divide-y md:divide-y-0 md:divide-x divide-slate-100">
+                <div className="grid grid-cols-1 md:grid-cols-12 divide-y md:divide-y-0 md:divide-x divide-slate-100 flex-1 min-h-0 overflow-y-auto">
                     {/* Left Column: Timer & Controls (5 cols) */}
-                    <div className="col-span-1 md:col-span-5 p-8 flex flex-col justify-between bg-slate-50/50">
+                    <div className="col-span-1 md:col-span-5 p-4 sm:p-6 flex flex-col justify-between bg-slate-50/50 md:overflow-y-auto">
                         <div>
                             {!isCountdownRunning && !isCountdownFinished && countdownTimeLeft === countdownMinutesInput * 60 && (
                                 <div className="mb-6 p-4 bg-white rounded-2xl border border-slate-200 text-center shadow-sm">
@@ -174,8 +194,8 @@ export function CountdownModal({
                                 </div>
                             )}
 
-                            <div className="text-center py-8 bg-white rounded-3xl border border-slate-100 shadow-sm mb-6">
-                                <div className={`font-mono text-6xl md:text-7xl font-black tracking-tighter tabular-nums mb-2 transition-colors ${isCountdownFinished ? 'text-rose-600 animate-pulse' : 'text-slate-900'}`}>
+                            <div className="text-center py-6 md:py-8 bg-white rounded-3xl border border-slate-100 shadow-sm mb-6">
+                                <div className={`font-mono text-5xl md:text-7xl font-black tracking-tighter tabular-nums mb-2 transition-colors ${isCountdownFinished ? 'text-rose-600 animate-pulse' : 'text-slate-900'}`}>
                                     {formatCountdown(countdownTimeLeft)}
                                 </div>
                                 <p className="text-xs text-slate-400 font-black uppercase tracking-widest">
@@ -187,23 +207,23 @@ export function CountdownModal({
                                 {!isCountdownRunning ? (
                                     <button 
                                         onClick={startCountdown}
-                                        className="flex items-center justify-center gap-1.5 bg-emerald-500 text-white py-3.5 px-4 rounded-xl font-black hover:bg-emerald-600 transition-all shadow-md shadow-emerald-100"
+                                        className="flex items-center justify-center gap-1.5 bg-emerald-500 text-white py-3 px-4 rounded-xl font-black hover:bg-emerald-600 transition-all shadow-md shadow-emerald-100 text-xs sm:text-sm"
                                     >
-                                        <Play size={18} /> INICIAR
+                                        <Play size={16} /> INICIAR
                                     </button>
                                 ) : (
                                     <button 
                                         onClick={pauseCountdown}
-                                        className="flex items-center justify-center gap-1.5 bg-rose-500 text-white py-3.5 px-4 rounded-xl font-black hover:bg-rose-600 transition-all shadow-md shadow-rose-100"
+                                        className="flex items-center justify-center gap-1.5 bg-rose-500 text-white py-3 px-4 rounded-xl font-black hover:bg-rose-600 transition-all shadow-md shadow-rose-100 text-xs sm:text-sm"
                                     >
-                                        <Square size={18} /> PAUSAR
+                                        <Square size={16} /> PAUSAR
                                     </button>
                                 )}
                                 <button 
                                     onClick={resetCountdown}
-                                    className="flex items-center justify-center gap-1.5 bg-slate-200 text-slate-600 py-3.5 px-4 rounded-xl font-black hover:bg-slate-300 transition-all"
+                                    className="flex items-center justify-center gap-1.5 bg-slate-200 text-slate-600 py-3 px-4 rounded-xl font-black hover:bg-slate-300 transition-all text-xs sm:text-sm"
                                 >
-                                    <RotateCcw size={18} /> REINICIAR
+                                    <RotateCcw size={16} /> REINICIAR
                                 </button>
                             </div>
                         </div>
@@ -224,20 +244,25 @@ export function CountdownModal({
                                         .slice(0, 4)
                                         .map(t => (
                                             <div key={t.id} className="flex justify-between items-center bg-white p-3 rounded-xl border border-slate-100 shadow-sm text-xs animate-in slide-in-from-bottom-2 duration-250">
-                                                <div>
-                                                    <p className="font-bold text-slate-800 leading-tight">{t.user?.name || 'Atleta'}</p>
-                                                    <span className="inline-block mt-1 bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-[10px] font-black">
-                                                        Volta #{t.lap}
-                                                    </span>
+                                                <div className="flex flex-col gap-1 min-w-0 flex-1 pr-2">
+                                                    <p className="font-bold text-slate-800 leading-tight truncate">{t.user?.name || 'Atleta'}</p>
+                                                    <div className="flex flex-wrap items-center gap-1.5">
+                                                        <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-[9px] font-black leading-none">
+                                                            Volta #{t.lap}
+                                                        </span>
+                                                        <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider leading-none">
+                                                            Acumulado: {formatTime(t.time_ms)}
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                                <div className="flex items-center gap-3">
-                                                    <span className="font-mono font-black text-slate-500">{formatTime(t.time_ms)}</span>
+                                                <div className="flex items-center gap-2 shrink-0">
+                                                    <span className="font-mono font-black text-slate-900 text-xs">{formatTime(getLapDuration(t))}</span>
                                                     <button 
                                                         onClick={() => deleteTime(t.id)} 
                                                         disabled={typeof t.id === 'string'}
-                                                        className="text-slate-300 hover:text-rose-600 transition-colors p-1 rounded hover:bg-rose-50 disabled:opacity-30"
+                                                        className="text-slate-350 hover:text-rose-600 transition-colors p-1 rounded hover:bg-rose-50 disabled:opacity-30"
                                                     >
-                                                        <Trash2 size={14} />
+                                                        <Trash2 size={13} />
                                                     </button>
                                                 </div>
                                             </div>
@@ -248,9 +273,9 @@ export function CountdownModal({
                     </div>
 
                     {/* Right Column: Competitors List & Filter (7 cols) */}
-                    <div className="col-span-1 md:col-span-7 p-8 flex flex-col bg-white">
+                    <div className="col-span-1 md:col-span-7 p-4 sm:p-6 flex flex-col bg-white min-h-0">
                         {/* Search */}
-                        <div className="flex items-center justify-between gap-4 mb-6">
+                        <div className="flex items-center justify-between gap-4 mb-4">
                             <div className="relative flex-1">
                                 <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                                 <input 
@@ -258,17 +283,17 @@ export function CountdownModal({
                                     placeholder="Buscar competidor pelo nome ou peito..."
                                     value={searchTerm}
                                     onChange={e => setSearchTerm(e.target.value)}
-                                    className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all text-sm"
                                 />
                             </div>
                         </div>
 
                         {/* Competitors List */}
-                        <div className="flex-1 overflow-y-auto max-h-[50vh] pr-2 custom-scrollbar">
+                        <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar min-h-0 h-[300px] md:h-[480px]">
                             {participants.length === 0 ? (
                                 <div className="text-center py-12 text-slate-400 font-bold">Nenhum competidor cadastrado.</div>
                             ) : (
-                                <div className="space-y-3">
+                                <div className="space-y-2.5">
                                     {participants
                                         .filter(p => 
                                             p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -278,19 +303,19 @@ export function CountdownModal({
                                             const userTimes = times.filter(t => t.user_id === p.user_id);
                                             const userLapsCount = userTimes.length;
                                             return (
-                                                <div key={p.user_id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 shadow-sm transition-all hover:bg-slate-100/50">
+                                                <div key={p.user_id} className="flex items-center justify-between p-3 sm:p-4 bg-slate-50 rounded-2xl border border-slate-100 shadow-sm transition-all hover:bg-slate-100/50">
                                                     <div className="flex-1 min-w-0 pr-4">
                                                         <p className="font-black text-slate-800 truncate text-sm">{p.name}</p>
-                                                        {p.team && <p className="text-xs text-indigo-600 font-black uppercase tracking-wider">{p.team.name}</p>}
+                                                        {p.team && <p className="text-[10px] text-indigo-600 font-black uppercase tracking-wider truncate mt-0.5">{p.team.name}</p>}
                                                     </div>
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="text-center px-4 border-r border-slate-200">
-                                                            <span className="block text-[9px] font-black text-slate-400 uppercase leading-none mb-1">Voltas</span>
-                                                            <span className="block text-xl font-black text-slate-700 leading-none">{userLapsCount}</span>
+                                                    <div className="flex items-center gap-3 sm:gap-4 shrink-0">
+                                                        <div className="text-center px-2 sm:px-4 border-r border-slate-200">
+                                                            <span className="block text-[8px] sm:text-[9px] font-black text-slate-400 uppercase leading-none mb-1">Voltas</span>
+                                                            <span className="block text-lg sm:text-xl font-black text-slate-700 leading-none">{userLapsCount}</span>
                                                         </div>
                                                         <button 
                                                             onClick={() => addOneLap(p.user_id?.toString())}
-                                                            className="bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-widest px-4 py-3 rounded-xl transition-all shadow-md shadow-indigo-150 active:scale-95 animate-in"
+                                                            className="bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[10px] sm:text-xs uppercase tracking-wider px-3 py-2.5 sm:px-4 sm:py-3 rounded-xl transition-all shadow-md shadow-indigo-150 active:scale-95 animate-in"
                                                         >
                                                             +1 Volta
                                                         </button>

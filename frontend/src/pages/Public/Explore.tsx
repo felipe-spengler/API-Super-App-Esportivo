@@ -99,7 +99,7 @@ export function Explore() {
                         {championships.map(item => (
                             <Link
                                 key={item.id}
-                                to={['racing', 'laps'].includes(item.format) ? `/races/${item.id}` : `/events/${item.id}`}
+                                to={['racing', 'laps'].includes(item.format) && item.registration_type !== 'team' ? `/races/${item.id}` : `/events/${item.id}`}
                                 className="group relative bg-white rounded-3xl overflow-hidden shadow-lg border border-slate-100 hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 flex flex-col h-full"
                             >
                                 <div className="p-6">

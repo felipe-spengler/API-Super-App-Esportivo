@@ -111,6 +111,8 @@ export function AdminChampionshipTimes() {
         return record.time_ms;
     };
 
+    const sortedTimes = [...times].sort((a, b) => a.time_ms - b.time_ms);
+
     return (
         <div className="bg-slate-50 min-h-screen pb-20">
             <div className="bg-white border-b border-slate-200 px-6 py-6 mb-8">
@@ -182,7 +184,7 @@ export function AdminChampionshipTimes() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {times.map(t => (
+                                {sortedTimes.map(t => (
                                     <tr key={t.id} className="hover:bg-slate-50">
                                         <td className="px-6 py-4">
                                             <p className="font-bold text-slate-900">{t.user?.name || 'Desconhecido'}</p>
