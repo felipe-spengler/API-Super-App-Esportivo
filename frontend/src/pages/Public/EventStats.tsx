@@ -174,7 +174,9 @@ export function EventStats() {
                                 {/* Info */}
                                 <div className="flex-1 min-w-0">
                                     <h3 className="font-bold text-gray-800 text-sm truncate">{item.player_name}</h3>
-                                    <p className="text-xs text-gray-500 truncate">{item.team_name}</p>
+                                    <p className="text-xs text-slate-500 truncate font-semibold">
+                                        {item.team_name} {item.round_name && `• ${item.round_name}`}
+                                    </p>
                                 </div>
 
                                 {/* Value */}

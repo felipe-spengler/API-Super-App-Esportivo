@@ -78,6 +78,7 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
             setCurrentPeriod(null);
             setLoading(true);
             setActiveTab('summary');
+            setExpandedTeams({});
         }
     }, [isOpen, matchId]);
 
@@ -237,7 +238,30 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
         });
     };
 
-    const isTimesOrLapsFormat = match?.championship?.format === 'time_ranking' || match?.championship?.format === 'laps';
+    const [expandedTeams, setExpandedTeams] = useState<Record<number | string, boolean>>({});
+
+    const isTimesOrLapsFormat = ['time_ranking', 'laps', 'racing'].includes(match?.championship?.format);
+    const isTeam = match?.championship?.registration_type === 'team';
+
+    const getTeamBestTime = (teamId: number | string | null) => {
+        if (!teamId || !match?.competitor_times) return 0;
+        
+        // Direct team record
+        const teamDirectTime = match.competitor_times.find((t: any) => t.team_id === teamId && !t.user_id);
+        if (teamDirectTime) return teamDirectTime.time_ms;
+
+        // Min athlete time
+        const athleteTimes = match.competitor_times.filter((t: any) => t.team_id === teamId && t.time_ms > 0);
+        if (athleteTimes.length === 0) return 0;
+        return Math.min(...athleteTimes.map((t: any) => t.time_ms));
+    };
+
+    const toggleTeamExpand = (tid: number | string) => {
+        setExpandedTeams(prev => ({
+            ...prev,
+            [tid]: !prev[tid]
+        }));
+    };
 
     const getSortedCompetitorTimes = () => {
         if (!match?.competitor_times) return [];
@@ -268,6 +292,108 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
         }
     };
 
+    const renderTeamTimeCard = (team: any, teamId: number | string | null, type: 'home' | 'away') => {
+        if (!team) return null;
+        const isExpanded = !!expandedTeams[teamId || ''];
+        const bestTime = getTeamBestTime(teamId);
+        
+        // Filter and sort athletes of this team
+        const athleteTimes = (match?.competitor_times || [])
+            .filter((t: any) => t.team_id === teamId && t.user_id && t.time_ms > 0)
+            .sort((a: any, b: any) => {
+                if (match?.championship?.format === 'laps') {
+                    if (a.lap !== b.lap) {
+                        return (b.lap || 1) - (a.lap || 1);
+                    }
+                }
+                return a.time_ms - b.time_ms;
+            });
+
+        return (
+            <div className="bg-slate-900 rounded-2xl border border-slate-800 shadow-xl overflow-hidden text-white font-sans animate-in fade-in duration-300">
+                {/* Header of the Card (Interactive) */}
+                <div 
+                    onClick={() => teamId && toggleTeamExpand(teamId)}
+                    className="px-5 py-4 bg-slate-950 flex items-center justify-between cursor-pointer hover:bg-slate-900 transition-colors select-none"
+                >
+                    <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 bg-slate-800 rounded-full p-1 border border-slate-700 flex items-center justify-center shrink-0">
+                            {team.logo || team.logo_url ? (
+                                <img src={team.logo || team.logo_url} className="w-full h-full object-contain" />
+                            ) : (
+                                <div className="text-xs font-bold text-slate-300">{team.name?.substring(0, 2)}</div>
+                            )}
+                        </div>
+                        <div className="min-w-0">
+                            <span className="text-[10px] text-indigo-400 font-black tracking-widest uppercase block">
+                                {type === 'home' ? 'Mandante' : 'Visitante'}
+                            </span>
+                            <span className="font-bold text-sm sm:text-base text-slate-100 truncate block">
+                                {team.name}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 shrink-0">
+                        <div className="text-right">
+                            <span className="text-[9px] text-slate-400 font-bold block uppercase tracking-wider">
+                                Melhor Tempo
+                            </span>
+                            <span className="text-yellow-400 font-mono font-black text-sm sm:text-lg">
+                                {bestTime > 0 ? formatMsToTime(bestTime) : '--:--.--'}
+                            </span>
+                        </div>
+                        <ChevronRight 
+                            size={20} 
+                            className={`text-slate-400 transition-transform duration-300 ${isExpanded ? 'rotate-90 text-indigo-400' : ''}`} 
+                        />
+                    </div>
+                </div>
+
+                {/* Expanded Athlete List */}
+                {isExpanded && (
+                    <div className="border-t border-slate-800/80 bg-slate-900/40 divide-y divide-slate-800 animate-in slide-in-from-top-2 duration-200">
+                        {athleteTimes.length === 0 ? (
+                            <div className="text-center py-6 text-slate-500 text-xs font-semibold">
+                                ⏱️ Nenhum atleta com tempo registrado nesta equipe.
+                            </div>
+                        ) : (
+                            athleteTimes.map((t: any, idx: number) => {
+                                const position = idx + 1;
+                                return (
+                                    <div 
+                                        key={t.id || idx}
+                                        className="px-5 py-3 flex items-center justify-between hover:bg-slate-800/30 transition-colors"
+                                    >
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <span className="w-5 h-5 rounded-full bg-slate-800 border border-slate-700 text-slate-400 text-[10px] font-black flex items-center justify-center font-mono">
+                                                {position}
+                                            </span>
+                                            <div className="min-w-0">
+                                                <span className="text-xs sm:text-sm font-bold text-slate-200 block truncate">
+                                                    {t.user?.nickname || t.user?.name || 'Atleta Desconhecido'}
+                                                </span>
+                                                {match?.championship?.format === 'laps' && (
+                                                    <span className="text-[9px] text-indigo-400 font-black uppercase tracking-wider">
+                                                        Volta #{t.lap || 1}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <span className="font-mono font-black text-slate-200 text-xs sm:text-sm shrink-0">
+                                            {formatMsToTime(t.time_ms)}
+                                        </span>
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
+                )}
+            </div>
+        );
+    };
+
     return (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={onClose} />
@@ -288,18 +414,78 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                     </div>
 
                     {isTimesOrLapsFormat ? (
-                        <div className="flex flex-col items-center justify-center w-full px-6 mt-6 sm:mt-4">
-                            <div className="flex items-center gap-3 bg-indigo-500/10 border border-indigo-500/30 px-4 py-1.5 rounded-full backdrop-blur-md shadow-lg shadow-indigo-500/5 mb-2">
-                                <Timer size={18} className="text-indigo-400 animate-pulse" />
-                                <span className="text-white font-black uppercase tracking-widest text-xs sm:text-sm">
-                                    {match?.round_name || `Bateria ${match?.round_number}`}
+                        isTeam && (match?.home_team || match?.away_team) ? (
+                            /* Team-based Time Match Header */
+                            <div className="flex items-center gap-2 sm:gap-8 w-full px-4 sm:px-8 justify-between mt-6 sm:mt-4">
+                                {/* Home Team */}
+                                <div className="flex flex-col items-center gap-1 sm:gap-2 flex-1 min-w-0">
+                                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white/10 rounded-full p-1.5 sm:p-2 backdrop-blur-sm border border-white/20 shrink-0">
+                                        {match?.home_team?.logo || match?.home_team?.logo_url ? (
+                                            <img src={match.home_team.logo || match.home_team.logo_url} className="w-full h-full object-contain" />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center text-white font-bold text-lg sm:text-xl">
+                                                {match?.home_team?.name?.substring(0, 2)}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <span className="text-white font-bold text-[10px] sm:text-sm text-center leading-tight line-clamp-2 w-full">
+                                        {match?.home_team?.name}
+                                    </span>
+                                    <span className="text-yellow-400 font-mono text-xs sm:text-sm font-bold bg-black/35 px-2 py-0.5 rounded border border-white/10 mt-1">
+                                        {getTeamBestTime(match?.home_team_id) > 0 ? formatMsToTime(getTeamBestTime(match?.home_team_id)) : '--:--.--'}
+                                    </span>
+                                </div>
+
+                                {/* Timer / Bateria Badge */}
+                                <div className="flex flex-col items-center pb-2 min-w-[100px] sm:min-w-[120px] shrink-0">
+                                    <div className="flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/30 px-3 py-1 rounded-full backdrop-blur-md shadow-lg shadow-indigo-500/5 mb-1.5">
+                                        <Timer size={14} className="text-indigo-400 animate-pulse" />
+                                        <span className="text-white font-black uppercase tracking-widest text-[9px] sm:text-xs">
+                                            {match?.round_name || `Bateria ${match?.round_number}`}
+                                        </span>
+                                    </div>
+                                    <div className={`px-2 py-0.5 rounded-full text-[8px] sm:text-[10px] font-black tracking-widest uppercase border ${isLive ? 'bg-red-500/20 text-red-400 border-red-500/50 animate-pulse' :
+                                        isFinished ? 'bg-white/10 text-white/60 border-white/10' :
+                                            'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                                        }`}>
+                                        {getStatusText(match?.status)}
+                                    </div>
+                                </div>
+
+                                {/* Away Team */}
+                                <div className="flex flex-col items-center gap-1 sm:gap-2 flex-1 min-w-0">
+                                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white/10 rounded-full p-1.5 sm:p-2 backdrop-blur-sm border border-white/20 shrink-0">
+                                        {match?.away_team?.logo || match?.away_team?.logo_url ? (
+                                            <img src={match.away_team.logo || match.away_team.logo_url} className="w-full h-full object-contain" />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center text-white font-bold text-lg sm:text-xl">
+                                                {match?.away_team?.name?.substring(0, 2)}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <span className="text-white font-bold text-[10px] sm:text-sm text-center leading-tight line-clamp-2 w-full">
+                                        {match?.away_team?.name}
+                                    </span>
+                                    <span className="text-yellow-400 font-mono text-xs sm:text-sm font-bold bg-black/35 px-2 py-0.5 rounded border border-white/10 mt-1">
+                                        {getTeamBestTime(match?.away_team_id) > 0 ? formatMsToTime(getTeamBestTime(match?.away_team_id)) : '--:--.--'}
+                                    </span>
+                                </div>
+                            </div>
+                        ) : (
+                            /* Individual Time Match Header */
+                            <div className="flex flex-col items-center justify-center w-full px-6 mt-6 sm:mt-4">
+                                <div className="flex items-center gap-3 bg-indigo-500/10 border border-indigo-500/30 px-4 py-1.5 rounded-full backdrop-blur-md shadow-lg shadow-indigo-500/5 mb-2">
+                                    <Timer size={18} className="text-indigo-400 animate-pulse" />
+                                    <span className="text-white font-black uppercase tracking-widest text-xs sm:text-sm">
+                                        {match?.round_name || `Bateria ${match?.round_number}`}
+                                    </span>
+                                </div>
+                                <span className="text-white/60 font-medium text-[10px] sm:text-xs flex items-center gap-1">
+                                    <span className={`inline-block w-2 h-2 rounded-full ${isLive ? 'bg-red-500 animate-pulse' : isFinished ? 'bg-slate-500' : 'bg-blue-500'}`} />
+                                    {getStatusText(match?.status)}
                                 </span>
                             </div>
-                            <span className="text-white/60 font-medium text-[10px] sm:text-xs flex items-center gap-1">
-                                <span className={`inline-block w-2 h-2 rounded-full ${isLive ? 'bg-red-500 animate-pulse' : isFinished ? 'bg-slate-500' : 'bg-blue-500'}`} />
-                                {getStatusText(match?.status)}
-                            </span>
-                        </div>
+                        )
                     ) : (
                         <div className="flex items-center gap-2 sm:gap-8 w-full px-4 sm:px-8 justify-between mt-6 sm:mt-4">
                             {/* Home Team */}
@@ -488,127 +674,135 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                             {activeTab === 'summary' && (
                                 <div className="space-y-6">
                                     {isTimesOrLapsFormat ? (
-                                        /* Timing/Lap Leaderboard */
-                                        <div className="bg-slate-900 rounded-2xl border border-slate-800 shadow-xl overflow-hidden text-white font-sans animate-in fade-in duration-300">
-                                            <div className="px-5 py-4 border-b border-slate-800 bg-slate-950 flex items-center justify-between">
-                                                <div className="flex items-center gap-2">
-                                                    <Timer className="text-indigo-400 animate-pulse w-5 h-5" />
-                                                    <span className="font-black tracking-wider text-xs sm:text-sm uppercase text-slate-200">
-                                                        Tabela de Classificação
+                                        isTeam ? (
+                                            /* Team-based Time Ranking (Home vs Away) with Expandable Cards */
+                                            <div className="space-y-4">
+                                                {renderTeamTimeCard(match?.home_team, match?.home_team_id, 'home')}
+                                                {renderTeamTimeCard(match?.away_team, match?.away_team_id, 'away')}
+                                            </div>
+                                        ) : (
+                                            /* Individual Timing/Lap Leaderboard */
+                                            <div className="bg-slate-900 rounded-2xl border border-slate-800 shadow-xl overflow-hidden text-white font-sans animate-in fade-in duration-300">
+                                                <div className="px-5 py-4 border-b border-slate-800 bg-slate-950 flex items-center justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                        <Timer className="text-indigo-400 animate-pulse w-5 h-5" />
+                                                        <span className="font-black tracking-wider text-xs sm:text-sm uppercase text-slate-200">
+                                                            Tabela de Classificação
+                                                        </span>
+                                                    </div>
+                                                    <span className="text-[10px] text-slate-400 font-bold bg-slate-800/50 px-2.5 py-1 rounded border border-slate-700">
+                                                        {match?.competitor_times?.length || 0} Registrados
                                                     </span>
                                                 </div>
-                                                <span className="text-[10px] text-slate-400 font-bold bg-slate-800/50 px-2.5 py-1 rounded border border-slate-700">
-                                                    {match?.competitor_times?.length || 0} Registrados
-                                                </span>
-                                            </div>
 
-                                            {getSortedCompetitorTimes().length === 0 ? (
-                                                <div className="text-center py-12 text-slate-500 text-sm font-semibold">
-                                                    🏁 Nenhum tempo registrado ainda nesta bateria.
-                                                </div>
-                                            ) : (
-                                                <div className="overflow-x-auto">
-                                                    <table className="w-full text-left border-collapse">
-                                                        <thead>
-                                                            <tr className="bg-slate-950/60 border-b border-slate-800 text-[10px] sm:text-xs font-black uppercase tracking-wider text-slate-400">
-                                                                <th className="px-4 py-3 text-center w-12">Pos</th>
-                                                                <th className="px-4 py-3">Atleta / Equipe</th>
-                                                                {match?.championship?.format === 'laps' && (
-                                                                    <th className="px-4 py-3 text-center">Volta</th>
-                                                                )}
-                                                                <th className="px-4 py-3">Melhor Tempo</th>
-                                                                <th className="px-4 py-3 text-right">Diferença</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody className="divide-y divide-slate-800">
-                                                            {getSortedCompetitorTimes().map((t: any, idx: number) => {
-                                                                const isTop3 = idx < 3;
-                                                                const position = idx + 1;
-                                                                
-                                                                // Calculate Gap
-                                                                const leader = getSortedCompetitorTimes()[0];
-                                                                let gapText = '--';
-                                                                
-                                                                if (idx > 0 && leader) {
-                                                                    if (match?.championship?.format === 'laps') {
-                                                                        const leaderLap = leader.lap || 1;
-                                                                        const currentLap = t.lap || 1;
-                                                                        if (leaderLap > currentLap) {
-                                                                            const diff = leaderLap - currentLap;
-                                                                            gapText = `+${diff} ${diff === 1 ? 'Volta' : 'Voltas'}`;
+                                                {getSortedCompetitorTimes().length === 0 ? (
+                                                    <div className="text-center py-12 text-slate-500 text-sm font-semibold">
+                                                        🏁 Nenhum tempo registrado ainda nesta bateria.
+                                                    </div>
+                                                ) : (
+                                                    <div className="overflow-x-auto">
+                                                        <table className="w-full text-left border-collapse">
+                                                            <thead>
+                                                                <tr className="bg-slate-950/60 border-b border-slate-800 text-[10px] sm:text-xs font-black uppercase tracking-wider text-slate-400">
+                                                                    <th className="px-4 py-3 text-center w-12">Pos</th>
+                                                                    <th className="px-4 py-3">Atleta / Equipe</th>
+                                                                    {match?.championship?.format === 'laps' && (
+                                                                        <th className="px-4 py-3 text-center">Volta</th>
+                                                                    )}
+                                                                    <th className="px-4 py-3">Melhor Tempo</th>
+                                                                    <th className="px-4 py-3 text-right">Diferença</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody className="divide-y divide-slate-800">
+                                                                {getSortedCompetitorTimes().map((t: any, idx: number) => {
+                                                                    const isTop3 = idx < 3;
+                                                                    const position = idx + 1;
+                                                                    
+                                                                    // Calculate Gap
+                                                                    const leader = getSortedCompetitorTimes()[0];
+                                                                    let gapText = '--';
+                                                                    
+                                                                    if (idx > 0 && leader) {
+                                                                        if (match?.championship?.format === 'laps') {
+                                                                            const leaderLap = leader.lap || 1;
+                                                                            const currentLap = t.lap || 1;
+                                                                            if (leaderLap > currentLap) {
+                                                                                const diff = leaderLap - currentLap;
+                                                                                gapText = `+${diff} ${diff === 1 ? 'Volta' : 'Voltas'}`;
+                                                                            } else {
+                                                                                const diffMs = t.time_ms - leader.time_ms;
+                                                                                gapText = diffMs > 0 ? `+${(diffMs / 1000).toFixed(3)}s` : 'LÍDER';
+                                                                            }
                                                                         } else {
                                                                             const diffMs = t.time_ms - leader.time_ms;
                                                                             gapText = diffMs > 0 ? `+${(diffMs / 1000).toFixed(3)}s` : 'LÍDER';
                                                                         }
-                                                                    } else {
-                                                                        const diffMs = t.time_ms - leader.time_ms;
-                                                                        gapText = diffMs > 0 ? `+${(diffMs / 1000).toFixed(3)}s` : 'LÍDER';
+                                                                    } else if (idx === 0) {
+                                                                        gapText = 'LÍDER';
                                                                     }
-                                                                } else if (idx === 0) {
-                                                                    gapText = 'LÍDER';
-                                                                }
 
-                                                                const podiumStyles = [
-                                                                    'bg-amber-500/10 hover:bg-amber-500/15 border-l-4 border-l-amber-500',
-                                                                    'bg-slate-400/5 hover:bg-slate-400/10 border-l-4 border-l-slate-400',
-                                                                    'bg-amber-700/10 hover:bg-amber-700/15 border-l-4 border-l-amber-700',
-                                                                ];
+                                                                    const podiumStyles = [
+                                                                        'bg-amber-500/10 hover:bg-amber-500/15 border-l-4 border-l-amber-500',
+                                                                        'bg-slate-400/5 hover:bg-slate-400/10 border-l-4 border-l-slate-400',
+                                                                        'bg-amber-700/10 hover:bg-amber-700/15 border-l-4 border-l-amber-700',
+                                                                    ];
 
-                                                                const rankBadgeColor = [
-                                                                    'bg-amber-500/20 text-amber-300 border border-amber-500/30',
-                                                                    'bg-slate-400/20 text-slate-300 border border-slate-400/30',
-                                                                    'bg-amber-700/20 text-amber-400 border border-amber-700/30',
-                                                                ];
+                                                                    const rankBadgeColor = [
+                                                                        'bg-amber-500/20 text-amber-300 border border-amber-500/30',
+                                                                        'bg-slate-400/20 text-slate-300 border border-slate-400/30',
+                                                                        'bg-amber-700/20 text-amber-400 border border-amber-700/30',
+                                                                    ];
 
-                                                                return (
-                                                                    <tr 
-                                                                        key={t.id || idx} 
-                                                                        className={`transition-all duration-150 hover:bg-slate-800/30 ${isTop3 ? podiumStyles[idx] : 'hover:translate-x-0.5'}`}
-                                                                    >
-                                                                        <td className="px-4 py-3.5 text-center font-mono">
-                                                                            {isTop3 ? (
-                                                                                <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full font-black text-xs ${rankBadgeColor[idx]}`}>
-                                                                                    {position}º
-                                                                                </span>
-                                                                            ) : (
-                                                                                <span className="text-slate-500 font-bold text-sm">
-                                                                                    {position}
-                                                                                </span>
-                                                                            )}
-                                                                        </td>
-                                                                        <td className="px-4 py-3.5">
-                                                                            <div className="font-bold text-slate-100 text-xs sm:text-sm">
-                                                                                {t.user?.name || 'Piloto Desconhecido'}
-                                                                            </div>
-                                                                            {t.team && (
-                                                                                <div className="text-[10px] text-indigo-400 font-black tracking-widest uppercase mt-0.5">
-                                                                                    {t.team.name}
-                                                                                </div>
-                                                                            )}
-                                                                        </td>
-                                                                        {match?.championship?.format === 'laps' && (
+                                                                    return (
+                                                                        <tr 
+                                                                            key={t.id || idx} 
+                                                                            className={`transition-all duration-150 hover:bg-slate-800/30 ${isTop3 ? podiumStyles[idx] : 'hover:translate-x-0.5'}`}
+                                                                        >
                                                                             <td className="px-4 py-3.5 text-center font-mono">
-                                                                                <span className="bg-slate-800 text-slate-300 font-black px-2.5 py-1 rounded-full text-xs border border-slate-700">
-                                                                                    #{t.lap || 1}
+                                                                                {isTop3 ? (
+                                                                                    <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full font-black text-xs ${rankBadgeColor[idx]}`}>
+                                                                                        {position}º
+                                                                                    </span>
+                                                                                ) : (
+                                                                                    <span className="text-slate-500 font-bold text-sm">
+                                                                                        {position}
+                                                                                    </span>
+                                                                                )}
+                                                                            </td>
+                                                                            <td className="px-4 py-3.5">
+                                                                                <div className="font-bold text-slate-100 text-xs sm:text-sm">
+                                                                                    {t.user?.name || 'Piloto Desconhecido'}
+                                                                                </div>
+                                                                                {t.team && (
+                                                                                    <div className="text-[10px] text-indigo-400 font-black tracking-widest uppercase mt-0.5">
+                                                                                        {t.team.name}
+                                                                                    </div>
+                                                                                )}
+                                                                            </td>
+                                                                            {match?.championship?.format === 'laps' && (
+                                                                                <td className="px-4 py-3.5 text-center font-mono">
+                                                                                    <span className="bg-slate-800 text-slate-300 font-black px-2.5 py-1 rounded-full text-xs border border-slate-700">
+                                                                                        #{t.lap || 1}
+                                                                                    </span>
+                                                                                </td>
+                                                                            )}
+                                                                            <td className="px-4 py-3.5 font-mono font-black text-slate-200 text-sm sm:text-base">
+                                                                                {formatMsToTime(t.time_ms)}
+                                                                            </td>
+                                                                            <td className="px-4 py-3.5 text-right font-mono font-bold text-xs sm:text-sm text-slate-300">
+                                                                                <span className={idx === 0 ? "text-emerald-400 font-black" : "text-slate-400"}>
+                                                                                    {gapText}
                                                                                 </span>
                                                                             </td>
-                                                                        )}
-                                                                        <td className="px-4 py-3.5 font-mono font-black text-slate-200 text-sm sm:text-base">
-                                                                            {formatMsToTime(t.time_ms)}
-                                                                        </td>
-                                                                        <td className="px-4 py-3.5 text-right font-mono font-bold text-xs sm:text-sm text-slate-300">
-                                                                            <span className={idx === 0 ? "text-emerald-400 font-black" : "text-slate-400"}>
-                                                                                {gapText}
-                                                                            </span>
-                                                                        </td>
-                                                                    </tr>
-                                                                );
-                                                            })}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            )}
-                                        </div>
+                                                                        </tr>
+                                                                    );
+                                                                })}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )
                                     ) : (
                                         /* Timeline */
                                         <div className="relative">

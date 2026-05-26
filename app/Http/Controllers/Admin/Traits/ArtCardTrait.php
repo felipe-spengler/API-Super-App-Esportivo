@@ -267,6 +267,8 @@ trait ArtCardTrait
             $templateKey = 'art_layout_individual_placement';
         } elseif ($category === 'defesa_menos_vazada') {
             $templateKey = 'art_layout_defense_vertical';
+        } elseif ($category === 'premiação_equipe' || $category === 'premiacao_equipe' || $category === 'equipe_campea') {
+            $templateKey = 'art_layout_custom_premiacao-equipe';
         } else {
             // Se for uma categoria de premiação genérica (artilheiro, goleiro, etc), tenta usar o layout de premiação
             $templateKey = 'art_layout_custom_premiacao-jogador';

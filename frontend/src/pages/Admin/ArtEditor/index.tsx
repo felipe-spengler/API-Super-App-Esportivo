@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Save, Upload, Type, Image as ImageIcon, Layout, Move, Plus, Trash2, Smartphone, Monitor, X, ChevronDown, ChevronRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Save, Upload, Type, Image as ImageIcon, Layout, Move, Plus, Trash2, Smartphone, Monitor, X, ChevronDown, ChevronRight, Award, Timer, Users, Palette, ArrowLeft } from 'lucide-react';
 import api from '../../../services/api';
 import toast from 'react-hot-toast';
 import { compressImage } from '../../../utils/imageCompressor';
@@ -44,6 +44,9 @@ const DEFAULT_ELEMENTS: Element[] = [
 ];
 
 export function ArtEditor() {
+    // Mode Selection State
+    const [editorMode, setEditorMode] = useState<'select' | 'classic' | 'timing'>('select');
+
     const [elements, setElements] = useState<Element[]>(DEFAULT_ELEMENTS);
     const [activeElementId, setActiveElementId] = useState<string | null>(null);
     const [templateName, setTemplateName] = useState('Craque do Jogo');
@@ -53,7 +56,7 @@ export function ArtEditor() {
     const [previewMode, setPreviewMode] = useState(false);
 
     // Sidebar sections
-    const [showSettings, setShowSettings] = useState(false);
+    const [showSettings, setShowSettings] = useState(true);
     const [showElements, setShowElements] = useState(true);
     const [showProps, setShowProps] = useState(true);
 
@@ -67,8 +70,10 @@ export function ArtEditor() {
 
     // Load template or default settings
     useEffect(() => {
-        loadTemplate();
-    }, [templateName, selectedSport, selectedChampionship]);
+        if (editorMode !== 'select') {
+            loadTemplate();
+        }
+    }, [templateName, selectedSport, selectedChampionship, editorMode]);
 
     // Load available sports and championships
     useEffect(() => {
@@ -87,7 +92,6 @@ export function ArtEditor() {
     }, []);
 
     const getDefaultBg = (name: string, sport: string) => {
-        // Use default assets from backend
         const baseUrl = api.defaults.baseURL;
         const s = (sport || 'futebol').toLowerCase();
 
@@ -98,7 +102,7 @@ export function ArtEditor() {
         }
         if (name === 'Confronto') return `${baseUrl}/assets-templates/fundo_confronto.jpg`;
         if (name === 'Defesa Menos Vazada') return `${baseUrl}/assets-templates/fundo_craque_do_jogo.jpg`;
-        return null; // fallback
+        return null;
     };
 
     const loadDefaults = (name: string) => {
@@ -139,11 +143,45 @@ export function ArtEditor() {
                 { id: 'championship', type: 'text', x: 540, y: 1650, fontSize: 40, color: '#FFFFFF', align: 'center', label: 'Campeonato', zIndex: 2, content: '{CAMPEONATO}' },
                 { id: 'category', type: 'text', x: 540, y: 1720, fontSize: 35, color: '#AAAAAA', align: 'center', label: 'Categoria', zIndex: 2, content: '{CATEGORIA}' }
             ]);
-        } else if (name === 'Premiação (Jogador)') {
+        } else if (name === 'Premiação (Jogador)' || name === 'Premiação (Atleta)') {
             setElements([
                 { id: 'player_photo', type: 'image', x: 540, y: 600, width: 800, height: 800, label: 'Foto do Jogador', zIndex: 1, content: 'player_photo', borderRadius: 0 },
                 { id: 'player_name', type: 'text', x: 540, y: 1200, fontSize: 80, color: '#FFB700', align: 'center', label: 'Nome do Jogador', zIndex: 2, content: '{JOGADOR}', fontFamily: 'Roboto-Bold' },
                 { id: 'team_badge', type: 'image', x: 540, y: 1000, width: 200, height: 200, label: 'Brasão do Time', zIndex: 2, content: 'team_logo' },
+                { id: 'award_name', type: 'text', x: 540, y: 1350, fontSize: 60, color: '#FFFFFF', align: 'center', label: 'Nome do Prêmio', zIndex: 2, content: '{PREMIO}', fontFamily: 'Roboto' },
+                { id: 'championship', type: 'text', x: 540, y: 1650, fontSize: 40, color: '#FFFFFF', align: 'center', label: 'Campeonato', zIndex: 2, content: '{CAMPEONATO}' },
+                { id: 'category', type: 'text', x: 540, y: 1720, fontSize: 35, color: '#AAAAAA', align: 'center', label: 'Categoria', zIndex: 2, content: '{CATEGORIA}' }
+            ]);
+        } else if (name === 'Melhor Tempo') {
+            setElements([
+                { id: 'player_photo', type: 'image', x: 540, y: 600, width: 800, height: 800, label: 'Foto do Atleta', zIndex: 1, content: 'player_photo', borderRadius: 0 },
+                { id: 'player_name', type: 'text', x: 540, y: 1200, fontSize: 80, color: '#FFB700', align: 'center', label: 'Nome do Atleta', zIndex: 2, content: '{JOGADOR}', fontFamily: 'Roboto-Bold' },
+                { id: 'title', type: 'text', x: 540, y: 1350, fontSize: 60, color: '#FFFFFF', align: 'center', label: 'Título', zIndex: 2, content: 'MELHOR TEMPO', fontFamily: 'Roboto' },
+                { id: 'record_time', type: 'text', x: 540, y: 1470, fontSize: 90, color: '#FFB700', align: 'center', label: 'Tempo Registrado', zIndex: 3, content: '{TEMPO}', fontFamily: 'Roboto-Bold' },
+                { id: 'championship', type: 'text', x: 540, y: 1690, fontSize: 40, color: '#FFFFFF', align: 'center', label: 'Nome Campeonato', zIndex: 2, content: '{CAMPEONATO}' },
+                { id: 'category', type: 'text', x: 540, y: 1750, fontSize: 30, color: '#AAAAAA', align: 'center', label: 'Categoria', zIndex: 2, content: '{CATEGORIA}' }
+            ]);
+        } else if (name === 'Melhor Volta') {
+            setElements([
+                { id: 'player_photo', type: 'image', x: 540, y: 600, width: 800, height: 800, label: 'Foto/Logo', zIndex: 1, content: 'player_photo', borderRadius: 0 },
+                { id: 'player_name', type: 'text', x: 540, y: 1200, fontSize: 80, color: '#FFB700', align: 'center', label: 'Nome Competidor', zIndex: 2, content: '{JOGADOR}', fontFamily: 'Roboto-Bold' },
+                { id: 'title', type: 'text', x: 540, y: 1350, fontSize: 60, color: '#FFFFFF', align: 'center', label: 'Título', zIndex: 2, content: 'MELHOR VOLTA', fontFamily: 'Roboto' },
+                { id: 'record_time', type: 'text', x: 540, y: 1470, fontSize: 90, color: '#FFB700', align: 'center', label: 'Tempo da Volta', zIndex: 3, content: '{TEMPO}', fontFamily: 'Roboto-Bold' },
+                { id: 'championship', type: 'text', x: 540, y: 1690, fontSize: 40, color: '#FFFFFF', align: 'center', label: 'Nome Campeonato', zIndex: 2, content: '{CAMPEONATO}' },
+                { id: 'category', type: 'text', x: 540, y: 1750, fontSize: 30, color: '#AAAAAA', align: 'center', label: 'Categoria', zIndex: 2, content: '{CATEGORIA}' }
+            ]);
+        } else if (name === 'Bateria Programada') {
+            setElements([
+                { id: 'championship', type: 'text', x: 540, y: 250, fontSize: 45, color: '#FFFFFF', align: 'center', label: 'Campeonato', zIndex: 2, content: '{CAMPEONATO}', fontFamily: 'Roboto' },
+                { id: 'round', type: 'text', x: 540, y: 320, fontSize: 35, color: '#FFB700', align: 'center', label: 'Rodada/Fase', zIndex: 2, content: '{RODADA}', fontFamily: 'Roboto' },
+                { id: 'title', type: 'text', x: 540, y: 800, fontSize: 80, color: '#FFFFFF', align: 'center', label: 'Título Bateria', zIndex: 2, content: 'BATERIA PROGRAMADA', fontFamily: 'Roboto-Bold' },
+                { id: 'date', type: 'text', x: 540, y: 1300, fontSize: 60, color: '#FFB700', align: 'center', label: 'Data/Hora', zIndex: 2, content: 'DD/MM HH:MM', fontFamily: 'Roboto' },
+                { id: 'local', type: 'text', x: 540, y: 1400, fontSize: 35, color: '#FFFFFF', align: 'center', label: 'Local', zIndex: 2, content: 'Local da Bateria', fontFamily: 'Roboto' }
+            ]);
+        } else if (name === 'Premiação (Equipe)') {
+            setElements([
+                { id: 'team_logo', type: 'image', x: 540, y: 650, width: 650, height: 650, label: 'Logo da Equipe', zIndex: 1, content: 'player_photo' },
+                { id: 'team_name', type: 'text', x: 540, y: 1200, fontSize: 80, color: '#FFB700', align: 'center', label: 'Nome da Equipe', zIndex: 2, content: '{JOGADOR}', fontFamily: 'Roboto-Bold' },
                 { id: 'award_name', type: 'text', x: 540, y: 1350, fontSize: 60, color: '#FFFFFF', align: 'center', label: 'Nome do Prêmio', zIndex: 2, content: '{PREMIO}', fontFamily: 'Roboto' },
                 { id: 'championship', type: 'text', x: 540, y: 1650, fontSize: 40, color: '#FFFFFF', align: 'center', label: 'Campeonato', zIndex: 2, content: '{CAMPEONATO}' },
                 { id: 'category', type: 'text', x: 540, y: 1720, fontSize: 35, color: '#AAAAAA', align: 'center', label: 'Categoria', zIndex: 2, content: '{CATEGORIA}' }
@@ -161,12 +199,10 @@ export function ArtEditor() {
             if (selectedChampionship) params.championship_id = selectedChampionship;
 
             const res = await api.get('/admin/art-templates', { params });
-            console.log('Frontend: API Response', res.data);
 
             if (res.data && res.data.elements) {
                 let loadedElements = res.data.elements;
-                
-                // Auto-inject missing RODADA if it's Jogo Programado and they haven't restored defaults
+
                 if (templateName === 'Jogo Programado' && !loadedElements.find((e: any) => String(e.content).includes('{RODADA}'))) {
                     loadedElements.push({
                         id: 'round_' + Date.now(),
@@ -176,13 +212,10 @@ export function ArtEditor() {
                 
                 setElements(loadedElements);
 
-                // Smart Background Resolution
                 let bgToUse = res.data.bg_url;
                 const isSystemAsset = (url: string) => url && url.includes('/assets-templates/');
 
-                // If saved BG is a generic system asset, but backend provided a better preview for current sport, use it.
                 if (bgToUse && isSystemAsset(bgToUse) && res.data.preview_bg_url) {
-                    console.log('Frontend: Overriding Saved System BG with Preview BG');
                     bgToUse = res.data.preview_bg_url;
                 }
 
@@ -190,12 +223,9 @@ export function ArtEditor() {
                     bgToUse = res.data.preview_bg_url || getDefaultBg(templateName, selectedSport);
                 }
 
-                console.log('Frontend: Resolved BG to use:', bgToUse);
-
                 setPersistedBgUrl(res.data.bg_url || null);
                 setBgImage(bgToUse);
             } else {
-                console.warn('Frontend: No data found, loading defaults');
                 loadDefaults(templateName);
             }
         } catch (error) {
@@ -275,13 +305,19 @@ export function ArtEditor() {
         }
     };
 
-
     const saveTemplate = async () => {
         setLoading(true);
         try {
+            const backendKey = templateName === 'Premiação (Equipe)' ? 'art_layout_custom_premiacao-equipe' :
+                               templateName === 'Premiação (Jogador)' ? 'art_layout_custom_premiacao-jogador' :
+                               templateName === 'Melhor Tempo' ? 'art_layout_custom_melhor-tempo' :
+                               templateName === 'Melhor Volta' ? 'art_layout_custom_melhor-volta' :
+                               templateName === 'Bateria Programada' ? 'art_layout_custom_bateria-programada' :
+                               templateName;
+
             await api.post('/admin/art-templates', {
-                name: templateName,
-                bg_url: persistedBgUrl, // Only save if explicit custom BG
+                name: backendKey,
+                bg_url: persistedBgUrl,
                 elements: elements,
                 canvas: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT },
                 championship_id: selectedChampionship || null
@@ -300,7 +336,6 @@ export function ArtEditor() {
         const file = e.target.files[0];
         const toastId = toast.loading('Processando e enviando fundo...');
         try {
-            // Comprime a imagem se necessário (5MB limit) para evitar erros de servidor
             const compressed = await compressImage(file, 5 * 1024 * 1024, 3000, 0.9);
 
             const formData = new FormData();
@@ -323,7 +358,6 @@ export function ArtEditor() {
 
     const activeElement = elements.find(el => el.id === activeElementId);
 
-    // --- MODAL EDITOR COMPONENTS ---
     const CanvasRenderer = ({ scale = 1, interactable = false }) => (
         <div
             className="bg-white shadow-2xl relative overflow-hidden select-none shrink-0"
@@ -334,18 +368,16 @@ export function ArtEditor() {
             }}
             onClick={e => interactable && e.stopPropagation()}
         >
-            {/* Background Layer */}
             <div className="absolute inset-0 bg-gray-300 flex items-center justify-center text-gray-400">
                 {bgImage ? (
                     <img src={bgImage} className="w-full h-full object-cover" />
                 ) : (
-                    <div className="text-center font-bold opacity-30 text-2xl">
-                        BACKGROUND PADRÃO
+                    <div className="text-center font-bold opacity-30 text-2xl uppercase">
+                        {templateName}<br/>UPLOAD FUNDO
                     </div>
                 )}
             </div>
 
-            {/* Rendering Elements */}
             {elements.sort((a, b) => a.zIndex - b.zIndex).map(el => (
                 interactable ? (
                     <motion.div
@@ -380,14 +412,13 @@ export function ArtEditor() {
                             <div className="w-full h-full bg-gray-200/50 border border-gray-400/30 flex items-center justify-center relative overflow-hidden"
                                 style={{ borderRadius: (el.borderRadius || 0) * scale }}
                             >
-                                {el.content === 'player_photo' ? <img src="https://ui-avatars.com/api/?name=Jogador&background=random&size=512" className="w-full h-full object-cover" /> :
+                                {el.content === 'player_photo' ? <img src="https://ui-avatars.com/api/?name=Competidor&background=random&size=512" className="w-full h-full object-cover" /> :
                                  el.content?.includes('http') || el.content?.includes('data:image') ? <img src={el.content} className="w-full h-full object-contain" /> :
                                  el.content?.includes('team') ? <div className="text-[10px] font-bold">Logo</div> : <div className="text-[10px] font-bold text-gray-500">Imagem</div>}
                             </div>
                         ) : (
                             <span>{el.content}</span>
                         )}
-                        {/* Label only in main editor not modal to keep clean? Or keep it. */}
                         <div className="absolute -top-6 left-0 bg-blue-600 text-white text-[8px] px-1 rounded opacity-0 hover:opacity-100 whitespace-nowrap pointer-events-none">
                             {el.label} (X:{el.x}, Y:{el.y})
                         </div>
@@ -417,7 +448,7 @@ export function ArtEditor() {
                             <div className="w-full h-full bg-gray-200/50 flex items-center justify-center overflow-hidden"
                                 style={{ borderRadius: (el.borderRadius || 0) * scale }}
                             >
-                                {el.content === 'player_photo' ? <img src="https://ui-avatars.com/api/?name=Jogador&background=random&size=512" className="w-full h-full object-cover" /> : 
+                                {el.content === 'player_photo' ? <img src="https://ui-avatars.com/api/?name=Competidor&background=random&size=512" className="w-full h-full object-cover" /> : 
                                  el.content?.includes('http') || el.content?.includes('data:image') ? <img src={el.content} className="w-full h-full object-contain" /> : null}
                                 {el.content?.includes('team') ? <div className="text-sm font-bold opacity-50">Logo</div> : null}
                             </div>
@@ -431,7 +462,7 @@ export function ArtEditor() {
     );
 
     return (
-        <div className="flex h-[calc(100vh-64px)] bg-gray-100 overflow-hidden">
+        <div className="h-[calc(100vh-64px)] bg-gray-150 overflow-hidden font-sans relative">
             <style>{`
                 @font-face { font-family: 'Roboto'; src: url('${api.defaults.baseURL}/assets-fonts/Roboto.ttf'); font-display: block; }
                 @font-face { font-family: 'Roboto-Bold'; src: url('${api.defaults.baseURL}/assets-fonts/Roboto-Bold.ttf'); font-display: block; }
@@ -452,403 +483,434 @@ export function ArtEditor() {
                 @font-face { font-family: 'Teko'; src: url('${api.defaults.baseURL}/assets-fonts/Teko.ttf'); font-display: block; }
             `}</style>
 
-            {/* Sidebar Controls */}
-            <div className="w-80 bg-white border-r border-gray-200 flex flex-col z-20 shadow-xl overflow-hidden shrink-0 h-full">
-                {/* ... Sidebar content identical to before ... */}
-                <div className="p-4 border-b border-gray-100 shrink-0">
-                    <h2 className="font-bold text-gray-800 flex items-center gap-2">
-                        <Layout className="w-5 h-5 text-indigo-600" /> Editor de Artes
-                    </h2>
-                </div>
+            <AnimatePresence mode="wait">
+                {editorMode === 'select' ? (
+                    <motion.div
+                        key="selection-screen"
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ duration: 0.3 }}
+                        className="absolute inset-0 bg-slate-900 flex flex-col items-center justify-center p-6 text-white z-50 overflow-y-auto"
+                    >
+                        <div className="max-w-4xl w-full text-center mb-10">
+                            <span className="text-xs font-black uppercase tracking-[0.3em] bg-indigo-500/20 text-indigo-300 px-4 py-1.5 rounded-full mb-4 inline-block border border-indigo-500/30 animate-pulse">Design Lab</span>
+                            <h1 className="text-4xl md:text-5xl font-black uppercase italic tracking-tight leading-none">Qual tipo de esporte você vai editar?</h1>
+                            <p className="text-slate-400 font-bold mt-3 text-sm md:text-base">Escolha o laboratório adequado para carregar as ferramentas e dimensões estéticas correspondentes.</p>
+                        </div>
 
-                <div className="flex-1 overflow-y-auto">
-                    {/* Settings Section */}
-                    <div className="border-b border-gray-100">
-                        <button
-                            className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
-                            onClick={() => setShowSettings(!showSettings)}
-                        >
-                            <span className="text-xs font-bold text-gray-500 uppercase">Configurações Base</span>
-                            {showSettings ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                        </button>
-
-                        {showSettings && (
-                            <div className="p-4 pt-0 space-y-3">
-                                <label className="text-xs font-bold text-gray-500 block mb-1">CAMPEONATO (Contexto)</label>
-                                <select
-                                    value={selectedChampionship}
-                                    onChange={e => setSelectedChampionship(e.target.value)}
-                                    className="w-full p-2 border border-gray-200 rounded-lg text-sm font-bold bg-white mb-3 text-indigo-700"
-                                >
-                                    <option value="">Padrão (Por Esporte)</option>
-                                    {championships.map(c => (
-                                        <option key={c.id} value={c.id}>{c.name}</option>
-                                    ))}
-                                </select>
-
-                                <label className="text-xs font-bold text-gray-500 block mb-1">TEMPLATE</label>
-                                <select
-                                    value={templateName}
-                                    onChange={e => setTemplateName(e.target.value)}
-                                    className="w-full p-2 border border-gray-200 rounded-lg text-sm font-bold bg-white"
-                                >
-                                    <option>Craque do Jogo</option>
-                                    <option>Jogo Programado</option>
-                                    <option>Confronto</option>
-                                    <option>Defesa Menos Vazada</option>
-                                    <option>Premiação (Jogador)</option>
-                                </select>
-
-                                <label className="text-xs font-bold text-gray-500 block mb-1 pt-2">ESPORTE (Visualização)</label>
-                                <select
-                                    value={selectedSport}
-                                    onChange={e => setSelectedSport(e.target.value)}
-                                    className="w-full p-2 border border-gray-200 rounded-lg text-sm font-bold bg-white"
-                                >
-                                    {allSports.length > 0 ? (
-                                        allSports.map(s => (
-                                            <option key={s.slug} value={s.slug}>{s.name}</option>
-                                        ))
-                                    ) : (
-                                        <>
-                                            <option value="futebol">Futebol</option>
-                                            <option value="futebol-7">Futebol 7</option>
-                                            <option value="futsal">Futsal</option>
-                                            <option value="volei">Vôlei</option>
-                                            <option value="basquete">Basquete</option>
-                                            <option value="handebol">Handebol</option>
-                                            <option value="tenis">Tênis</option>
-                                            <option value="beach-tennis">Beach Tennis</option>
-                                        </>
-                                    )}
-                                </select>
-
-                                {/* Upload Background */}
-                                <div className="mt-3 pt-3 border-t border-gray-100">
-                                    <label className="text-xs font-bold text-gray-500 block mb-1">FUNDO CUSTOMIZADO</label>
-                                    <div className="flex gap-2">
-                                        <label className="flex-1 cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg py-2 flex items-center justify-center gap-2 text-xs font-bold border border-gray-200 transition-colors">
-                                            <Upload size={14} /> Upload Imagem
-                                            <input type="file" className="hidden" accept="image/*" onChange={handleBgUpload} />
-                                        </label>
-                                        {persistedBgUrl && (
-                                            <button
-                                                onClick={() => { setPersistedBgUrl(null); loadTemplate(); }}
-                                                className="p-2 text-red-500 hover:bg-red-50 rounded border border-red-100"
-                                                title="Remover Fundo Customizado"
-                                            >
-                                                <Trash2 size={14} />
-                                            </button>
-                                        )}
-                                    </div>
-                                    <p className="text-[10px] text-gray-400 mt-1">Recomendado: 1080x1920 (9:16)</p>
-                                </div>
-
-                                {/* Preview Image Check */}
-                                <div className="mt-2 p-2 border border-gray-100 rounded bg-gray-50 text-[10px] text-gray-500 break-words hidden">
-                                    <strong>Debug BG:</strong> {bgImage ? bgImage.split('/').pop() : 'Nenhum'}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Elements List */}
-                    <div className="border-b border-gray-100">
-                        {/* ... Same Elements List Logic ... */}
-                        <button
-                            className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
-                            onClick={() => setShowElements(!showElements)}
-                        >
-                            <span className="text-xs font-bold text-gray-500 uppercase">Elementos ({elements.length})</span>
-                            <div className="flex items-center gap-2">
-                                <span className="p-1 hover:bg-indigo-50 rounded text-indigo-600 cursor-pointer" onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleAddImageElement();
-                                }} title="Adicionar nova imagem livre"><ImageIcon size={14} /></span>
-                                <span className="p-1 hover:bg-indigo-50 rounded text-indigo-600 cursor-pointer" onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleAddElement();
-                                }} title="Adicionar novo elemento de texto"><Type size={14} /></span>
-                                {showElements ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                            </div>
-                        </button>
-
-                        {showElements && (
-                            <div className="p-4 pt-0 space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
-                                {elements.map(el => (
-                                    <div
-                                        key={el.id}
-                                        onClick={() => setActiveElementId(el.id)}
-                                        className={`p-2 rounded-lg border flex items-center gap-2 cursor-pointer transition-all text-xs ${activeElementId === el.id ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300 bg-white'
-                                            }`}
-                                    >
-                                        {el.type === 'text' ? <Type size={14} className="text-gray-400" /> : <ImageIcon size={14} className="text-gray-400" />}
-                                        <div className="flex-1 min-w-0">
-                                            <span className="font-bold text-gray-700 block truncate">{el.label}</span>
-                                        </div>
-                                        <div className={`w-1.5 h-1.5 rounded-full ${activeElementId === el.id ? 'bg-indigo-500' : 'bg-gray-300'}`} />
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Properties Section (Sticky or at bottom if active) */}
-                    {activeElement && (
-                        <div className="border-b border-gray-100 bg-gray-50/50">
-                            {/* ... Same Properties Logic ... */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl w-full">
+                            {/* Card 1: Coletivo */}
                             <button
-                                className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-100 transition-colors"
-                                onClick={() => setShowProps(!showProps)}
+                                onClick={() => {
+                                    setEditorMode('classic');
+                                    setTemplateName('Craque do Jogo');
+                                }}
+                                className="group relative text-left bg-slate-800 border border-slate-700/60 p-8 rounded-[2.5rem] hover:border-indigo-500/80 hover:bg-slate-800/80 transition-all duration-350 flex flex-col justify-between shadow-2xl hover:shadow-indigo-550/10 min-h-[320px] overflow-hidden"
                             >
-                                <span className="text-xs font-bold text-indigo-600 uppercase flex items-center gap-2">
-                                    Propriedades: {activeElement.label}
-                                </span>
-                                {showProps ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl group-hover:bg-indigo-500/10 transition-colors"></div>
+                                <div className="p-4 bg-indigo-500/10 text-indigo-400 rounded-3xl w-max group-hover:scale-110 transition-transform shadow-inner">
+                                    <Palette size={32} />
+                                </div>
+                                <div className="mt-8">
+                                    <h3 className="text-xl font-black uppercase italic group-hover:text-indigo-400 transition-colors">Quadra & Campo</h3>
+                                    <p className="text-xs text-slate-400 mt-2 font-bold uppercase">Esportes Coletivos Tradicionais</p>
+                                    <p className="text-xs text-slate-400/80 font-medium mt-4 line-clamp-3">Gere templates clássicos como Craque do Jogo, Placar de Confronto direto, Próxima Partida, Defesa Menos Vazada e Premiação Individual.</p>
+                                </div>
                             </button>
 
-                            {showProps && (
-                                <div className="p-4 pt-0">
-                                    <h3 className="text-[10px] font-bold text-gray-400 mb-3 uppercase flex justify-end">
-                                        <button 
-                                            onClick={() => {
-                                                setElements(prev => prev.filter(el => el.id !== activeElement.id));
-                                                setActiveElementId(null);
-                                            }}
-                                            className="text-red-500 hover:text-red-700 flex items-center gap-1 bg-white border border-red-100 px-2 py-1 rounded shadow-sm"
-                                        >
-                                            <Trash2 size={12} /> Excluir
-                                        </button>
-                                    </h3>
+                            {/* Card 2: Tempo / Voltas */}
+                            <button
+                                onClick={() => {
+                                    setEditorMode('timing');
+                                    setTemplateName('Melhor Tempo');
+                                }}
+                                className="group relative text-left bg-slate-800 border border-slate-700/60 p-8 rounded-[2.5rem] hover:border-orange-500/80 hover:bg-slate-800/80 transition-all duration-350 flex flex-col justify-between shadow-2xl hover:shadow-orange-550/10 min-h-[320px] overflow-hidden"
+                            >
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full blur-2xl group-hover:bg-orange-500/10 transition-colors"></div>
+                                <div className="p-4 bg-orange-500/10 text-orange-400 rounded-3xl w-max group-hover:scale-110 transition-transform shadow-inner">
+                                    <Timer size={32} />
+                                </div>
+                                <div className="mt-8">
+                                    <h3 className="text-xl font-black uppercase italic group-hover:text-orange-400 transition-colors">Tempo & Voltas</h3>
+                                    <p className="text-xs text-slate-400 mt-2 font-bold uppercase">Esportes de Corrida e Cronometragem</p>
+                                    <p className="text-xs text-slate-400/80 font-medium mt-4 line-clamp-3">Gere templates de Melhor Tempo, Melhor Volta Individual, Baterias Programadas, Premiação de Equipes Vencedoras e Premiação de Atletas.</p>
+                                </div>
+                            </button>
 
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <div className="col-span-1">
-                                            <label className="text-[9px] text-gray-400 block mb-0.5">X</label>
-                                            <input
-                                                type="number"
-                                                value={activeElement.x}
-                                                onChange={e => handleElementChange(activeElement.id, { x: parseInt(e.target.value) })}
-                                                className="w-full p-1 border rounded text-xs font-mono"
-                                            />
-                                        </div>
-                                        <div className="col-span-1">
-                                            <label className="text-[9px] text-gray-400 block mb-0.5">Y</label>
-                                            <input
-                                                type="number"
-                                                value={activeElement.y}
-                                                onChange={e => handleElementChange(activeElement.id, { y: parseInt(e.target.value) })}
-                                                className="w-full p-1 border rounded text-xs font-mono"
-                                            />
-                                        </div>
-                                        {/* ... (Properties Inputs Continued) ... */}
-                                        {activeElement.type === 'text' && (
-                                            <>
-                                                <div className="col-span-1">
-                                                    <label className="text-[9px] text-gray-400 block mb-0.5">Tamanho</label>
-                                                    <input
-                                                        type="number"
-                                                        value={activeElement.fontSize}
-                                                        onChange={e => handleElementChange(activeElement.id, { fontSize: parseInt(e.target.value) })}
-                                                        className="w-full p-1 border rounded text-xs font-mono"
-                                                    />
+                            {/* Card 3: Individuais / Geral */}
+                            <a
+                                href="/admin/championships"
+                                className="group relative text-left bg-slate-800 border border-slate-700/60 p-8 rounded-[2.5rem] hover:border-emerald-500/80 hover:bg-slate-800/80 transition-all duration-350 flex flex-col justify-between shadow-2xl hover:shadow-emerald-550/10 min-h-[320px] overflow-hidden"
+                            >
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl group-hover:bg-emerald-500/10 transition-colors"></div>
+                                <div className="p-4 bg-emerald-500/10 text-emerald-400 rounded-3xl w-max group-hover:scale-110 transition-transform shadow-inner">
+                                    <Users size={32} />
+                                </div>
+                                <div className="mt-8">
+                                    <h3 className="text-xl font-black uppercase italic group-hover:text-emerald-400 transition-colors">Individuais / Atletismo</h3>
+                                    <p className="text-xs text-slate-400 mt-2 font-bold uppercase">Gestão por Campeonato</p>
+                                    <p className="text-xs text-slate-400/80 font-medium mt-4 line-clamp-3">Ir para Campeonatos Individuais. Gerencie artes de atletas confirmados e colocações de pódio diretamente pelo painel de cada campeonato.</p>
+                                </div>
+                            </a>
+                        </div>
+                    </motion.div>
+                ) : (
+                    <motion.div
+                        key="main-editor"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="flex h-full"
+                    >
+                        {/* Sidebar Controls */}
+                        <div className="w-80 bg-white border-r border-gray-200 flex flex-col z-20 shadow-xl overflow-hidden shrink-0 h-full">
+                            <div className="p-4 border-b border-gray-150 shrink-0 flex items-center justify-between">
+                                <h2 className="font-black text-gray-800 flex items-center gap-2 uppercase tracking-tight">
+                                    {editorMode === 'timing' ? <Timer className="w-5 h-5 text-orange-500" /> : <Palette className="w-5 h-5 text-indigo-600" />}
+                                    Editor {editorMode === 'timing' ? 'Tempo' : 'Tradicional'}
+                                </h2>
+                                <button
+                                    onClick={() => setEditorMode('select')}
+                                    className="p-2 hover:bg-slate-100 rounded-lg text-slate-450 hover:text-slate-900 transition-colors"
+                                    title="Voltar ao início"
+                                >
+                                    <ArrowLeft size={16} />
+                                </button>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto">
+                                {/* Settings Section */}
+                                <div className="border-b border-gray-100">
+                                    <button
+                                        className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
+                                        onClick={() => setShowSettings(!showSettings)}
+                                    >
+                                        <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Configurações Base</span>
+                                        {showSettings ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                    </button>
+
+                                    {showSettings && (
+                                        <div className="p-4 pt-0 space-y-3">
+                                            <label className="text-xs font-black text-slate-500 block mb-1 uppercase">Campeonato (Contexto)</label>
+                                            <select
+                                                value={selectedChampionship}
+                                                onChange={e => setSelectedChampionship(e.target.value)}
+                                                className="w-full p-2 border border-gray-200 rounded-lg text-sm font-bold bg-white mb-3 text-indigo-700"
+                                            >
+                                                <option value="">Padrão (Por Esporte)</option>
+                                                {championships.map(c => (
+                                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                                ))}
+                                            </select>
+
+                                            <label className="text-xs font-black text-slate-500 block mb-1 uppercase">Template</label>
+                                            <select
+                                                value={templateName}
+                                                onChange={e => {
+                                                    setTemplateName(e.target.value);
+                                                    setSelectedChampionship('');
+                                                }}
+                                                className="w-full p-2 border border-gray-200 rounded-lg text-sm font-bold bg-white"
+                                            >
+                                                {editorMode === 'timing' ? (
+                                                    <>
+                                                        <option>Melhor Tempo</option>
+                                                        <option>Melhor Volta</option>
+                                                        <option>Bateria Programada</option>
+                                                        <option>Premiação (Equipe)</option>
+                                                        <option>Premiação (Jogador)</option>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <option>Craque do Jogo</option>
+                                                        <option>Jogo Programado</option>
+                                                        <option>Confronto</option>
+                                                        <option>Defesa Menos Vazada</option>
+                                                        <option>Premiação (Jogador)</option>
+                                                    </>
+                                                )}
+                                            </select>
+
+                                            <label className="text-xs font-black text-slate-500 block mb-1 pt-2 uppercase">Esporte (Visualização)</label>
+                                            <select
+                                                value={selectedSport}
+                                                onChange={e => setSelectedSport(e.target.value)}
+                                                className="w-full p-2 border border-gray-200 rounded-lg text-sm font-bold bg-white"
+                                            >
+                                                {allSports.length > 0 ? (
+                                                    allSports.map(s => (
+                                                        <option key={s.slug} value={s.slug}>{s.name}</option>
+                                                    ))
+                                                ) : (
+                                                    <>
+                                                        <option value="futebol">Futebol</option>
+                                                        <option value="natacao">Natação</option>
+                                                        <option value="corrida">Corrida / Ciclismo</option>
+                                                        <option value="futebol-7">Futebol 7</option>
+                                                        <option value="futsal">Futsal</option>
+                                                        <option value="volei">Vôlei</option>
+                                                        <option value="basquete">Basquete</option>
+                                                        <option value="handebol">Handebol</option>
+                                                        <option value="tenis">Tênis</option>
+                                                        <option value="beach-tennis">Beach Tennis</option>
+                                                    </>
+                                                )}
+                                            </select>
+
+                                            {/* Upload Background */}
+                                            <div className="mt-3 pt-3 border-t border-gray-150">
+                                                <label className="text-xs font-black text-slate-400 block mb-1 uppercase tracking-wider">Fundo Customizado</label>
+                                                <div className="flex gap-2">
+                                                    <label className="flex-1 cursor-pointer bg-slate-900 hover:bg-slate-800 text-white rounded-lg py-2 flex items-center justify-center gap-2 text-xs font-black uppercase transition-colors">
+                                                        <Upload size={14} /> Upload Imagem
+                                                        <input type="file" className="hidden" accept="image/*" onChange={handleBgUpload} />
+                                                    </label>
+                                                    {persistedBgUrl && (
+                                                        <button
+                                                            onClick={() => { setPersistedBgUrl(null); loadTemplate(); }}
+                                                            className="p-2 text-red-500 hover:bg-red-50 rounded border border-red-100"
+                                                            title="Remover Fundo Customizado"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    )}
                                                 </div>
-                                                <div className="col-span-1">
-                                                    <label className="text-[9px] text-gray-700 font-bold block mb-0.5">Cor</label>
-                                                    <div className="flex items-center gap-1">
+                                                <p className="text-[9px] text-gray-400 mt-1 uppercase">Recomendado: 1080x1920 (9:16)</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Elements List */}
+                                <div className="border-b border-gray-100">
+                                    <button
+                                        className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
+                                        onClick={() => setShowElements(!showElements)}
+                                    >
+                                        <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Elementos ({elements.length})</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="p-1 hover:bg-indigo-50 rounded text-indigo-650 cursor-pointer" onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleAddImageElement();
+                                            }} title="Adicionar nova imagem livre"><ImageIcon size={14} /></span>
+                                            <span className="p-1 hover:bg-indigo-50 rounded text-indigo-650 cursor-pointer" onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleAddElement();
+                                            }} title="Adicionar novo elemento de texto"><Type size={14} /></span>
+                                            {showElements ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                        </div>
+                                    </button>
+
+                                    {showElements && (
+                                        <div className="p-4 pt-0 space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
+                                            {elements.map(el => (
+                                                <div
+                                                    key={el.id}
+                                                    onClick={() => setActiveElementId(el.id)}
+                                                    className={`p-2 rounded-lg border flex items-center gap-2 cursor-pointer transition-all text-xs ${activeElementId === el.id ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300 bg-white'
+                                                        }`}
+                                                >
+                                                    {el.type === 'text' ? <Type size={14} className="text-gray-400" /> : <ImageIcon size={14} className="text-gray-400" />}
+                                                    <div className="flex-1 min-w-0">
+                                                        <span className="font-bold text-gray-700 block truncate">{el.label}</span>
+                                                    </div>
+                                                    <div className={`w-1.5 h-1.5 rounded-full ${activeElementId === el.id ? 'bg-indigo-500' : 'bg-gray-350'}`} />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Properties Section */}
+                                {activeElement && (
+                                    <div className="border-b border-gray-100 bg-slate-50/50">
+                                        <button
+                                            className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-100 transition-colors"
+                                            onClick={() => setShowProps(!showProps)}
+                                        >
+                                            <span className="text-xs font-black text-indigo-600 uppercase flex items-center gap-2">
+                                                Propriedades: {activeElement.label}
+                                            </span>
+                                            {showProps ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                        </button>
+
+                                        {showProps && (
+                                            <div className="p-4 pt-0 space-y-4">
+                                                <div className="flex justify-end">
+                                                    <button 
+                                                        onClick={() => {
+                                                            setElements(prev => prev.filter(el => el.id !== activeElement.id));
+                                                            setActiveElementId(null);
+                                                        }}
+                                                        className="text-red-500 hover:text-red-700 flex items-center gap-1 bg-white border border-red-100 px-2 py-1 rounded shadow-sm text-[10px] font-black uppercase"
+                                                    >
+                                                        <Trash2 size={12} /> Excluir Elemento
+                                                    </button>
+                                                </div>
+
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <div>
+                                                        <label className="text-[10px] font-black text-slate-405 uppercase tracking-wider block mb-0.5">Posição X</label>
                                                         <input
-                                                            type="color"
-                                                            value={activeElement.color}
-                                                            onChange={e => handleElementChange(activeElement.id, { color: e.target.value })}
-                                                            className="w-full h-6 border rounded cursor-pointer"
+                                                            type="number"
+                                                            value={activeElement.x}
+                                                            onChange={e => handleElementChange(activeElement.id, { x: parseInt(e.target.value) || 0 })}
+                                                            className="w-full p-2 border rounded-lg text-xs font-mono font-bold"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-[10px] font-black text-slate-405 uppercase tracking-wider block mb-0.5">Posição Y</label>
+                                                        <input
+                                                            type="number"
+                                                            value={activeElement.y}
+                                                            onChange={e => handleElementChange(activeElement.id, { y: parseInt(e.target.value) || 0 })}
+                                                            className="w-full p-2 border rounded-lg text-xs font-mono font-bold"
                                                         />
                                                     </div>
                                                 </div>
 
-                                                <div className="col-span-2">
-                                                    <label className="text-[9px] text-gray-700 font-bold block mb-0.5">Fonte</label>
-                                                    <select
-                                                        value={activeElement.fontFamily || 'Roboto'}
-                                                        onChange={e => handleElementChange(activeElement.id, { fontFamily: e.target.value })}
-                                                        className="w-full p-1 border rounded text-xs font-mono"
-                                                    >
-                                                        <option value="Roboto">Roboto</option>
-                                                        <option value="Roboto-Bold">Roboto Bold</option>
-                                                        <option value="Anton">Anton</option>
-                                                        <option value="Archivo Black">Archivo Black</option>
-                                                        <option value="Bebas Neue">Bebas Neue</option>
-                                                        <option value="Cinzel">Cinzel</option>
-                                                        <option value="Lato">Lato</option>
-                                                        <option value="Lexend">Lexend</option>
-                                                        <option value="Lora">Lora</option>
-                                                        <option value="Merriweather">Merriweather</option>
-                                                        <option value="Montserrat">Montserrat</option>
-                                                        <option value="Open Sans">Open Sans</option>
-                                                        <option value="Oswald">Oswald</option>
-                                                        <option value="Playfair Display">Playfair Display</option>
-                                                        <option value="Poppins">Poppins</option>
-                                                        <option value="Source Sans 3">Source Sans 3</option>
-                                                        <option value="Teko">Teko</option>
-                                                    </select>
-                                                </div>
-
-                                                <div className="col-span-2">
-                                                    <label className="text-[9px] text-gray-700 font-bold block mb-0.5">Alinhamento</label>
-                                                    <div className="flex border rounded overflow-hidden">
-                                                        {['left', 'center', 'right'].map(align => (
-                                                            <button
-                                                                key={align}
-                                                                onClick={() => handleElementChange(activeElement.id, { align: align as any })}
-                                                                className={`flex-1 py-1 text-[10px] capitalize ${activeElement.align === align ? 'bg-indigo-100 text-indigo-700 font-bold' : 'bg-white hover:bg-gray-50'}`}
+                                                {activeElement.type === 'text' && (
+                                                    <>
+                                                        <div>
+                                                            <label className="text-[10px] font-black text-slate-405 uppercase tracking-wider block mb-0.5">Tamanho da Fonte</label>
+                                                            <input
+                                                                type="number"
+                                                                value={activeElement.fontSize}
+                                                                onChange={e => handleElementChange(activeElement.id, { fontSize: parseInt(e.target.value) || 12 })}
+                                                                className="w-full p-2 border rounded-lg text-xs font-bold"
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label className="text-[10px] font-black text-slate-405 uppercase tracking-wider block mb-0.5">Cor do Texto</label>
+                                                            <input
+                                                                type="color"
+                                                                value={activeElement.color}
+                                                                onChange={e => handleElementChange(activeElement.id, { color: e.target.value })}
+                                                                className="w-full h-10 border-none cursor-pointer rounded-lg overflow-hidden"
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label className="text-[10px] font-black text-slate-405 uppercase tracking-wider block mb-0.5">Alinhamento</label>
+                                                            <div className="flex p-1 bg-slate-50 border rounded-xl">
+                                                                {(['left', 'center', 'right'] as const).map(a => (
+                                                                    <button
+                                                                        key={a}
+                                                                        onClick={() => handleElementChange(activeElement.id, { align: a })}
+                                                                        className={`flex-1 py-1 px-2 rounded-lg text-[9px] font-black uppercase transition-all ${activeElement.align === a ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400'}`}
+                                                                    >
+                                                                        {a}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <label className="text-[10px] font-black text-slate-405 uppercase tracking-wider block mb-0.5">Fonte Tipográfica</label>
+                                                            <select
+                                                                value={activeElement.fontFamily || 'Arial'}
+                                                                onChange={e => handleElementChange(activeElement.id, { fontFamily: e.target.value })}
+                                                                className="w-full p-2 border rounded-lg text-xs font-bold bg-white"
                                                             >
-                                                                {align}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                </div>
+                                                                <option value="Arial">Arial (Padrão)</option>
+                                                                <option value="Roboto">Roboto</option>
+                                                                <option value="Roboto-Bold">Roboto Bold</option>
+                                                                <option value="Anton">Anton</option>
+                                                                <option value="Bebas Neue">Bebas Neue</option>
+                                                                <option value="Archivo Black">Archivo Black</option>
+                                                                <option value="Montserrat">Montserrat</option>
+                                                                <option value="Poppins">Poppins</option>
+                                                                <option value="Oswald">Oswald</option>
+                                                                <option value="Teko">Teko</option>
+                                                            </select>
+                                                        </div>
+                                                    </>
+                                                )}
 
-                                                <div className="col-span-2">
-                                                    <label className="text-[9px] text-gray-700 font-bold block mb-0.5">Conteúdo</label>
-                                                    <input
-                                                        type="text"
-                                                        value={activeElement.content}
-                                                        onChange={e => handleElementChange(activeElement.id, { content: e.target.value })}
-                                                        className="w-full p-1 border rounded text-xs font-mono"
-                                                    />
-                                                </div>
-                                            </>
-                                        )}
-                                        {activeElement.type === 'image' && (
-                                            <>
-                                                <div className="col-span-1">
-                                                    <label className="text-[9px] text-gray-700 font-bold block mb-0.5">Largura</label>
-                                                    <input
-                                                        type="number"
-                                                        value={activeElement.width}
-                                                        onChange={e => handleElementChange(activeElement.id, { width: parseInt(e.target.value) })}
-                                                        className="w-full p-1 border rounded text-xs font-mono"
-                                                    />
-                                                </div>
-                                                <div className="col-span-1">
-                                                    <label className="text-[9px] text-gray-700 font-bold block mb-0.5">Altura</label>
-                                                    <input
-                                                        type="number"
-                                                        value={activeElement.height}
-                                                        onChange={e => handleElementChange(activeElement.id, { height: parseInt(e.target.value) })}
-                                                        className="w-full p-1 border rounded text-xs font-mono"
-                                                    />
-                                                </div>
-                                                <div className="col-span-2">
-                                                    <label className="text-[9px] text-gray-700 font-bold block mb-0.5">Tipo/Upload de Imagem</label>
-                                                    <div className="flex flex-col gap-1">
-                                                        <select
-                                                            value={activeElement.content?.includes('http') ? 'custom_image' : activeElement.content}
-                                                            onChange={e => handleElementChange(activeElement.id, { content: e.target.value })}
-                                                            className="w-full p-1 border rounded text-xs font-mono"
-                                                        >
-                                                            <option value="player_photo">Foto do Jogador (Sistema)</option>
-                                                            <option value="team_a">Brasão Mandante (Sistema)</option>
-                                                            <option value="team_b">Brasão Visitante (Sistema)</option>
-                                                            <option value="team_logo">Logo do Time Único (Sistema)</option>
-                                                            <option value="custom_image">Imagem Livre (Mascote/Icone)</option>
-                                                        </select>
-                                                        {(!activeElement.content || activeElement.content === 'custom_image' || activeElement.content.includes('http')) && (
-                                                            <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-600 rounded py-1 flex items-center justify-center gap-2 text-xs border border-gray-200">
-                                                                <Upload size={12} /> Escolher Imagem
-                                                                <input type="file" className="hidden" accept="image/*" onChange={(e) => {
-                                                                    if (e.target.files && e.target.files[0]) {
-                                                                        handleCustomImageUpload(activeElement.id, e.target.files[0]);
-                                                                    }
-                                                                }} />
-                                                            </label>
+                                                {activeElement.type === 'image' && (
+                                                    <>
+                                                        <div className="grid grid-cols-2 gap-2">
+                                                            <div>
+                                                                <label className="text-[10px] font-black text-slate-405 uppercase tracking-wider block mb-0.5">Largura (L)</label>
+                                                                <input
+                                                                    type="number"
+                                                                    value={activeElement.width}
+                                                                    onChange={e => handleElementChange(activeElement.id, { width: parseInt(e.target.value) || 50 })}
+                                                                    className="w-full p-2 border rounded-lg text-xs font-bold"
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-[10px] font-black text-slate-405 uppercase tracking-wider block mb-0.5">Altura (A)</label>
+                                                                <input
+                                                                    type="number"
+                                                                    value={activeElement.height}
+                                                                    onChange={e => handleElementChange(activeElement.id, { height: parseInt(e.target.value) || 50 })}
+                                                                    className="w-full p-2 border rounded-lg text-xs font-bold"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        {activeElement.content === 'custom_image' && (
+                                                            <div>
+                                                                <label className="text-[10px] font-black text-slate-405 uppercase tracking-wider block mb-0.5">Imagem Customizada</label>
+                                                                <input
+                                                                    type="file"
+                                                                    accept="image/*"
+                                                                    onChange={(e) => {
+                                                                        const f = e.target.files?.[0];
+                                                                        if (f) handleCustomImageUpload(activeElement.id, f);
+                                                                    }}
+                                                                    className="w-full text-xs"
+                                                                />
+                                                            </div>
                                                         )}
-                                                    </div>
-                                                </div>
-                                            </>
+                                                    </>
+                                                )}
+                                            </div>
                                         )}
                                     </div>
+                                )}
+                            </div>
+
+                            <div className="p-4 border-t border-gray-150 bg-gray-50/50 shrink-0">
+                                <button
+                                    onClick={saveTemplate}
+                                    disabled={loading}
+                                    className="w-full py-4 bg-slate-900 text-white font-black rounded-2xl shadow-xl hover:bg-slate-800 transition-all flex items-center justify-center gap-2 text-sm uppercase tracking-wider"
+                                >
+                                    <Save size={20} /> Salvar Template
+                                </button>
+                                <button
+                                    onClick={resetTemplate}
+                                    className="w-full py-2.5 mt-2 bg-slate-100 hover:bg-slate-200 text-slate-650 hover:text-slate-800 rounded-xl font-bold transition-all text-xs uppercase tracking-wider"
+                                >
+                                    Restaurar Padrão
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Main Canvas Area */}
+                        <div className="flex-1 overflow-auto bg-slate-200 flex items-center justify-center p-10 relative">
+                            {loading && (
+                                <div className="absolute inset-0 bg-slate-900/10 backdrop-blur-xs flex items-center justify-center z-50">
+                                    <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                                </div>
+                            )}
+
+                            <div style={{ transform: `scale(${SCALE})`, transformOrigin: 'center' }} className="shadow-2xl flex-shrink-0">
+                                <CanvasRenderer scale={1} interactable={true} />
+                            </div>
+
+                            {/* Floating help box */}
+                            {showHelp && (
+                                <div className="absolute bottom-6 right-6 max-w-sm bg-white p-6 rounded-3xl shadow-2xl border border-slate-100 animate-in fade-in duration-300">
+                                    <button onClick={() => setShowHelp(false)} className="absolute top-4 right-4 text-slate-300 hover:text-slate-700"><X size={18} /></button>
+                                    <h4 className="font-black text-slate-900 uppercase text-xs tracking-wider mb-2 flex items-center gap-1"><Award size={14} className="text-indigo-500" /> Dicas de Design</h4>
+                                    <p className="text-[11px] text-slate-500 font-medium leading-relaxed">Você pode arrastar e soltar os elementos da arte diretamente no canvas. Use as propriedades na barra lateral para ajustar tamanhos, fontes e alinhamento de forma milimétrica.</p>
                                 </div>
                             )}
                         </div>
-                    )}
-                </div>
-
-                <div className="p-4 border-t border-gray-200 shrink-0 bg-white z-10">
-                    <button
-                        onClick={resetTemplate}
-                        className="w-full py-2 mb-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all active:scale-95 text-xs"
-                    >
-                        <Trash2 size={16} /> Restaurar Padrão
-                    </button>
-                    <button
-                        onClick={saveTemplate}
-                        disabled={loading}
-                        className="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
-                    >
-                        {loading ? 'Salvando...' : <><Save size={18} /> Salvar Template</>}
-                    </button>
-                    <button
-                        onClick={() => setPreviewMode(true)}
-                        className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 mt-3"
-                    >
-                        <Monitor size={18} /> Visualizar HD
-                    </button>
-                </div>
-            </div>
-
-            {/* Canvas Area */}
-            <div className="flex-1 overflow-auto bg-gray-200 flex items-center justify-center p-10 relative">
-
-                {/* Scale controls */}
-                <div className="absolute top-4 right-4 bg-white/80 backdrop-blur rounded-lg p-2 shadow-sm flex items-center gap-2 z-10">
-                    <Monitor size={16} className="text-gray-500" />
-                    <span className="text-xs font-bold text-gray-600">Miniatura Interativa ({Math.round(SCALE * 100)}%)</span>
-                </div>
-
-                {/* Rendering Canvas with React */}
-                <CanvasRenderer scale={SCALE} interactable={true} />
-            </div>
-
-            {/* Shortcuts / Help */}
-            {showHelp && (
-                <div className="absolute bottom-4 right-4 bg-white p-4 rounded-xl shadow-lg border border-gray-100 max-w-xs z-20">
-                    {/* ... same help ... */}
-                    <button
-                        onClick={() => setShowHelp(false)}
-                        className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
-                    >
-                        <X size={14} />
-                    </button>
-                    <h4 className="font-bold text-gray-800 text-sm mb-2 flex items-center gap-2">
-                        <Smartphone size={16} /> Modo Admin
-                    </h4>
-                    <p className="text-xs text-gray-500">
-                        Arraste os elementos para posicionar. Use o painel lateral para ajuste fino (cores, tamanho).
-                        As alterações são salvas para todos os esportes ao clicar em Salvar.
-                    </p>
-                </div>
-            )}
-
-            {/* FULL SCREEN PREVIEW MODAL */}
-            {previewMode && (
-                <div
-                    className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center backdrop-blur-md overflow-hidden p-4"
-                    onClick={() => setPreviewMode(false)}
-                >
-                    <button
-                        className="fixed top-4 right-4 text-white hover:text-gray-300 z-[60] bg-white/10 rounded-full p-2"
-                        onClick={() => setPreviewMode(false)}
-                    >
-                        <X size={24} />
-                    </button>
-
-                    <div className="h-full w-full flex items-center justify-center overflow-auto" onClick={e => e.stopPropagation()}>
-                        {/* Calculate best fit scale for modal */}
-                        <div style={{ transform: `scale(${Math.min(window.innerHeight / CANVAS_HEIGHT * 0.95, window.innerWidth / CANVAS_WIDTH * 0.95)})`, transformOrigin: 'center' }}>
-                            <CanvasRenderer scale={1} interactable={false} />
-                        </div>
-                    </div>
-                </div>
-            )}
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
-};
+}

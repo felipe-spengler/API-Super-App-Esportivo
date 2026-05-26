@@ -81,8 +81,20 @@ export function PublicRaceResults() {
                     return tg;
                 });
 
-                // Sort teams ascending by total elapsed time (lower time wins)
-                teamResultsArray.sort((a: any, b: any) => a.totalTimeMs - b.totalTimeMs);
+                // Sort teams based on format
+                if (champ.format === 'laps') {
+                    teamResultsArray.sort((a: any, b: any) => {
+                        const lapsDiff = b.times.length - a.times.length;
+                        if (lapsDiff !== 0) return lapsDiff;
+                        
+                        const bestA = Math.min(...a.times.map((t: any) => t.time_ms), Infinity);
+                        const bestB = Math.min(...b.times.map((t: any) => t.time_ms), Infinity);
+                        return bestA - bestB;
+                    });
+                } else {
+                    // Sort teams ascending by total elapsed time (lower time wins)
+                    teamResultsArray.sort((a: any, b: any) => a.totalTimeMs - b.totalTimeMs);
+                }
 
                 setTeamResults(teamResultsArray);
             } else {
@@ -356,11 +368,25 @@ export function PublicRaceResults() {
                                             {/* Times & Expand trigger */}
                                             <div className="flex items-center justify-between md:justify-end gap-6 pl-16 md:pl-0">
                                                 <div className="text-left md:text-right">
-                                                    <div className="flex items-center gap-2 bg-slate-950 text-yellow-400 font-mono font-black text-2xl px-4 py-2 rounded-2xl border border-slate-900 shadow-inner leading-none italic tracking-tighter">
-                                                        <Timer size={18} className="text-yellow-500 shrink-0" />
-                                                        {formatTime(team.totalTimeMs)}
-                                                    </div>
-                                                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-1.5 mr-1">Tempo Total Acumulado</p>
+                                                    {championship?.format === 'laps' ? (
+                                                        <>
+                                                            <div className="flex items-center gap-2 bg-slate-950 text-emerald-450 font-mono font-black text-2xl px-4 py-2 rounded-2xl border border-slate-900 shadow-inner leading-none italic tracking-tighter">
+                                                                <Trophy size={18} className="text-emerald-500 shrink-0" />
+                                                                {team.times.length} {team.times.length === 1 ? 'Volta' : 'Voltas'}
+                                                            </div>
+                                                            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-1.5 mr-1">
+                                                                Melhor Volta: <span className="text-slate-800 font-mono font-black">{formatTime(Math.min(...team.times.map((t: any) => t.time_ms), 0))}</span>
+                                                            </p>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <div className="flex items-center gap-2 bg-slate-950 text-yellow-400 font-mono font-black text-2xl px-4 py-2 rounded-2xl border border-slate-900 shadow-inner leading-none italic tracking-tighter">
+                                                                <Timer size={18} className="text-yellow-500 shrink-0" />
+                                                                {formatTime(team.totalTimeMs)}
+                                                            </div>
+                                                            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-1.5 mr-1">Tempo Total Acumulado</p>
+                                                        </>
+                                                    )}
                                                 </div>
 
                                                 <button 
@@ -397,7 +423,7 @@ export function PublicRaceResults() {
                                                                             {pName}
                                                                         </span>
                                                                         <span className="block text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
-                                                                            Segmento de Revezamento
+                                                                            Segmento de Revezamento {lapRecord.game_match?.round_name || lapRecord.gameMatch?.round_name ? `• ${lapRecord.game_match?.round_name || lapRecord.gameMatch?.round_name}` : (lapRecord.game_match?.round_number || lapRecord.gameMatch?.round_number ? `• Bateria ${lapRecord.game_match?.round_number || lapRecord.gameMatch?.round_number}` : '')}
                                                                         </span>
                                                                     </div>
                                                                 </div>

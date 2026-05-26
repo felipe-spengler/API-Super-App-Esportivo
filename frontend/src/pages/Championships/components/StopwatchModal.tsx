@@ -4,14 +4,15 @@ import api from '../../../services/api';
 
 interface Participant {
     id: number;
-    user_id: number;
-    team_id: number;
+    user_id: number | null;
+    team_id: number | null;
     category_id?: number;
     name: string;
     bib_number?: string;
     team?: {
         name: string;
     };
+    competitor_id?: string;
 }
 
 interface StopwatchModalProps {
@@ -46,6 +47,11 @@ export function StopwatchModal({
     // Lap state
     const [currentLap, setCurrentLap] = useState(1);
 
+    // Countdown state (for laps format)
+    const [countdownMinutesInput, setCountdownMinutesInput] = useState(12);
+    const [countdownTimeLeft, setCountdownTimeLeft] = useState(12 * 60); // in seconds
+    const [isCountdownFinished, setIsCountdownFinished] = useState(false);
+
     // Relay state
     const [isRelayMode, setIsRelayMode] = useState(false);
     const [nextParticipant, setNextParticipant] = useState('');
@@ -62,7 +68,8 @@ export function StopwatchModal({
     if (!isOpen) return null;
 
     // Computed Teams
-    const isTeam = participants.some(p => p.team_id !== null && p.team_id !== undefined);
+    const hasPlayers = participants.some(p => p.user_id !== null && p.user_id !== undefined);
+    const isTeam = hasPlayers && participants.some(p => p.team_id !== null && p.team_id !== undefined);
     const teams = isTeam ? Array.from(new Set(participants.map(p => p.team_id).filter(Boolean))).map(tid => {
         const p = participants.find(x => x.team_id === tid);
         return { id: tid, name: p?.team?.name || 'Equipe' };
@@ -79,16 +86,43 @@ export function StopwatchModal({
         return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${centiseconds.toString().padStart(2, '0')}`;
     };
 
+    const formatCountdown = (secs: number) => {
+        const minutes = Math.floor(secs / 60);
+        const seconds = secs % 60;
+        return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    };
+
     const startTimer = () => {
         if (!selectedParticipant) {
             alert('Selecione um competidor primeiro!');
             return;
         }
         setIsRunning(true);
-        const startTime = Date.now() - timeMs;
-        timerRef.current = setInterval(() => {
-            setTimeMs(Date.now() - startTime);
-        }, 10);
+
+        if (isLapsFormat) {
+            // Countdown/Regressive Mode
+            setIsCountdownFinished(false);
+            if (countdownTimeLeft <= 0) {
+                setCountdownTimeLeft(countdownMinutesInput * 60);
+            }
+            timerRef.current = setInterval(() => {
+                setCountdownTimeLeft(prev => {
+                    if (prev <= 1) {
+                        setIsRunning(false);
+                        setIsCountdownFinished(true);
+                        if (timerRef.current) clearInterval(timerRef.current);
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+        } else {
+            // Stopwatch/Progressive Mode
+            const startTime = Date.now() - timeMs;
+            timerRef.current = setInterval(() => {
+                setTimeMs(Date.now() - startTime);
+            }, 10);
+        }
     };
 
     const stopTimer = () => {
@@ -96,10 +130,9 @@ export function StopwatchModal({
         if (timerRef.current) clearInterval(timerRef.current);
 
         // In relay mode, log the final athlete's segment in history
-        if (isRelayMode && selectedParticipant) {
-            const currentPart = participants.find(p => p.user_id?.toString() === selectedParticipant);
+        if (!isLapsFormat && isRelayMode && selectedParticipant) {
+            const currentPart = participants.find(p => p.competitor_id === selectedParticipant);
             const segmentTime = timeMs - lastBatonTimeMs;
-            // Prevent adding duplicate final entry if already added
             setRelayHistory(prev => {
                 const alreadyAdded = prev.some(h => h.name === currentPart?.name && h.time === segmentTime);
                 if (alreadyAdded) return prev;
@@ -110,8 +143,10 @@ export function StopwatchModal({
 
     const resetTimer = () => {
         setIsRunning(false);
+        setIsCountdownFinished(false);
         if (timerRef.current) clearInterval(timerRef.current);
         setTimeMs(0);
+        setCountdownTimeLeft(countdownMinutesInput * 60);
         setCurrentLap(1);
         setRelayHistory([]);
         setLastBatonTimeMs(0);
@@ -120,7 +155,7 @@ export function StopwatchModal({
 
     const saveTime = async () => {
         if (!selectedParticipant) return;
-        const participant = participants.find(p => p.user_id?.toString() === selectedParticipant);
+        const participant = participants.find(p => p.competitor_id === selectedParticipant);
         if (!participant) return;
 
         // In relay mode, calculate the final athlete's segment time
@@ -136,8 +171,8 @@ export function StopwatchModal({
             lap: currentLap,
             status: 'completed',
             game_match_id: gameMatchId || null,
-            user: { name: participant.name },
-            team: participant.team ? { name: participant.team.name } : undefined
+            user: participant.user_id ? { name: participant.name } : null,
+            team: participant.team_id ? { name: participant.name } : null
         };
 
         // UI updates INSTANTLY (0ms delay!)
@@ -174,7 +209,7 @@ export function StopwatchModal({
     const passBaton = async () => {
         if (!selectedParticipant || !nextParticipant) return;
 
-        const currentPart = participants.find(p => p.user_id?.toString() === selectedParticipant);
+        const currentPart = participants.find(p => p.competitor_id === selectedParticipant);
         if (!currentPart) return;
 
         // Calculate individual segment time for the current athlete
@@ -190,8 +225,8 @@ export function StopwatchModal({
             lap: currentLap,
             status: 'completed',
             game_match_id: gameMatchId || null,
-            user: { name: currentPart.name },
-            team: currentPart.team ? { name: currentPart.team.name } : undefined
+            user: currentPart.user_id ? { name: currentPart.name } : null,
+            team: currentPart.team_id ? { name: currentPart.name } : null
         };
 
         // UI updates INSTANTLY (0ms delay!)
@@ -232,8 +267,13 @@ export function StopwatchModal({
     const recordLap = async () => {
         if (!selectedParticipant) return;
 
-        const participant = participants.find(p => p.user_id?.toString() === selectedParticipant);
+        const participant = participants.find(p => p.competitor_id === selectedParticipant);
         if (!participant) return;
+
+        // Calculate time in milliseconds based on current timer mode
+        const elapsedMs = isLapsFormat 
+            ? ((countdownMinutesInput * 60) - countdownTimeLeft) * 1000 
+            : timeMs;
 
         const optimisticId = `optimistic-${Date.now()}-${Math.random()}`;
         const optimisticTime = {
@@ -241,12 +281,12 @@ export function StopwatchModal({
             user_id: participant.user_id,
             team_id: participant.team_id,
             category_id: participant.category_id,
-            time_ms: timeMs,
+            time_ms: elapsedMs,
             lap: currentLap,
             status: 'completed',
             game_match_id: gameMatchId || null,
-            user: { name: participant.name },
-            team: participant.team ? { name: participant.team.name } : undefined
+            user: participant.user_id ? { name: participant.name } : null,
+            team: participant.team_id ? { name: participant.name } : null
         };
 
         // UI updates INSTANTLY (0ms delay!)
@@ -256,12 +296,18 @@ export function StopwatchModal({
         const recordedLapNum = currentLap;
         setCurrentLap(prev => prev + 1);
 
+        // Add to local history list in modal for immediate feedback
+        setRelayHistory(prev => [
+            ...prev,
+            { name: participant.name, time: elapsedMs }
+        ]);
+
         try {
             const res = await api.post(`/admin/championships/${championshipId}/times`, {
                 user_id: participant.user_id,
                 team_id: participant.team_id,
                 category_id: participant.category_id,
-                time_ms: timeMs,
+                time_ms: elapsedMs,
                 lap: recordedLapNum,
                 status: 'completed',
                 game_match_id: gameMatchId || null
@@ -274,6 +320,7 @@ export function StopwatchModal({
             console.error(error);
             // Revert state if the API fails and decrement lap counter
             setTimes(prev => prev.filter(t => t.id !== optimisticId));
+            setRelayHistory(prev => prev.filter(h => h.time !== elapsedMs));
             setCurrentLap(prev => Math.max(1, prev - 1));
             alert('Erro ao salvar volta.');
         }
@@ -284,29 +331,50 @@ export function StopwatchModal({
             <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden">
                 <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                     <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
-                        <Timer className="text-indigo-600" />
-                        Cronômetro Real-time
+                        <Timer className="text-indigo-650 animate-pulse" />
+                        {isLapsFormat ? 'Temporizador Individual de Voltas' : 'Cronômetro Real-time'}
                     </h2>
                     <button onClick={() => { stopTimer(); resetTimer(); onClose(); }} className="text-slate-400 hover:text-slate-600 font-bold">FECHAR</button>
                 </div>
                 
-                <div className="p-8">
-                    <div className="flex items-center justify-between bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 mb-6">
-                        <div className="text-left">
-                            <span className="block font-black text-slate-800 text-sm">Modo Revezamento 🏃💨</span>
-                            <span className="block text-[10px] text-slate-500 font-bold">Alternar atleta sem parar o tempo</span>
+                <div className="p-8 max-h-[80vh] overflow-y-auto custom-scrollbar">
+                    {/* Relay mode is only shown in normal progressive stopwatch mode */}
+                    {!isLapsFormat && (
+                        <div className="flex items-center justify-between bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 mb-6">
+                            <div className="text-left">
+                                <span className="block font-black text-slate-800 text-sm">Modo Revezamento 🏃💨</span>
+                                <span className="block text-[10px] text-slate-500 font-bold">Alternar atleta sem parar o tempo</span>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                                <input 
+                                    type="checkbox" 
+                                    checked={isRelayMode} 
+                                    onChange={e => setIsRelayMode(e.target.checked)} 
+                                    className="sr-only peer"
+                                    disabled={isRunning}
+                                />
+                                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                            </label>
                         </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
+                    )}
+
+                    {/* Countdown input is shown in Laps mode when not running and time is at start */}
+                    {isLapsFormat && !isRunning && !isCountdownFinished && countdownTimeLeft === countdownMinutesInput * 60 && (
+                        <div className="mb-6 p-4 bg-white rounded-2xl border border-slate-200 text-center shadow-sm">
+                            <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Tempo da Prova (Minutos)</label>
                             <input 
-                                type="checkbox" 
-                                checked={isRelayMode} 
-                                onChange={e => setIsRelayMode(e.target.checked)} 
-                                className="sr-only peer"
-                                disabled={isRunning}
+                                type="number"
+                                min="1"
+                                value={countdownMinutesInput}
+                                onChange={e => {
+                                    const val = parseInt(e.target.value) || 1;
+                                    setCountdownMinutesInput(val);
+                                    setCountdownTimeLeft(val * 60);
+                                }}
+                                className="w-24 text-center p-2 bg-slate-50 border border-slate-200 rounded-xl font-black text-xl outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                             />
-                            <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-                        </label>
-                    </div>
+                        </div>
+                    )}
 
                     {/* Selector UI */}
                     <div className="space-y-4 mb-6">
@@ -339,7 +407,7 @@ export function StopwatchModal({
                             >
                                 <option value="">Selecione quem vai competir...</option>
                                 {availableParticipants.map(p => (
-                                    <option key={p.user_id} value={p.user_id}>
+                                    <option key={p.competitor_id} value={p.competitor_id}>
                                         {p.name} {p.bib_number ? `(Peito: ${p.bib_number})` : ''}
                                     </option>
                                 ))}
@@ -347,12 +415,14 @@ export function StopwatchModal({
                         </div>
                     </div>
 
-                    <div className="text-center mb-10">
-                        <div className="font-mono text-7xl font-black text-slate-900 tracking-tighter tabular-nums mb-2">
-                            {formatTime(timeMs)}
+                    <div className="text-center mb-8">
+                        <div className="font-mono text-6xl md:text-7xl font-black text-slate-900 tracking-tighter tabular-nums mb-2">
+                            {isLapsFormat ? formatCountdown(countdownTimeLeft) : formatTime(timeMs)}
                         </div>
-                        <p className="text-slate-400 font-bold uppercase tracking-widest text-sm">
-                            {isLapsFormat ? `Volta Atual: ${currentLap}` : 'Minutos : Segundos . Milésimos'}
+                        <p className="text-slate-450 font-bold uppercase tracking-widest text-xs">
+                            {isLapsFormat 
+                                ? (isCountdownFinished ? 'Tempo Esgotado!' : `Volta Atual: ${currentLap}`) 
+                                : 'Minutos : Segundos . Milésimos'}
                         </p>
                     </div>
 
@@ -360,7 +430,7 @@ export function StopwatchModal({
                         {!isRunning ? (
                             <button 
                                 onClick={startTimer}
-                                disabled={!selectedParticipant}
+                                disabled={!selectedParticipant || (isLapsFormat && isCountdownFinished)}
                                 className="flex items-center justify-center gap-2 bg-emerald-500 text-white p-4 rounded-2xl font-black text-lg hover:bg-emerald-600 transition-colors disabled:opacity-50"
                             >
                                 <Play size={24} /> INICIAR
@@ -368,14 +438,14 @@ export function StopwatchModal({
                         ) : (
                             <button 
                                 onClick={stopTimer}
-                                className="flex items-center justify-center gap-2 bg-rose-500 text-white p-4 rounded-2xl font-black text-lg hover:bg-rose-600 transition-colors shadow-[0_0_20px_rgba(244,63,94,0.4)]"
+                                className="flex items-center justify-center gap-2 bg-rose-500 text-white p-4 rounded-2xl font-black text-lg hover:bg-rose-600 transition-colors shadow-lg shadow-rose-100"
                             >
-                                <Square size={24} /> PARAR
+                                <Square size={24} /> PAUSAR
                             </button>
                         )}
                         <button 
                             onClick={resetTimer}
-                            disabled={timeMs === 0 || isRunning}
+                            disabled={(isLapsFormat ? countdownTimeLeft === countdownMinutesInput * 60 : timeMs === 0) || isRunning}
                             className="flex items-center justify-center gap-2 bg-slate-100 text-slate-600 p-4 rounded-2xl font-black text-lg hover:bg-slate-200 transition-colors disabled:opacity-50"
                         >
                             <RotateCcw size={24} /> ZERAR
@@ -386,13 +456,13 @@ export function StopwatchModal({
                         <button 
                             onClick={recordLap}
                             disabled={saving}
-                            className="w-full mt-4 flex items-center justify-center gap-2 bg-amber-500 text-white p-4 rounded-2xl font-black text-lg hover:bg-amber-600 transition-colors shadow-lg shadow-amber-200 disabled:opacity-50"
+                            className="w-full mt-4 flex items-center justify-center gap-2 bg-amber-500 text-white p-4 rounded-2xl font-black text-lg hover:bg-amber-600 transition-colors shadow-lg shadow-amber-250 active:scale-95 duration-100 disabled:opacity-50"
                         >
                             <Save size={24} /> {saving ? 'MARCANDO...' : `MARCAR VOLTA ${currentLap}`}
                         </button>
                     )}
 
-                    {isRelayMode && isRunning && (
+                    {isRelayMode && isRunning && !isLapsFormat && (
                         <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-2xl animate-in slide-in-from-top-2 duration-200 text-left">
                             <label className="block text-[10px] font-black text-amber-800 uppercase tracking-wider mb-2">Próximo Atleta (Passar Bastão)</label>
                             <div className="flex gap-2">
@@ -403,9 +473,9 @@ export function StopwatchModal({
                                 >
                                     <option value="">Selecione o próximo...</option>
                                     {availableParticipants
-                                        .filter(p => p.user_id?.toString() !== selectedParticipant)
+                                        .filter(p => p.competitor_id !== selectedParticipant)
                                         .map(p => (
-                                            <option key={p.user_id} value={p.user_id}>{p.name}</option>
+                                            <option key={p.competitor_id} value={p.competitor_id}>{p.name}</option>
                                         ))
                                     }
                                 </select>
@@ -420,28 +490,35 @@ export function StopwatchModal({
                         </div>
                     )}
 
-                    {isRelayMode && relayHistory.length > 0 && (
+                    {/* Feed of recorded laps inside the modal */}
+                    {relayHistory.length > 0 && (
                         <div className="mt-6 border-t border-slate-150 pt-4 text-left">
-                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-3">Tempos do Revezamento</h4>
-                            <div className="space-y-2 max-h-[140px] overflow-y-auto pr-1">
+                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-3">
+                                {isLapsFormat ? 'Histórico de Voltas' : 'Tempos do Revezamento'}
+                            </h4>
+                            <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
                                 {relayHistory.map((item, idx) => (
                                     <div key={idx} className="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-100 text-xs">
                                         <div>
                                             <span className="font-bold text-slate-800">{item.name}</span>
-                                            <span className="ml-2 bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded-full text-[10px] font-black">Segmento #{idx + 1}</span>
+                                            <span className="ml-2 bg-slate-200 text-slate-750 px-2 py-0.5 rounded-full text-[9px] font-black">
+                                                {isLapsFormat ? `Volta #${idx + 1}` : `Segmento #${idx + 1}`}
+                                            </span>
                                         </div>
-                                        <span className="font-mono font-black text-slate-650">{formatTime(item.time)}</span>
+                                        <span className="font-mono font-black text-slate-600">
+                                            {formatTime(item.time)}
+                                        </span>
                                     </div>
                                 ))}
                             </div>
                         </div>
                     )}
 
-                    {timeMs > 0 && !isRunning && (
+                    {timeMs > 0 && !isRunning && !isLapsFormat && (
                         <button 
                             onClick={saveTime}
                             disabled={saving}
-                            className="w-full mt-4 flex items-center justify-center gap-2 bg-indigo-600 text-white p-4 rounded-2xl font-black text-lg hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200 disabled:opacity-50"
+                            className="w-full mt-4 flex items-center justify-center gap-2 bg-indigo-650 text-white p-4 rounded-2xl font-black text-lg hover:bg-indigo-750 transition-colors shadow-lg shadow-indigo-150 disabled:opacity-50"
                         >
                             <Save size={24} /> {saving ? 'SALVANDO...' : 'SALVAR TEMPO FINAL'}
                         </button>

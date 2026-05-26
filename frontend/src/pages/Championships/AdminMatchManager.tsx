@@ -1056,6 +1056,7 @@ export function AdminMatchManager() {
                 onClose={() => setShowEditRoundModal(false)}
                 editingRound={editingRound}
                 onSave={handleSaveRoundName}
+                isTimeOrLap={isTimeOrLap}
             />
             {/* Modal de Auditoria Completa (Extra-Súmula) */}
             <MatchAuditModal

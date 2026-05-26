@@ -12,15 +12,17 @@ interface EditRoundModalProps {
         matchIds: number[];
     } | null;
     onSave: (roundName: string) => Promise<void>;
+    isTimeOrLap?: boolean;
 }
 
 export function EditRoundModal({
     isOpen,
     onClose,
     editingRound,
-    onSave
+    onSave,
+    isTimeOrLap = false
 }: EditRoundModalProps) {
-    const [selectedType, setSelectedType] = useState<'round' | 'elimination' | 'phase' | 'repescagem'>('round');
+    const [selectedType, setSelectedType] = useState<string>('round');
     const [roundNumber, setRoundNumber] = useState('1');
     const [eliminationNumber, setEliminationNumber] = useState('1');
     const [selectedPhase, setSelectedPhase] = useState('round_of_16');
@@ -30,36 +32,77 @@ export function EditRoundModal({
         if (editingRound && isOpen) {
             const currentName = editingRound.round_name || '';
             
-            // Tenta identificar se o nome atual é uma Rodada X
+            // Tenta identificar se o nome atual é uma Rodada X ou Bateria/Etapa/Classificatória X
             const roundMatch = currentName.match(/Rodada\s+(\d+)/i);
             const elimMatch = currentName.match(/Eliminatória\s+(\d+)/i);
+            const batMatch = currentName.match(/Bateria\s+(\d+)/i);
+            const etaMatch = currentName.match(/Etapa\s+(\d+)/i);
+            const claMatch = currentName.match(/Classificatória\s+(\d+)/i);
+            const preMatch = currentName.match(/Preliminar\s+(\d+)/i);
+            const aquMatch = currentName.match(/Aquecimento\s+(\d+)/i);
             
-            if (roundMatch) {
-                setSelectedType('round');
-                setRoundNumber(roundMatch[1]);
-            } else if (elimMatch) {
-                setSelectedType('elimination');
-                setEliminationNumber(elimMatch[1]);
-            } else if (currentName === 'Repescagem') {
-                setSelectedType('repescagem');
-            } else if (PHASES.some(p => p.value === currentName)) {
-                setSelectedType('phase');
-                setSelectedPhase(currentName);
-            } else if (!currentName) {
-                // Se estiver vazio, usa o número da rodada vindo do banco
-                setSelectedType('round');
-                setRoundNumber(String(editingRound.round_number || editingRound.round || 1));
+            if (isTimeOrLap) {
+                if (batMatch) {
+                    setSelectedType('bateria');
+                    setRoundNumber(batMatch[1]);
+                } else if (etaMatch) {
+                    setSelectedType('etapa');
+                    setRoundNumber(etaMatch[1]);
+                } else if (claMatch) {
+                    setSelectedType('classificatoria');
+                    setRoundNumber(claMatch[1]);
+                } else if (elimMatch) {
+                    setSelectedType('eliminatoria');
+                    setRoundNumber(elimMatch[1]);
+                } else if (preMatch) {
+                    setSelectedType('preliminar');
+                    setRoundNumber(preMatch[1]);
+                } else if (aquMatch) {
+                    setSelectedType('aquecimento');
+                    setRoundNumber(aquMatch[1]);
+                } else if (currentName === 'Final') {
+                    setSelectedType('final');
+                } else {
+                    setSelectedType('bateria');
+                    setRoundNumber(String(editingRound.round_number || editingRound.round || 1));
+                }
             } else {
-                // Fallback para fase se for um texto qualquer
-                setSelectedType('phase');
-                setSelectedPhase(currentName);
+                if (roundMatch) {
+                    setSelectedType('round');
+                    setRoundNumber(roundMatch[1]);
+                } else if (elimMatch) {
+                    setSelectedType('elimination');
+                    setRoundNumber(elimMatch[1]);
+                } else if (currentName === 'Repescagem') {
+                    setSelectedType('repescagem');
+                } else if (PHASES.some(p => p.value === currentName)) {
+                    setSelectedType('phase');
+                    setSelectedPhase(currentName);
+                } else if (!currentName) {
+                    // Se estiver vazio, usa o número da rodada vindo do banco
+                    setSelectedType('round');
+                    setRoundNumber(String(editingRound.round_number || editingRound.round || 1));
+                } else {
+                    // Fallback para fase se for um texto qualquer
+                    setSelectedType('phase');
+                    setSelectedPhase(currentName);
+                }
             }
         }
-    }, [editingRound, isOpen]);
+    }, [editingRound, isOpen, isTimeOrLap]);
 
     if (!isOpen || !editingRound) return null;
 
     const getFinalName = () => {
+        if (isTimeOrLap) {
+            if (selectedType === 'bateria') return `Bateria ${roundNumber}`;
+            if (selectedType === 'etapa') return `Etapa ${roundNumber}`;
+            if (selectedType === 'classificatoria') return `Classificatória ${roundNumber}`;
+            if (selectedType === 'eliminatoria') return `Eliminatória ${roundNumber}`;
+            if (selectedType === 'preliminar') return `Preliminar ${roundNumber}`;
+            if (selectedType === 'aquecimento') return `Aquecimento ${roundNumber}`;
+            if (selectedType === 'final') return `Final`;
+        }
         if (selectedType === 'round') {
             return `Rodada ${roundNumber}`;
         }
@@ -104,104 +147,154 @@ export function EditRoundModal({
                 <div className="p-6 space-y-6">
                     
                     {/* Seletor de Tipo */}
-                    <div className="flex p-1 bg-gray-100 rounded-xl">
-                        <button
-                            onClick={() => setSelectedType('round')}
-                            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-[11px] font-bold transition-all ${
-                                selectedType === 'round' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                            }`}
-                        >
-                            <Hash className="w-3.5 h-3.5" />
-                            RODADA
-                        </button>
-                        <button
-                            onClick={() => setSelectedType('elimination')}
-                            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-[11px] font-bold transition-all ${
-                                selectedType === 'elimination' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                            }`}
-                        >
-                            <span className="text-xs leading-none">⚔️</span>
-                            ELIMINATÓRIA
-                        </button>
-                        <button
-                            onClick={() => setSelectedType('phase')}
-                            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-[11px] font-bold transition-all ${
-                                selectedType === 'phase' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                            }`}
-                        >
-                            <span className="text-xs leading-none">🏆</span>
-                            MATA-MATA
-                        </button>
-                        <button
-                            onClick={() => setSelectedType('repescagem')}
-                            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-[11px] font-bold transition-all ${
-                                selectedType === 'repescagem' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                            }`}
-                        >
-                            <span className="text-xs leading-none">🔄</span>
-                            REPESCAGEM
-                        </button>
-                    </div>
+                    {isTimeOrLap ? (
+                        <div className="grid grid-cols-2 sm:grid-cols-4 p-1 bg-gray-100 rounded-xl gap-1">
+                            {[
+                                { val: 'bateria', lbl: '⏱️ Bateria' },
+                                { val: 'etapa', lbl: '📅 Etapa' },
+                                { val: 'classificatoria', lbl: '📝 Classificatória' },
+                                { val: 'eliminatoria', lbl: '⚔️ Eliminatória' },
+                                { val: 'preliminar', lbl: '🔍 Preliminar' },
+                                { val: 'aquecimento', lbl: '🔥 Aquecimento' },
+                                { val: 'final', lbl: '🏆 Final' }
+                            ].map(t => (
+                                <button
+                                    key={t.val}
+                                    onClick={() => setSelectedType(t.val)}
+                                    className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${
+                                        selectedType === t.val ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                                    }`}
+                                >
+                                    {t.lbl}
+                                </button>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="flex p-1 bg-gray-100 rounded-xl">
+                            <button
+                                onClick={() => setSelectedType('round')}
+                                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-[11px] font-bold transition-all ${
+                                    selectedType === 'round' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                                }`}
+                            >
+                                <Hash className="w-3.5 h-3.5" />
+                                RODADA
+                            </button>
+                            <button
+                                onClick={() => setSelectedType('elimination')}
+                                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-[11px] font-bold transition-all ${
+                                    selectedType === 'elimination' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                                }`}
+                            >
+                                <span className="text-xs leading-none">⚔️</span>
+                                ELIMINATÓRIA
+                            </button>
+                            <button
+                                onClick={() => setSelectedType('phase')}
+                                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-[11px] font-bold transition-all ${
+                                    selectedType === 'phase' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                                }`}
+                            >
+                                <span className="text-xs leading-none">🏆</span>
+                                MATA-MATA
+                            </button>
+                            <button
+                                onClick={() => setSelectedType('repescagem')}
+                                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-[11px] font-bold transition-all ${
+                                    selectedType === 'repescagem' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                                }`}
+                            >
+                                <span className="text-xs leading-none">🔄</span>
+                                REPESCAGEM
+                            </button>
+                        </div>
+                    )}
 
-                    {selectedType === 'round' ? (
-                        <div className="space-y-3 animate-in slide-in-from-left-2 duration-200">
-                            <label className="block text-xs font-black text-gray-400 uppercase tracking-wider">
-                                Número da Rodada
-                            </label>
-                            <div className="relative">
-                                <input
-                                    type="number"
-                                    value={roundNumber}
-                                    onChange={(e) => setRoundNumber(e.target.value)}
-                                    className="w-full px-4 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl text-2xl font-black text-gray-800 focus:border-indigo-500 focus:bg-white outline-none transition-all"
-                                    placeholder="Ex: 1"
-                                />
-                                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">
-                                    ª Rodada
+                    {isTimeOrLap ? (
+                        selectedType !== 'final' && (
+                            <div className="space-y-3 animate-in fade-in duration-200">
+                                <label className="block text-xs font-black text-gray-400 uppercase tracking-wider">
+                                    Número do(a) {selectedType === 'classificatoria' ? 'Classificatória' : selectedType === 'eliminatoria' ? 'Eliminatória' : selectedType.charAt(0).toUpperCase() + selectedType.slice(1)}
+                                </label>
+                                <div className="relative">
+                                    <input
+                                        type="number"
+                                        value={roundNumber}
+                                        onChange={(e) => setRoundNumber(e.target.value)}
+                                        className="w-full px-4 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl text-2xl font-black text-gray-800 focus:border-indigo-500 focus:bg-white outline-none transition-all"
+                                        placeholder="Ex: 1"
+                                    />
+                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">
+                                        {selectedType === 'etapa' || selectedType === 'classificatoria' || selectedType === 'eliminatoria' || selectedType === 'preliminar' ? 'ª' : 'º'} {selectedType === 'classificatoria' ? 'Classificatória' : selectedType === 'eliminatoria' ? 'Eliminatória' : selectedType.charAt(0).toUpperCase() + selectedType.slice(1)}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    ) : selectedType === 'elimination' ? (
-                        <div className="space-y-3 animate-in slide-in-from-right-2 duration-200">
-                            <label className="block text-xs font-black text-gray-400 uppercase tracking-wider">
-                                Número da Eliminatória
-                            </label>
-                            <div className="relative">
-                                <input
-                                    type="number"
-                                    value={eliminationNumber}
-                                    onChange={(e) => setEliminationNumber(e.target.value)}
-                                    className="w-full px-4 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl text-2xl font-black text-gray-800 focus:border-indigo-500 focus:bg-white outline-none transition-all"
-                                    placeholder="Ex: 1"
-                                />
-                                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">
-                                    ª Fase
+                        )
+                    ) : (
+                        <>
+                            {selectedType === 'round' && (
+                                <div className="space-y-3 animate-in slide-in-from-left-2 duration-200">
+                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-wider">
+                                        Número da Rodada
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            type="number"
+                                            value={roundNumber}
+                                            onChange={(e) => setRoundNumber(e.target.value)}
+                                            className="w-full px-4 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl text-2xl font-black text-gray-800 focus:border-indigo-500 focus:bg-white outline-none transition-all"
+                                            placeholder="Ex: 1"
+                                        />
+                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">
+                                            ª Rodada
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
-                    ) : selectedType === 'phase' ? (
-                        <div className="space-y-3 animate-in fade-in duration-200">
-                            <label className="block text-xs font-black text-gray-400 uppercase tracking-wider">
-                                Selecionar Fase
-                            </label>
-                            <div className="grid grid-cols-2 gap-2">
-                                {PHASES.filter(p => p.value !== 'Repescagem' && p.value !== 'repescagem').map((phase) => (
-                                    <button
-                                        key={phase.value}
-                                        onClick={() => setSelectedPhase(phase.value)}
-                                        className={`px-4 py-3 rounded-xl border-2 text-sm font-bold transition-all text-left flex items-center justify-between ${
-                                            selectedPhase === phase.value
-                                                ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
-                                                : 'border-gray-100 bg-gray-50 text-gray-600 hover:border-gray-200'
-                                        }`}
-                                    >
-                                        {phase.label}
-                                        {selectedPhase === phase.value && <div className="w-2 h-2 rounded-full bg-indigo-600" />}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    ) : null}
+                            )}
+                            {selectedType === 'elimination' && (
+                                <div className="space-y-3 animate-in slide-in-from-right-2 duration-200">
+                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-wider">
+                                        Número da Eliminatória
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            type="number"
+                                            value={eliminationNumber}
+                                            onChange={(e) => setEliminationNumber(e.target.value)}
+                                            className="w-full px-4 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl text-2xl font-black text-gray-800 focus:border-indigo-500 focus:bg-white outline-none transition-all"
+                                            placeholder="Ex: 1"
+                                        />
+                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">
+                                            ª Fase
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                            {selectedType === 'phase' && (
+                                <div className="space-y-3 animate-in fade-in duration-200">
+                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-wider">
+                                        Selecionar Fase
+                                    </label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {PHASES.filter(p => p.value !== 'Repescagem' && p.value !== 'repescagem').map((phase) => (
+                                            <button
+                                                key={phase.value}
+                                                onClick={() => setSelectedPhase(phase.value)}
+                                                className={`px-4 py-3 rounded-xl border-2 text-sm font-bold transition-all text-left flex items-center justify-between ${
+                                                    selectedPhase === phase.value
+                                                        ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                                                        : 'border-gray-100 bg-gray-50 text-gray-600 hover:border-gray-200'
+                                                }`}
+                                            >
+                                                {phase.label}
+                                                {selectedPhase === phase.value && <div className="w-2 h-2 rounded-full bg-indigo-600" />}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </>
+                    )}
 
                     {/* Final Preview Overlay */}
                     <div className="bg-indigo-600 rounded-2xl p-4 text-white shadow-xl shadow-indigo-100 flex items-center justify-between">
@@ -210,7 +303,16 @@ export function EditRoundModal({
                             <p className="text-xl font-black">{getPhaseDisplayName(getFinalName())}</p>
                         </div>
                         <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-xl">
-                            {selectedType === 'round' ? '📅' : selectedType === 'elimination' ? '⚔️' : selectedType === 'repescagem' ? '🔄' : '🏆'}
+                            {isTimeOrLap ? (
+                                selectedType === 'bateria' ? '⏱️' :
+                                selectedType === 'etapa' ? '📅' :
+                                selectedType === 'classificatoria' ? '📝' :
+                                selectedType === 'eliminatoria' ? '⚔️' :
+                                selectedType === 'preliminar' ? '🔍' :
+                                selectedType === 'aquecimento' ? '🔥' : '🏆'
+                            ) : (
+                                selectedType === 'round' ? '📅' : selectedType === 'elimination' ? '⚔️' : selectedType === 'repescagem' ? '🔄' : '🏆'
+                            )}
                         </div>
                     </div>
                 </div>

@@ -411,14 +411,35 @@ class ArtGeneratorController extends Controller
             }
         }
 
-        if (!$targetAward || !isset($targetAward['player_id'])) {
+        if (!$targetAward) {
             return response("Premiação não definida para esta categoria: $awardType" . ($categoryId ? " (CatID: $categoryId)" : ""), 404);
         }
 
-        $player = \App\Models\User::findOrFail($targetAward['player_id']);
-        $team = isset($targetAward['team_id']) ? \App\Models\Team::find($targetAward['team_id']) : null;
+        $player = null;
+        $team = !empty($targetAward['team_id']) ? \App\Models\Team::find($targetAward['team_id']) : null;
 
-        if (!$team) {
+        if (!empty($targetAward['player_id'])) {
+            $player = \App\Models\User::find($targetAward['player_id']);
+        }
+
+        if (!$player && $team) {
+            // Simulated fake player representing the team to render cleanly
+            $player = (object)[
+                'id' => 0,
+                'name' => $team->name,
+                'nickname' => $team->name,
+                'photo_path' => $team->logo_path,
+                'photo_path_original' => $team->logo_path
+            ];
+            // Override the category to ensure it triggers team layout key
+            $awardType = 'premiação_equipe';
+        }
+
+        if (!$player) {
+            return response("Premiação não definida com jogador ou equipe válidos.", 404);
+        }
+
+        if (!$team && isset($player->id) && $player->id > 0) {
             $playerId = $player->id;
             $team = $championship->teams()->whereHas('players', function ($q) use ($playerId) {
                 $q->where('users.id', $playerId);
@@ -513,6 +534,84 @@ class ArtGeneratorController extends Controller
                 "canvas" => ["width" => 1080, "height" => 1920],
                 "bg_url" => null,
                 "name" => "Defesa Menos Vazada"
+            ];
+        }
+
+        if ($key === 'art_layout_custom_premiacao-equipe') {
+            return [
+                "elements" => [
+                    ["id" => "team_logo", "type" => "image", "x" => 540, "y" => 650, "width" => 650, "height" => 650, "label" => "Logo da Equipe", "zIndex" => 1, "content" => "player_photo"],
+                    ["id" => "team_name", "type" => "text", "x" => 540, "y" => 1200, "fontSize" => 80, "color" => "#FFB700", "align" => "center", "label" => "Nome da Equipe", "zIndex" => 2, "content" => "{JOGADOR}", "fontFamily" => "Roboto-Bold"],
+                    ["id" => "award_name", "type" => "text", "x" => 540, "y" => 1350, "fontSize" => 60, "color" => "#FFFFFF", "align" => "center", "label" => "Nome do Prêmio", "zIndex" => 2, "content" => "{PREMIO}", "fontFamily" => "Roboto"],
+                    ["id" => "championship", "type" => "text", "x" => 540, "y" => 1650, "fontSize" => 40, "color" => "#FFFFFF", "align" => "center", "label" => "Campeonato", "zIndex" => 2, "content" => "{CAMPEONATO}"],
+                    ["id" => "category", "type" => "text", "x" => 540, "y" => 1720, "fontSize" => 35, "color" => "#AAAAAA", "align" => "center", "label" => "Categoria", "zIndex" => 2, "content" => "{CATEGORIA}"]
+                ],
+                "canvas" => ["width" => 1080, "height" => 1920],
+                "bg_url" => null,
+                "name" => "Premiação (Equipe)"
+            ];
+        }
+
+        if ($key === 'art_layout_custom_premiacao-jogador') {
+            return [
+                "elements" => [
+                    ["id" => "player_photo", "type" => "image", "x" => 540, "y" => 600, "width" => 800, "height" => 800, "label" => "Foto do Jogador", "zIndex" => 1, "content" => "player_photo", "borderRadius" => 0],
+                    ["id" => "player_name", "type" => "text", "x" => 540, "y" => 1200, "fontSize" => 80, "color" => "#FFB700", "align" => "center", "label" => "Nome do Jogador", "zIndex" => 2, "content" => "{JOGADOR}", "fontFamily" => "Roboto-Bold"],
+                    ["id" => "team_badge", "type" => "image", "x" => 540, "y" => 1000, "width" => 200, "height" => 200, "label" => "Brasão do Time", "zIndex" => 2, "content" => "team_logo"],
+                    ["id" => "award_name", "type" => "text", "x" => 540, "y" => 1350, "fontSize" => 60, "color" => "#FFFFFF", "align" => "center", "label" => "Nome do Prêmio", "zIndex" => 2, "content" => "{PREMIO}", "fontFamily" => "Roboto"],
+                    ["id" => "championship", "type" => "text", "x" => 540, "y" => 1650, "fontSize" => 40, "color" => "#FFFFFF", "align" => "center", "label" => "Campeonato", "zIndex" => 2, "content" => "{CAMPEONATO}"],
+                    ["id" => "category", "type" => "text", "x" => 540, "y" => 1720, "fontSize" => 35, "color" => "#AAAAAA", "align" => "center", "label" => "Categoria", "zIndex" => 2, "content" => "{CATEGORIA}"]
+                ],
+                "canvas" => ["width" => 1080, "height" => 1920],
+                "bg_url" => null,
+                "name" => "Premiação (Jogador)"
+            ];
+        }
+
+        if ($key === 'art_layout_custom_melhor-tempo') {
+            return [
+                "elements" => [
+                    ["id" => "player_photo", "type" => "image", "x" => 540, "y" => 600, "width" => 800, "height" => 800, "label" => "Foto do Atleta", "zIndex" => 1, "content" => "player_photo", "borderRadius" => 0],
+                    ["id" => "player_name", "type" => "text", "x" => 540, "y" => 1200, "fontSize" => 80, "color" => "#FFB700", "align" => "center", "label" => "Nome do Atleta", "zIndex" => 2, "content" => "{JOGADOR}", "fontFamily" => "Roboto-Bold"],
+                    ["id" => "title", "type" => "text", "x" => 540, "y" => 1350, "fontSize" => 60, "color" => "#FFFFFF", "align" => "center", "label" => "Título", "zIndex" => 2, "content" => "MELHOR TEMPO", "fontFamily" => "Roboto"],
+                    ["id" => "record_time", "type" => "text", "x" => 540, "y" => 1470, "fontSize" => 90, "color" => "#FFB700", "align" => "center", "label" => "Tempo Registrado", "zIndex" => 3, "content" => "{TEMPO}", "fontFamily" => "Roboto-Bold"],
+                    ["id" => "championship", "type" => "text", "x" => 540, "y" => 1690, "fontSize" => 40, "color" => "#FFFFFF", "align" => "center", "label" => "Campeonato", "zIndex" => 2, "content" => "{CAMPEONATO}"],
+                    ["id" => "category", "type" => "text", "x" => 540, "y" => 1750, "fontSize" => 30, "color" => "#AAAAAA", "align" => "center", "label" => "Categoria", "zIndex" => 2, "content" => "{CATEGORIA}"]
+                ],
+                "canvas" => ["width" => 1080, "height" => 1920],
+                "bg_url" => null,
+                "name" => "Melhor Tempo"
+            ];
+        }
+
+        if ($key === 'art_layout_custom_melhor-volta') {
+            return [
+                "elements" => [
+                    ["id" => "player_photo", "type" => "image", "x" => 540, "y" => 600, "width" => 800, "height" => 800, "label" => "Foto/Logo", "zIndex" => 1, "content" => "player_photo", "borderRadius" => 0],
+                    ["id" => "player_name", "type" => "text", "x" => 540, "y" => 1200, "fontSize" => 80, "color" => "#FFB700", "align" => "center", "label" => "Nome Competidor", "zIndex" => 2, "content" => "{JOGADOR}", "fontFamily" => "Roboto-Bold"],
+                    ["id" => "title", "type" => "text", "x" => 540, "y" => 1350, "fontSize" => 60, "color" => "#FFFFFF", "align" => "center", "label" => "Título", "zIndex" => 2, "content" => "MELHOR VOLTA", "fontFamily" => "Roboto"],
+                    ["id" => "record_time", "type" => "text", "x" => 540, "y" => 1470, "fontSize" => 90, "color" => "#FFB700", "align" => "center", "label" => "Tempo da Volta", "zIndex" => 3, "content" => "{TEMPO}", "fontFamily" => "Roboto-Bold"],
+                    ["id" => "championship", "type" => "text", "x" => 540, "y" => 1690, "fontSize" => 40, "color" => "#FFFFFF", "align" => "center", "label" => "Campeonato", "zIndex" => 2, "content" => "{CAMPEONATO}"],
+                    ["id" => "category", "type" => "text", "x" => 540, "y" => 1750, "fontSize" => 30, "color" => "#AAAAAA", "align" => "center", "label" => "Categoria", "zIndex" => 2, "content" => "{CATEGORIA}"]
+                ],
+                "canvas" => ["width" => 1080, "height" => 1920],
+                "bg_url" => null,
+                "name" => "Melhor Volta"
+            ];
+        }
+
+        if ($key === 'art_layout_custom_bateria-programada') {
+            return [
+                "elements" => [
+                    ["id" => "championship", "type" => "text", "x" => 540, "y" => 250, "fontSize" => 45, "color" => "#FFFFFF", "align" => "center", "label" => "Campeonato", "zIndex" => 2, "content" => "{CAMPEONATO}", "fontFamily" => "Roboto"],
+                    ["id" => "round", "type" => "text", "x" => 540, "y" => 320, "fontSize" => 35, "color" => "#FFB700", "align" => "center", "label" => "Rodada/Fase", "zIndex" => 2, "content" => "{RODADA}", "fontFamily" => "Roboto"],
+                    ["id" => "title", "type" => "text", "x" => 540, "y" => 800, "fontSize" => 80, "color" => "#FFFFFF", "align" => "center", "label" => "Título Bateria", "zIndex" => 2, "content" => "BATERIA PROGRAMADA", "fontFamily" => "Roboto-Bold"],
+                    ["id" => "date", "type" => "text", "x" => 540, "y" => 1300, "fontSize" => 60, "color" => "#FFB700", "align" => "center", "label" => "Data/Hora", "zIndex" => 2, "content" => "DD/MM HH:MM", "fontFamily" => "Roboto"],
+                    ["id" => "local", "type" => "text", "x" => 540, "y" => 1400, "fontSize" => 35, "color" => "#FFFFFF", "align" => "center", "label" => "Local", "zIndex" => 2, "content" => "Local da Bateria", "fontFamily" => "Roboto"]
+                ],
+                "canvas" => ["width" => 1080, "height" => 1920],
+                "bg_url" => null,
+                "name" => "Bateria Programada"
             ];
         }
 

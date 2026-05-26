@@ -405,9 +405,21 @@ class EventController extends Controller
         $type = $request->query('type', 'goals');
 
         if ($type === 'best_lap') {
-            $query = \App\Models\CompetitorTime::with(['user', 'team'])
+            $query = \App\Models\CompetitorTime::with(['user', 'team', 'gameMatch'])
                 ->where('championship_id', $championshipId)
-                ->where('status', 'completed');
+                ->where('status', 'completed')
+                ->whereHas('gameMatch', function ($q) {
+                    $q->where(function ($sub) {
+                        $sub->whereNull('round_name')
+                            ->orWhere(function ($orSub) {
+                                $orSub->where('round_name', 'not like', '%classific%')
+                                      ->where('round_name', 'not like', '%eliminat%')
+                                      ->where('round_name', 'not like', '%preliminar%')
+                                      ->where('round_name', 'not like', '%qualif%')
+                                      ->where('round_name', 'not like', '%aquec%');
+                            });
+                    });
+                });
 
             if ($request->filled('category_id') && $request->category_id != 'null') {
                 $query->where('category_id', $request->category_id);
@@ -417,10 +429,22 @@ class EventController extends Controller
             $bestTimes = [];
 
             foreach ($times as $time) {
-                $pName = $time->user ? ($time->user->nickname ?: $time->user->name) : 'Atleta Desconhecido';
-                $photo = $time->user ? ($time->user->photo_url ?? $time->user->photo) : null;
-                $tName = $time->team->name ?? 'Sem Equipe';
-                $athleteKey = $time->user_id ?? $pName;
+                if ($time->user) {
+                    $pName = $time->user->nickname ?: $time->user->name;
+                    $photo = $time->user->photo_url ?? $time->user->photo;
+                    $tName = $time->team->name ?? 'Sem Equipe';
+                    $athleteKey = 'user_' . $time->user_id;
+                } else if ($time->team) {
+                    $pName = $time->team->name;
+                    $photo = $time->team->logo_url ?? $time->team->logo_path ?? null;
+                    $tName = $time->team->name;
+                    $athleteKey = 'team_' . $time->team_id;
+                } else {
+                    $pName = 'Atleta Desconhecido';
+                    $photo = null;
+                    $tName = 'Sem Equipe';
+                    $athleteKey = 'unknown';
+                }
 
                 if (!isset($bestTimes[$athleteKey]) || $time->time_ms < $bestTimes[$athleteKey]['value_raw']) {
                     $seconds = floor($time->time_ms / 1000);
@@ -432,11 +456,12 @@ class EventController extends Controller
                     $bestTimes[$athleteKey] = [
                         'player_name' => $pName,
                         'team_name' => $tName,
-                        'team_logo' => $time->team->logo_url ?? $time->team->logo_path ?? null,
+                        'team_logo' => $time->team ? ($time->team->logo_url ?? $time->team->logo_path ?? null) : null,
                         'value_raw' => $time->time_ms,
                         'photo_url' => $photo,
                         'value' => $formatted,
-                        'lap' => $time->lap ?? 1
+                        'lap' => $time->lap ?? 1,
+                        'round_name' => $time->gameMatch ? ($time->gameMatch->round_name ?: "Bateria {$time->gameMatch->round_number}") : null
                     ];
                 }
             }
@@ -1253,11 +1278,26 @@ class EventController extends Controller
 
     public function times(Request $request, $championshipId)
     {
-        $query = \App\Models\CompetitorTime::with(['user', 'team', 'category'])
+        $query = \App\Models\CompetitorTime::with(['user', 'team', 'category', 'gameMatch'])
             ->where('championship_id', $championshipId);
 
         if ($request->has('game_match_id') && $request->game_match_id !== 'null' && $request->game_match_id !== '') {
             $query->where('game_match_id', $request->game_match_id);
+        } else {
+            // Ao obter tempos gerais para a classificação/resultados:
+            // excluir tempos obtidos em baterias do tipo qualificatórias ou eliminatórias
+            $query->whereHas('gameMatch', function ($q) {
+                $q->where(function ($sub) {
+                    $sub->whereNull('round_name')
+                        ->orWhere(function ($orSub) {
+                            $orSub->where('round_name', 'not like', '%classific%')
+                                  ->where('round_name', 'not like', '%eliminat%')
+                                  ->where('round_name', 'not like', '%preliminar%')
+                                  ->where('round_name', 'not like', '%qualif%')
+                                  ->where('round_name', 'not like', '%aquec%');
+                        });
+                });
+            });
         }
 
         return response()->json($query->get());

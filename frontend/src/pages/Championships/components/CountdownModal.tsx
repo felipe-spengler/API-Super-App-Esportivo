@@ -4,14 +4,15 @@ import api from '../../../services/api';
 
 interface Participant {
     id: number;
-    user_id: number;
-    team_id: number;
+    user_id: number | null;
+    team_id: number | null;
     category_id?: number;
     name: string;
     bib_number?: string;
     team?: {
         name: string;
     };
+    competitor_id?: string;
 }
 
 interface CountdownModalProps {
@@ -94,12 +95,14 @@ export function CountdownModal({
         setCountdownTimeLeft(countdownMinutesInput * 60);
     };
 
-    const addOneLap = async (userId: string) => {
-        const participant = participants.find(p => p.user_id?.toString() === userId);
+    const addOneLap = async (competitorId: string) => {
+        const participant = participants.find(p => p.competitor_id === competitorId);
         if (!participant) return;
 
-        const userTimes = times.filter(t => t.user_id?.toString() === userId);
-        const nextLap = userTimes.length + 1;
+        const competitorTimes = times.filter(t => 
+            participant.user_id ? t.user_id === participant.user_id : t.team_id === participant.team_id
+        );
+        const nextLap = competitorTimes.length + 1;
         const elapsedMs = ((countdownMinutesInput * 60) - countdownTimeLeft) * 1000;
 
         const optimisticId = `optimistic-${Date.now()}`;
@@ -112,7 +115,8 @@ export function CountdownModal({
             lap: nextLap,
             status: 'completed',
             game_match_id: gameMatchId || null,
-            user: { name: participant.name }
+            user: participant.user_id ? { name: participant.name } : null,
+            team: participant.team_id ? { name: participant.name } : null
         };
 
         // UI updates INSTANTLY (0ms delay!)
@@ -245,7 +249,9 @@ export function CountdownModal({
                                         .map(t => (
                                             <div key={t.id} className="flex justify-between items-center bg-white p-3 rounded-xl border border-slate-100 shadow-sm text-xs animate-in slide-in-from-bottom-2 duration-250">
                                                 <div className="flex flex-col gap-1 min-w-0 flex-1 pr-2">
-                                                    <p className="font-bold text-slate-800 leading-tight truncate">{t.user?.name || 'Atleta'}</p>
+                                                    <p className="font-bold text-slate-800 leading-tight truncate">
+                                                        {t.user?.name || t.team?.name || 'Competidor'}
+                                                    </p>
                                                     <div className="flex flex-wrap items-center gap-1.5">
                                                         <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-[9px] font-black leading-none">
                                                             Volta #{t.lap}
@@ -300,21 +306,23 @@ export function CountdownModal({
                                             (p.team?.name && p.team.name.toLowerCase().includes(searchTerm.toLowerCase()))
                                         )
                                         .map(p => {
-                                            const userTimes = times.filter(t => t.user_id === p.user_id);
-                                            const userLapsCount = userTimes.length;
+                                            const competitorTimes = times.filter(t => 
+                                                p.user_id ? t.user_id === p.user_id : t.team_id === p.team_id
+                                            );
+                                            const competitorLapsCount = competitorTimes.length;
                                             return (
-                                                <div key={p.user_id} className="flex items-center justify-between p-3 sm:p-4 bg-slate-50 rounded-2xl border border-slate-100 shadow-sm transition-all hover:bg-slate-100/50">
+                                                <div key={p.competitor_id} className="flex items-center justify-between p-3 sm:p-4 bg-slate-50 rounded-2xl border border-slate-100 shadow-sm transition-all hover:bg-slate-100/50">
                                                     <div className="flex-1 min-w-0 pr-4">
                                                         <p className="font-black text-slate-800 truncate text-sm">{p.name}</p>
-                                                        {p.team && <p className="text-[10px] text-indigo-600 font-black uppercase tracking-wider truncate mt-0.5">{p.team.name}</p>}
+                                                        {p.team && p.team.name !== p.name && <p className="text-[10px] text-indigo-600 font-black uppercase tracking-wider truncate mt-0.5">{p.team.name}</p>}
                                                     </div>
                                                     <div className="flex items-center gap-3 sm:gap-4 shrink-0">
                                                         <div className="text-center px-2 sm:px-4 border-r border-slate-200">
                                                             <span className="block text-[8px] sm:text-[9px] font-black text-slate-400 uppercase leading-none mb-1">Voltas</span>
-                                                            <span className="block text-lg sm:text-xl font-black text-slate-700 leading-none">{userLapsCount}</span>
+                                                            <span className="block text-lg sm:text-xl font-black text-slate-700 leading-none">{competitorLapsCount}</span>
                                                         </div>
                                                         <button 
-                                                            onClick={() => addOneLap(p.user_id?.toString())}
+                                                            onClick={() => addOneLap(p.competitor_id || '')}
                                                             className="bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[10px] sm:text-xs uppercase tracking-wider px-3 py-2.5 sm:px-4 sm:py-3 rounded-xl transition-all shadow-md shadow-indigo-150 active:scale-95 animate-in"
                                                         >
                                                             +1 Volta

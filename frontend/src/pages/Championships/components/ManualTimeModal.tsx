@@ -4,14 +4,15 @@ import api from '../../../services/api';
 
 interface Participant {
     id: number;
-    user_id: number;
-    team_id: number;
+    user_id: number | null;
+    team_id: number | null;
     category_id?: number;
     name: string;
     bib_number?: string;
     team?: {
         name: string;
     };
+    competitor_id?: string;
 }
 
 interface ManualTimeModalProps {
@@ -42,8 +43,9 @@ export function ManualTimeModal({
     if (!isOpen) return null;
 
     // Computed Teams
-    const isTeam = participants.some(p => p.team_id !== null);
-    const teams = isTeam ? Array.from(new Set(participants.map(p => p.team_id))).map(tid => {
+    const hasPlayers = participants.some(p => p.user_id !== null && p.user_id !== undefined);
+    const isTeam = hasPlayers && participants.some(p => p.team_id !== null && p.team_id !== undefined);
+    const teams = isTeam ? Array.from(new Set(participants.map(p => p.team_id).filter(Boolean))).map(tid => {
         const p = participants.find(x => x.team_id === tid);
         return { id: tid, name: p?.team?.name || 'Equipe' };
     }) : [];
@@ -77,7 +79,7 @@ export function ManualTimeModal({
 
         setSaving(true);
         try {
-            const participant = participants.find(p => p.user_id?.toString() === selectedParticipant);
+            const participant = participants.find(p => p.competitor_id === selectedParticipant);
             await api.post(`/admin/championships/${championshipId}/times`, {
                 user_id: participant?.user_id,
                 team_id: participant?.team_id,
@@ -143,7 +145,7 @@ export function ManualTimeModal({
                             >
                                 <option value="">Selecione quem vai competir...</option>
                                 {availableParticipants.map(p => (
-                                    <option key={p.user_id} value={p.user_id}>
+                                    <option key={p.competitor_id} value={p.competitor_id || ''}>
                                         {p.name} {p.bib_number ? `(Peito: ${p.bib_number})` : ''}
                                     </option>
                                 ))}

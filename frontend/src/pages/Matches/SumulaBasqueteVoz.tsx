@@ -343,8 +343,6 @@ export function SumulaBasqueteVoz() {
             team = 'home';
         } else if (normalized.includes('visitante') || normalized.includes('fora') || (awayName && normalized.includes(awayName))) {
             team = 'away';
-        } else {
-            failureReason = 'Time não identificado';
         }
 
         // 2. Identificar Ação (Pontos)
@@ -397,7 +395,18 @@ export function SumulaBasqueteVoz() {
             if (!failureReason) failureReason = 'Ação não identificada';
         }
 
-        // 3. Identificar Número do Jogador
+        // 3. Identificar Número do Jogador (usando texto limpo sem as expressões de pontuação)
+        let playerText = normalized;
+        const scorePhrases = [
+            'dois pontos', '2 pontos', 'cesta de dois', 'bola de dois', 'dois pontinhos',
+            'tres pontos', '3 pontos', 'cesta de tres', 'bola de tres', 'tres pontinhos',
+            'um ponto', '1 ponto', 'um pontinho', 'lance livre', 'lances livres',
+            'duplo', 'triplo', 'triple', 'double', 'bandeja', 'enterrada'
+        ];
+        scorePhrases.forEach(phrase => {
+            playerText = playerText.replace(phrase, '');
+        });
+
         const numberMap: { [key: string]: string } = {
             'zero': '0', 'um': '1', 'dois': '2', 'tres': '3', 'quatro': '4', 'cinco': '5', 'seis': '6', 'sete': '7', 'oito': '8', 'nove': '9', 'dez': '10',
             'onze': '11', 'doze': '12', 'treze': '13', 'quatorze': '14', 'quinze': '15', 'dezesseis': '16', 'dezessete': '17', 'dezoito': '18', 'dezenove': '19', 'vinte': '20',
@@ -405,8 +414,8 @@ export function SumulaBasqueteVoz() {
             'quarenta': '40', 'cinquenta': '50', 'sessenta': '60', 'setenta': '70', 'oitenta': '80', 'noventa': '90'
         };
 
-        // Regex flexível: (camisa|número|jogador) + (número ou palavra)
-        const flexMatch = normalized.match(/(?:camisa|numero|jogador|atleta)\s+([a-z0-9\s]+)/);
+        // Regex flexível no playerText
+        const flexMatch = playerText.match(/(?:camisa|numero|jogador|atleta)\s+([a-z0-9\s]+)/);
         if (flexMatch) {
             const possibleNumber = flexMatch[1].trim().split(' ')[0]; // Pega a primeira palavra após "camisa"
             if (!isNaN(parseInt(possibleNumber))) {
@@ -424,13 +433,13 @@ export function SumulaBasqueteVoz() {
             }
         }
 
-        // Fallback: Procura qualquer número isolado ou palavra de número no texto
+        // Fallback: Procura qualquer número isolado ou palavra de número no texto limpo
         if (!number) {
             // Tenta achar números de 0 a 99 tanto em dígito quanto por extenso
-            const digits = normalized.match(/\d+/);
+            const digits = playerText.match(/\d+/);
             if (digits) {
                 // Se achou um dígito, garante que não é o ponto (1, 2, 3) se a frase for curta
-                if (!(normalized.length < 25 && (digits[0] === '1' || digits[0] === '2' || digits[0] === '3'))) {
+                if (!(playerText.length < 25 && (digits[0] === '1' || digits[0] === '2' || digits[0] === '3'))) {
                     number = digits[0];
                 }
             }
@@ -439,7 +448,7 @@ export function SumulaBasqueteVoz() {
                 for (const [key, val] of Object.entries(numberMap)) {
                     // Regex para garantir que a palavra está isolada (ex: " dez " ou "no dez")
                     const wordRegex = new RegExp(`\\b${key}\\b`, 'i');
-                    if (wordRegex.test(normalized)) {
+                    if (wordRegex.test(playerText)) {
                         number = val;
                         break;
                     }
@@ -447,51 +456,83 @@ export function SumulaBasqueteVoz() {
             }
         }
 
-        if (type && team) {
-            // Find player - NOW SEARCHING BY NUMBER OR NAME/NICKNAME
+        if (type) {
             const currentRosters = rostersRef.current;
-            const roster = team === 'home' ? currentRosters.home : currentRosters.away;
+            let player: any = null;
 
-            const player = roster.find((p: any) => {
-                const pName = normalizeText(p.name || '');
-                const pNick = normalizeText(p.nickname || '');
-                const pFirst = normalizeText(pName.split(' ')[0]);
-                const pNum = String(p.number || '');
+            const findPlayerInRoster = (rosterList: any[]) => {
+                if (!rosterList) return null;
+                return rosterList.find((p: any) => {
+                    const pName = normalizeText(p.name || '');
+                    const pNick = normalizeText(p.nickname || '');
+                    const pFirst = normalizeText(pName.split(' ')[0]);
+                    const pNum = String(p.number || '');
 
-                // Prioridade 1: Número exatíssimo
-                if (number && pNum && pNum === number) return true;
+                    // Prioridade 1: Número exatíssimo
+                    if (number && pNum && pNum === number) return true;
 
-                // Prioridade 2: Primeiro nome ou apelido
-                if (pNick && pNick.length > 2 && normalized.includes(pNick)) return true;
-                if (pFirst && pFirst.length > 2 && normalized.includes(pFirst)) return true;
+                    // Prioridade 2: Primeiro nome ou apelido
+                    if (pNick && pNick.length > 2 && playerText.includes(pNick)) return true;
+                    if (pFirst && pFirst.length > 2 && playerText.includes(pFirst)) return true;
 
-                return false;
-            });
+                    return false;
+                });
+            };
 
-            if (player) {
+            // Se o time foi explicitamente mencionado
+            if (team) {
+                const roster = team === 'home' ? currentRosters.home : currentRosters.away;
+                player = findPlayerInRoster(roster);
+            } else {
+                // Se o time não foi mencionado, busca em ambos os elencos
+                const homePlayer = findPlayerInRoster(currentRosters.home);
+                const awayPlayer = findPlayerInRoster(currentRosters.away);
+
+                if (homePlayer && !awayPlayer) {
+                    player = homePlayer;
+                    team = 'home';
+                } else if (awayPlayer && !homePlayer) {
+                    player = awayPlayer;
+                    team = 'away';
+                } else if (homePlayer && awayPlayer) {
+                    // Ambiguidade: jogador encontrado em ambos. Tenta priorizar pelo time mandante
+                    player = homePlayer;
+                    team = 'home';
+                }
+            }
+
+            if (player && team) {
                 const playerIdentifier = player.nickname || player.name;
                 identified = true;
-                console.log("Jogador Associado:", { id: player.id, name: player.name, number: player.number });
+                console.log("Jogador Associado:", { id: player.id, name: player.name, number: player.number, team });
                 setPendingAction({
                     type,
                     team,
                     player, // SALVA O OBJETO COMPLETO AQUI
                     value: points,
-                    description: `${type === 'foul' ? 'Falta' : (type === 'block' ? 'Toco' : (type === 'rebound' ? 'Rebote' : (type === 'assist' ? 'Assistência' : (type === 'steal' ? 'Roubo' : points + ' Pontos'))))} - ${playerIdentifier} (${team === 'home' ? 'Casa' : 'Visitante'})`
+                    description: `${type === 'foul' ? 'Falta' : (type === 'technical_foul' ? 'Falta Técnica' : (type === 'block' ? 'Toco' : (type === 'rebound' ? 'Rebote' : (type === 'assist' ? 'Assistência' : (type === 'steal' ? 'Roubo' : points + ' Pontos')))))} - ${playerIdentifier} (${team === 'home' ? 'Casa' : 'Visitante'})`
                 });
-                setFeedback(`Entendi: ${type === 'foul' ? 'Falta' : (type === 'block' ? 'Toco' : (type === 'rebound' ? 'Rebote' : (type === 'assist' ? 'Assistência' : (type === 'steal' ? 'Roubo' : points + ' Pontos'))))} para ${playerIdentifier}. Confirma?`);
+                setFeedback(`Entendi: ${type === 'foul' ? 'Falta' : (type === 'technical_foul' ? 'Falta Técnica' : (type === 'block' ? 'Toco' : (type === 'rebound' ? 'Rebote' : (type === 'assist' ? 'Assistência' : (type === 'steal' ? 'Roubo' : points + ' Pontos')))))} para ${playerIdentifier}. Confirma?`);
             } else {
-                const currentFailureReason = `Jogador nao encontrado (Num identificada: ${number || 'N/A'}) no time ${team}. Roster size: ${roster.length}`;
-                if (number) {
-                    setFeedback(`Jogador camisa ${number} não encontrado no time ${team === 'home' ? 'da Casa' : 'Visitante'}.`);
+                if (!team) {
+                    setFeedback("Não consegui identificar o time. Diga 'casa' ou 'visitante', ou fale o número/apelido do jogador.");
+                    failureReason = 'Time não identificado';
                 } else {
-                    setFeedback(`Não consegui identificar o jogador. Tente falar o número da camisa.`);
+                    const currentRosters = rostersRef.current;
+                    const roster = team === 'home' ? currentRosters.home : currentRosters.away;
+                    const currentFailureReason = `Jogador nao encontrado (Num identificada: ${number || 'N/A'}) no time ${team}. Roster size: ${roster?.length || 0}`;
+                    if (number) {
+                        setFeedback(`Jogador camisa ${number} não encontrado no time ${team === 'home' ? 'da Casa' : 'Visitante'}.`);
+                    } else {
+                        setFeedback(`Não consegui identificar o jogador no time ${team === 'home' ? 'da Casa' : 'Visitante'}. Tente falar o número da camisa.`);
+                    }
+                    failureReason = currentFailureReason;
                 }
 
                 // Log debug even on failure
                 await api.post(`/admin/matches/${id}/events`, {
                     event_type: 'voice_debug',
-                    team_id: team === 'home' ? matchDataRef.current.home_team_id : matchDataRef.current.away_team_id,
+                    team_id: team ? (team === 'home' ? matchDataRef.current.home_team_id : matchDataRef.current.away_team_id) : null,
                     minute: formatTime(600 - timeRef.current),
                     period: currentQuarterRef.current,
                     metadata: {
@@ -499,9 +540,8 @@ export function SumulaBasqueteVoz() {
                         identified: false,
                         action_type: type || 'none',
                         team: team || 'none',
-                        failure_reason: currentFailureReason,
-                        normalized_text: normalized,
-                        available_roster: roster.map((rx: any) => `${rx.number}-${rx.name}`).join(',')
+                        failure_reason: failureReason,
+                        normalized_text: normalized
                     }
                 });
                 fetchMatchDetails();
@@ -830,15 +870,21 @@ export function SumulaBasqueteVoz() {
             </div>
 
             {/* Scoreboard Simplificado */}
-            <div className="flex gap-12 mb-8 items-center">
-                <div className="text-center">
-                    <div className="text-7xl font-black text-white leading-none">{matchData.scoreHome}</div>
-                    <div className="text-[10px] text-orange-500 font-bold uppercase tracking-[0.2em] mt-2">CASA</div>
+            <div className="flex gap-12 mb-8 items-center max-w-md w-full justify-center px-4">
+                <div className="text-center flex-1 min-w-0">
+                    <div className="text-7xl font-black text-white leading-none tracking-tighter tabular-nums">{matchData.scoreHome}</div>
+                    <div className="text-[10px] text-orange-500 font-black uppercase tracking-[0.2em] mt-2">CASA</div>
+                    <div className="text-xs text-gray-400 font-bold uppercase truncate mt-1 bg-gray-900/40 px-2 py-0.5 rounded-md border border-gray-800/30 max-w-[120px] mx-auto">
+                        {matchData.home_team?.name || 'Casa'}
+                    </div>
                 </div>
-                <div className="w-px h-12 bg-gray-800"></div>
-                <div className="text-center">
-                    <div className="text-7xl font-black text-white leading-none">{matchData.scoreAway}</div>
+                <div className="w-px h-16 bg-gray-800 self-center"></div>
+                <div className="text-center flex-1 min-w-0">
+                    <div className="text-7xl font-black text-white leading-none tracking-tighter tabular-nums">{matchData.scoreAway}</div>
                     <div className="text-[10px] text-orange-500 font-bold uppercase tracking-[0.2em] mt-2">VISITANTE</div>
+                    <div className="text-xs text-gray-400 font-bold uppercase truncate mt-1 bg-gray-900/40 px-2 py-0.5 rounded-md border border-gray-800/30 max-w-[120px] mx-auto">
+                        {matchData.away_team?.name || 'Visitante'}
+                    </div>
                 </div>
             </div>
 

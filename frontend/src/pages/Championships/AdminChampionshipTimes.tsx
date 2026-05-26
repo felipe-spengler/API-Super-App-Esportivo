@@ -18,6 +18,29 @@ export function AdminChampionshipTimes() {
     const [participants, setParticipants] = useState<any[]>([]);
     const [championship, setChampionship] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+
+    const modalParticipants = (() => {
+        if (!participants) return [];
+        if (championship?.registration_type === 'team') {
+            const uniqueTeams = Array.from(new Set(participants.map(p => p.team_id).filter(Boolean))).map(tid => {
+                const p = participants.find(x => x.team_id === tid);
+                return {
+                    id: tid,
+                    competitor_id: `team_${tid}`,
+                    user_id: null,
+                    team_id: tid,
+                    name: p?.team?.name || 'Equipe',
+                    category_id: p?.category_id,
+                    team: p?.team
+                };
+            });
+            return uniqueTeams;
+        }
+        return participants.map((p, idx) => ({
+            ...p,
+            competitor_id: p.user_id ? `user_${p.user_id}` : `team_${p.team_id}_${idx}`
+        }));
+    })();
     
     // Modal states
     const [showStopwatch, setShowStopwatch] = useState(false);
@@ -147,7 +170,7 @@ export function AdminChampionshipTimes() {
                                 className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all"
                             >
                                 <Play size={18} />
-                                Cronometrar
+                                {isLapsFormat ? 'Voltas Individual (Timer)' : 'Cronometrar'}
                             </button>
                             {isLapsFormat && (
                                 <button
@@ -155,7 +178,7 @@ export function AdminChampionshipTimes() {
                                     className="flex items-center gap-2 bg-orange-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-orange-700 shadow-lg shadow-orange-200 transition-all"
                                 >
                                     <Timer size={18} />
-                                    Temporizador Fixo
+                                    Voltas Coletivo (Timer)
                                 </button>
                             )}
                         </div>
@@ -187,8 +210,10 @@ export function AdminChampionshipTimes() {
                                 {sortedTimes.map(t => (
                                     <tr key={t.id} className="hover:bg-slate-50">
                                         <td className="px-6 py-4">
-                                            <p className="font-bold text-slate-900">{t.user?.name || 'Desconhecido'}</p>
-                                            {t.team && <p className="text-xs text-indigo-600 font-bold uppercase">{t.team.name}</p>}
+                                            <p className="font-bold text-slate-900">
+                                                {t.user ? t.user.name : (t.team ? t.team.name : 'Desconhecido')}
+                                            </p>
+                                            {t.user && t.team && <p className="text-xs text-indigo-650 font-bold uppercase">{t.team.name}</p>}
                                         </td>
                                         {isLapsFormat && (
                                             <td className="px-6 py-4 text-center">
@@ -234,7 +259,7 @@ export function AdminChampionshipTimes() {
                 isOpen={showManualTime}
                 onClose={() => setShowManualTime(false)}
                 championshipId={id!}
-                participants={participants}
+                participants={modalParticipants}
                 isLapsFormat={isLapsFormat}
                 onSaveSuccess={loadData}
                 gameMatchId={gameMatchId || undefined}
@@ -244,7 +269,7 @@ export function AdminChampionshipTimes() {
                 isOpen={showStopwatch}
                 onClose={() => setShowStopwatch(false)}
                 championshipId={id!}
-                participants={participants}
+                participants={modalParticipants}
                 isLapsFormat={isLapsFormat}
                 onSaveSuccess={() => loadData(false)}
                 gameMatchId={gameMatchId || undefined}
@@ -256,7 +281,7 @@ export function AdminChampionshipTimes() {
                 isOpen={showCountdown}
                 onClose={() => setShowCountdown(false)}
                 championshipId={id!}
-                participants={participants}
+                participants={modalParticipants}
                 times={times}
                 setTimes={setTimes}
                 deleteTime={deleteTime}

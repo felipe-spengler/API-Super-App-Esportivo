@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, CheckCircle, Trophy, Star, Loader2, ImageIcon, ShieldCheck, Printer, Play, Users } from 'lucide-react';
+import { X, CheckCircle, Trophy, Star, Loader2, ImageIcon, ShieldCheck, Printer, Play, Users, ChevronRight, Timer } from 'lucide-react';
 import api from '../../../services/api';
 
 interface MatchSummaryModalProps {
@@ -43,6 +43,230 @@ export function AdminMatchSummaryModal({
     navigateToSumula,
     navigate
 }: MatchSummaryModalProps) {
+    const [expandedTeams, setExpandedTeams] = React.useState<Record<number | string, boolean>>({});
+    const [competitorTimes, setCompetitorTimes] = React.useState<any[]>([]);
+    const [loadingTimes, setLoadingTimes] = React.useState(false);
+
+    const isTimesOrLapsFormat = ['time_ranking', 'laps', 'racing'].includes(championship?.format);
+    const isTeam = championship?.registration_type === 'team';
+
+    React.useEffect(() => {
+        if (isOpen && match?.id && championship?.id && isTimesOrLapsFormat) {
+            setLoadingTimes(true);
+            api.get(`/championships/${championship.id}/times?game_match_id=${match.id}`)
+                .then(res => {
+                    setCompetitorTimes(res.data);
+                })
+                .catch(err => {
+                    console.error("Erro ao carregar tempos da bateria", err);
+                })
+                .finally(() => {
+                    setLoadingTimes(false);
+                });
+        } else {
+            setCompetitorTimes([]);
+            setExpandedTeams({});
+        }
+    }, [isOpen, match?.id, championship?.id]);
+
+    const toggleTeamExpand = (tid: number | string) => {
+        setExpandedTeams(prev => ({
+            ...prev,
+            [tid]: !prev[tid]
+        }));
+    };
+
+    const getTeamBestTime = (teamId: number | string | null) => {
+        if (!teamId || !competitorTimes) return 0;
+        
+        // Direct team record
+        const teamDirectTime = competitorTimes.find((t: any) => t.team_id === teamId && !t.user_id);
+        if (teamDirectTime) return teamDirectTime.time_ms;
+
+        // Min athlete time
+        const athleteTimes = competitorTimes.filter((t: any) => t.team_id === teamId && t.time_ms > 0);
+        if (athleteTimes.length === 0) return 0;
+        return Math.min(...athleteTimes.map((t: any) => t.time_ms));
+    };
+
+    const getSortedCompetitorTimes = () => {
+        if (!competitorTimes) return [];
+        return [...competitorTimes].sort((a, b) => {
+            if (championship?.format === 'laps') {
+                if (a.lap !== b.lap) {
+                    return (b.lap || 1) - (a.lap || 1);
+                }
+            }
+            return a.time_ms - b.time_ms;
+        });
+    };
+
+    const formatMsToTime = (ms: number) => {
+        if (!ms) return '--:--.--';
+        const minutes = Math.floor(ms / 60000);
+        const seconds = Math.floor((ms % 60000) / 1000);
+        const centiseconds = Math.floor((ms % 1000) / 10);
+        return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${centiseconds.toString().padStart(2, '0')}`;
+    };
+
+    const renderAdminTeamTimeCard = (team: any, teamId: number | string | null, type: 'home' | 'away') => {
+        if (!team) return null;
+        const isExpanded = !!expandedTeams[teamId || ''];
+        const bestTime = getTeamBestTime(teamId);
+        
+        // Filter and sort athletes of this team
+        const athleteTimes = competitorTimes
+            .filter((t: any) => t.team_id === teamId && t.user_id && t.time_ms > 0)
+            .sort((a: any, b: any) => {
+                if (championship?.format === 'laps') {
+                    if (a.lap !== b.lap) {
+                        return (b.lap || 1) - (a.lap || 1);
+                    }
+                }
+                return a.time_ms - b.time_ms;
+            });
+
+        return (
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden text-gray-900 font-sans mb-3 animate-in fade-in duration-250">
+                {/* Header of the Card (Interactive) */}
+                <div 
+                    onClick={() => teamId && toggleTeamExpand(teamId)}
+                    className="px-4 py-3 bg-gray-50 flex items-center justify-between cursor-pointer hover:bg-gray-100 transition-colors select-none border-b border-gray-200"
+                >
+                    <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 bg-white rounded-full p-1 border border-gray-200 flex items-center justify-center shrink-0">
+                            {team.logo_url ? (
+                                <img src={team.logo_url} className="w-full h-full object-contain" />
+                            ) : (
+                                <div className="text-xs font-bold text-gray-400">{team.name?.substring(0, 2)}</div>
+                            )}
+                        </div>
+                        <div className="min-w-0">
+                            <span className="text-[9px] text-indigo-600 font-black tracking-widest uppercase block">
+                                {type === 'home' ? 'Mandante' : 'Visitante'}
+                            </span>
+                            <span className="font-bold text-xs sm:text-sm text-gray-800 truncate block">
+                                {team.name}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 shrink-0">
+                        <div className="text-right">
+                            <span className="text-[8px] text-gray-400 font-bold block uppercase tracking-wider">
+                                Melhor Tempo
+                            </span>
+                            <span className="text-indigo-600 font-mono font-black text-xs sm:text-sm">
+                                {bestTime > 0 ? formatMsToTime(bestTime) : '--:--.--'}
+                            </span>
+                        </div>
+                        <ChevronRight 
+                            size={16} 
+                            className={`text-gray-400 transition-transform duration-300 ${isExpanded ? 'rotate-90 text-indigo-600' : ''}`} 
+                        />
+                    </div>
+                </div>
+
+                {/* Expanded Athlete List */}
+                {isExpanded && (
+                    <div className="divide-y divide-gray-100 bg-gray-50/20">
+                        {athleteTimes.length === 0 ? (
+                            <div className="text-center py-4 text-gray-400 text-xs font-semibold">
+                                ⏱️ Nenhum atleta com tempo registrado nesta equipe.
+                            </div>
+                        ) : (
+                            athleteTimes.map((t: any, idx: number) => {
+                                const position = idx + 1;
+                                return (
+                                    <div 
+                                        key={t.id || idx}
+                                        className="px-4 py-2.5 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                                    >
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <span className="w-4 h-4 rounded-full bg-gray-100 border border-gray-200 text-gray-500 text-[9px] font-black flex items-center justify-center font-mono">
+                                                {position}
+                                            </span>
+                                            <div className="min-w-0">
+                                                <span className="text-xs font-bold text-gray-700 block truncate">
+                                                    {t.user?.nickname || t.user?.name || 'Atleta Desconhecido'}
+                                                </span>
+                                                {championship?.format === 'laps' && (
+                                                    <span className="text-[8px] text-indigo-500 font-black uppercase tracking-wider">
+                                                        Volta #{t.lap || 1}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <span className="font-mono font-black text-gray-800 text-xs shrink-0">
+                                            {formatMsToTime(t.time_ms)}
+                                        </span>
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    const renderAdminIndividualTimes = () => {
+        const sorted = getSortedCompetitorTimes();
+        return (
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden text-gray-900 font-sans mb-3 animate-in fade-in duration-250">
+                <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+                    <span className="font-bold text-xs uppercase tracking-wider text-gray-700">
+                        Classificação da Bateria
+                    </span>
+                    <span className="text-[9px] text-gray-400 font-bold bg-white px-2 py-0.5 rounded border">
+                        {sorted.length} Registros
+                    </span>
+                </div>
+                {sorted.length === 0 ? (
+                    <div className="text-center py-8 text-gray-400 text-xs font-semibold">
+                        🏁 Nenhum tempo registrado ainda nesta bateria.
+                    </div>
+                ) : (
+                    <div className="divide-y divide-gray-100">
+                        {sorted.map((t: any, idx: number) => {
+                            const position = idx + 1;
+                            return (
+                                <div key={t.id || idx} className="px-4 py-2.5 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <span className="w-5 h-5 rounded-full bg-gray-100 border border-gray-200 text-gray-600 text-[10px] font-black flex items-center justify-center font-mono">
+                                            {position}º
+                                        </span>
+                                        <div className="min-w-0">
+                                            <span className="text-xs font-bold text-gray-800 block truncate">
+                                                {t.user?.name || 'Atleta Desconhecido'}
+                                            </span>
+                                            {t.team && (
+                                                <span className="text-[9px] text-indigo-600 font-black tracking-widest uppercase block mt-0.5">
+                                                    {t.team.name}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="text-right shrink-0">
+                                        <span className="font-mono font-black text-gray-900 text-xs block">
+                                            {formatMsToTime(t.time_ms)}
+                                        </span>
+                                        {championship?.format === 'laps' && (
+                                            <span className="text-[8px] text-gray-400 font-bold uppercase">
+                                                Volta #{t.lap || 1}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
+        );
+    };
+
     if (!isOpen || !match) return null;
 
     return (
@@ -87,32 +311,93 @@ export function AdminMatchSummaryModal({
 
                 {activeTab === 'summary' && (
                     <div className="p-8">
-                        <div className="flex items-center justify-between mb-8">
-                            <div className="text-center flex-1">
-                                <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-2 border">
-                                    {match.home_team?.logo_url ? <img src={match.home_team.logo_url} className="w-12 h-12" /> : <Trophy className="text-gray-300" />}
+                        {isTimesOrLapsFormat ? (
+                            isTeam ? (
+                                /* Team Time-based Header */
+                                <div className="flex items-center justify-between mb-8">
+                                    <div className="text-center flex-1">
+                                        <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-2 border p-1">
+                                            {match.home_team?.logo_url ? <img src={match.home_team.logo_url} className="w-12 h-12 object-contain" /> : <Trophy className="text-gray-300" />}
+                                        </div>
+                                        <div className="font-bold text-gray-900 leading-tight text-sm">{match.home_team?.name}</div>
+                                        <div className="text-indigo-600 font-mono text-xs font-bold mt-1">
+                                            {getTeamBestTime(match.home_team_id) > 0 ? formatMsToTime(getTeamBestTime(match.home_team_id)) : '--:--.--'}
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col items-center px-4">
+                                        <Timer className="text-indigo-500 w-8 h-8 animate-pulse mb-1" />
+                                        <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
+                                            {match.round_name || `Bateria ${match.round_number}`}
+                                        </span>
+                                    </div>
+                                    <div className="text-center flex-1">
+                                        <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-2 border p-1">
+                                            {match.away_team?.logo_url ? <img src={match.away_team.logo_url} className="w-12 h-12 object-contain" /> : <Trophy className="text-gray-300" />}
+                                        </div>
+                                        <div className="font-bold text-gray-900 leading-tight text-sm">{match.away_team?.name}</div>
+                                        <div className="text-indigo-600 font-mono text-xs font-bold mt-1">
+                                            {getTeamBestTime(match.away_team_id) > 0 ? formatMsToTime(getTeamBestTime(match.away_team_id)) : '--:--.--'}
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="font-bold text-gray-900 leading-tight">{match.home_team?.name}</div>
-                            </div>
-                            <div className="flex flex-col items-center">
-                                <div className="flex items-center gap-4 px-6">
-                                    <span className="text-5xl font-black text-gray-900">{match.home_score || 0}</span>
-                                    <span className="text-gray-300 font-bold">X</span>
-                                    <span className="text-5xl font-black text-gray-900">{match.away_score || 0}</span>
-                                </div>
-                                {(match.home_penalty_score != null || match.away_penalty_score != null) && (match.home_penalty_score > 0 || match.away_penalty_score > 0) && (
-                                    <span className="text-sm font-bold text-gray-500 mt-2">
-                                        ({match.home_penalty_score} x {match.away_penalty_score} Pênaltis)
+                            ) : (
+                                /* Individual Time-based Header */
+                                <div className="flex flex-col items-center justify-center mb-8 border-b pb-4">
+                                    <Timer className="text-indigo-500 w-10 h-10 animate-pulse mb-2" />
+                                    <h4 className="text-lg font-black text-gray-900">
+                                        {match.round_name || `Bateria ${match.round_number}`}
+                                    </h4>
+                                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-1">
+                                        Disputa por Tempo Individual
                                     </span>
+                                </div>
+                            )
+                        ) : (
+                            /* Soccer Header */
+                            <div className="flex items-center justify-between mb-8">
+                                <div className="text-center flex-1">
+                                    <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-2 border">
+                                        {match.home_team?.logo_url ? <img src={match.home_team.logo_url} className="w-12 h-12" /> : <Trophy className="text-gray-300" />}
+                                    </div>
+                                    <div className="font-bold text-gray-900 leading-tight">{match.home_team?.name}</div>
+                                </div>
+                                <div className="flex flex-col items-center">
+                                    <div className="flex items-center gap-4 px-6">
+                                        <span className="text-5xl font-black text-gray-900">{match.home_score || 0}</span>
+                                        <span className="text-gray-300 font-bold">X</span>
+                                        <span className="text-5xl font-black text-gray-900">{match.away_score || 0}</span>
+                                    </div>
+                                    {(match.home_penalty_score != null || match.away_penalty_score != null) && (match.home_penalty_score > 0 || match.away_penalty_score > 0) && (
+                                        <span className="text-sm font-bold text-gray-500 mt-2">
+                                            ({match.home_penalty_score} x {match.away_penalty_score} Pênaltis)
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="text-center flex-1">
+                                    <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-2 border">
+                                        {match.away_team?.logo_url ? <img src={match.away_team.logo_url} className="w-12 h-12" /> : <Trophy className="text-gray-300" />}
+                                    </div>
+                                    <div className="font-bold text-gray-900 leading-tight">{match.away_team?.name}</div>
+                                </div>
+                            </div>
+                        )}
+
+                        {isTimesOrLapsFormat && (
+                            <div className="mb-6">
+                                {loadingTimes ? (
+                                    <div className="flex items-center justify-center py-8">
+                                        <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
+                                    </div>
+                                ) : isTeam ? (
+                                    <div className="space-y-1">
+                                        {renderAdminTeamTimeCard(match.home_team, match.home_team_id, 'home')}
+                                        {renderAdminTeamTimeCard(match.away_team, match.away_team_id, 'away')}
+                                    </div>
+                                ) : (
+                                    renderAdminIndividualTimes()
                                 )}
                             </div>
-                            <div className="text-center flex-1">
-                                <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-2 border">
-                                    {match.away_team?.logo_url ? <img src={match.away_team.logo_url} className="w-12 h-12" /> : <Trophy className="text-gray-300" />}
-                                </div>
-                                <div className="font-bold text-gray-900 leading-tight">{match.away_team?.name}</div>
-                            </div>
-                        </div>
+                        )}
 
                         <div className="space-y-4 border-t pt-6">
                             <div className="grid grid-cols-2 gap-4">

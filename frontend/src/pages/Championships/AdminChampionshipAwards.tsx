@@ -114,6 +114,19 @@ export function AdminChampionshipAwards() {
     }
 
     const getAwardTypes = (sportName: string) => {
+        const isTimeOrLap = ['time_ranking', 'laps', 'racing'].includes(championship?.format);
+        if (isTimeOrLap) {
+            return [
+                { key: 'melhor_tempo', label: 'Melhor Tempo' },
+                { key: 'melhor_volta', label: 'Melhor Volta' },
+                { key: 'campeao_geral', label: 'Campeão Geral' },
+                { key: 'premiação_equipe', label: 'Equipe Campeã (Prêmio Equipe)' },
+                { key: 'vice_campeao', label: 'Vice-Campeão' },
+                { key: 'terceiro_colocado', label: 'Terceiro Colocado' },
+                { key: 'estreante', label: 'Melhor Estreante' }
+            ];
+        }
+
         const sport = (sportName || '').toLowerCase();
         
         if (sport.includes('volei') || sport.includes('volley')) {
@@ -233,6 +246,29 @@ export function AdminChampionshipAwards() {
         }
     };
 
+    const handleTeamOnlySelect = async (awardType: string, teamId: string) => {
+        const catKey = selectedCategory ? String(selectedCategory) : 'generic';
+
+        const updatedAwards = {
+            ...allAwards,
+            [catKey]: {
+                ...(allAwards[catKey] || {}),
+                [awardType]: {
+                    player_id: null,
+                    team_id: teamId ? Number(teamId) : null
+                }
+            }
+        };
+
+        setAllAwards(updatedAwards);
+
+        try {
+            await api.put(`/admin/championships/${id}/awards`, { awards: updatedAwards });
+        } catch (error) {
+            console.error('Erro ao auto-salvar premiação equipe', error);
+        }
+    };
+
     const handleTeamFilterChange = (awardType: string, teamId: string) => {
         setTeamFilters(prev => ({ ...prev, [awardType]: teamId }));
     };
@@ -348,15 +384,18 @@ export function AdminChampionshipAwards() {
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                     {awardTypes.map((award) => {
                         const savedPlayerId = currentAwards[award.key]?.player_id;
+                        const savedTeamId = currentAwards[award.key]?.team_id;
+                        const isTeamOnlyAward = award.key === 'premiação_equipe';
+                        const hasWinner = isTeamOnlyAward ? !!savedTeamId : !!savedPlayerId;
 
                         // Filter players based on selected team filter
                         const filterTeamId = teamFilters[award.key];
                         const filteredPlayers = filterTeamId
                             ? players.filter(p => String(p.team_id) === filterTeamId)
-                            : players; // If no team selected, show all (or none? User asked for team first)
+                            : players;
 
                         return (
-                            <div key={award.key} className="p-6 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors">
+                            <div key={award.key} className="p-6 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors animate-in fade-in">
                                 <div className="flex items-center gap-2 mb-3">
                                     <Trophy className="w-5 h-5 text-yellow-500" />
                                     <h3 className="font-bold text-gray-800">{award.label}</h3>
@@ -368,10 +407,16 @@ export function AdminChampionshipAwards() {
                                         <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase">Time</label>
                                         <select
                                             className="w-full border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500"
-                                            value={teamFilters[award.key] || ''}
-                                            onChange={(e) => handleTeamFilterChange(award.key, e.target.value)}
+                                            value={isTeamOnlyAward ? (savedTeamId || '') : (teamFilters[award.key] || '')}
+                                            onChange={(e) => {
+                                                if (isTeamOnlyAward) {
+                                                    handleTeamOnlySelect(award.key, e.target.value);
+                                                } else {
+                                                    handleTeamFilterChange(award.key, e.target.value);
+                                                }
+                                            }}
                                         >
-                                            <option value="">Filtrar Time...</option>
+                                            <option value="">Selecione o Time...</option>
                                             {teams.map(t => (
                                                 <option key={t.id} value={t.id}>{t.name}</option>
                                             ))}
@@ -383,24 +428,30 @@ export function AdminChampionshipAwards() {
                                         <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase">Jogador</label>
                                         <select
                                             className="w-full border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:text-gray-400"
-                                            value={savedPlayerId || ''}
+                                            value={isTeamOnlyAward ? '' : (savedPlayerId || '')}
                                             onChange={(e) => handlePlayerSelect(award.key, e.target.value)}
-                                            disabled={!filterTeamId && !savedPlayerId} // Disable if no team selected (unless already has value)
+                                            disabled={isTeamOnlyAward || (!filterTeamId && !savedPlayerId)}
                                         >
-                                            <option value="">
-                                                {!filterTeamId ? 'Selecione um time primeiro...' : 'Selecione o Jogador...'}
-                                            </option>
-                                            {filteredPlayers.map(p => (
-                                                <option key={p.id} value={p.id}>
-                                                    {p.nickname || p.name}
-                                                </option>
-                                            ))}
+                                            {isTeamOnlyAward ? (
+                                                <option value="">Nenhum (Prêmio apenas para Equipes)</option>
+                                            ) : (
+                                                <>
+                                                    <option value="">
+                                                        {!filterTeamId ? 'Selecione um time primeiro...' : 'Selecione o Jogador...'}
+                                                    </option>
+                                                    {filteredPlayers.map(p => (
+                                                        <option key={p.id} value={p.id}>
+                                                            {p.nickname || p.name}
+                                                        </option>
+                                                    ))}
+                                                </>
+                                            )}
                                         </select>
                                     </div>
 
                                     {/* 3. Action */}
                                     <div className="md:col-span-2 flex justify-end gap-2">
-                                        {savedPlayerId && (
+                                        {hasWinner && (
                                             <>
                                                 <button
                                                     onClick={() => handlePreview(award.key)}

@@ -210,7 +210,7 @@ export function EventDetails() {
             { label: 'Disputas', icon: Trophy, route: 'matches', color: 'orange' },
             { label: 'Classificação', icon: ListOrdered, route: 'results', color: 'blue' },
             { label: 'Equipes', icon: Users, route: 'participants', color: 'indigo' },
-            { label: 'Melhor Volta', icon: Target, route: 'stats', params: { type: 'best_lap', title: 'Melhor Volta' }, color: 'gray' },
+            { label: 'Melhor Tempo', icon: Target, route: 'stats', params: { type: 'best_lap', title: 'Melhor Tempo' }, color: 'gray' },
             { label: 'Premiações', icon: Medal, route: 'tourney-awards', color: 'purple' },
             { label: 'Ver Artes', icon: Images, route: 'awards', color: 'green' },
         ];

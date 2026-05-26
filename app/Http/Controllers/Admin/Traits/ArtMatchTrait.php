@@ -55,11 +55,11 @@ trait ArtMatchTrait
                 'X' => 'X',
                 'DD/MM HH:MM' => \Carbon\Carbon::parse($match->start_time)->setTimezone('America/Sao_Paulo')->translatedFormat('d/m H:i'),
                 'Local da Partida' => mb_strtoupper($match->location ?? 'LOCAL A DEFINIR'),
-                '{TC}' => mb_strtoupper($match->homeTeam->name),
-                '{TF}' => mb_strtoupper($match->awayTeam->name),
+                '{TC}' => $match->homeTeam ? mb_strtoupper($match->homeTeam->name) : '',
+                '{TF}' => $match->awayTeam ? mb_strtoupper($match->awayTeam->name) : '',
             ];
-            $replacements['team_a'] = $this->getTeamLogoPath($match->homeTeam);
-            $replacements['team_b'] = $this->getTeamLogoPath($match->awayTeam);
+            $replacements['team_a'] = $match->homeTeam ? $this->getTeamLogoPath($match->homeTeam) : null;
+            $replacements['team_b'] = $match->awayTeam ? $this->getTeamLogoPath($match->awayTeam) : null;
 
             $this->renderDynamicElements($img, $elements, $replacements);
             return $this->outputImage($img, 'jogo_programado_' . $match->id);
@@ -205,11 +205,11 @@ trait ArtMatchTrait
                 'Local da Partida' => mb_strtoupper($match->location ?? 'LOCAL A DEFINIR'),
                 '{PC}' => $match->home_score ?? 0,
                 '{PF}' => $match->away_score ?? 0,
-                '{TC}' => mb_strtoupper($match->homeTeam->name),
-                '{TF}' => mb_strtoupper($match->awayTeam->name),
+                '{TC}' => $match->homeTeam ? mb_strtoupper($match->homeTeam->name) : '',
+                '{TF}' => $match->awayTeam ? mb_strtoupper($match->awayTeam->name) : '',
             ];
-            $replacements['team_a'] = $this->getTeamLogoPath($match->homeTeam);
-            $replacements['team_b'] = $this->getTeamLogoPath($match->awayTeam);
+            $replacements['team_a'] = $match->homeTeam ? $this->getTeamLogoPath($match->homeTeam) : null;
+            $replacements['team_b'] = $match->awayTeam ? $this->getTeamLogoPath($match->awayTeam) : null;
 
             $this->renderDynamicElements($img, $elements, $replacements);
 
