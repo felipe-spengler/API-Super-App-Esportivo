@@ -34,8 +34,13 @@ export function EventMatches() {
                 setChampName(champRes.data.name);
             }
 
+            const params: any = {};
+            if (categoryId && categoryId !== 'undefined' && categoryId !== 'null' && categoryId !== '') {
+                params.category_id = categoryId;
+            }
+
             const response = await api.get(`/championships/${id}/matches`, {
-                params: { category_id: categoryId }
+                params
             });
             setMatches(response.data);
 

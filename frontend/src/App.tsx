@@ -128,6 +128,7 @@ function App() {
             <Route path="/events/:id/awards" element={<EventArts />} />
             <Route path="/events/:id/defense" element={<EventDefense />} />
             <Route path="/events/:id/tourney-awards" element={<EventAwards />} />
+            <Route path="/events/:id/results" element={<PublicRaceResults />} />
             <Route path="/register" element={<Register />} />
             <Route path="/inscription/:id" element={<ChampionshipInscription />} />
             <Route path="/profile" element={<Profile />} />

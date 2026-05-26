@@ -27,11 +27,15 @@ export function EventParticipants() {
                 setChampName(champRes.data.name);
 
                 // Fetch teams with players relationship
+                const params: any = {
+                    with_players: 'true'
+                };
+                if (categoryId && categoryId !== 'undefined' && categoryId !== 'null' && categoryId !== '') {
+                    params.category_id = categoryId;
+                }
+
                 const response = await api.get(`/championships/${id}/teams`, {
-                    params: {
-                        category_id: categoryId,
-                        with_players: 'true'
-                    }
+                    params
                 });
                 setTeams(response.data);
 

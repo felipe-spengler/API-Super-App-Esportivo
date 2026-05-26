@@ -65,14 +65,18 @@ export function EventLeaderboard() {
                 const format = champRes.data.format || 'league';
                 setChampionshipFormat(format);
 
+                const catParam = (categoryId && categoryId !== 'undefined' && categoryId !== 'null' && categoryId !== '') 
+                    ? `?category_id=${categoryId}` 
+                    : '';
+
                 // Load Bracket if applicable
                 if (['knockout', 'group_knockout'].includes(format)) {
-                    const matchesRes = await api.get(`/championships/${id}/knockout-bracket${categoryId ? `?category_id=${categoryId}` : ''}`);
+                    const matchesRes = await api.get(`/championships/${id}/knockout-bracket${catParam}`);
                     setKnockoutMatches(matchesRes.data);
                 }
 
                 // Always try to load standings if there's any chance they exist
-                const response = await api.get(`/championships/${id}/leaderboard${categoryId ? `?category_id=${categoryId}` : ''}`);
+                const response = await api.get(`/championships/${id}/leaderboard${catParam}`);
                 setStandings(response.data);
             } catch (error) {
                 console.error("Erro ao carregar classificação", error);
@@ -113,7 +117,10 @@ export function EventLeaderboard() {
             alert('Ordem manual salva com sucesso! Tempos com pontos iguais agora respeitarão essa prioridade.');
             setIsEditingTiebreaker(false);
             // Reload the definitive sorted data from server
-            const response = await api.get(`/championships/${id}/leaderboard${categoryId ? `?category_id=${categoryId}` : ''}`);
+            const catParam = (categoryId && categoryId !== 'undefined' && categoryId !== 'null' && categoryId !== '') 
+                ? `?category_id=${categoryId}` 
+                : '';
+            const response = await api.get(`/championships/${id}/leaderboard${catParam}`);
             setStandings(response.data);
         } catch (error) {
             console.error("Erro ao salvar ordem", error);

@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Target, Shield, Hand, Star, AlertTriangle, AlertOctagon, Trophy, X, Calendar } from 'lucide-react';
+import { ArrowLeft, Target, Shield, Hand, Star, AlertTriangle, AlertOctagon, Trophy, X, Calendar, Timer } from 'lucide-react';
 import api from '../../services/api';
 import { getRoundDisplayName } from '../../utils/phaseNames';
 
@@ -30,8 +30,13 @@ export function EventStats() {
                 const champRes = await api.get(`/championships/${id}`);
                 setChampName(champRes.data.name);
 
+                const params: any = { type: activeTab };
+                if (categoryId && categoryId !== 'undefined' && categoryId !== 'null' && categoryId !== '') {
+                    params.category_id = categoryId;
+                }
+
                 const response = await api.get(`/championships/${id}/stats`, {
-                    params: { type: activeTab, category_id: categoryId }
+                    params
                 });
                 setStats(response.data);
 

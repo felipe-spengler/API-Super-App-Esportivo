@@ -23,8 +23,13 @@ export function EventMVP() {
                 const champRes = await api.get(`/championships/${id}`);
                 setChampName(champRes.data.name);
 
+                const params: any = {};
+                if (categoryId && categoryId !== 'undefined' && categoryId !== 'null' && categoryId !== '') {
+                    params.category_id = categoryId;
+                }
+
                 const response = await api.get(`/championships/${id}/mvp`, {
-                    params: { category_id: categoryId }
+                    params
                 });
                 setStats(response.data);
 
