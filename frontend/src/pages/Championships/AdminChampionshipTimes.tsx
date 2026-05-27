@@ -21,21 +21,6 @@ export function AdminChampionshipTimes() {
 
     const modalParticipants = (() => {
         if (!participants) return [];
-        if (championship?.registration_type === 'team') {
-            const uniqueTeams = Array.from(new Set(participants.map(p => p.team_id).filter(Boolean))).map(tid => {
-                const p = participants.find(x => x.team_id === tid);
-                return {
-                    id: tid,
-                    competitor_id: `team_${tid}`,
-                    user_id: null,
-                    team_id: tid,
-                    name: p?.team?.name || 'Equipe',
-                    category_id: p?.category_id,
-                    team: p?.team
-                };
-            });
-            return uniqueTeams;
-        }
         return participants.map((p, idx) => ({
             ...p,
             competitor_id: p.user_id ? `user_${p.user_id}` : `team_${p.team_id}_${idx}`

@@ -42,6 +42,15 @@ export function CountdownModal({
     const [isCountdownFinished, setIsCountdownFinished] = useState(false);
     const countdownIntervalRef = useRef<any>(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedTeam, setSelectedTeam] = useState('');
+
+    // Computed Teams
+    const hasPlayers = participants.some(p => p.user_id !== null && p.user_id !== undefined);
+    const isTeam = hasPlayers && participants.some(p => p.team_id !== null && p.team_id !== undefined);
+    const teams = isTeam ? Array.from(new Set(participants.map(p => p.team_id).filter(Boolean))).map(tid => {
+        const p = participants.find(x => x.team_id === tid);
+        return { id: tid, name: p?.team?.name || 'Equipe' };
+    }) : [];
 
     useEffect(() => {
         return () => {
@@ -280,8 +289,8 @@ export function CountdownModal({
 
                     {/* Right Column: Competitors List & Filter (7 cols) */}
                     <div className="col-span-1 md:col-span-7 p-4 sm:p-6 flex flex-col bg-white min-h-0">
-                        {/* Search */}
-                        <div className="flex items-center justify-between gap-4 mb-4">
+                        {/* Search & Team Filter */}
+                        <div className="flex flex-col sm:flex-row gap-3 mb-4">
                             <div className="relative flex-1">
                                 <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                                 <input 
@@ -292,6 +301,18 @@ export function CountdownModal({
                                     className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all text-sm"
                                 />
                             </div>
+                            {isTeam && (
+                                <select 
+                                    className="p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-750 outline-none focus:ring-2 focus:ring-orange-500 text-sm min-w-[180px]"
+                                    value={selectedTeam}
+                                    onChange={e => setSelectedTeam(e.target.value)}
+                                >
+                                    <option value="">Todas as Equipes</option>
+                                    {teams.map(t => (
+                                        <option key={t.id} value={t.id}>{t.name}</option>
+                                    ))}
+                                </select>
+                            )}
                         </div>
 
                         {/* Competitors List */}
@@ -301,10 +322,12 @@ export function CountdownModal({
                             ) : (
                                 <div className="space-y-2.5">
                                     {participants
-                                        .filter(p => 
-                                            p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                            (p.team?.name && p.team.name.toLowerCase().includes(searchTerm.toLowerCase()))
-                                        )
+                                        .filter(p => {
+                                            const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                                (p.team?.name && p.team.name.toLowerCase().includes(searchTerm.toLowerCase()));
+                                            const matchesTeam = !selectedTeam || p.team_id?.toString() === selectedTeam;
+                                            return matchesSearch && matchesTeam;
+                                        })
                                         .map(p => {
                                             const competitorTimes = times.filter(t => 
                                                 p.user_id ? t.user_id === p.user_id : t.team_id === p.team_id
