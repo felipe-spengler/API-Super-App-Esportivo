@@ -10,9 +10,10 @@ import { CountdownModal } from './components/CountdownModal';
 export function AdminChampionshipTimes() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
     const gameMatchId = searchParams.get('game_match_id');
     const [matchDetails, setMatchDetails] = useState<any>(null);
+    const [matches, setMatches] = useState<any[]>([]);
     
     const [times, setTimes] = useState<any[]>([]);
     const [participants, setParticipants] = useState<any[]>([]);
@@ -46,16 +47,29 @@ export function AdminChampionshipTimes() {
                 echo.leave(channelName);
             };
         }
-    }, [id]);
+    }, [id, gameMatchId]);
 
     async function loadData(showLoader = true) {
         try {
             if (showLoader) setLoading(true);
             
-            const timesPromise = api.get(gameMatchId ? `/admin/championships/${id}/times?game_match_id=${gameMatchId}` : `/admin/championships/${id}/times`);
+            // 1. Fetch matches for the championship
+            const matchesRes = await api.get(`/admin/matches?championship_id=${id}`);
+            const matchesList = matchesRes.data || [];
+            setMatches(matchesList);
+
+            // 2. Auto-select first match if not specified in search params
+            let activeMatchId = gameMatchId;
+            if (!activeMatchId && matchesList.length > 0) {
+                activeMatchId = String(matchesList[0].id);
+                setSearchParams({ game_match_id: activeMatchId });
+                return;
+            }
+            
+            const timesPromise = api.get(activeMatchId ? `/admin/championships/${id}/times?game_match_id=${activeMatchId}` : `/admin/championships/${id}/times`);
             const participantsPromise = api.get(`/championships/${id}/participants`);
             const champPromise = api.get(`/championships/${id}`);
-            const matchPromise = gameMatchId ? api.get(`/admin/matches/${gameMatchId}`) : Promise.resolve(null);
+            const matchPromise = activeMatchId ? api.get(`/admin/matches/${activeMatchId}`) : Promise.resolve(null);
 
             const [timesRes, participantsRes, champRes, matchRes] = await Promise.all([
                 timesPromise,
@@ -69,6 +83,8 @@ export function AdminChampionshipTimes() {
             setChampionship(champRes.data);
             if (matchRes) {
                 setMatchDetails(matchRes.data);
+            } else {
+                setMatchDetails(null);
             }
         } catch (error) {
             console.error(error);
@@ -138,9 +154,25 @@ export function AdminChampionshipTimes() {
                                 <h1 className="text-2xl font-black text-slate-900 leading-tight">
                                     {matchDetails ? (matchDetails.round_name || `Bateria ${matchDetails.round_number}`) : 'Cronômetro / Tempos'}
                                 </h1>
-                                <p className="text-slate-500 font-medium">
+                                <p className="text-slate-500 font-medium mb-3">
                                     {matchDetails ? `Etapa/Bateria do campeonato ${championship?.name}` : 'Registre o tempo de cada atleta em tempo real.'}
                                 </p>
+                                {matches.length > 0 && (
+                                    <div className="flex items-center gap-2 bg-slate-100 border border-slate-250 px-3 py-1.5 rounded-xl w-max">
+                                        <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Bateria / Rodada:</span>
+                                        <select
+                                            value={gameMatchId || ''}
+                                            onChange={(e) => setSearchParams({ game_match_id: e.target.value })}
+                                            className="bg-transparent border-none text-slate-800 text-xs font-bold focus:ring-0 focus:outline-none cursor-pointer p-0"
+                                        >
+                                            {matches.map((m: any) => (
+                                                <option key={m.id} value={m.id}>
+                                                    {m.round_name || `Bateria ${m.round_number}`} ({new Date(m.start_time).toLocaleDateString('pt-BR')})
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
                             </div>
                         </div>
                         <div className="flex gap-2">
@@ -172,6 +204,14 @@ export function AdminChampionshipTimes() {
             </div>
 
             <div className="max-w-4xl mx-auto px-6">
+                {matches.length === 0 && !loading && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-amber-800 text-sm font-bold flex flex-col gap-1 mb-6 shadow-sm">
+                        <span className="flex items-center gap-1.5 text-amber-700">⚠️ Nenhuma bateria ou rodada criada</span>
+                        <span className="text-xs text-amber-600 font-medium">
+                            Crie etapas ou rodadas de baterias de disputa na página de jogos do campeonato para poder registrá-las com o ID correspondente.
+                        </span>
+                    </div>
+                )}
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                     <div className="p-4 border-b border-slate-100 bg-slate-50/50">
                         <h2 className="font-bold text-slate-700">Tempos Registrados</h2>
