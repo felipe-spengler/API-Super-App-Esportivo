@@ -370,12 +370,12 @@ export function PublicRaceResults() {
                                                 <div className="text-left md:text-right">
                                                     {championship?.format === 'laps' ? (
                                                         <>
-                                                            <div className="flex items-center gap-2 bg-slate-950 text-emerald-450 font-mono font-black text-2xl px-4 py-2 rounded-2xl border border-slate-900 shadow-inner leading-none italic tracking-tighter">
+                                                            <div className="flex items-center gap-2 bg-slate-950 text-emerald-400 font-mono font-black text-2xl px-4 py-2 rounded-2xl border border-slate-900 shadow-inner leading-none italic tracking-tighter">
                                                                 <Trophy size={18} className="text-emerald-500 shrink-0" />
                                                                 {team.times.length} {team.times.length === 1 ? 'Volta' : 'Voltas'}
                                                             </div>
                                                             <p className="text-[9px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-1.5 mr-1">
-                                                                Melhor Volta: <span className="text-slate-800 font-mono font-black">{formatTime(Math.min(...team.times.map((t: any) => t.time_ms), 0))}</span>
+                                                                Melhor Volta: <span className="text-slate-800 font-mono font-black">{formatTime(team.times.length > 0 ? Math.min(...team.times.map((t: any) => t.time_ms)) : 0)}</span>
                                                             </p>
                                                         </>
                                                     ) : (
@@ -400,46 +400,98 @@ export function PublicRaceResults() {
                                         </div>
 
                                         {/* Dropdown - Athletes Segment Timeline */}
-                                        {isExpanded && (
-                                            <div className="border-t border-slate-100 bg-slate-50/50 p-6 space-y-3 animate-in slide-in-from-top duration-300">
-                                                <h4 className="text-[10px] font-black text-slate-450 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                                                    <Users size={12} /> Ordem dos Revezadores e Parciais
-                                                </h4>
-                                                
-                                                <div className="grid gap-2">
-                                                    {team.times.map((lapRecord: any, idx: number) => {
-                                                        const pName = lapRecord.user?.name || 'Atleta não identificado';
-                                                        return (
-                                                            <div 
-                                                                key={lapRecord.id}
-                                                                className="flex items-center justify-between p-3.5 bg-white rounded-2xl border border-slate-100 shadow-sm"
-                                                            >
-                                                                <div className="flex items-center gap-4">
-                                                                    <span className="w-7 h-7 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-black italic flex items-center justify-center shadow-sm">
-                                                                        #{idx + 1}
-                                                                    </span>
-                                                                    <div>
-                                                                        <span className="block text-xs font-black text-slate-800 uppercase tracking-wide">
-                                                                            {pName}
-                                                                        </span>
-                                                                        <span className="block text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
-                                                                            Segmento de Revezamento {lapRecord.game_match?.round_name || lapRecord.gameMatch?.round_name ? `• ${lapRecord.game_match?.round_name || lapRecord.gameMatch?.round_name}` : (lapRecord.game_match?.round_number || lapRecord.gameMatch?.round_number ? `• Bateria ${lapRecord.game_match?.round_number || lapRecord.gameMatch?.round_number}` : '')}
-                                                                        </span>
+                                        {isExpanded && (() => {
+                                            // Compute cumulative times for each lap record chronologically
+                                            let runningSum = 0;
+                                            const timesWithCumulative = team.times.map((t: any) => {
+                                                runningSum += t.time_ms;
+                                                return {
+                                                    ...t,
+                                                    cumulative_ms: runningSum
+                                                };
+                                            });
+
+                                            // Group laps by athlete
+                                            const athleteGroups: Record<string, { userId: number | null; name: string; times: any[] }> = {};
+                                            team.times.forEach((lapRecord: any) => {
+                                                const key = lapRecord.user_id ? `user_${lapRecord.user_id}` : `name_${lapRecord.user?.name || 'Desconhecido'}`;
+                                                if (!athleteGroups[key]) {
+                                                    athleteGroups[key] = {
+                                                        userId: lapRecord.user_id,
+                                                        name: lapRecord.user?.name || 'Atleta não identificado',
+                                                        times: []
+                                                    };
+                                                }
+                                                athleteGroups[key].times.push(lapRecord);
+                                            });
+
+                                            // Sort athletes by their first lap occurrence
+                                            const sortedAthletes = Object.values(athleteGroups).sort((a, b) => {
+                                                const firstA = Math.min(...a.times.map(t => t.lap || 0));
+                                                const firstB = Math.min(...b.times.map(t => t.lap || 0));
+                                                return firstA - firstB;
+                                            });
+
+                                            return (
+                                                <div className="border-t border-slate-100 bg-slate-50/50 p-6 space-y-6 animate-in slide-in-from-top duration-300">
+                                                    <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                                                        <Users size={12} /> Ordem dos Revezadores e Parciais
+                                                    </h4>
+                                                    
+                                                    <div className="space-y-6">
+                                                        {sortedAthletes.map((athlete) => (
+                                                            <div key={athlete.userId || athlete.name} className="space-y-3">
+                                                                {/* Athlete Info */}
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 font-black flex items-center justify-center border border-indigo-100 text-xs">
+                                                                        {getInitials(athlete.name)}
                                                                     </div>
+                                                                    <span className="font-black text-slate-800 uppercase text-xs tracking-wider">
+                                                                        {athlete.name}
+                                                                    </span>
                                                                 </div>
 
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="text-xs text-slate-400 font-bold uppercase tracking-widest mr-2">Tempo:</span>
-                                                                    <span className="font-mono font-black text-slate-900 text-base italic bg-slate-50 px-3 py-1 rounded-xl border border-slate-100 shadow-inner">
-                                                                        {formatTime(lapRecord.time_ms)}
-                                                                    </span>
+                                                                {/* Horizontal Timeline */}
+                                                                <div className="flex items-center gap-8 overflow-x-auto py-5 px-6 bg-white rounded-2xl border border-slate-100 shadow-sm relative min-w-0 custom-scrollbar">
+                                                                    {/* Horizontal Connector Line */}
+                                                                    <div className="absolute top-[49px] left-8 right-8 h-[2px] bg-slate-100 -z-0"></div>
+                                                                    
+                                                                    {athlete.times.map((lapRecord: any, idx: number) => {
+                                                                        const overallLapIndex = timesWithCumulative.findIndex((x: any) => x.id === lapRecord.id);
+                                                                        const overallLapNum = overallLapIndex !== -1 ? overallLapIndex + 1 : idx + 1;
+                                                                        const cumulativeTime = timesWithCumulative[overallLapIndex]?.cumulative_ms || lapRecord.time_ms;
+
+                                                                        return (
+                                                                            <div key={lapRecord.id} className="flex flex-col items-center shrink-0 relative z-10 min-w-[100px]">
+                                                                                {/* Cumulative Time (Tempo da Bateria) */}
+                                                                                <span className="text-[9px] font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 rounded-full mb-2 shadow-sm font-mono leading-none">
+                                                                                    {formatTime(cumulativeTime)}
+                                                                                </span>
+
+                                                                                {/* Lap Node */}
+                                                                                <div className="w-8 h-8 rounded-full bg-slate-900 border-2 border-white text-white font-black text-xs flex items-center justify-center shadow-md">
+                                                                                    #{overallLapNum}
+                                                                                </div>
+
+                                                                                {/* Individual Lap Time */}
+                                                                                <span className="text-xs font-black text-slate-800 font-mono mt-2 leading-none">
+                                                                                    {formatTime(lapRecord.time_ms)}
+                                                                                </span>
+                                                                                
+                                                                                {/* Lap Label */}
+                                                                                <span className="text-[8px] text-slate-400 font-bold uppercase tracking-wider mt-1.5 leading-none">
+                                                                                    Tempo Volta
+                                                                                </span>
+                                                                            </div>
+                                                                        );
+                                                                    })}
                                                                 </div>
                                                             </div>
-                                                        );
-                                                    })}
+                                                        ))}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        )}
+                                            );
+                                        })()}
                                     </div>
                                 );
                             })}
