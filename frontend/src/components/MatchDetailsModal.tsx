@@ -673,7 +673,7 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                             {activeTab === 'summary' && (
                                 <div className="space-y-6">
                                     {isTimesOrLapsFormat ? (
-                                        isTeam ? (
+                                        (isTeam && match?.home_team_id && match?.away_team_id) ? (
                                             /* Team-based Time Ranking (Home vs Away) with Expandable Cards */
                                             <div className="space-y-4">
                                                 {renderTeamTimeCard(match?.home_team, match?.home_team_id, 'home')}

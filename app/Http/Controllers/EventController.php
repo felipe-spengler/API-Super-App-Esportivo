@@ -1285,18 +1285,21 @@ class EventController extends Controller
             $query->where('game_match_id', $request->game_match_id);
         } else {
             // Ao obter tempos gerais para a classificação/resultados:
-            // excluir tempos obtidos em baterias do tipo qualificatórias ou eliminatórias
-            $query->whereHas('gameMatch', function ($q) {
-                $q->where(function ($sub) {
-                    $sub->whereNull('round_name')
-                        ->orWhere(function ($orSub) {
-                            $orSub->where('round_name', 'not like', '%classific%')
-                                  ->where('round_name', 'not like', '%eliminat%')
-                                  ->where('round_name', 'not like', '%preliminar%')
-                                  ->where('round_name', 'not like', '%qualif%')
-                                  ->where('round_name', 'not like', '%aquec%');
+            // incluir tempos avulsos (game_match_id = null) E tempos de baterias normais (excluindo qualificatórias/eliminatórias)
+            $query->where(function ($mainQ) {
+                $mainQ->whereNull('game_match_id')
+                    ->orWhereHas('gameMatch', function ($q) {
+                        $q->where(function ($sub) {
+                            $sub->whereNull('round_name')
+                                ->orWhere(function ($orSub) {
+                                    $orSub->where('round_name', 'not like', '%classific%')
+                                          ->where('round_name', 'not like', '%eliminat%')
+                                          ->where('round_name', 'not like', '%preliminar%')
+                                          ->where('round_name', 'not like', '%qualif%')
+                                          ->where('round_name', 'not like', '%aquec%');
+                                });
                         });
-                });
+                    });
             });
         }
 
