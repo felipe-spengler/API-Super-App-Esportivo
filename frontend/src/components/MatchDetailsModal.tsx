@@ -24,6 +24,7 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
     const [localTime, setLocalTime] = useState<number | null>(null);
     const [isTimerRunning, setIsTimerRunning] = useState(false);
     const [currentPeriod, setCurrentPeriod] = useState<string | null>(null);
+    const [expandedTeams, setExpandedTeams] = useState<Record<number | string, boolean>>({});
 
     useEffect(() => {
         if (isOpen && matchId) {
@@ -237,8 +238,6 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
             return true;
         });
     };
-
-    const [expandedTeams, setExpandedTeams] = useState<Record<number | string, boolean>>({});
 
     const isTimesOrLapsFormat = ['time_ranking', 'laps', 'racing'].includes(match?.championship?.format);
     const isTeam = match?.championship?.registration_type === 'team';
