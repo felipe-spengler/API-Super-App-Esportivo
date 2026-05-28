@@ -315,11 +315,24 @@ export function SumulaBasqueteVoz() {
     }, [isRunning, id]);
 
     const normalizeText = (t: string) => {
-        return (t || '')
+        if (!t) return '';
+        let treated = t.toLowerCase();
+        
+        // Substituir reticências por "tres pontos"
+        treated = treated.replace(/\.\.\./g, ' tres pontos ');
+        treated = treated.replace(/…/g, ' tres pontos ');
+        
+        // Substituir dois pontos por "dois pontos"
+        treated = treated.replace(/:/g, ' dois pontos ');
+        
+        // Substituir ponto final por "ponto"
+        treated = treated.replace(/\./g, ' ponto ');
+
+        return treated
             .normalize("NFD")
             .replace(/[\u0300-\u036f]/g, "")
-            .replace(/[.:,!?;]/g, "") // Remove pontuação
-            .toLowerCase()
+            .replace(/[,!?;]/g, "") // Remove outras pontuações (exceto os pontos já tratados)
+            .replace(/\s+/g, ' ')   // Remove espaços múltiplos
             .trim();
     };
 
