@@ -68,6 +68,28 @@ export function ArtEditor() {
     const [championships, setChampionships] = useState<any[]>([]);
     const [selectedChampionship, setSelectedChampionship] = useState<string>(''); // '' = Padrão (Por Esporte)
 
+    const isTimingSport = (slug: string) => {
+        const s = (slug || '').toLowerCase();
+        return s.includes('natacao') || s.includes('corrida') || s.includes('ciclismo') || s.includes('atletismo');
+    };
+
+    const isTimingChampionship = (c: any) => {
+        const format = (c.format || '').toLowerCase();
+        const sportSlug = (c.sport?.slug || '').toLowerCase();
+        const name = (c.name || '').toLowerCase();
+        return (
+            format === 'racing' || 
+            format === 'laps' || 
+            format === 'time_ranking' || 
+            isTimingSport(sportSlug) ||
+            name.includes('natação') ||
+            name.includes('natacao') ||
+            name.includes('corrida') ||
+            name.includes('voltas') ||
+            name.includes('tempo')
+        );
+    };
+
     // Load template or default settings
     useEffect(() => {
         if (editorMode !== 'select') {
@@ -586,7 +608,7 @@ export function ArtEditor() {
                                         className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
                                         onClick={() => setShowSettings(!showSettings)}
                                     >
-                                        <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Configurações Base</span>
+                        <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Configurações Base</span>
                                         {showSettings ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                                     </button>
 
@@ -599,9 +621,11 @@ export function ArtEditor() {
                                                 className="w-full p-2 border border-gray-200 rounded-lg text-sm font-bold bg-white mb-3 text-indigo-700"
                                             >
                                                 <option value="">Padrão (Por Esporte)</option>
-                                                {championships.map(c => (
-                                                    <option key={c.id} value={c.id}>{c.name}</option>
-                                                ))}
+                                                {championships
+                                                    .filter(c => editorMode === 'timing' ? isTimingChampionship(c) : !isTimingChampionship(c))
+                                                    .map(c => (
+                                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                                    ))}
                                             </select>
 
                                             <label className="text-xs font-black text-slate-500 block mb-1 uppercase">Template</label>
@@ -639,22 +663,29 @@ export function ArtEditor() {
                                                 className="w-full p-2 border border-gray-200 rounded-lg text-sm font-bold bg-white"
                                             >
                                                 {allSports.length > 0 ? (
-                                                    allSports.map(s => (
-                                                        <option key={s.slug} value={s.slug}>{s.name}</option>
-                                                    ))
+                                                    allSports
+                                                        .filter(s => editorMode === 'timing' ? isTimingSport(s.slug) : !isTimingSport(s.slug))
+                                                        .map(s => (
+                                                            <option key={s.slug} value={s.slug}>{s.name}</option>
+                                                        ))
                                                 ) : (
-                                                    <>
-                                                        <option value="futebol">Futebol</option>
-                                                        <option value="natacao">Natação</option>
-                                                        <option value="corrida">Corrida / Ciclismo</option>
-                                                        <option value="futebol-7">Futebol 7</option>
-                                                        <option value="futsal">Futsal</option>
-                                                        <option value="volei">Vôlei</option>
-                                                        <option value="basquete">Basquete</option>
-                                                        <option value="handebol">Handebol</option>
-                                                        <option value="tenis">Tênis</option>
-                                                        <option value="beach-tennis">Beach Tennis</option>
-                                                    </>
+                                                    editorMode === 'timing' ? (
+                                                        <>
+                                                            <option value="natacao">Natação</option>
+                                                            <option value="corrida">Corrida / Ciclismo</option>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <option value="futebol">Futebol</option>
+                                                            <option value="futebol-7">Futebol 7</option>
+                                                            <option value="futsal">Futsal</option>
+                                                            <option value="volei">Vôlei</option>
+                                                            <option value="basquete">Basquete</option>
+                                                            <option value="handebol">Handebol</option>
+                                                            <option value="tenis">Tênis</option>
+                                                            <option value="beach-tennis">Beach Tennis</option>
+                                                        </>
+                                                    )
                                                 )}
                                             </select>
 
