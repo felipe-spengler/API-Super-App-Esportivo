@@ -99,7 +99,7 @@ export function PublicRaceResults() {
                 setTeamResults(teamResultsArray);
             } else {
                 setIsTeamChampionship(false);
-                const resultsRes = await api.get(`/races/${id}/results`);
+                const resultsRes = await api.get(`/championships/${id}/race-results`);
                 setResults(resultsRes.data);
             }
         } catch (error) {

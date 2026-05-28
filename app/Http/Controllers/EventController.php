@@ -898,10 +898,15 @@ class EventController extends Controller
     }
     public function raceResults(Request $request, $championshipId)
     {
-        $query = \App\Models\RaceResult::where('race_id', $championshipId);
+        $race = \App\Models\Race::where('championship_id', $championshipId)->first();
+        if (!$race) {
+            return response()->json([]);
+        }
+
+        $query = \App\Models\RaceResult::where('race_id', $race->id)->with(['category', 'user']);
 
         if ($request->has('category')) {
-            $query->where('category', $request->category);
+            $query->where('category_id', $request->category);
         }
 
         if ($request->has('search')) {
@@ -912,7 +917,12 @@ class EventController extends Controller
             });
         }
 
-        return response()->json($query->orderBy('net_time', 'asc')->get());
+        return response()->json(
+            $query->orderBy('lap', 'desc')
+                ->orderBy('net_time', 'asc')
+                ->orderBy('position_general', 'asc')
+                ->get()
+        );
     }
     // 7. MVP (Most Valuable Player)
     public function mvp(Request $request, $championshipId)
