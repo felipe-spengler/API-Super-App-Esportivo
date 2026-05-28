@@ -562,13 +562,21 @@ export function PublicRaceResults() {
                                         <div className="flex items-center justify-between md:justify-end gap-6 pl-16 md:pl-0">
                                             <div className="text-left md:text-right">
                                                 <div className="flex items-center gap-2 font-mono font-black text-2xl text-slate-900 italic leading-none">
-                                                    {championship?.format === 'laps' && (
-                                                        <span className="bg-amber-100 text-amber-800 text-sm px-2 py-0.5 rounded-md mr-2">V: {r.lap || 1}</span>
+                                                    {championship?.format === 'laps' ? (
+                                                        <>
+                                                            <Trophy size={18} className="text-emerald-500 shrink-0" />
+                                                            {r.lap || 0} { (r.lap || 0) === 1 ? 'Volta' : 'Voltas' }
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Timer size={18} className="text-indigo-600" />
+                                                            {r.net_time || '--:--:--'}
+                                                        </>
                                                     )}
-                                                    <Timer size={18} className="text-indigo-600" />
-                                                    {r.net_time || '--:--:--'}
                                                 </div>
-                                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-1">Tempo Líquido Oficial</p>
+                                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-1">
+                                                    {championship?.format === 'laps' ? `Tempo Limite: ${r.net_time || '--:--:--'}` : 'Tempo Líquido Oficial'}
+                                                </p>
                                             </div>
 
                                             <div className="flex items-center gap-2">
