@@ -570,7 +570,7 @@ export function ArtEditor() {
                                     <Users size={32} />
                                 </div>
                                 <div className="mt-8">
-                                    <h3 className="text-xl font-black uppercase italic group-hover:text-emerald-400 transition-colors">Individuais / Atletismo</h3>
+                                    <h3 className="text-xl font-black uppercase italic group-hover:text-emerald-400 transition-colors">Individuais</h3>
                                     <p className="text-xs text-slate-400 mt-2 font-bold uppercase">Gestão por Campeonato</p>
                                     <p className="text-xs text-slate-400/80 font-medium mt-4 line-clamp-3">Ir para Campeonatos Individuais. Gerencie artes de atletas confirmados e colocações de pódio diretamente pelo painel de cada campeonato.</p>
                                 </div>
