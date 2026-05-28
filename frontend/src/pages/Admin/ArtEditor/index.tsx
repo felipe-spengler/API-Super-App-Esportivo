@@ -68,20 +68,22 @@ export function ArtEditor() {
     const [championships, setChampionships] = useState<any[]>([]);
     const [selectedChampionship, setSelectedChampionship] = useState<string>(''); // '' = Padrão (Por Esporte)
 
-    const isTimingSport = (slug: string) => {
-        const s = (slug || '').toLowerCase();
-        return s.includes('natacao') || s.includes('corrida') || s.includes('ciclismo') || s.includes('atletismo');
+    const isTimingSportObj = (s: any) => {
+        if (!s) return false;
+        const slug = (s.slug || '').toLowerCase();
+        const type = (s.category_type || '').toLowerCase();
+        return type === 'racing' || slug.includes('natacao') || slug.includes('corrida') || slug.includes('ciclismo') || slug.includes('atletismo');
     };
 
     const isTimingChampionship = (c: any) => {
+        if (!c) return false;
         const format = (c.format || '').toLowerCase();
-        const sportSlug = (c.sport?.slug || '').toLowerCase();
         const name = (c.name || '').toLowerCase();
         return (
             format === 'racing' || 
             format === 'laps' || 
             format === 'time_ranking' || 
-            isTimingSport(sportSlug) ||
+            isTimingSportObj(c.sport) ||
             name.includes('natação') ||
             name.includes('natacao') ||
             name.includes('corrida') ||
@@ -664,7 +666,7 @@ export function ArtEditor() {
                                             >
                                                 {allSports.length > 0 ? (
                                                     allSports
-                                                        .filter(s => editorMode === 'timing' ? isTimingSport(s.slug) : !isTimingSport(s.slug))
+                                                        .filter(s => editorMode === 'timing' ? isTimingSportObj(s) : !isTimingSportObj(s))
                                                         .map(s => (
                                                             <option key={s.slug} value={s.slug}>{s.name}</option>
                                                         ))
