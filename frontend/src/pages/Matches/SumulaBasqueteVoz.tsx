@@ -351,10 +351,16 @@ export function SumulaBasqueteVoz() {
         // 1. Identificar Time
         const homeName = normalizeText(matchDataRef.current?.home_team?.name || '');
         const awayName = normalizeText(matchDataRef.current?.away_team?.name || '');
+        const homeShort = normalizeText(matchDataRef.current?.home_team?.short_name || '');
+        const awayShort = normalizeText(matchDataRef.current?.away_team?.short_name || '');
 
-        if (normalized.includes('casa') || normalized.includes('mandante') || (homeName && normalized.includes(homeName))) {
+        if (normalized.includes('casa') || normalized.includes('mandante') || 
+            (homeName && normalized.includes(homeName)) || 
+            (homeShort && homeShort.length > 2 && normalized.includes(homeShort))) {
             team = 'home';
-        } else if (normalized.includes('visitante') || normalized.includes('fora') || (awayName && normalized.includes(awayName))) {
+        } else if (normalized.includes('visitante') || normalized.includes('fora') || 
+                   (awayName && normalized.includes(awayName)) || 
+                   (awayShort && awayShort.length > 2 && normalized.includes(awayShort))) {
             team = 'away';
         }
 
@@ -471,47 +477,102 @@ export function SumulaBasqueteVoz() {
 
         if (type) {
             const currentRosters = rostersRef.current;
-            let player: any = null;
+            const homeRoster = currentRosters.home || [];
+            const awayRoster = currentRosters.away || [];
 
-            const findPlayerInRoster = (rosterList: any[]) => {
-                if (!rosterList) return null;
-                return rosterList.find((p: any) => {
-                    const pName = normalizeText(p.name || '');
-                    const pNick = normalizeText(p.nickname || '');
-                    const pFirst = normalizeText(pName.split(' ')[0]);
-                    const pNum = String(p.number || '');
+            const scorePlayer = (p: any) => {
+                const pName = normalizeText(p.name || '');
+                const pNick = normalizeText(p.nickname || '');
+                const pFirst = normalizeText(pName.split(' ')[0] || '');
+                const pNum = String(p.number || '');
 
-                    // Prioridade 1: Número exatíssimo
-                    if (number && pNum && pNum === number) return true;
+                let score = 0;
 
-                    // Prioridade 2: Primeiro nome ou apelido
-                    if (pNick && pNick.length > 2 && playerText.includes(pNick)) return true;
-                    if (pFirst && pFirst.length > 2 && playerText.includes(pFirst)) return true;
+                // 1. Match por número (alta prioridade se especificado)
+                if (number && pNum && pNum === number) {
+                    return 100;
+                }
 
-                    return false;
-                });
+                // 2. Match por nome completo (prioridade máxima para nomes)
+                if (pName && pName.length > 2 && playerText.includes(pName)) {
+                    score = Math.max(score, 90);
+                }
+
+                // 3. Match por apelido
+                if (pNick && pNick.length > 2 && playerText.includes(pNick)) {
+                    score = Math.max(score, 80);
+                }
+
+                // 4. Match por primeiro nome
+                if (pFirst && pFirst.length > 2 && playerText.includes(pFirst)) {
+                    score = Math.max(score, 50);
+                }
+
+                return score;
             };
 
-            // Se o time foi explicitamente mencionado
-            if (team) {
-                const roster = team === 'home' ? currentRosters.home : currentRosters.away;
-                player = findPlayerInRoster(roster);
-            } else {
-                // Se o time não foi mencionado, busca em ambos os elencos
-                const homePlayer = findPlayerInRoster(currentRosters.home);
-                const awayPlayer = findPlayerInRoster(currentRosters.away);
+            const candidates: { player: any; team: 'home' | 'away'; score: number }[] = [];
+            homeRoster.forEach((p: any) => {
+                const s = scorePlayer(p);
+                if (s > 0) candidates.push({ player: p, team: 'home', score: s });
+            });
+            awayRoster.forEach((p: any) => {
+                const s = scorePlayer(p);
+                if (s > 0) candidates.push({ player: p, team: 'away', score: s });
+            });
 
-                if (homePlayer && !awayPlayer) {
-                    player = homePlayer;
-                    team = 'home';
-                } else if (awayPlayer && !homePlayer) {
-                    player = awayPlayer;
-                    team = 'away';
-                } else if (homePlayer && awayPlayer) {
-                    // Ambiguidade: jogador encontrado em ambos. Tenta priorizar pelo time mandante
-                    player = homePlayer;
-                    team = 'home';
+            let player: any = null;
+            let isAmbiguous = false;
+
+            if (candidates.length > 0) {
+                // Ordena por pontuação decrescente
+                candidates.sort((a, b) => b.score - a.score);
+
+                // Se o time foi explicitamente mencionado, filtramos apenas os candidatos daquele time
+                let filteredCandidates = candidates;
+                if (team) {
+                    filteredCandidates = candidates.filter(c => c.team === team);
                 }
+
+                if (filteredCandidates.length > 0) {
+                    const best = filteredCandidates[0];
+                    
+                    // Se não foi especificado time, e temos múltiplos candidatos com o mesmo score mais alto
+                    if (!team && filteredCandidates.length > 1) {
+                        const second = filteredCandidates[1];
+                        if (best.score === second.score) {
+                            // Se for exatamente o mesmo primeiro nome (como Luciano e Luciano), é ambíguo
+                            isAmbiguous = true;
+                        }
+                    }
+
+                    if (!isAmbiguous) {
+                        player = best.player;
+                        team = best.team;
+                    }
+                }
+            }
+
+            if (isAmbiguous) {
+                setFeedback(`Encontrei o jogador em ambos os times. Diga se é "casa" ou "visitante", ou fale o nome do time/completo.`);
+                failureReason = 'Jogador ambíguo (ex: Luciano em ambos os times)';
+                
+                await api.post(`/admin/matches/${id}/events`, {
+                    event_type: 'voice_debug',
+                    team_id: null,
+                    minute: formatTime(600 - timeRef.current),
+                    period: currentQuarterRef.current,
+                    metadata: {
+                        voice_log: text,
+                        identified: false,
+                        action_type: type || 'none',
+                        team: 'both',
+                        failure_reason: failureReason,
+                        normalized_text: normalized
+                    }
+                });
+                fetchMatchDetails();
+                return;
             }
 
             if (player && team) {
