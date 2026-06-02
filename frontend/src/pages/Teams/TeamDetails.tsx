@@ -74,6 +74,33 @@ export function TeamDetails() {
     const [adding, setAdding] = useState(false);
     const [editingPlayerId, setEditingPlayerId] = useState<number | null>(null);
     const [isCopying, setIsCopying] = useState(false);
+    const [showCopyModal, setShowCopyModal] = useState(false);
+    const [copySourceId, setCopySourceId] = useState<number | null | 'general'>('general');
+    const [previewPlayers, setPreviewPlayers] = useState<Player[]>([]);
+    const [loadingPreview, setLoadingPreview] = useState(false);
+
+    useEffect(() => {
+        if (!showCopyModal) return;
+
+        async function fetchPreview() {
+            setLoadingPreview(true);
+            setPreviewPlayers([]);
+            try {
+                const response = await api.get(`/admin/teams/${id}`, {
+                    params: {
+                        championship_id: copySourceId === 'general' ? null : copySourceId
+                    }
+                });
+                setPreviewPlayers(response.data?.players || []);
+            } catch (error) {
+                console.error("Erro ao carregar preview dos jogadores:", error);
+            } finally {
+                setLoadingPreview(false);
+            }
+        }
+
+        fetchPreview();
+    }, [copySourceId, showCopyModal, id]);
 
     useEffect(() => {
         loadTeam();
@@ -199,17 +226,18 @@ export function TeamDetails() {
         }
     }
 
-    async function handleCopyFromGeneral() {
+    async function handleCopyPlayers(fromChampId: number | null) {
         if (!selectedChampionshipId) return;
-        if (!window.confirm('Deseja copiar todos os jogadores da base geral (sem vínculo) para este campeonato? Jogadores já vinculados não serão duplicados.')) return;
 
         setIsCopying(true);
         try {
             const response = await api.post(`/admin/teams/${id}/copy-roster`, {
-                championship_id: selectedChampionshipId
+                championship_id: selectedChampionshipId,
+                from_championship_id: fromChampId
             });
             alert(response.data.message || 'Sincronização concluída!');
             loadTeam();
+            setShowCopyModal(false);
         } catch (error: any) {
             console.error(error);
             alert(error.response?.data?.message || 'Erro ao copiar jogadores.');
@@ -392,13 +420,16 @@ export function TeamDetails() {
                                 <div className="flex items-center gap-2">
                                     {selectedChampionshipId && (
                                         <button
-                                            onClick={handleCopyFromGeneral}
+                                            onClick={() => {
+                                                setCopySourceId('general');
+                                                setShowCopyModal(true);
+                                            }}
                                             disabled={isCopying}
                                             className="px-3 py-2 bg-emerald-50 text-emerald-600 rounded-lg flex items-center gap-2 text-xs font-bold hover:bg-emerald-100 transition-colors disabled:opacity-50 shadow-sm border border-emerald-100"
-                                            title="Copiar jogadores cadastrados na Base Geral para este campeonato"
+                                            title="Importar jogadores da Base Geral ou de outros campeonatos"
                                         >
-                                            {isCopying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Copy className="w-4 h-4" />}
-                                            Copiar da Base Geral
+                                            <Copy className="w-4 h-4" />
+                                            Importar Jogadores
                                         </button>
                                     )}
                                     <button
@@ -712,6 +743,100 @@ export function TeamDetails() {
                             setEditingPlayerId(null);
                         }}
                     />
+                )
+            }
+
+            {/* Copy/Import Players Modal */}
+            {
+                showCopyModal && (
+                    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+                        <div className="bg-white w-full max-w-xl rounded-2xl shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
+                            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gradient-to-r from-emerald-50 to-teal-50">
+                                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                                    <Copy className="w-5 h-5 text-emerald-600" />
+                                    Importar Jogadores
+                                </h3>
+                                <button onClick={() => setShowCopyModal(false)} className="p-2 hover:bg-white/50 rounded-full transition-colors">
+                                    <X className="w-5 h-5 text-gray-500" />
+                                </button>
+                            </div>
+
+                            <div className="p-6 space-y-6">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wider">Origem dos Jogadores</label>
+                                    <select
+                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-sm bg-white"
+                                        value={copySourceId === null ? '' : String(copySourceId)}
+                                        onChange={e => {
+                                            const val = e.target.value;
+                                            if (val === 'general') {
+                                                setCopySourceId('general');
+                                            } else if (val) {
+                                                setCopySourceId(Number(val));
+                                            }
+                                        }}
+                                    >
+                                        <option value="general">Base Geral (Sem Vínculo)</option>
+                                        {team.championships
+                                            .filter(c => c.id !== selectedChampionshipId)
+                                            .map(c => (
+                                                <option key={c.id} value={c.id}>
+                                                    {c.name} {c.category_name ? `(${c.category_name})` : ''}
+                                                </option>
+                                            ))}
+                                    </select>
+                                </div>
+
+                                {/* Preview of players in selected source */}
+                                <div className="space-y-2">
+                                    <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Visualização dos Jogadores</h4>
+                                    <div className="border border-gray-100 rounded-xl bg-gray-50 p-4 max-h-60 overflow-y-auto">
+                                        {loadingPreview ? (
+                                            <div className="flex items-center justify-center py-8">
+                                                <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
+                                            </div>
+                                        ) : previewPlayers.length === 0 ? (
+                                            <p className="text-gray-400 text-sm text-center py-8">Nenhum jogador encontrado nesta origem.</p>
+                                        ) : (
+                                            <div className="divide-y divide-gray-100">
+                                                {previewPlayers.map(p => (
+                                                    <div key={p.id} className="py-2 flex items-center justify-between first:pt-0 last:pb-0">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-7 h-7 bg-emerald-100 rounded-full flex items-center justify-center text-xs font-bold text-emerald-700">
+                                                                {p.name.substring(0, 2).toUpperCase()}
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-xs font-semibold text-gray-800">{p.name}</p>
+                                                                <p className="text-[10px] text-gray-500">{p.position || 'Sem Posição'}</p>
+                                                            </div>
+                                                        </div>
+                                                        <span className="text-xs text-gray-400 font-bold">#{p.number || '-'}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="pt-2">
+                                    <button
+                                        onClick={() => handleCopyPlayers(copySourceId === 'general' ? null : copySourceId)}
+                                        disabled={isCopying || loadingPreview || previewPlayers.length === 0}
+                                        className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100 flex items-center justify-center gap-2 disabled:opacity-50"
+                                    >
+                                        {isCopying ? (
+                                            <>
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                                Copiando...
+                                            </>
+                                        ) : (
+                                            `Copiar ${previewPlayers.length} Jogador(es)`
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 )
             }
         </div >

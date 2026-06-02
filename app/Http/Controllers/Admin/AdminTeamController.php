@@ -305,27 +305,35 @@ class AdminTeamController extends Controller
         return response()->json(['message' => 'Player removed from team']);
     }
 
-    // NEW: Copy players from general roster to championship context
+    // NEW: Copy players from general roster or another championship to the target championship context
     public function copyRoster(Request $request, $id)
     {
         $validated = $request->validate([
             'championship_id' => 'required|integer',
+            'from_championship_id' => 'nullable|integer',
         ]);
 
         $championshipId = $validated['championship_id'];
+        $fromChampionshipId = $validated['from_championship_id'] ?? null;
 
-        // Get players from general roster (championship_id null)
-        $generalPlayers = \DB::table('team_players')
-            ->where('team_id', $id)
-            ->whereNull('championship_id')
-            ->get();
+        // Get players from general roster (championship_id null) or another championship
+        $query = \DB::table('team_players')
+            ->where('team_id', $id);
 
-        if ($generalPlayers->isEmpty()) {
-            return response()->json(['message' => 'Nenhum jogador na base geral para copiar.'], 400);
+        if ($fromChampionshipId) {
+            $query->where('championship_id', $fromChampionshipId);
+        } else {
+            $query->whereNull('championship_id');
+        }
+
+        $sourcePlayers = $query->get();
+
+        if ($sourcePlayers->isEmpty()) {
+            return response()->json(['message' => 'Nenhum jogador na origem selecionada para copiar.'], 400);
         }
 
         $count = 0;
-        foreach ($generalPlayers as $player) {
+        foreach ($sourcePlayers as $player) {
             // Check if already in championship
             $exists = \DB::table('team_players')
                 ->where('team_id', $id)
