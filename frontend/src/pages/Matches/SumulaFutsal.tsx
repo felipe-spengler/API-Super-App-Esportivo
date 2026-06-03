@@ -32,7 +32,7 @@ const FoulDots = memo(({ count }: { count: number }) => {
             {hasFreekick && (
                 <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${count >= 6 ? 'text-orange-300 bg-orange-500/20 animate-pulse' : 'text-amber-300 bg-amber-500/20'
                     }`}>
-                    {count >= 6 ? '⚡ TIRO LIVRE DIRETO' : '⚠️ TIRO LIVRE'}
+                    {count >= 6 ? '⚡ TIRO LIVRE DIRETO' : '⚠️ LIMITE DE FALTAS'}
                 </span>
             )}
             <span className="text-[9px] text-gray-600 font-bold">{count} falta{count !== 1 ? 's' : ''}</span>
@@ -402,6 +402,11 @@ export function SumulaFutsal() {
         if (!isRunning) { alert('Atenção: Inicie o cronômetro para poder lançar eventos!'); return; }
         if (!matchData) return;
 
+        if (['Intervalo', 'Fim de Tempo Normal', 'Prorrogação', 'Pênaltis'].includes(currentPeriod)) {
+            alert(`Não é permitido pedido de tempo no período: ${currentPeriod}`);
+            return;
+        }
+
         const per = currentPeriod === '1º Tempo' || currentPeriod === 'Intervalo' ? '1º Tempo' : '2º Tempo';
         const alreadyTaken = (timeouts as any)[team].some((t: any) => t.period === per);
 
@@ -724,7 +729,7 @@ export function SumulaFutsal() {
                                 className="py-2.5 bg-white/5 hover:bg-white/10 rounded-2xl font-bold text-[11px] border border-white/10 text-gray-300 flex items-center justify-center gap-1">
                                 <Flag size={12} /> Falta
                             </ActionBtn>
-                            <ActionBtn onClick={() => registerSimpleEvent('home', 'timeout')} disabled={!isRunning}
+                            <ActionBtn onClick={() => registerSimpleEvent('home', 'timeout')} disabled={!isRunning || ['Intervalo', 'Fim de Tempo Normal', 'Prorrogação', 'Pênaltis'].includes(currentPeriod)}
                                 className="py-2.5 bg-yellow-600/20 hover:bg-yellow-600/40 text-yellow-500 rounded-2xl font-bold text-[11px] border border-yellow-500/30 shadow-sm col-span-2">
                                 ⏱️ Pedir Tempo
                             </ActionBtn>
@@ -751,7 +756,7 @@ export function SumulaFutsal() {
                                 className="py-2.5 bg-white/5 hover:bg-white/10 rounded-2xl font-bold text-[11px] border border-white/10 text-gray-300 flex items-center justify-center gap-1">
                                 <Flag size={12} /> Falta
                             </ActionBtn>
-                            <ActionBtn onClick={() => registerSimpleEvent('away', 'timeout')} disabled={!isRunning}
+                            <ActionBtn onClick={() => registerSimpleEvent('away', 'timeout')} disabled={!isRunning || ['Intervalo', 'Fim de Tempo Normal', 'Prorrogação', 'Pênaltis'].includes(currentPeriod)}
                                 className="py-2.5 bg-yellow-600/20 hover:bg-yellow-600/40 text-yellow-500 rounded-2xl font-bold text-[11px] border border-yellow-500/30 shadow-sm col-span-2">
                                 ⏱️ Pedir Tempo
                             </ActionBtn>

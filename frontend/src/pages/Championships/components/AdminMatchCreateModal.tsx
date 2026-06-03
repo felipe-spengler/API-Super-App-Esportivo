@@ -174,26 +174,31 @@ export function AdminMatchCreateModal({
                                     <label className="block text-xs font-bold text-indigo-700 uppercase">Qual o tipo da nova fase?</label>
                                     
                                     {isTimeOrLap ? (
-                                        <div className="grid grid-cols-2 md:grid-cols-4 p-1 bg-gray-100 rounded-xl gap-1">
-                                            {[
-                                                { val: 'bateria', lbl: '⏱️ Bateria' },
-                                                { val: 'etapa', lbl: '📅 Etapa' },
-                                                { val: 'classificatoria', lbl: '📝 Classificatória' },
-                                                { val: 'eliminatoria', lbl: '⚔️ Eliminatória' },
-                                                { val: 'preliminar', lbl: '🔍 Preliminar' },
-                                                { val: 'aquecimento', lbl: '🔥 Aquecimento' },
-                                                { val: 'final', lbl: '🏆 Final' }
-                                            ].map(t => (
-                                                <button
-                                                    key={t.val}
-                                                    onClick={() => setSelectedType(t.val)}
-                                                    className={`flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${
-                                                        selectedType === t.val ? 'bg-white text-indigo-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                                                    }`}
-                                                >
-                                                    {t.lbl}
-                                                </button>
-                                            ))}
+                                        <div className="flex flex-col gap-3 w-full">
+                                            <div className="grid grid-cols-2 md:grid-cols-4 p-1 bg-gray-100 rounded-xl gap-1">
+                                                {[
+                                                    { val: 'bateria', lbl: '⏱️ Bateria' },
+                                                    { val: 'classificatoria', lbl: '📝 Classificatória' },
+                                                    { val: 'eliminatoria', lbl: '⚔️ Eliminatória' },
+                                                    { val: 'final', lbl: '🏆 Final' }
+                                                ].map(t => (
+                                                    <button
+                                                        key={t.val}
+                                                        onClick={() => setSelectedType(t.val)}
+                                                        className={`flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${
+                                                            selectedType === t.val ? 'bg-white text-indigo-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                                                        }`}
+                                                    >
+                                                        {t.lbl}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            {selectedType === 'eliminatoria' && (
+                                                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-amber-800 text-xs font-bold flex items-start gap-2 shadow-sm animate-in fade-in">
+                                                    <span className="text-amber-500">⚠️</span>
+                                                    <span>Rodadas do tipo <strong>Eliminatória</strong> não computam tempos/voltas no ranking geral (Leaderboard).</span>
+                                                </div>
+                                            )}
                                         </div>
                                     ) : (
                                         <div className="flex flex-col sm:flex-row p-1 bg-gray-100 rounded-xl gap-1 sm:gap-0">
