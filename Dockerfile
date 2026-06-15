@@ -47,12 +47,17 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # 6. Diretório de trabalho
 WORKDIR /var/www
 
-# 7. Copiar arquivos
+# Copiar apenas os arquivos do composer para aproveitar o cache do Docker
+COPY composer.json composer.lock ./
+
+# Instalar dependências (sem rodar scripts e autoloader, pois o código fonte ainda não foi copiado)
+RUN composer install --no-interaction --no-scripts --no-autoloader --prefer-dist
+
+# 7. Copiar o restante dos arquivos do projeto
 COPY . .
 
-# 8. Instalar dependências do Composer (incluindo dompdf para geração de PDF)
-RUN composer require barryvdh/laravel-dompdf --no-interaction --no-scripts
-RUN composer install --no-interaction --optimize-autoloader
+# Gerar o autoloader otimizado e rodar scripts pós-instalação agora que os arquivos estão presentes
+RUN composer dump-autoload --optimize
 
 # 9. Ajustar permissões
 RUN chown -R www-data:www-data /var/www \
