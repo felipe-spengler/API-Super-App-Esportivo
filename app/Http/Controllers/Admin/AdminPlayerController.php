@@ -191,7 +191,54 @@ class AdminPlayerController extends Controller
     public function destroy($id)
     {
         $player = User::findOrFail($id);
-        $player->delete();
+
+        \DB::transaction(function () use ($id, $player) {
+            // Remove references from team_players
+            \DB::table('team_players')->where('user_id', $id)->delete();
+            
+            // Remove votes
+            \DB::table('mvp_votes')->where('voter_user_id', $id)->orWhere('voted_player_id', $id)->delete();
+            
+            // Update game matches MVP
+            \DB::table('game_matches')->where('mvp_player_id', $id)->update(['mvp_player_id' => null]);
+            
+            // Update perna_de_pau in game matches if the column exists
+            try {
+                \DB::table('game_matches')->where('perna_de_pau_player_id', $id)->update(['perna_de_pau_player_id' => null]);
+            } catch (\Exception $e) {
+                // Column might not exist, ignore
+            }
+            
+            // Delete match events for this player
+            \DB::table('match_events')->where('player_id', $id)->delete();
+            
+            // Delete match positions
+            \DB::table('match_positions')->where('player_id', $id)->delete();
+            
+            // Update teams and championships captains
+            \DB::table('teams')->where('captain_id', $id)->update(['captain_id' => null]);
+            \DB::table('championship_team')->where('captain_id', $id)->update(['captain_id' => null]);
+            
+            // Set null or delete in race results
+            \DB::table('race_results')->where('user_id', $id)->update(['user_id' => null]);
+            
+            // Delete competitor times
+            try {
+                \DB::table('competitor_times')->where('user_id', $id)->delete();
+            } catch (\Exception $e) {
+                // Table might not exist, ignore
+            }
+            
+            // Delete orders (if any)
+            try {
+                \DB::table('orders')->where('user_id', $id)->delete();
+            } catch (\Exception $e) {
+                // Table might not exist, ignore
+            }
+            
+            // Finally delete the user
+            $player->delete();
+        });
 
         AuditLogger::log('user.delete', "Excluiu o usuário/atleta '{$player->name}' (ID: {$id})");
 

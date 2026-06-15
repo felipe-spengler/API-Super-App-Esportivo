@@ -117,7 +117,8 @@ class TeamController extends Controller
             'number' => 'nullable|string',
             'document_file' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:4096', // Max 4MB
             'photo_file' => 'nullable|image|max:4096', // Max 4MB
-            'championship_id' => 'nullable|integer|exists:championships,id'
+            'championship_id' => 'nullable|integer|exists:championships,id',
+            'password' => 'nullable|string|min:6'
         ]);
 
         $email = $request->email;
@@ -145,7 +146,7 @@ class TeamController extends Controller
 
         if (!$userData) {
             // Se o usuário não existe, criamos um registro básico
-            $tempPassword = $request->cpf ? preg_replace('/[^0-9]/', '', $request->cpf) : \Illuminate\Support\Str::random(10);
+            $tempPassword = $request->password ?: ($request->cpf ? preg_replace('/[^0-9]/', '', $request->cpf) : \Illuminate\Support\Str::random(10));
             $userData = \App\Models\User::create([
                 'name' => $request->name,
                 'email' => $email ?: 'atleta_' . time() . '_' . rand(100, 999) . '@temporario.com',
@@ -202,38 +203,24 @@ class TeamController extends Controller
             $userData->save();
         }
 
-        // Vínculo Pivot - Apenas nos Campeonatos (conforme solicitado: não vai para a base geral)
-        $championshipIds = \DB::table('championship_team')
-            ->where('team_id', $id)
-            ->pluck('championship_id')
-            ->toArray();
+        // Vínculo Pivot - Apenas no campeonato selecionado ou na Base Geral (championship_id = null)
+        $champId = $request->championship_id;
 
-        // Se veio um específico na request, garantimos na lista
-        if ($request->championship_id && !in_array($request->championship_id, $championshipIds)) {
-            $championshipIds[] = $request->championship_id;
-        }
-
-        if (empty($championshipIds)) {
-            return response()->json(['message' => 'O time precisa estar vinculado a um campeonato para adicionar atletas.'], 422);
-        }
-
-        foreach ($championshipIds as $champId) {
-            \DB::table('team_players')->updateOrInsert(
-                [
-                    'team_id' => $id,
-                    'user_id' => $userData->id,
-                    'championship_id' => $champId
-                ],
-                [
-                    'temp_player_name' => $userData->name,
-                    'position' => $request->position,
-                    'number' => $request->number,
-                    'is_approved' => 1,
-                    'updated_at' => now(),
-                    'created_at' => now(),
-                ]
-            );
-        }
+        \DB::table('team_players')->updateOrInsert(
+            [
+                'team_id' => $id,
+                'user_id' => $userData->id,
+                'championship_id' => $champId
+            ],
+            [
+                'temp_player_name' => $userData->name,
+                'position' => $request->position,
+                'number' => $request->number,
+                'is_approved' => 1,
+                'updated_at' => now(),
+                'created_at' => now(),
+            ]
+        );
 
         return response()->json(['message' => 'Jogador adicionado com sucesso aos campeonatos vinculados!', 'player_id' => $userData->id], 201);
     }

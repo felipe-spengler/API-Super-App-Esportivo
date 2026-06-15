@@ -66,6 +66,7 @@ export function TeamDetails() {
     const [newPlayerGender, setNewPlayerGender] = useState('');
     const [newPlayerPhone, setNewPlayerPhone] = useState('');
     const [newPlayerAddress, setNewPlayerAddress] = useState('');
+    const [newPlayerPassword, setNewPlayerPassword] = useState('');
     const [documentFile, setDocumentFile] = useState<File | null>(null);
     const [photoFile, setPhotoFile] = useState<File | null>(null);
     const [photoFiles, setPhotoFiles] = useState<(File | null)[]>([null, null, null]);
@@ -155,6 +156,10 @@ export function TeamDetails() {
             if (photoFiles[1]) formData.append('photo_file_1', photoFiles[1]);
             if (photoFiles[2]) formData.append('photo_file_2', photoFiles[2]);
 
+            if (newPlayerPassword) {
+                formData.append('password', newPlayerPassword);
+            }
+
             if (selectedChampionshipId) {
                 formData.append('championship_id', String(selectedChampionshipId));
             }
@@ -191,6 +196,7 @@ export function TeamDetails() {
         setPhotoFiles([null, null, null]);
         setPhotoPreviews([null, null, null]);
         setRemoveBg(true);
+        setNewPlayerPassword('');
     }
 
     async function handleSetChampionshipCaptain(playerId: number | null) {
@@ -704,6 +710,18 @@ export function TeamDetails() {
                                             accept=".pdf,image/*"
                                             onChange={e => setDocumentFile(e.target.files?.[0] || null)}
                                             className="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-gray-50 file:text-gray-700 hover:file:bg-gray-100"
+                                        />
+                                    </div>
+                                    <div className="col-span-2 space-y-2 pt-4 border-t border-gray-100">
+                                        <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider text-indigo-600">
+                                            Definir Senha (Se CPF não informado)
+                                        </label>
+                                        <input
+                                            type="password"
+                                            className="w-full px-4 py-2 border border-indigo-50 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono text-sm"
+                                            placeholder="Min 6 caracteres"
+                                            value={newPlayerPassword}
+                                            onChange={e => setNewPlayerPassword(e.target.value)}
                                         />
                                     </div>
                                 </div>
