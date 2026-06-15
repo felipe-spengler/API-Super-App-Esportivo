@@ -1,26 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Save, ArrowLeft, Shield, User, Camera, Search, Loader2 } from 'lucide-react';
+import { Save, ArrowLeft, Shield, Camera } from 'lucide-react';
 import api from '../../services/api';
 import { prepareImageForUpload } from '../../utils/imageCompressor';
-
-interface UserOption {
-    id: number;
-    name: string;
-    email: string;
-}
 
 export function TeamForm() {
     const { id } = useParams();
     const navigate = useNavigate();
     const [name, setName] = useState('');
     const [city, setCity] = useState('');
-    const [captainId, setCaptainId] = useState('');
-    const [users, setUsers] = useState<UserOption[]>([]);
     const [loading, setLoading] = useState(false);
     const [fetching, setFetching] = useState(false);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [isSearching, setIsSearching] = useState(false);
 
     // Image Upload State
     const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -29,36 +19,10 @@ export function TeamForm() {
     const isEditing = Boolean(id);
 
     useEffect(() => {
-        loadUsers();
         if (isEditing) {
             loadTeam();
         }
     }, [id]);
-
-    useEffect(() => {
-        const delayDebounceFn = setTimeout(() => {
-            if (searchTerm.length >= 2 || searchTerm === '') {
-                loadUsers(searchTerm);
-            }
-        }, 500);
-
-        return () => clearTimeout(delayDebounceFn);
-    }, [searchTerm]);
-
-    async function loadUsers(search = '') {
-        try {
-            setIsSearching(true);
-            const response = await api.get('/admin/players', {
-                params: { search }
-            });
-            const data = Array.isArray(response.data.data) ? response.data.data : (response.data || []);
-            setUsers(data);
-        } catch (error) {
-            console.error('Erro ao carregar usuários', error);
-        } finally {
-            setIsSearching(false);
-        }
-    }
 
     async function loadTeam() {
         try {
@@ -67,16 +31,6 @@ export function TeamForm() {
             const team = response.data;
             setName(team.name || '');
             setCity(team.city || '');
-            setCaptainId(team.captain_id ? String(team.captain_id) : '');
-
-            // Se tem capitão e ele não está na lista inicial, vamos garantir que ele apareça
-            if (team.captain) {
-                setUsers(prev => {
-                    const exists = prev.find(u => u.id === team.captain.id);
-                    if (!exists) return [...prev, team.captain];
-                    return prev;
-                });
-            }
 
             if (team.logo_url) {
                 setLogoPreview(team.logo_url);
@@ -105,7 +59,7 @@ export function TeamForm() {
             const payload = {
                 name,
                 city,
-                captain_id: captainId ? Number(captainId) : null
+                captain_id: null // De-coupling global captain, leader is context-specific now
             };
 
             let teamId = id;
@@ -119,7 +73,6 @@ export function TeamForm() {
 
             // Upload Logo if selected
             if (selectedLogo && teamId) {
-                // Comprime automaticamente se necessário (limite: 4MB)
                 const ready = await prepareImageForUpload(selectedLogo, 4 * 1024 * 1024);
                 const formData = new FormData();
                 formData.append('logo', ready);
@@ -212,46 +165,6 @@ export function TeamForm() {
                             className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                             placeholder="Ex: Toledo - PR"
                         />
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-2">Capitão / Responsável (Opcional)</label>
-                        <div className="space-y-2">
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                                <input
-                                    type="text"
-                                    placeholder="Pesquisar por nome ou e-mail..."
-                                    value={searchTerm}
-                                    onChange={e => setSearchTerm(e.target.value)}
-                                    className="w-full pl-10 pr-10 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                                />
-                                {isSearching && (
-                                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                        <Loader2 className="w-5 h-5 text-indigo-500 animate-spin" />
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="relative">
-                                <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                                <select
-                                    value={captainId}
-                                    onChange={e => setCaptainId(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none appearance-none bg-white"
-                                >
-                                    <option value="">Selecione um usuário...</option>
-                                    {users.map(user => (
-                                        <option key={user.id} value={user.id}>
-                                            {user.name} ({user.email})
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">
-                            O capitão poderá gerenciar a equipe e adicionar jogadores.
-                        </p>
                     </div>
 
                     <div className="pt-4">
