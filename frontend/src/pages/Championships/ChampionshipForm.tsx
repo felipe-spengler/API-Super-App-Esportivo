@@ -354,14 +354,14 @@ export function ChampionshipForm() {
                         {!['racing', 'time_ranking', 'laps'].includes(formData.format) && (
                             <div className="space-y-4 animate-in slide-in-from-top-4 duration-300">
                                 <h2 className="text-lg font-semibold text-gray-800 border-b pb-2">4. Formato de Disputa (Torneio)</h2>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <button
                                         type="button"
                                         onClick={() => setFormData({ ...formData, format: 'league' })}
                                         className={`p-4 rounded-xl border text-left transition-all ${formData.format === 'league' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
                                     >
-                                        <span className={`block font-bold mb-1 ${formData.format === 'league' ? 'text-indigo-700' : 'text-gray-900'}`}>Pontos Corridos</span>
-                                        <span className="text-xs text-gray-500">Todos contra todos. Quem somar mais pontos vence.</span>
+                                        <span className={`block font-bold mb-1 ${formData.format === 'league' ? 'text-indigo-700' : 'text-gray-900'}`}>Pontos Corridos (Tabela Única)</span>
+                                        <span className="text-xs text-gray-500">Todos jogam contra todos. Quem acumular mais pontos ao final de todas as rodadas é o campeão (sem finais/playoffs).</span>
                                     </button>
 
                                     <button
@@ -369,8 +369,8 @@ export function ChampionshipForm() {
                                         onClick={() => setFormData({ ...formData, format: 'knockout' })}
                                         className={`p-4 rounded-xl border text-left transition-all ${formData.format === 'knockout' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
                                     >
-                                        <span className={`block font-bold mb-1 ${formData.format === 'knockout' ? 'text-indigo-700' : 'text-gray-900'}`}>Mata-mata</span>
-                                        <span className="text-xs text-gray-500">Eliminatória simples. Perdeu, saiu. (Chaves)</span>
+                                        <span className={`block font-bold mb-1 ${formData.format === 'knockout' ? 'text-indigo-700' : 'text-gray-900'}`}>Mata-mata (Eliminação Direta)</span>
+                                        <span className="text-xs text-gray-500">Chaves eliminatórias clássicas (oitavas, quartas, semi, final). Perdeu o jogo, está eliminado do torneio.</span>
                                     </button>
 
                                     <button
@@ -379,7 +379,7 @@ export function ChampionshipForm() {
                                         className={`p-4 rounded-xl border text-left transition-all ${formData.format === 'group_knockout' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
                                     >
                                         <span className={`block font-bold mb-1 ${formData.format === 'group_knockout' ? 'text-indigo-700' : 'text-gray-900'}`}>Grupos + Mata-mata</span>
-                                        <span className="text-xs text-gray-500">Fase de grupos seguida de eliminatórias (Copa do Mundo).</span>
+                                        <span className="text-xs text-gray-500">Os times são divididos em grupos menores. Os melhores de cada grupo avançam para a fase eliminatória (Mata-mata).</span>
                                     </button>
 
                                     <button
@@ -387,17 +387,8 @@ export function ChampionshipForm() {
                                         onClick={() => setFormData({ ...formData, format: 'league_playoffs' })}
                                         className={`p-4 rounded-xl border text-left transition-all ${formData.format === 'league_playoffs' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
                                     >
-                                        <span className={`block font-bold mb-1 ${formData.format === 'league_playoffs' ? 'text-indigo-700' : 'text-gray-900'}`}>Liga + Playoffs</span>
-                                        <span className="text-xs text-gray-500">Temporada regular seguida de finais (NBA/Superliga).</span>
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        onClick={() => setFormData({ ...formData, format: 'double_elimination' })}
-                                        className={`p-4 rounded-xl border text-left transition-all ${formData.format === 'double_elimination' ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300'}`}
-                                    >
-                                        <span className={`block font-bold mb-1 ${formData.format === 'double_elimination' ? 'text-indigo-700' : 'text-gray-900'}`}>Dupla Eliminação</span>
-                                        <span className="text-xs text-gray-500">Precisa perder duas vezes para sair. (Winners/Losers)</span>
+                                        <span className={`block font-bold mb-1 ${formData.format === 'league_playoffs' ? 'text-indigo-700' : 'text-gray-900'}`}>Liga + Playoffs (Classificação Geral + Mata-mata)</span>
+                                        <span className="text-xs text-gray-500">Fase inicial de pontos corridos com todos na mesma tabela geral. Os melhores avançam para as eliminatórias (Playoffs).</span>
                                     </button>
                                 </div>
                             </div>
