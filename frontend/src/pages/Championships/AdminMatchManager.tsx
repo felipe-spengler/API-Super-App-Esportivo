@@ -67,6 +67,7 @@ export function AdminMatchManager() {
     const [selectedCategoryId, setSelectedCategoryId] = useState<number | 'no-category' | null>(null);
     const [legs, setLegs] = useState(1); // Number of times teams play each other (1 = single round, 2 = home & away)
     const [numGroups, setNumGroups] = useState(4); // Default groups count
+    const [customRounds, setCustomRounds] = useState<number | ''>('');
     const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
     const [isGeneratingKnockout, setIsGeneratingKnockout] = useState(false);
     const [rosters, setRosters] = useState<{ home: any[], away: any[] }>({ home: [], away: [] });
@@ -339,6 +340,63 @@ export function AdminMatchManager() {
         }
     }
 
+    const calculateTotalMatches = () => {
+        const T = teams.length;
+        if (T < 2) return 0;
+
+        if (championship?.format === 'league' || championship?.format === 'league_playoffs') {
+            return legs * (T * (T - 1)) / 2;
+        }
+
+        if (championship?.format === 'groups' || championship?.format === 'group_knockout') {
+            const groupSizes = new Array(numGroups).fill(0);
+            for (let i = 0; i < T; i++) {
+                groupSizes[i % numGroups]++;
+            }
+            let total = 0;
+            for (const size of groupSizes) {
+                if (size >= 2) {
+                    total += legs * (size * (size - 1)) / 2;
+                }
+            }
+            return total;
+        }
+
+        if (championship?.format === 'knockout') {
+            return Math.floor(T / 2);
+        }
+
+        return 0;
+    };
+
+    const calculateDefaultRounds = () => {
+        const T = teams.length;
+        if (T < 2) return 1;
+
+        if (championship?.format === 'league' || championship?.format === 'league_playoffs') {
+            const roundsPerLeg = T % 2 === 0 ? T - 1 : T;
+            return legs * roundsPerLeg;
+        }
+
+        if (championship?.format === 'groups' || championship?.format === 'group_knockout') {
+            const groupSizes = new Array(numGroups).fill(0);
+            for (let i = 0; i < T; i++) {
+                groupSizes[i % numGroups]++;
+            }
+            const maxG = Math.max(...groupSizes);
+            if (maxG < 2) return 1;
+            const roundsPerLeg = maxG % 2 === 0 ? maxG - 1 : maxG;
+            return legs * roundsPerLeg;
+        }
+
+        return 1;
+    };
+
+    useEffect(() => {
+        const defRounds = calculateDefaultRounds();
+        setCustomRounds(defRounds);
+    }, [teams.length, legs, numGroups, championship?.format]);
+
     async function handleGenerate(format: string) {
         if (!confirm("Isso irá gerar a tabela de jogos com os times inscritos. Deseja continuar?")) return;
 
@@ -350,7 +408,8 @@ export function AdminMatchManager() {
                 match_interval_days: 7,
                 category_id: selectedCategoryId,
                 legs: legs,
-                num_groups: numGroups
+                num_groups: numGroups,
+                custom_rounds_count: customRounds || undefined
             });
             const res = data.data;
             alert(`Tabela gerada com sucesso!\n\nForam criados ${res.matches_created} jogos para ${res.teams_count} equipes:\n${res.teams_list?.join(', ') || ''}`);
@@ -849,6 +908,28 @@ export function AdminMatchManager() {
                                             />
                                         </div>
                                     )}
+
+                                    {championship?.format !== 'knockout' && (
+                                        <div className="flex flex-col gap-2 bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 w-full max-w-md text-center">
+                                            <div className="flex items-center justify-between gap-4">
+                                                <label className="text-sm font-bold text-indigo-900">Quantidade de Rodadas:</label>
+                                                <input
+                                                    type="number"
+                                                    min={1}
+                                                    max={100}
+                                                    value={customRounds}
+                                                    onChange={(e) => setCustomRounds(e.target.value === '' ? '' : parseInt(e.target.value))}
+                                                    className="w-20 bg-white border border-indigo-200 text-slate-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 font-bold text-center"
+                                                />
+                                            </div>
+                                            <div className="text-xs text-indigo-800 font-bold mt-1">
+                                                <span>Total de jogos: <strong>{calculateTotalMatches()}</strong></span>
+                                                <span className="mx-2">|</span>
+                                                <span>Aprox. <strong>{customRounds ? (calculateTotalMatches() / Number(customRounds)).toFixed(1) : 0}</strong> jogos por rodada</span>
+                                            </div>
+                                        </div>
+                                    )}
+
                                     <button
                                         onClick={() => handleGenerate(championship.format)}
                                         disabled={generating}

@@ -38,6 +38,7 @@ class BracketController extends Controller
             'category_id' => 'nullable|exists:categories,id',
             'start_date' => 'required|date',
             'match_interval_days' => 'nullable|integer|min:1|max:30',
+            'custom_rounds_count' => 'nullable|integer|min:1|max:100',
         ]);
 
         $format = $validated['format'];
@@ -120,61 +121,99 @@ class BracketController extends Controller
         $createdMatches = [];
         $baseSchedule = $this->schedulerRoundRobin($teamsList); // Returns array of rounds, each round is array of [home, away]
 
-        // Debugging
-        $debug = [
-            'teams_count_in' => count($teamsList),
-            'rounds_generated' => count($baseSchedule),
-            'pairs_per_round' => count($baseSchedule[0] ?? []),
-            'first_round_pairs' => [],
-        ];
-
-        foreach ($baseSchedule[0] ?? [] as $p) {
-            $debug['first_round_pairs'][] = [
-                'home' => $p[0] ? $p[0]['name'] : 'NULL',
-                'away' => $p[1] ? $p[1]['name'] : 'NULL'
-            ];
-        }
-
-        $matchDate = $startDate->copy();
-        $currentRoundNumber = $startRound;
-
+        // Flatten all match pairs
+        $allPairs = [];
         for ($leg = 1; $leg <= $legs; $leg++) {
-            $shouldSwap = ($leg % 2 == 0); // Swap home/away for even legs (2, 4...)
+            $shouldSwap = ($leg % 2 == 0);
 
             foreach ($baseSchedule as $roundIndex => $matchPairs) {
                 foreach ($matchPairs as $pair) {
-                    // $pair is [homeTeam, awayTeam]
-                    // If swapping (Leg 2), Home becomes Away
                     $home = $shouldSwap ? $pair[1] : $pair[0];
                     $away = $shouldSwap ? $pair[0] : $pair[1];
 
-                    // skip dummy
                     if (!$home || !$away)
                         continue;
 
-                    $match = MatchModel::create([
-                        'championship_id' => $championship->id,
-                        'category_id' => $categoryId,
-                        'home_team_id' => $home['id'],
-                        'away_team_id' => $away['id'],
-                        'start_time' => $matchDate->format('Y-m-d H:i:s'),
-                        'location' => $championship->location ?? 'A definir',
-                        'status' => 'scheduled',
-                        'round_number' => $currentRoundNumber,
-                        'group_name' => $groupName
-                    ]);
-
-                    $createdMatches[] = $match;
+                    $allPairs[] = [
+                        'home' => $home,
+                        'away' => $away,
+                    ];
                 }
-                // Advance date per round
-                $matchDate->addDays($intervalDays);
-                $currentRoundNumber++;
             }
         }
 
-        // Attach debug info to array (hacky but effective for JSON return if we merge)
-        // Ideally we return an object, but caller expects array of matches. 
-        // We will log it instead.
+        $totalMatches = count($allPairs);
+        if ($totalMatches === 0) {
+            return [];
+        }
+
+        $customRoundsCount = request()->input('custom_rounds_count');
+        $useCustomRounds = $customRoundsCount && is_numeric($customRoundsCount) && $customRoundsCount > 0;
+
+        if ($useCustomRounds) {
+            $roundsCount = (int) $customRoundsCount;
+            foreach ($allPairs as $idx => $pair) {
+                $roundNumber = (int) floor($idx / ($totalMatches / $roundsCount)) + $startRound;
+                if ($roundNumber >= $startRound + $roundsCount) {
+                    $roundNumber = $startRound + $roundsCount - 1;
+                }
+
+                $matchDate = $startDate->copy()->addDays(($roundNumber - $startRound) * $intervalDays);
+
+                $match = MatchModel::create([
+                    'championship_id' => $championship->id,
+                    'category_id' => $categoryId,
+                    'home_team_id' => $pair['home']['id'],
+                    'away_team_id' => $pair['away']['id'],
+                    'start_time' => $matchDate->format('Y-m-d H:i:s'),
+                    'location' => $championship->location ?? 'A definir',
+                    'status' => 'scheduled',
+                    'round_number' => $roundNumber,
+                    'group_name' => $groupName
+                ]);
+                $createdMatches[] = $match;
+            }
+        } else {
+            $matchDate = $startDate->copy();
+            $currentRoundNumber = $startRound;
+
+            for ($leg = 1; $leg <= $legs; $leg++) {
+                $shouldSwap = ($leg % 2 == 0);
+
+                foreach ($baseSchedule as $roundIndex => $matchPairs) {
+                    foreach ($matchPairs as $pair) {
+                        $home = $shouldSwap ? $pair[1] : $pair[0];
+                        $away = $shouldSwap ? $pair[0] : $pair[1];
+
+                        if (!$home || !$away)
+                            continue;
+
+                        $match = MatchModel::create([
+                            'championship_id' => $championship->id,
+                            'category_id' => $categoryId,
+                            'home_team_id' => $home['id'],
+                            'away_team_id' => $away['id'],
+                            'start_time' => $matchDate->format('Y-m-d H:i:s'),
+                            'location' => $championship->location ?? 'A definir',
+                            'status' => 'scheduled',
+                            'round_number' => $currentRoundNumber,
+                            'group_name' => $groupName
+                        ]);
+
+                        $createdMatches[] = $match;
+                    }
+                    $matchDate->addDays($intervalDays);
+                    $currentRoundNumber++;
+                }
+            }
+        }
+
+        // Debugging
+        $debug = [
+            'teams_count_in' => count($teamsList),
+            'total_matches_created' => count($createdMatches),
+            'custom_rounds_used' => $useCustomRounds ? $customRoundsCount : 'no'
+        ];
         \Log::info("Bracket Generation Debug", $debug);
 
         return $createdMatches;
