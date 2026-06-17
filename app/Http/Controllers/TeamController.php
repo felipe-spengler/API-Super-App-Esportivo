@@ -13,9 +13,8 @@ class TeamController extends Controller
     {
         $user = $request->user();
 
-        // Times que sou capitão (na equipe principal OU em algum campeonato)
-        $captainTeams = Team::where('captain_id', $user->id)
-            ->orWhereHas('championships', function ($q) use ($user) {
+        // Times que sou capitão em algum campeonato
+        $captainTeams = Team::whereHas('championships', function ($q) use ($user) {
                 $q->where('championship_team.captain_id', $user->id);
             })
             ->with(['club'])
@@ -56,7 +55,12 @@ class TeamController extends Controller
             ])
             ->findOrFail($id);
 
-        if (!$user->is_admin && $team->captain_id !== $user->id) {
+        $isCaptain = \DB::table('championship_team')
+            ->where('team_id', $id)
+            ->where('captain_id', $user->id)
+            ->exists();
+
+        if (!$user->is_admin && !$isCaptain) {
             $userChampionshipIds = \DB::table('team_players')
                 ->where('team_id', $id)
                 ->where('user_id', $user->id)
@@ -97,9 +101,16 @@ class TeamController extends Controller
 
         $team = Team::findOrFail($id);
 
-        // Check permission (only captain or admin)
-        if ($request->user()->id !== $team->captain_id && !$request->user()->is_admin) {
-            \Log::warning("TeamController addPlayer - Unauthorized attempt", ['user_id' => $request->user()->id, 'team_id' => $id]);
+        // Check permission (captain in any championship or admin)
+        $user = $request->user();
+        $isAdmin = $user->is_admin;
+        $isCaptain = $isAdmin || \DB::table('championship_team')
+            ->where('team_id', $id)
+            ->where('captain_id', $user->id)
+            ->exists();
+
+        if (!$isCaptain) {
+            \Log::warning("TeamController addPlayer - Unauthorized attempt", ['user_id' => $user->id, 'team_id' => $id]);
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -231,19 +242,14 @@ class TeamController extends Controller
         $team = Team::findOrFail($id);
         $user = $request->user();
 
-        // Permission check
-        $isCaptain = ($user->id === $team->captain_id);
+        // Permission check (captain in any championship or admin)
         $isAdmin = $user->is_admin;
-        $isRegionalCaptain = false;
+        $isCaptain = $isAdmin || \DB::table('championship_team')
+            ->where('team_id', $id)
+            ->where('captain_id', $user->id)
+            ->exists();
 
-        if (!$isCaptain && !$isAdmin) {
-            $isRegionalCaptain = \DB::table('championship_team')
-                ->where('team_id', $id)
-                ->where('captain_id', $user->id)
-                ->exists();
-        }
-
-        if (!$isCaptain && !$isAdmin && !$isRegionalCaptain) {
+        if (!$isCaptain) {
             return response()->json(['message' => 'Você não tem permissão para editar as fotos deste time.'], 403);
         }
 
@@ -257,19 +263,14 @@ class TeamController extends Controller
         $team = Team::findOrFail($id);
         $user = $request->user();
 
-        // Permission check
-        $isCaptain = ($user->id === $team->captain_id);
+        // Permission check (captain in any championship or admin)
         $isAdmin = $user->is_admin;
-        $isRegionalCaptain = false;
+        $isCaptain = $isAdmin || \DB::table('championship_team')
+            ->where('team_id', $id)
+            ->where('captain_id', $user->id)
+            ->exists();
 
-        if (!$isCaptain && !$isAdmin) {
-            $isRegionalCaptain = \DB::table('championship_team')
-                ->where('team_id', $id)
-                ->where('captain_id', $user->id)
-                ->exists();
-        }
-
-        if (!$isCaptain && !$isAdmin && !$isRegionalCaptain) {
+        if (!$isCaptain) {
             return response()->json(['message' => 'Você não tem permissão para editar as fotos deste time.'], 403);
         }
 
@@ -287,19 +288,14 @@ class TeamController extends Controller
         $player = \App\Models\User::findOrFail($playerId);
         $user = $request->user();
 
-        // Permission check
-        $isCaptain = ($user->id === $team->captain_id);
+        // Permission check (captain in any championship or admin)
         $isAdmin = $user->is_admin;
-        $isRegionalCaptain = false;
+        $isCaptain = $isAdmin || \DB::table('championship_team')
+            ->where('team_id', $id)
+            ->where('captain_id', $user->id)
+            ->exists();
 
-        if (!$isCaptain && !$isAdmin) {
-            $isRegionalCaptain = \DB::table('championship_team')
-                ->where('team_id', $id)
-                ->where('captain_id', $user->id)
-                ->exists();
-        }
-
-        if (!$isCaptain && !$isAdmin && !$isRegionalCaptain) {
+        if (!$isCaptain) {
             return response()->json(['message' => 'Sem permissão para editar este atleta.'], 403);
         }
 
@@ -396,14 +392,14 @@ class TeamController extends Controller
         $team = Team::findOrFail($id);
         $user = auth()->user();
 
-        // Verificar permissão (apenas capitão do time ou admin do clube)
-        $isCaptain = \DB::table('championship_team')
+        // Verificar permissão (capitão em qualquer campeonato ou admin)
+        $isAdmin = $user->is_admin;
+        $isCaptain = $isAdmin || \DB::table('championship_team')
             ->where('team_id', $id)
             ->where('captain_id', $user->id)
             ->exists();
 
-        // Fallback: verificar se é o capitão principal do time ou admin
-        if (!$isCaptain && $team->captain_id !== $user->id && !$user->is_admin) {
+        if (!$isCaptain) {
             return response()->json(['message' => 'Sem permissão para remover atletas deste time'], 403);
         }
 
