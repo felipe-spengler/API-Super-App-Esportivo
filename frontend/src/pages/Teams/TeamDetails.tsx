@@ -47,7 +47,7 @@ export function TeamDetails() {
     // State to toggle between Championship Selector and Roster View
     // If we came from a specific championship, start in roster view. Otherwise selector.
     const [viewMode, setViewMode] = useState<'selector' | 'roster'>(fromChampionshipId ? 'roster' : 'selector');
-    const [selectedChampionshipId, setSelectedChampionshipId] = useState<number | null>(fromChampionshipId || null);
+    const [selectedChampionshipId, setSelectedChampionshipId] = useState<number | null>(fromChampionshipId ? Number(fromChampionshipId) : null);
 
     const [team, setTeam] = useState<Team | null>(null);
     const [loading, setLoading] = useState(true);

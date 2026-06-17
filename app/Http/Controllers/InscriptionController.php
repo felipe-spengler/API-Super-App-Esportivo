@@ -118,6 +118,7 @@ class InscriptionController extends Controller
                 'championship_id' => $championship->id,
                 'team_id' => $team->id,
                 'category_id' => $category->id,
+                'captain_id' => $request->user()->id,
                 'status_payment' => $status,
                 'payment_method' => ($status === 'paid') ? 'free' : null,
                 'coupon_id' => $couponId,
