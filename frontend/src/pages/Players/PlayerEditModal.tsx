@@ -213,6 +213,7 @@ export function PlayerEditModal({ playerId, teamId, championshipId, onClose, onS
                             </label>
                             <input
                                 type="email"
+                                autoComplete="new-password"
                                 className="w-full px-4 py-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                                 value={email}
                                 onChange={e => setEmail(e.target.value)}
@@ -268,6 +269,7 @@ export function PlayerEditModal({ playerId, teamId, championshipId, onClose, onS
                             </label>
                             <input
                                 type="password"
+                                autoComplete="new-password"
                                 className="w-full px-4 py-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono"
                                 placeholder="Nova senha (mínimo 6 caracteres)"
                                 value={password}

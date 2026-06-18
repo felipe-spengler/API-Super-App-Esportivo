@@ -615,6 +615,7 @@ export function MyTeamDetails() {
                                     <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Email</label>
                                     <input
                                         type="email"
+                                        autoComplete="new-password"
                                         className="w-full px-4 py-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
                                         placeholder="atleta@email.com"
                                         value={newPlayerEmail}
@@ -658,6 +659,7 @@ export function MyTeamDetails() {
                                     </label>
                                     <input
                                         type="password"
+                                        autoComplete="new-password"
                                         className="w-full px-4 py-2.5 border border-indigo-50 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono"
                                         placeholder="Min 6 caracteres"
                                         value={newPlayerPassword}

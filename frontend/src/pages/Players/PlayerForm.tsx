@@ -308,6 +308,7 @@ export function PlayerForm() {
                                 <label className="block text-sm font-bold text-gray-700 mb-2">Email</label>
                                 <input
                                     type="email"
+                                    autoComplete="new-password"
                                     value={form.email}
                                     onChange={e => setForm({ ...form, email: e.target.value })}
                                     className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
@@ -330,6 +331,7 @@ export function PlayerForm() {
                                 <label className="block text-sm font-bold text-gray-700 mb-2">{isEditing ? 'Nova Senha (opcional)' : 'Senha'}</label>
                                 <input
                                     type="password"
+                                    autoComplete="new-password"
                                     value={form.password}
                                     onChange={e => setForm({ ...form, password: e.target.value })}
                                     className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
@@ -340,6 +342,7 @@ export function PlayerForm() {
                                 <label className="block text-sm font-bold text-gray-700 mb-2">Confirmar Senha</label>
                                 <input
                                     type="password"
+                                    autoComplete="new-password"
                                     required={!!form.password}
                                     value={form.password_confirmation}
                                     onChange={e => setForm({ ...form, password_confirmation: e.target.value })}
