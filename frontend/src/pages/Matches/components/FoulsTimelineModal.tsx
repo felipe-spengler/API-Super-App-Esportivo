@@ -9,6 +9,7 @@ interface FoulEvent {
     period: string;
     player_name: string;
     player_id?: number | null;
+    metadata?: any;
 }
 
 interface FoulsTimelineModalProps {
@@ -100,6 +101,16 @@ export function FoulsTimelineModal({
                                                 <span className="block text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-0.5">
                                                     {f.period}
                                                 </span>
+                                                {f.metadata?.foul_alert_type === 'foul_limit_warning' && (
+                                                    <span className="mt-1 inline-block text-[9px] font-black text-amber-300 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                                        4ª falta
+                                                    </span>
+                                                )}
+                                                {f.metadata?.foul_alert_type === 'foul_disqualification' && (
+                                                    <span className="mt-1 inline-block text-[9px] font-black text-rose-300 bg-rose-500/15 border border-rose-500/30 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                                        fora da partida
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
 

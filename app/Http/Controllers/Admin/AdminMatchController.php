@@ -17,6 +17,19 @@ use App\Services\AuditLogger;
 
 class AdminMatchController extends Controller
 {
+    protected function resolveFoulAlertType(int $foulCount): ?string
+    {
+        if ($foulCount === 4) {
+            return 'foul_limit_warning';
+        }
+
+        if ($foulCount === 5) {
+            return 'foul_disqualification';
+        }
+
+        return null;
+    }
+
     // List matches for admin
     public function index(Request $request)
     {
@@ -524,6 +537,24 @@ class AdminMatchController extends Controller
             return response()->json($eventArray, 201);
         }
 
+        $metadata = is_array($validated['metadata'] ?? null) ? $validated['metadata'] : [];
+
+        if ($validated['event_type'] === 'foul' && !empty($validated['player_id'])) {
+            $currentFoulCount = MatchEvent::where('game_match_id', $match->id)
+                ->where('player_id', $validated['player_id'])
+                ->where('event_type', 'foul')
+                ->count();
+
+            $alertType = $this->resolveFoulAlertType($currentFoulCount + 1);
+            if ($alertType) {
+                $metadata['foul_alert_type'] = $alertType;
+                $metadata['foul_count'] = $currentFoulCount + 1;
+                $metadata['label'] = $alertType === 'foul_limit_warning'
+                    ? '⚠️ 4ª falta — aviso'
+                    : '🚫 5ª falta — fora da partida';
+            }
+        }
+
         $event = MatchEvent::create([
             'game_match_id' => $match->id,
             'team_id' => $validated['team_id'] ?? null,
@@ -532,7 +563,7 @@ class AdminMatchController extends Controller
             'game_time' => $validated['minute'] ?? null,
             'period' => $validated['period'] ?? null,
             'value' => $validated['value'] ?? 1,
-            'metadata' => $validated['metadata'] ?? null,
+            'metadata' => $metadata,
         ]);
 
         // Log manual detalhado (isso vai impedir o log genérico do middleware)

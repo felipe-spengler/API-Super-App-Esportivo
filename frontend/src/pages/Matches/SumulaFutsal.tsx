@@ -149,6 +149,7 @@ export function SumulaFutsal() {
                     time: e.minute, period: e.period, player_name: e.player_name,
                     player_id: e.player_id ?? null,
                     own_goal: e.metadata?.own_goal === true || e.metadata?.is_own_goal === true,
+                    metadata: e.metadata ?? {},
                 }));
                 setEvents(history);
 
@@ -480,9 +481,17 @@ export function SumulaFutsal() {
                 time: currentTime, period: currentPeriod,
                 player_name: pName,
                 player_id: (player && player.id !== 'unknown') ? player.id : null,
-                own_goal: isGoalContra
+                own_goal: isGoalContra,
+                metadata: response?.data?.metadata ?? {}
             };
             
+            if (eventType === 'foul' && player && player.id !== 'unknown' && response?.data?.metadata?.foul_alert_type) {
+                const alertMessage = response.data.metadata.foul_alert_type === 'foul_limit_warning'
+                    ? `⚠️ ${player.name} chegou à 4ª falta nesta partida. Atenção!`
+                    : `🚫 ${player.name} chegou à 5ª falta e está fora da partida.`;
+                window.alert(alertMessage);
+            }
+
             setEvents(prev => [newEvent, ...prev]);
             
             if (eventType === 'goal') {
@@ -811,6 +820,11 @@ export function SumulaFutsal() {
                             yellow_card: '🟨 Cartão Amarelo', red_card: '🟥 Cartão Vermelho', blue_card: '🟦 Cartão Azul',
                             assist: '👟 Assistência', foul: '🚩 Falta', mvp: '⭐ Craque do Jogo',
                         };
+                        const foulAlertLabel = ev.type === 'foul' && ev.metadata?.foul_alert_type === 'foul_limit_warning'
+                            ? '⚠️ 4ª Falta — Aviso'
+                            : ev.type === 'foul' && ev.metadata?.foul_alert_type === 'foul_disqualification'
+                                ? '🚫 5ª Falta — Fora da Partida'
+                                : null;
                         const periodLabel = ['shootout_goal', 'shootout_miss'].includes(ev.type) ? 'Pênaltis'
                             : ev.period === 'Prorrogação' ? 'Prorrog.' : ev.period;
                         return (
@@ -826,9 +840,12 @@ export function SumulaFutsal() {
                                     <div className="flex flex-col">
                                         <div className="flex items-center gap-1.5 flex-wrap">
                                             <span className={`font-bold text-sm ${isOwnGoal && ev.type === 'goal' ? 'text-red-300' : 'text-gray-100'
-                                                }`}>{eventLabels[ev.type] || ev.type}</span>
+                                                }`}>{foulAlertLabel || eventLabels[ev.type] || ev.type}</span>
                                             {isOwnGoal && ev.type === 'goal' && (
                                                 <span className="text-[9px] font-black text-red-400 bg-red-500/15 border border-red-500/30 px-2 py-0.5 rounded-full uppercase tracking-wider">contra</span>
+                                            )}
+                                            {foulAlertLabel && (
+                                                <span className="text-[9px] font-black text-amber-300 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-full uppercase tracking-wider">aviso</span>
                                             )}
                                         </div>
                                         {ev.player_name && ev.player_name !== '?' && (

@@ -177,7 +177,7 @@ class MatchOperationController extends Controller
                         'minute' => $e->game_time ?? '00:00',
                         'period' => $e->period ?? ($isVolley ? '1º Set' : '1º Tempo'),
                         'value' => $e->value,
-                        'metadata' => $e->metadata,
+                        'metadata' => $metadata,
                     ];
                 })->values();
             $details['events'] = $tableEvents;
