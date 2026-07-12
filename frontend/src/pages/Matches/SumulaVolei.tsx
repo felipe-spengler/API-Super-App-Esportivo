@@ -28,7 +28,8 @@ export function SumulaVolei() {
     const [cardFlow, setCardFlow] = useState<{ teamId: number } | null>(null);
 
     // MVP Flow State
-    const [mvpFlow, setMvpFlow] = useState<{ step: 'team' | 'player', teamId?: number } | null>(null);
+    const [mvpFlow, setMvpFlow] = useState<{ step: 'role' | 'team' | 'player', teamId?: number } | null>(null);
+    const [mvpVoteType, setMvpVoteType] = useState<'mesario' | 'arbitro' | 'final' | null>(null);
 
     const [setupModalOpen, setSetupModalOpen] = useState(false);
     const setupModalOpenRef = useRef(setupModalOpen);
@@ -476,6 +477,23 @@ export function SumulaVolei() {
         if (!mvpFlow || !mvpFlow.teamId) return;
         const { teamId } = mvpFlow;
         setMvpFlow(null);
+
+        if (mvpVoteType && mvpVoteType !== 'final') {
+            try {
+                await api.post('/votes/mvp', {
+                    game_match_id: id,
+                    voted_player_id: playerId,
+                    voter_type: mvpVoteType
+                });
+                alert(`Voto de MVP (${mvpVoteType}) registrado com sucesso!`);
+                setMvpVoteType(null);
+                return;
+            } catch (e: any) {
+                alert('Erro ao registrar voto: ' + (e.response?.data?.message || e.message));
+                return;
+            }
+        }
+
         try {
             await apiCall('event', `/admin/matches/${id}/events`, {
                 event_type: 'mvp',
@@ -864,7 +882,7 @@ export function SumulaVolei() {
                     {matchData.status !== 'scheduled' && matchData.status !== 'finished' && (
                         <div className="grid grid-cols-2 gap-2 mt-2">
                             <button
-                                onClick={() => setMvpFlow({ step: 'team' })}
+                                onClick={() => setMvpFlow({ step: 'role' })}
                                 className="w-full py-2 bg-amber-600 hover:bg-amber-500 font-black tracking-widest text-[9px] uppercase border-b-4 border-amber-800 active:border-b-0 active:translate-y-[4px] transition-all rounded-lg flex items-center justify-center gap-1"
                             >
                                 ⭐ Craque
@@ -1232,7 +1250,25 @@ export function SumulaVolei() {
             {mvpFlow && (
                 <div className="fixed inset-0 bg-black/80 z-50 flex items-end sm:items-center justify-center p-4">
                     <div className="bg-gray-800 w-full sm:max-w-md rounded-xl sm:rounded-2xl p-6 shadow-2xl border border-gray-700">
-                        {mvpFlow.step === 'team' ? (
+                        {mvpFlow.step === 'role' ? (
+                            <>
+                                <h3 className="text-center font-bold text-xl mb-6 text-yellow-400">⭐ Voto de MVP</h3>
+                                <div className="grid grid-cols-1 gap-2">
+                                    <button onClick={() => { setMvpVoteType('mesario'); setMvpFlow({ step: 'team' }); }}
+                                        className="w-full py-4 bg-indigo-650 hover:bg-indigo-600 text-white rounded-xl font-black uppercase text-xs tracking-wider transition-all">
+                                        📝 Voto do Mesário
+                                    </button>
+                                    <button onClick={() => { setMvpVoteType('arbitro'); setMvpFlow({ step: 'team' }); }}
+                                        className="w-full py-4 bg-indigo-650 hover:bg-indigo-600 text-white rounded-xl font-black uppercase text-xs tracking-wider transition-all">
+                                        ⚖️ Voto do Árbitro
+                                    </button>
+                                    <button onClick={() => { setMvpVoteType('final'); setMvpFlow({ step: 'team' }); }}
+                                        className="w-full py-4 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-black uppercase text-xs tracking-wider transition-all">
+                                        ⭐ Definir Craque Oficial
+                                    </button>
+                                </div>
+                            </>
+                        ) : mvpFlow.step === 'team' ? (
                             <>
                                 <h3 className="text-center font-bold text-xl mb-6 text-yellow-400">⭐ O Craque do Jogo</h3>
                                 <div className="grid grid-cols-2 gap-4">

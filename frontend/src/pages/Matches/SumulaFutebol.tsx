@@ -46,6 +46,8 @@ export function SumulaFutebol() {
     const [cardTeam, setCardTeam] = useState<'home' | 'away' | null>(null);
     // Fluxo de Craque: modal de time → modal de jogador
     const [showMvpTeamModal, setShowMvpTeamModal] = useState(false);
+    const [showMvpRoleModal, setShowMvpRoleModal] = useState(false);
+    const [mvpVoteType, setMvpVoteType] = useState<'mesario' | 'arbitro' | 'final' | null>(null);
 
     // 🛡️ Offline Resilience
     const { isOnline, addToQueue, pendingCount, getPendingCount } = useOfflineResilience(id, 'Futebol', async (action, data) => {
@@ -331,7 +333,7 @@ export function SumulaFutebol() {
 
     const openMvpFlow = useCallback(() => {
         if (!isRunning) { alert('Inicie o cronômetro para lançar eventos!'); return; }
-        setShowMvpTeamModal(true);
+        setShowMvpRoleModal(true);
     }, [isRunning]);
 
     const registerSimpleEvent = async (team: 'home' | 'away', type: 'timeout') => {
@@ -351,6 +353,23 @@ export function SumulaFutebol() {
         const teamId = selectedTeam === 'home' ? matchData.home_team_id : matchData.away_team_id;
         const opponentTeamId = selectedTeam === 'home' ? matchData.away_team_id : matchData.home_team_id;
         const currentTime = formatTime(time);
+
+        if (eventType === 'mvp' && mvpVoteType && mvpVoteType !== 'final') {
+            try {
+                await api.post('/votes/mvp', {
+                    game_match_id: id,
+                    voted_player_id: player.id,
+                    voter_type: mvpVoteType
+                });
+                alert(`Voto de MVP (${mvpVoteType}) registrado com sucesso!`);
+                setShowEventModal(false);
+                setMvpVoteType(null);
+                return;
+            } catch (e: any) {
+                alert('Erro ao registrar voto: ' + (e.response?.data?.message || e.message));
+                return;
+            }
+        }
 
         if (currentPeriod === 'Pênaltis' && eventType === 'goal') {
             setSelectedPlayer(player); setShowEventModal(false); setShowShootoutOptions(true); return;
@@ -769,6 +788,32 @@ export function SumulaFutebol() {
                                     <span className="text-2xl">{card.emoji}</span> {card.label}
                                 </button>
                             ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── MODAL PAPEL DO VOTO MVP ── */}
+            {showMvpRoleModal && (
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/85 backdrop-blur-sm">
+                    <div className="bg-[#111827] w-full max-w-sm sm:rounded-3xl rounded-t-3xl border border-white/10 shadow-2xl overflow-hidden">
+                        <div className="p-5 border-b border-white/5 flex items-center justify-between">
+                            <h3 className="font-black text-lg text-white">⭐ Voto de MVP</h3>
+                            <button onClick={() => setShowMvpRoleModal(false)} className="p-2 bg-white/5 hover:bg-white/10 rounded-xl transition-colors"><X size={18} /></button>
+                        </div>
+                        <div className="p-4 space-y-2">
+                            <button onClick={() => { setShowMvpRoleModal(false); setMvpVoteType('mesario'); setShowMvpTeamModal(true); }}
+                                className="w-full py-4 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-600/40 rounded-2xl font-black uppercase tracking-widest text-sm transition-all active:scale-[0.98]">
+                                📝 Voto do Mesário
+                            </button>
+                            <button onClick={() => { setShowMvpRoleModal(false); setMvpVoteType('arbitro'); setShowMvpTeamModal(true); }}
+                                className="w-full py-4 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-600/40 rounded-2xl font-black uppercase tracking-widest text-sm transition-all active:scale-[0.98]">
+                                ⚖️ Voto do Árbitro
+                            </button>
+                            <button onClick={() => { setShowMvpRoleModal(false); setMvpVoteType('final'); setShowMvpTeamModal(true); }}
+                                className="w-full py-4 bg-amber-600/20 hover:bg-amber-600/40 text-amber-300 border border-amber-600/40 rounded-2xl font-black uppercase tracking-widest text-sm transition-all active:scale-[0.98]">
+                                ⭐ Definir Craque Oficial
+                            </button>
                         </div>
                     </div>
                 </div>

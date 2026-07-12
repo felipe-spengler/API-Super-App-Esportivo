@@ -36,6 +36,8 @@ export function SumulaHandebol() {
     const [showEventModal, setShowEventModal] = useState(false);
     const [showCardTypeModal, setShowCardTypeModal] = useState(false);
     const [showTeamModal, setShowTeamModal] = useState(false);
+    const [showMvpRoleModal, setShowMvpRoleModal] = useState(false);
+    const [mvpVoteType, setMvpVoteType] = useState<'mesario' | 'arbitro' | 'final' | null>(null);
     const [selectedTeam, setSelectedTeam] = useState<'home' | 'away' | null>(null);
     const [eventType, setEventType] = useState<'goal' | 'yellow_card' | 'red_card' | 'blue_card' | 'suspension_2min' | 'timeout' | 'mvp' | null>(null);
     const [confirmationEffect, setConfirmationEffect] = useState<string | null>(null);
@@ -150,6 +152,25 @@ export function SumulaHandebol() {
         const type = eventType;
         const tid = selectedTeam === 'home' ? matchData.home_team_id : matchData.away_team_id;
         const pName = player ? (player.nickname || player.name) : (type === 'timeout' ? 'T.O.' : 'Equipe');
+
+        if (type === 'mvp' && mvpVoteType && mvpVoteType !== 'final') {
+            try {
+                await api.post('/votes/mvp', {
+                    game_match_id: id,
+                    voted_player_id: player.id,
+                    voter_type: mvpVoteType
+                });
+                alert(`Voto de MVP (${mvpVoteType}) registrado com sucesso!`);
+                setShowEventModal(false);
+                setMvpVoteType(null);
+                setEventType(null);
+                return;
+            } catch (e: any) {
+                alert('Erro ao registrar voto: ' + (e.response?.data?.message || e.message));
+                return;
+            }
+        }
+
         let labelText = '';
         switch (type) {
             case 'goal': labelText = `Gol: ${pName}`; break;
@@ -279,7 +300,7 @@ export function SumulaHandebol() {
                         </button>
                     )}
 
-                    <button onClick={() => { setEventType('mvp'); setShowTeamModal(true); }} className="px-6 py-4 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 border border-yellow-500/30 rounded-3xl font-black uppercase text-xs transition-all flex items-center gap-2">
+                    <button onClick={() => { setEventType('mvp'); setShowMvpRoleModal(true); }} className="px-6 py-4 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 border border-yellow-500/30 rounded-3xl font-black uppercase text-xs transition-all flex items-center gap-2">
                         <Icon icon="solar:cup-star-bold" className="w-6 h-6" />
                     </button>
                     <button onClick={handleFinish} className="px-5 py-4 bg-red-500/5 hover:bg-red-500/10 text-red-500/60 border border-red-500/20 rounded-3xl font-black uppercase text-[10px] transition-all">
@@ -313,6 +334,31 @@ export function SumulaHandebol() {
                     </div>
                 </div>
             </div>
+
+            {/* MVP Role Selection Modal */}
+            {showMvpRoleModal && (
+                <div className="fixed inset-0 bg-[#0a0f18]/95 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                    <div className="bg-[#111827] w-full max-w-sm rounded-[3rem] overflow-hidden border border-white/10 shadow-3xl transform transition-all animate-in fade-in zoom-in duration-300">
+                        <div className="p-8 text-center pb-2">
+                            <h3 className="text-2xl font-black text-white italic uppercase tracking-tighter mb-4">⭐ Voto de MVP</h3>
+                        </div>
+                        <div className="p-8 grid grid-cols-1 gap-3">
+                            <button onClick={() => { setShowMvpRoleModal(false); setMvpVoteType('mesario'); setShowTeamModal(true); }}
+                                className="py-4 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-400 border border-indigo-500/30 rounded-2xl font-black uppercase text-xs tracking-wider transition-all">
+                                📝 Voto do Mesário
+                            </button>
+                            <button onClick={() => { setShowMvpRoleModal(false); setMvpVoteType('arbitro'); setShowTeamModal(true); }}
+                                className="py-4 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-400 border border-indigo-500/30 rounded-2xl font-black uppercase text-xs tracking-wider transition-all">
+                                ⚖️ Voto do Árbitro
+                            </button>
+                            <button onClick={() => { setShowMvpRoleModal(false); setMvpVoteType('final'); setShowTeamModal(true); }}
+                                className="py-4 bg-amber-600/20 hover:bg-amber-600/40 text-amber-400 border border-amber-500/30 rounded-2xl font-black uppercase text-xs tracking-wider transition-all">
+                                ⭐ Definir Craque Oficial
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Team Selection Modal */}
             {showTeamModal && (

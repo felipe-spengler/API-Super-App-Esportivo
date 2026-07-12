@@ -126,6 +126,7 @@ Route::get('/public/art/match/{matchId}/faceoff', [\App\Http\Controllers\Admin\A
 Route::get('/public/matches/{id}/pdf', [EventController::class, 'matchPdf']);
 Route::get('/public/matches/{id}', [EventController::class, 'matchDetails']); // NEW Public Match Details
 Route::get('/public/matches/{id}/full-details', [MatchOperationController::class, 'show']); // NEW Public Full Details for Print
+Route::post('/public/matches/{id}/votes/mvp', [VoteController::class, 'publicVoteMvp']);
 
 // Public Art Generation Routes (Matching /api/art structure)
 Route::get('/art/match/{matchId}/scheduled', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'downloadScheduledArt']);

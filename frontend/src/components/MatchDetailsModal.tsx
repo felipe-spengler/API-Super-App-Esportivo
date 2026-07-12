@@ -808,8 +808,47 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                             {/* Center Line */}
                                             <div className="absolute left-8 sm:left-1/2 top-0 bottom-0 w-px bg-gray-200 -ml-px" />
 
+                                            {/* MVP Votes Summary */}
+                                            {match?.status === 'finished' && match?.mvp_votes_summary && (
+                                                <div className="mb-6 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-xl p-4 shadow-sm animate-in fade-in duration-300 relative z-15">
+                                                    <div className="flex items-center gap-2 mb-3">
+                                                        <span className="text-lg">🏆</span>
+                                                        <h4 className="font-extrabold text-amber-900 text-xs uppercase tracking-wider">Mais Votados (MVP)</h4>
+                                                    </div>
+                                                    <div className="grid grid-cols-3 gap-2 text-center">
+                                                        <div className="bg-white/60 p-2 rounded-lg border border-amber-100/60">
+                                                            <span className="text-[10px] text-gray-500 font-bold uppercase block mb-1">📱 Público</span>
+                                                            {match.mvp_votes_summary.public ? (
+                                                                <div>
+                                                                    <p className="font-black text-amber-955 text-xs truncate">{match.mvp_votes_summary.public.name}</p>
+                                                                    <p className="text-[9px] text-gray-400 font-bold mt-0.5">{match.mvp_votes_summary.public.votes_count} votos</p>
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-[10px] text-gray-400 italic">Sem votos</span>
+                                                            )}
+                                                        </div>
+                                                        <div className="bg-white/60 p-2 rounded-lg border border-amber-100/60">
+                                                            <span className="text-[10px] text-gray-500 font-bold uppercase block mb-1">📝 Mesário</span>
+                                                            {match.mvp_votes_summary.mesario ? (
+                                                                <p className="font-black text-amber-955 text-xs truncate">{match.mvp_votes_summary.mesario.name}</p>
+                                                            ) : (
+                                                                <span className="text-[10px] text-gray-400 italic">Sem voto</span>
+                                                            )}
+                                                        </div>
+                                                        <div className="bg-white/60 p-2 rounded-lg border border-amber-100/60">
+                                                            <span className="text-[10px] text-gray-500 font-bold uppercase block mb-1">⚖️ Árbitro</span>
+                                                            {match.mvp_votes_summary.arbitro ? (
+                                                                <p className="font-black text-amber-955 text-xs truncate">{match.mvp_votes_summary.arbitro.name}</p>
+                                                            ) : (
+                                                                <span className="text-[10px] text-gray-400 italic">Sem voto</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
                                         {getSortedEvents().length === 0 ? (
-                                            <div className="text-center py-10 text-gray-400 text-sm">
+                                            <div className="text-center py-10 text-gray-400 text-sm relative z-10">
                                                 Nenhum evento registrado.
                                             </div>
                                         ) : (
@@ -1061,7 +1100,7 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                             </div>
                         )}
 
-                            {activeTab === 'mvp' && <MatchMvpTab match={match} />}
+                            {activeTab === 'mvp' && <MatchMvpTab match={match} rosters={rosters} onVoteSubmitted={() => loadMatchDetails(true)} />}
 
                             {activeTab === 'perna' && <MatchPernaTab match={match} />}
 

@@ -1219,10 +1219,40 @@ class EventController extends Controller
             'away' => $this->formatRoster($match->awayTeam),
         ];
 
+        // Calcular votação do MVP
+        $mvpVotesSummary = [
+            'public' => null,
+            'mesario' => null,
+            'arbitro' => null,
+        ];
+
+        foreach (['public', 'mesario', 'arbitro'] as $type) {
+            $mostVoted = \Illuminate\Support\Facades\DB::table('mvp_votes')
+                ->where('game_match_id', $match->id)
+                ->where('voter_type', $type)
+                ->select('voted_player_id', \Illuminate\Support\Facades\DB::raw('count(*) as votes_count'))
+                ->groupBy('voted_player_id')
+                ->orderByDesc('votes_count')
+                ->first();
+
+            if ($mostVoted) {
+                $player = \App\Models\User::find($mostVoted->voted_player_id);
+                if ($player) {
+                    $mvpVotesSummary[$type] = [
+                        'player_id' => $player->id,
+                        'name' => $player->nickname ?: $player->name,
+                        'votes_count' => $mostVoted->votes_count,
+                        'photo_url' => $player->photo_url ?? ($player->photo ?? null),
+                    ];
+                }
+            }
+        }
+
         return response()->json([
             'match' => $match,
             'details' => $details,
             'rosters' => $rosters,
+            'mvp_votes_summary' => $mvpVotesSummary,
             'server_time' => now()->timestamp * 1000, // milisegundos
             'sport' => $match->championship->sport->slug ?? 'football'
         ]);

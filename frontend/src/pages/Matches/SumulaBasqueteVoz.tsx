@@ -64,6 +64,13 @@ export function SumulaBasqueteVoz() {
     const [showPlayers, setShowPlayers] = useState(false);
     const [hasLoggedRoster, setHasLoggedRoster] = useState(false);
 
+    // MVP Flow State
+    const [showMvpRoleModal, setShowMvpRoleModal] = useState(false);
+    const [showMvpTeamModal, setShowMvpTeamModal] = useState(false);
+    const [showMvpPlayerModal, setShowMvpPlayerModal] = useState(false);
+    const [mvpVoteType, setMvpVoteType] = useState<'mesario' | 'arbitro' | 'final' | null>(null);
+    const [selectedTeam, setSelectedTeam] = useState<'home' | 'away' | null>(null);
+
     const recognitionRef = useRef<any>(null);
     const timeRef = useRef(time);
     const matchDataRef = useRef(matchData);
@@ -778,6 +785,43 @@ export function SumulaBasqueteVoz() {
         setTranscript("");
     };
 
+    const confirmMvp = async (player: any) => {
+        if (mvpVoteType && mvpVoteType !== 'final') {
+            try {
+                await api.post('/votes/mvp', {
+                    game_match_id: id,
+                    voted_player_id: player.id,
+                    voter_type: mvpVoteType
+                });
+                alert(`Voto de MVP (${mvpVoteType}) registrado com sucesso!`);
+                setShowMvpPlayerModal(false);
+                setMvpVoteType(null);
+            } catch (e: any) {
+                alert('Erro ao registrar voto: ' + (e.response?.data?.message || e.message));
+            }
+        } else {
+            try {
+                const teamId = selectedTeam === 'home' ? matchData.home_team_id : matchData.away_team_id;
+                await api.post(`/admin/matches/${id}/events`, {
+                    event_type: 'mvp',
+                    team_id: teamId,
+                    minute: formatTime(600 - time),
+                    period: currentQuarter,
+                    player_id: player.id,
+                    metadata: {
+                        system_period: currentQuarter,
+                        player_name: player.name
+                    }
+                });
+                await api.put(`/admin/matches/${id}`, { mvp_player_id: player.id });
+                alert("Craque oficial definido com sucesso!");
+                setShowMvpPlayerModal(false);
+            } catch (e: any) {
+                alert("Erro ao registrar craque: " + e.message);
+            }
+        }
+    };
+
     const deleteEvent = async (eventId: number) => {
         if (!window.confirm('Deseja realmente excluir este lançamento?')) return;
         try {
@@ -990,6 +1034,14 @@ export function SumulaBasqueteVoz() {
                     </button>
                 </div>
 
+                {/* MVP Button */}
+                <button
+                    onClick={() => setShowMvpRoleModal(true)}
+                    className="mt-4 mb-4 px-8 py-3.5 bg-gradient-to-r from-amber-600/30 to-yellow-600/30 hover:from-amber-600/50 hover:to-yellow-600/50 rounded-2xl font-black text-sm border border-amber-500/30 text-amber-300 shadow-lg shadow-amber-900/20 tracking-wide active:scale-95 transition-all flex items-center gap-2"
+                >
+                    ⭐ Craque do Jogo
+                </button>
+
                 {/* Confirmation Actions - MOVED ABOVE TIPS */}
                 {pendingAction && (
                     <div className="w-full space-y-3 mb-4 animate-in fade-in slide-in-from-top-4 duration-300">
@@ -1148,6 +1200,88 @@ export function SumulaBasqueteVoz() {
                     Diga sempre: Ação + Camisa + Time
                 </p>
             </div>
+
+            {/* MVP Modals */}
+            {showMvpRoleModal && (
+                <div className="fixed inset-0 bg-[#0a0f18]/95 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                    <div className="bg-[#111827] w-full max-w-sm rounded-[2rem] overflow-hidden border border-white/10 shadow-3xl transform transition-all animate-in fade-in zoom-in duration-300">
+                        <div className="p-8 text-center pb-2">
+                            <h3 className="text-2xl font-black text-white italic uppercase tracking-tighter mb-4">⭐ Voto de MVP</h3>
+                        </div>
+                        <div className="p-8 grid grid-cols-1 gap-3">
+                            <button onClick={() => { setShowMvpRoleModal(false); setMvpVoteType('mesario'); setShowMvpTeamModal(true); }}
+                                className="py-4 bg-indigo-650 hover:bg-indigo-600 text-white rounded-xl font-black uppercase text-xs tracking-wider transition-all">
+                                📝 Voto do Mesário
+                            </button>
+                            <button onClick={() => { setShowMvpRoleModal(false); setMvpVoteType('arbitro'); setShowMvpTeamModal(true); }}
+                                className="py-4 bg-indigo-650 hover:bg-indigo-600 text-white rounded-xl font-black uppercase text-xs tracking-wider transition-all">
+                                ⚖️ Voto do Árbitro
+                            </button>
+                            <button onClick={() => { setShowMvpRoleModal(false); setMvpVoteType('final'); setShowMvpTeamModal(true); }}
+                                className="py-4 bg-amber-600/20 hover:bg-amber-600/40 text-amber-300 border border-amber-600/40 rounded-2xl font-black uppercase text-xs tracking-wider transition-all">
+                                ⭐ Definir Craque Oficial
+                            </button>
+                            <button onClick={() => setShowMvpRoleModal(false)} className="py-2 text-gray-500 font-bold uppercase tracking-widest text-[10px]">Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showMvpTeamModal && (
+                <div className="fixed inset-0 bg-[#0a0f18]/95 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                    <div className="bg-[#111827] w-full max-w-sm rounded-[2rem] overflow-hidden border border-white/10 shadow-3xl transform transition-all animate-in fade-in zoom-in duration-300">
+                        <div className="p-8 text-center pb-2">
+                            <h3 className="text-2xl font-black text-white italic uppercase tracking-tighter mb-4">Escolha o Time</h3>
+                        </div>
+                        <div className="p-8 grid grid-cols-1 gap-4">
+                            <button onClick={() => { setSelectedTeam('home'); setShowMvpTeamModal(false); setShowMvpPlayerModal(true); }}
+                                className="py-6 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 border border-blue-500/30 rounded-2xl font-black uppercase text-sm tracking-widest transition-all">
+                                {matchData?.home_team?.name}
+                            </button>
+                            <button onClick={() => { setSelectedTeam('away'); setShowMvpTeamModal(false); setShowMvpPlayerModal(true); }}
+                                className="py-6 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 border border-emerald-500/30 rounded-2xl font-black uppercase text-sm tracking-widest transition-all">
+                                {matchData?.away_team?.name}
+                            </button>
+                            <button onClick={() => setShowMvpTeamModal(false)} className="py-2 text-gray-500 font-bold uppercase tracking-widest text-[10px]">Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showMvpPlayerModal && selectedTeam && (
+                <div className="fixed inset-0 bg-[#0a0f18]/95 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                    <div className="bg-[#111827] w-full max-w-lg rounded-[2rem] overflow-hidden border border-white/10 shadow-3xl max-h-[90vh] flex flex-col transform transition-all animate-in fade-in fill-mode-both duration-300">
+                        <div className="p-6 border-b border-white/5 flex justify-between items-center bg-[#1a2234]/30">
+                            <div>
+                                <h3 className="font-black uppercase tracking-tighter text-xl italic text-white flex items-center gap-3">
+                                    Selecione o Jogador
+                                </h3>
+                                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-1">
+                                    {selectedTeam === 'home' ? matchData?.home_team?.name : matchData?.away_team?.name}
+                                </p>
+                            </div>
+                            <button onClick={() => setShowMvpPlayerModal(false)} className="p-3 bg-white/5 hover:bg-white/10 rounded-full transition-colors"><X size={16} /></button>
+                        </div>
+
+                        <div className="overflow-y-auto p-6 flex-1 space-y-2">
+                            {(selectedTeam === 'home' ? rosters.home : rosters.away).map((p: any) => (
+                                <button
+                                    key={p.id}
+                                    onClick={() => confirmMvp(p)}
+                                    className="w-full flex items-center gap-3 p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-transparent hover:border-orange-500/30 transition-all active:scale-[0.98]"
+                                >
+                                    <div className="w-9 h-9 rounded-full bg-orange-600/20 text-orange-500 flex items-center justify-center font-black text-sm shrink-0">
+                                        {p.number || '#'}
+                                    </div>
+                                    <div className="flex flex-col items-start text-left">
+                                        <span className="font-bold text-sm text-gray-100">{p.name}</span>
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
