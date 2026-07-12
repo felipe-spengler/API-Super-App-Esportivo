@@ -10,20 +10,20 @@ return new class extends Migration {
      */
     public function up(): void
     {
+        // 1. Drop foreign key first
         Schema::table('mvp_votes', function (Blueprint $table) {
-            // Drop foreign key first so we can drop the unique index
             $table->dropForeign(['voter_user_id']);
-            
-            // Drop old unique constraint
+        });
+
+        // 2. Drop old unique constraint
+        Schema::table('mvp_votes', function (Blueprint $table) {
             $table->dropUnique('mvp_votes_game_match_id_voter_user_id_unique');
-            
-            // Make voter_user_id nullable
+        });
+        
+        // 3. Modify columns and add fields
+        Schema::table('mvp_votes', function (Blueprint $table) {
             $table->unsignedBigInteger('voter_user_id')->nullable()->change();
-
-            // Re-add foreign key constraint with nullable support
             $table->foreign('voter_user_id')->references('id')->on('users')->onDelete('set null');
-
-            // Add voter_type and ip_address
             $table->string('voter_type')->default('public'); // public, mesario, arbitro
             $table->string('ip_address', 45)->nullable();
         });
@@ -34,14 +34,16 @@ return new class extends Migration {
      */
     public function down(): void
     {
+        // 1. Drop foreign key first
         Schema::table('mvp_votes', function (Blueprint $table) {
-            // Drop foreign key
             $table->dropForeign(['voter_user_id']);
+        });
 
+        // 2. Revert column modifications and unique constraint
+        Schema::table('mvp_votes', function (Blueprint $table) {
             $table->dropColumn(['voter_type', 'ip_address']);
             $table->unsignedBigInteger('voter_user_id')->nullable(false)->change();
             
-            // Re-add foreign key and unique constraint
             $table->foreign('voter_user_id')->references('id')->on('users');
             $table->unique(['game_match_id', 'voter_user_id']);
         });
