@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Users, Shield, Plus, User, Edit2, MoreHorizontal, Trash2, CheckCircle, Clock, Trophy, Copy, Loader2, ArrowRight, X } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -47,6 +47,7 @@ interface Team {
     name: string;
     city?: string;
     captain_id: number;
+    logo_url?: string;
     players: Player[];
     championships: Championship[];
 }
@@ -55,6 +56,7 @@ export function MyTeamDetails() {
     const navigate = useNavigate();
     const { id } = useParams();
     const { user } = useAuth();
+    const [searchParams] = useSearchParams();
 
     const [team, setTeam] = useState<Team | null>(null);
     const [loading, setLoading] = useState(true);
@@ -83,6 +85,14 @@ export function MyTeamDetails() {
     const [adding, setAdding] = useState(false);
     const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
 
+    // Team edit states
+    const [showEditTeamModal, setShowEditTeamModal] = useState(false);
+    const [editTeamName, setEditTeamName] = useState('');
+    const [editTeamCity, setEditTeamCity] = useState('');
+    const [editTeamLogoFile, setEditTeamLogoFile] = useState<File | null>(null);
+    const [editTeamLogoPreview, setEditTeamLogoPreview] = useState<string | null>(null);
+    const [savingTeam, setSavingTeam] = useState(false);
+
     useEffect(() => {
         loadTeam();
     }, [id, selectedChampionshipId]);
@@ -95,11 +105,53 @@ export function MyTeamDetails() {
                 }
             });
             setTeam(response.data);
+            if (searchParams.get('edit') === 'true') {
+                setEditTeamName(response.data.name);
+                setEditTeamCity(response.data.city || '');
+                setEditTeamLogoPreview(response.data.logo_url || null);
+                setShowEditTeamModal(true);
+            }
         } catch (error) {
             alert('Erro ao carregar time');
             navigate('/profile/teams');
         } finally {
             setLoading(false);
+        }
+    }
+
+    function openEditTeamModal() {
+        if (!team) return;
+        setEditTeamName(team.name);
+        setEditTeamCity(team.city || '');
+        setEditTeamLogoFile(null);
+        setEditTeamLogoPreview(team.logo_url || null);
+        setShowEditTeamModal(true);
+    }
+
+    async function handleSaveTeam(e: React.FormEvent) {
+        e.preventDefault();
+        setSavingTeam(true);
+        try {
+            const formData = new FormData();
+            formData.append('name', editTeamName);
+            formData.append('city', editTeamCity);
+            if (editTeamLogoFile) {
+                formData.append('logo_file', editTeamLogoFile);
+            }
+
+            await api.post(`/teams/${id}`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
+            alert('Time atualizado com sucesso!');
+            setShowEditTeamModal(false);
+            loadTeam();
+        } catch (error: any) {
+            console.error(error);
+            const msg = error.response?.data?.message || 'Erro ao atualizar o time.';
+            alert(`❌ ${msg}`);
+        } finally {
+            setSavingTeam(false);
         }
     }
 
@@ -282,12 +334,26 @@ export function MyTeamDetails() {
         <div className="min-h-screen bg-gray-50 pb-20">
             {/* Header */}
             <div className="bg-white p-4 pt-8 shadow-sm flex items-center justify-between sticky top-0 z-10 border-b border-gray-100">
-                <div className="flex items-center">
-                    <button onClick={() => navigate('/profile/teams')} className="p-2 mr-2 rounded-full hover:bg-gray-100 transition-colors">
+                <div className="flex items-center gap-2">
+                    <button onClick={() => navigate('/profile/teams')} className="p-2 mr-1 rounded-full hover:bg-gray-100 transition-colors">
                         <ArrowLeft className="w-5 h-5 text-gray-600" />
                     </button>
+                    {team.logo_url ? (
+                        <img src={team.logo_url} alt={team.name} className="w-10 h-10 rounded-full object-cover border border-gray-200" />
+                    ) : (
+                        <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center border border-gray-200">
+                            <Shield className="w-5 h-5 text-gray-400" />
+                        </div>
+                    )}
                     <div>
-                        <h1 className="text-xl font-bold text-gray-800 leading-none">{team.name}</h1>
+                        <div className="flex items-center gap-1.5">
+                            <h1 className="text-xl font-bold text-gray-800 leading-none">{team.name}</h1>
+                            {isCaptain && (
+                                <button onClick={openEditTeamModal} className="p-1 text-gray-400 hover:text-indigo-600 transition-colors" title="Editar dados do time">
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                            )}
+                        </div>
                         <span className="text-xs text-gray-500">{team.city}</span>
                     </div>
                 </div>
@@ -679,6 +745,105 @@ export function MyTeamDetails() {
                                         Salvando...
                                     </>
                                 ) : (editingPlayer ? 'Salvar Alterações' : 'Cadastrar Atleta')}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Team Modal */}
+            {showEditTeamModal && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gradient-to-r from-indigo-50 to-purple-50">
+                            <h3 className="text-xl font-bold text-gray-900">Editar Dados do Time</h3>
+                            <button onClick={() => setShowEditTeamModal(false)} className="p-2 hover:bg-white/50 rounded-full transition-colors">
+                                <X className="w-5 h-5 text-gray-500" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSaveTeam} className="p-6 space-y-4">
+                            <div className="flex flex-col items-center gap-2 mb-4">
+                                <div className="relative w-24 h-24 bg-gray-50 rounded-full border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden hover:border-indigo-400 transition-colors group">
+                                    {editTeamLogoPreview ? (
+                                        <>
+                                            <img src={editTeamLogoPreview} alt="Logo preview" className="w-full h-full object-cover" />
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setEditTeamLogoFile(null);
+                                                    setEditTeamLogoPreview(null);
+                                                }}
+                                                className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >
+                                                <X className="w-3 h-3" />
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <label className="cursor-pointer w-full h-full flex flex-col items-center justify-center text-gray-400 hover:text-indigo-600">
+                                            <Plus className="w-6 h-6 mb-1" />
+                                            <span className="text-[10px] uppercase font-bold">Logo</span>
+                                            <input
+                                                type="file"
+                                                className="hidden"
+                                                accept="image/*"
+                                                onChange={async (e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                        try {
+                                                            const compressedFile = await prepareImageForUpload(file, 4 * 1024 * 1024);
+                                                            setEditTeamLogoFile(compressedFile);
+                                                            const reader = new FileReader();
+                                                            reader.onloadend = () => {
+                                                                setEditTeamLogoPreview(reader.result as string);
+                                                            };
+                                                            reader.readAsDataURL(compressedFile);
+                                                        } catch (err) {
+                                                            console.error('Failed to compress image:', err);
+                                                            alert('Falha ao processar imagem.');
+                                                        }
+                                                    }
+                                                }}
+                                            />
+                                        </label>
+                                    )}
+                                </div>
+                                <span className="text-xs text-gray-400 uppercase font-bold">Logo do Time</span>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Nome do Time</label>
+                                <input
+                                    required
+                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                                    placeholder="Ex: Galáticos FC"
+                                    value={editTeamName}
+                                    onChange={e => setEditTeamName(e.target.value)}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Cidade Base</label>
+                                <input
+                                    required
+                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                                    placeholder="Ex: Toledo"
+                                    value={editTeamCity}
+                                    onChange={e => setEditTeamCity(e.target.value)}
+                                />
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={savingTeam}
+                                className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 disabled:opacity-75 mt-4"
+                            >
+                                {savingTeam ? (
+                                    <>
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                        Salvando...
+                                    </>
+                                ) : 'Salvar Alterações'}
                             </button>
                         </form>
                     </div>

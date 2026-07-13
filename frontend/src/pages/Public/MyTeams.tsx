@@ -10,6 +10,7 @@ interface Team {
     role?: 'captain' | 'player';
     club?: { name: string };
     players_count?: number; // Need to count in backend or just show icon
+    logo_url?: string;
 }
 
 export function MyTeams() {
@@ -70,16 +71,28 @@ export function MyTeams() {
                             <div className="flex justify-between items-start mb-4">
                                 <div className="flex items-center gap-3">
                                     <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center border border-gray-200 overflow-hidden">
-                                        <Shield className="w-6 h-6 text-gray-400" />
+                                        {team.logo_url ? (
+                                            <img src={team.logo_url} alt={team.name} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <Shield className="w-6 h-6 text-gray-400" />
+                                        )}
                                     </div>
                                     <div>
                                         <h3 className="font-bold text-lg text-gray-900 leading-tight">{team.name}</h3>
                                         <span className="text-xs text-gray-500 font-medium">{team.city || team.club?.name || 'Clube'}</span>
                                     </div>
                                 </div>
-                                <button className="text-gray-400 hover:text-gray-600">
-                                    <MoreHorizontal className="w-5 h-5" />
-                                </button>
+                                {team.role === 'captain' && (
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            navigate(`/profile/teams/${team.id}?edit=true`);
+                                        }}
+                                        className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
+                                    >
+                                        <MoreHorizontal className="w-5 h-5" />
+                                    </button>
+                                )}
                             </div>
 
                             <div className="flex items-center justify-between pt-4 border-t border-gray-50">

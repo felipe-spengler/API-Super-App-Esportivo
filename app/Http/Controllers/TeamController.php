@@ -445,4 +445,46 @@ class TeamController extends Controller
 
         return response()->json($team, 201);
     }
+
+    // 8. Update Team Details (For captains)
+    public function update(Request $request, $id)
+    {
+        $team = Team::findOrFail($id);
+        $user = $request->user();
+
+        // Check permission (captain in any championship, general captain, or admin)
+        $isAdmin = $user->is_admin;
+        $isCaptain = $isAdmin || ($team->captain_id === $user->id) || \DB::table('championship_team')
+            ->where('team_id', $id)
+            ->where('captain_id', $user->id)
+            ->exists();
+
+        if (!$isCaptain) {
+            return response()->json(['message' => 'Sem permissão para editar este time.'], 403);
+        }
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'city' => 'nullable|string|max:255',
+            'logo_file' => 'nullable|image|max:4096', // Max 4MB
+        ]);
+
+        $team->name = $request->name;
+        $team->city = $request->city;
+
+        if ($request->hasFile('logo_file')) {
+            $image = $request->file('logo_file');
+            $filename = 'team_' . time() . '_' . \Illuminate\Support\Str::random(10) . '.' . $image->getClientOriginalExtension();
+            $path = $image->storeAs('teams', $filename, 'public');
+            $team->logo_url = '/storage/' . $path;
+            $team->logo_path = $path;
+        }
+
+        $team->save();
+
+        return response()->json([
+            'message' => 'Time atualizado com sucesso!',
+            'team' => $team
+        ]);
+    }
 }

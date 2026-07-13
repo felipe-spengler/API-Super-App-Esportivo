@@ -180,6 +180,7 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::get('/my-teams', [TeamController::class, 'index']);
     Route::post('/my-teams', [TeamController::class, 'store']);
     Route::get('/teams/{id}', [TeamController::class, 'show']);
+    Route::post('/teams/{id}', [TeamController::class, 'update']);
     Route::post('/teams/{id}/players', [TeamController::class, 'addPlayer']);
     Route::put('/teams/{id}/players/{playerId}', [TeamController::class, 'updatePlayer']);
     Route::delete('/teams/{id}/players/{playerId}', [TeamController::class, 'removePlayer']);
