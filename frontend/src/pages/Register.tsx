@@ -52,11 +52,18 @@ export function Register() {
             const data = response.data.data;
 
             if (data) {
+                let normalizedBirthDate = data.birth_date || '';
+                if (normalizedBirthDate && /^\d{2}\/\d{2}\/\d{4}$/.test(normalizedBirthDate)) {
+                    const [day, month, year] = normalizedBirthDate.split('/');
+                    normalizedBirthDate = `${year}-${month}-${day}`;
+                }
+                const normalizedCpf = data.cpf ? data.cpf.replace(/\D/g, '') : '';
+
                 setFormData(prev => ({
                     ...prev,
                     name: data.name || prev.name,
-                    cpf: data.cpf || prev.cpf,
-                    birthDate: data.birth_date || prev.birthDate,
+                    cpf: normalizedCpf || prev.cpf,
+                    birthDate: normalizedBirthDate || prev.birthDate,
                     documentNumber: data.document_number || prev.documentNumber
                 }));
 
@@ -159,9 +166,11 @@ export function Register() {
             console.error(error);
             if (error.response && error.response.data && error.response.data.errors) {
                 const errors = error.response.data.errors;
-                // Show first error message
-                const firstError = Object.values(errors)[0] as string[];
-                toast.error(firstError[0] || "Erro na validação dos dados.");
+                const firstErrorVal = Object.values(errors)[0];
+                const errorMessage = Array.isArray(firstErrorVal)
+                    ? (firstErrorVal[0] || "Erro na validação dos dados.")
+                    : (typeof firstErrorVal === 'string' ? firstErrorVal : "Erro na validação dos dados.");
+                toast.error(errorMessage);
             } else if (error.response && error.response.data && error.response.data.message) {
                 toast.error(error.response.data.message);
             } else {

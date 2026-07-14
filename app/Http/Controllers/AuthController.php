@@ -15,6 +15,23 @@ class AuthController extends Controller
     // 1. Registro de Novo Usuário (Atleta)
     public function register(Request $request)
     {
+        // Normalizar CPF (apenas números)
+        if ($request->has('cpf') && $request->input('cpf')) {
+            $request->merge([
+                'cpf' => preg_replace('/\D/', '', $request->input('cpf'))
+            ]);
+        }
+
+        // Normalizar data de nascimento de DD/MM/YYYY para YYYY-MM-DD se necessário
+        if ($request->has('birth_date') && $request->input('birth_date')) {
+            $birthDate = $request->input('birth_date');
+            if (preg_match('/^(\d{2})\/(\d{2})\/(\d{4})$/', $birthDate, $matches)) {
+                $request->merge([
+                    'birth_date' => "{$matches[3]}-{$matches[2]}-{$matches[1]}"
+                ]);
+            }
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
