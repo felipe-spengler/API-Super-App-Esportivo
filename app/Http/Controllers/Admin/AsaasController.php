@@ -259,11 +259,11 @@ class AsaasController extends Controller
 
     private function sendInscriptionConfirmation($result)
     {
-        if (!$result->user || !$result->user->email)
+        if (!$result->user || !$result->user->email) {
             return;
+        }
 
         $user = $result->user;
-        $championship = $result->race->championship;
 
         try {
             // Gerar o PDF
@@ -271,44 +271,12 @@ class AsaasController extends Controller
             $pdf = $receiptController->generatePdf($result);
             $pdfContent = $pdf->output();
 
-            Mail::send([], [], function ($message) use ($user, $championship, $pdfContent, $result) {
-                $message->to($user->email)
-                    ->subject("Inscrição Confirmada: " . $championship->name)
+            Mail::to($user->email)->send(
+                (new \App\Mail\InscriptionConfirmedMail($result))
                     ->attachData($pdfContent, 'comprovante_inscricao.pdf', [
                         'mime' => 'application/pdf',
                     ])
-                    ->html("
-                        <div style='font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;'>
-                            <div style='background: #4f46e5; padding: 30px; text-align: center;'>
-                                <h1 style='color: white; margin: 0; font-size: 24px;'>Inscrição Confirmada!</h1>
-                            </div>
-                            <div style='padding: 30px; color: #1e293b; line-height: 1.6;'>
-                                <p>Olá, <strong>{$user->name}</strong>!</p>
-                                <p>Temos o prazer de informar que seu pagamento foi recebido e sua inscrição no evento <strong>{$championship->name}</strong> está confirmada.</p>
-                                
-                                <div style='background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0;'>
-                                    <p style='margin: 0;'><strong>Evento:</strong> {$championship->name}</p>
-                                    <p style='margin: 5px 0 0 0;'><strong>Atleta:</strong> {$user->name}</p>
-                                    <p style='margin: 5px 0 0 0;'><strong>Data Nasc.:</strong> " . ($user->birth_date ? $user->birth_date->format('d/m/Y') : '---') . "</p>
-                                    <p style='margin: 5px 0 0 0;'><strong>Categoria:</strong> " . ($result->category->parent ? $result->category->parent->name : $result->category->name) . "</p>
-                                    " . ($result->category->parent ? "<p style='margin: 5px 0 0 0;'><strong>Subcategoria:</strong> {$result->category->name}</p>" : "") . "
-                                    <p style='margin: 5px 0 0 0;'><strong>Status:</strong> Pago / Confirmado</p>
-                                </div>
-
-                                <p><strong>Anexamos o seu comprovante de inscrição a este e-mail.</strong> Ele contém todos os detalhes da sua compra, brindes inclusos e o QR Code necessário para a retirada de kit no local da prova.</p>
-
-                                <p>Você também pode acessar sua área do atleta a qualquer momento para baixar o comprovante novamente ou ver sua carteirinha digital.</p>
-                                
-                                <div style='text-align: center; margin-top: 30px;'>
-                                    <a href='https://esportivo.techinteligente.site/profile/inscriptions' style='background: #4f46e5; color: white; padding: 14px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;'>Ver Minhas Inscrições</a>
-                                </div>
-                            </div>
-                            <div style='background: #f1f5f9; padding: 20px; text-align: center; font-size: 12px; color: #64748b;'>
-                                <p>© " . date('Y') . " Esportivo. Todos os direitos reservados.</p>
-                            </div>
-                        </div>
-                    ");
-            });
+            );
         } catch (\Exception $e) {
             Log::error("Erro ao enviar e-mail de confirmação: " . $e->getMessage());
         }

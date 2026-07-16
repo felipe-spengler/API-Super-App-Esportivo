@@ -8,9 +8,9 @@ use App\Models\Club;
 
 class AsaasService
 {
-    protected $token;
-    protected $apiUrl;
-    protected $environment;
+    protected ?string $token;
+    protected string $apiUrl;
+    protected string $environment;
 
     public function __construct(Club $club)
     {
@@ -26,7 +26,7 @@ class AsaasService
     /**
      * Faz requisição à API Asaas
      */
-    public function request($endpoint, $method = 'GET', $data = [])
+    public function request(string $endpoint, string $method = 'GET', array $data = []): array
     {
         if (!$this->token) {
             throw new \Exception("Configuração do Asaas (Token) não encontrada para este clube.");
@@ -38,15 +38,12 @@ class AsaasService
             'User-Agent' => 'AppEsportivo/1.0'
         ]);
 
-        if ($method === 'POST') {
-            $response = $response->post($url, $data);
-        } elseif ($method === 'PUT') {
-            $response = $response->put($url, $data);
-        } elseif ($method === 'DELETE') {
-            $response = $response->delete($url, $data);
-        } else {
-            $response = $response->get($url, $data);
-        }
+        $response = match (strtoupper($method)) {
+            'POST'   => $response->post($url, $data),
+            'PUT'    => $response->put($url, $data),
+            'DELETE' => $response->delete($url, $data),
+            default  => $response->get($url, $data),
+        };
 
         if ($response->failed()) {
             $error = $response->json();
@@ -55,13 +52,13 @@ class AsaasService
             throw new \Exception($msg);
         }
 
-        return $response->json();
+        return $response->json() ?? [];
     }
 
     /**
      * Busca ou cria cliente no Asaas
      */
-    public function getOrCreateCustomer($user)
+    public function getOrCreateCustomer($user): string
     {
         $cpf = preg_replace('/[^0-9]/', '', $user->cpf);
 
@@ -89,7 +86,7 @@ class AsaasService
     /**
      * Cria uma cobrança
      */
-    public function createPayment($user, $amount, $description, $externalReference, $dueDate = null, $billingType = 'UNDEFINED')
+    public function createPayment($user, $amount, string $description, string $externalReference, ?string $dueDate = null, string $billingType = 'UNDEFINED'): array
     {
         $customerId = $this->getOrCreateCustomer($user);
 
@@ -113,7 +110,7 @@ class AsaasService
     /**
      * Obtém QR Code Pix
      */
-    public function getPixQrCode($paymentId)
+    public function getPixQrCode(string $paymentId): array
     {
         return $this->request("/payments/{$paymentId}/pixQrCode");
     }
@@ -121,7 +118,7 @@ class AsaasService
     /**
      * Cancela uma cobrança
      */
-    public function deletePayment($paymentId)
+    public function deletePayment(string $paymentId): array
     {
         return $this->request("/payments/{$paymentId}", 'DELETE');
     }
