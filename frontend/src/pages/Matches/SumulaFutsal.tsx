@@ -727,6 +727,69 @@ export function SumulaFutsal() {
                 setTimeouts(prev => ({ ...prev, [team]: (prev as any)[team].filter((t: any) => t.id !== eventId) }));
             }
             if (type === 'shootout_goal') setPenaltyScore(prev => ({ ...prev, [team]: Math.max(0, prev[team] - 1) }));
+
+            if (['match_start', 'match_end', 'period_start', 'period_end'].includes(type)) {
+                const remainingEvents = events.filter(e => e.id !== eventId);
+                const remainingSysEvents = remainingEvents.filter(e => 
+                    ['match_start', 'match_end', 'period_start', 'period_end'].includes(e.type)
+                );
+                
+                let newPeriod = '1º Tempo';
+                let newIsRunning = false;
+                let newStatus = matchData.status;
+
+                if (remainingSysEvents.length > 0) {
+                    const latest = remainingSysEvents[0];
+                    if (latest.type === 'match_start') {
+                        newPeriod = '1º Tempo';
+                        newIsRunning = true;
+                        newStatus = 'live';
+                    } else if (latest.type === 'match_end') {
+                        newPeriod = 'Fim de Jogo';
+                        newIsRunning = false;
+                        newStatus = 'finished';
+                    } else if (latest.type === 'period_start') {
+                        newPeriod = latest.period || '1º Tempo';
+                        newIsRunning = newPeriod !== 'Pênaltis';
+                    } else if (latest.type === 'period_end') {
+                        const p = String(latest.period || '').toLowerCase();
+                        if (p.includes('1º') || p.includes('1o')) {
+                            newPeriod = 'Intervalo';
+                            newIsRunning = false;
+                        } else if (p.includes('2º') || p.includes('2o') || p.includes('normal')) {
+                            newPeriod = 'Fim de Tempo Normal';
+                            newIsRunning = false;
+                        } else if (p.includes('prorrog')) {
+                            newPeriod = 'Fim de Tempo Normal';
+                            newIsRunning = false;
+                        } else if (p.includes('pênalt') || p.includes('penalt')) {
+                            newPeriod = 'Fim de Jogo';
+                            newIsRunning = false;
+                        }
+                    }
+                } else {
+                    newPeriod = '1º Tempo';
+                    newIsRunning = false;
+                    newStatus = 'scheduled';
+                }
+
+                setCurrentPeriod(newPeriod);
+                setIsRunning(newIsRunning);
+                setMatchData((prev: any) => ({ ...prev, status: newStatus }));
+                timerRef.current = { ...timerRef.current, currentPeriod: newPeriod, isRunning: newIsRunning };
+
+                await apiPost('patch_match', { 
+                    status: newStatus,
+                    match_details: { 
+                        ...matchData?.match_details, 
+                        sync_timer: { 
+                            time: timerRef.current.time, 
+                            isRunning: newIsRunning, 
+                            currentPeriod: newPeriod 
+                        } 
+                    } 
+                }).catch(() => { });
+            }
         } catch (e) {
             alert("Erro ao excluir do servidor");
             fetchMatchDetails();
@@ -1121,11 +1184,18 @@ function TimelineRow({ ev, homeTeamId, onDelete }: TimelineRowProps) {
         };
 
         return (
-            <div className="flex flex-col items-center my-3">
+            <div className="flex items-center justify-center my-3 gap-2">
                 <div className={`border rounded-full px-5 py-1.5 shadow-lg flex flex-col items-center gap-0.5 ${sysColors[ev.type] || 'bg-gray-800 border-gray-700 text-gray-400'}`}>
                     <span className="text-[10px] font-black uppercase tracking-widest">{getSystemEventTitle(ev.type, ev.period)}</span>
                     {phrase && <span className="text-[10px] text-gray-300 italic">{phrase}</span>}
                 </div>
+                <button 
+                    onClick={() => onDelete(ev.id, ev.type, ev.team)} 
+                    className="p-1.5 hover:bg-red-500/20 text-gray-600 hover:text-red-400 rounded-full transition-colors"
+                    title="Excluir evento de sistema"
+                >
+                    <Trash2 size={12} />
+                </button>
             </div>
         );
     }
