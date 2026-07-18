@@ -9,6 +9,7 @@
     /* Needed for env(safe-area-inset-*) to work correctly */
     height: 100%;
     -webkit-text-size-adjust: 100%;
+    font-family: 'Inter', sans-serif;
   }
 
   body {

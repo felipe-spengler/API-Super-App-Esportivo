@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, memo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Play, Pause, Clock, Users, X, Trash2, Wifi, WifiOff, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Play, Pause, Clock, Users, X, Trash2, Wifi, WifiOff, AlertCircle, Flag, Star, CornerDownRight } from 'lucide-react';
 import api from '../../services/api';
 import { useOfflineResilience } from '../../hooks/useOfflineResilience';
 import { getMatchPhrase } from '../../utils/matchPhrases';

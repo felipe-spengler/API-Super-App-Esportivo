@@ -106,10 +106,10 @@ export function Profile() {
     }
 
     const MENU_ITEMS = [
-        { label: 'Meus Times', icon: 'fluent-emoji:busts-in-silhouette', route: '/profile/teams' },
-        { label: 'Inscrições', icon: 'fluent-emoji:trophy', route: '/profile/inscriptions' },
-        { label: 'Meus Pedidos', icon: 'fluent-emoji:package', route: '/profile/orders' },
-        // { label: 'Carteirinha', icon: 'fluent-emoji:identification-card', route: '/wallet' },
+        { label: 'Meus Times', icon: 'lucide:users', route: '/profile/teams' },
+        { label: 'Inscrições', icon: 'lucide:trophy', route: '/profile/inscriptions' },
+        { label: 'Meus Pedidos', icon: 'lucide:package', route: '/profile/orders' },
+        // { label: 'Carteirinha', icon: 'lucide:id-card', route: '/wallet' },
     ];
 
     return (
