@@ -265,9 +265,11 @@ class StatisticsController extends Controller
 
         $standings = [];
 
+        $hasGroups = in_array($championship->format, ['groups', 'group_knockout']);
+
         foreach ($matches as $match) {
             // Inicializa equipes se não existirem
-            $groupName = $match->group_name ?? 'Geral';
+            $groupName = $hasGroups ? ($match->group_name ?? 'Geral') : 'Geral';
 
             if (!isset($standings[$match->home_team_id])) {
                 $standings[$match->home_team_id] = [

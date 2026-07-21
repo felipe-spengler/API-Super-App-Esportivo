@@ -167,10 +167,12 @@ class EventController extends Controller
             }
             $allTeams = $teamsQuery->get();
 
+            $hasGroups = in_array($champ->format, ['groups', 'group_knockout']);
+
             foreach ($allTeams as $team) {
-                $rawG = $team->pivot->group_name ?? 'Geral';
+                $rawG = $hasGroups ? ($team->pivot->group_name ?? 'Geral') : 'Geral';
                 $groupName = trim(str_ireplace('Grupo', '', $rawG));
-                if (empty($groupName) && $rawG) $groupName = 'A';
+                if ($hasGroups && empty($groupName) && $rawG) $groupName = 'A';
 
                 $teamsData[$team->id] = $initStats($team->name, $team->logo_url);
                 $teamsData[$team->id]['id'] = $team->id;
