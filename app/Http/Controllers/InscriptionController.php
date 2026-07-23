@@ -32,8 +32,8 @@ class InscriptionController extends Controller
         $championship = Championship::with('club')->findOrFail($validated['championship_id']);
         $category = Category::findOrFail($validated['category_id']);
 
-        // Check eligibility (Captain)
-        $check = $category->isUserEligible($request->user());
+        // Check eligibility (Captain - do not check age)
+        $check = $category->isUserEligible($request->user(), false);
         if (!$check['eligible']) {
             return response()->json(['message' => $check['reason']], 403);
         }

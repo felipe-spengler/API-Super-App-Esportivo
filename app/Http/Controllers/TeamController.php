@@ -124,12 +124,14 @@ class TeamController extends Controller
             'phone' => 'nullable|string',
             'gender' => 'nullable|string',
             'address' => 'nullable|string',
-            'birth_date' => 'nullable|date',
+            'birth_date' => ($isAdmin || !$request->filled('championship_id')) ? 'nullable|date' : 'required|date',
             'number' => 'nullable|string',
             'document_file' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:4096', // Max 4MB
             'photo_file' => 'nullable|image|max:4096', // Max 4MB
             'championship_id' => 'nullable|integer|exists:championships,id',
             'password' => 'nullable|string|min:6'
+        ], [
+            'birth_date.required' => 'A data de nascimento é obrigatória para cadastrar atletas no campeonato.'
         ]);
 
         $email = $request->email;
@@ -151,6 +153,38 @@ class TeamController extends Controller
 
                 if ($alreadyInTeam) {
                     return response()->json(['message' => 'Este atleta já está vinculado a este time neste contexto.'], 422);
+                }
+            }
+        }
+
+        // Validate player eligibility for the category (especially age/gender)
+        $champId = $request->championship_id;
+        if ($champId) {
+            $categoryPivot = \DB::table('championship_team')
+                ->where('team_id', $id)
+                ->where('championship_id', $champId)
+                ->first();
+
+            if ($categoryPivot && $categoryPivot->category_id) {
+                $category = \App\Models\Category::find($categoryPivot->category_id);
+                if ($category) {
+                    $userToCheck = $userData ?: new \App\Models\User([
+                        'name' => $request->name,
+                        'gender' => $request->gender,
+                        'birth_date' => $request->birth_date,
+                    ]);
+
+                    if ($request->has('gender')) {
+                        $userToCheck->gender = $request->gender;
+                    }
+                    if ($request->has('birth_date')) {
+                        $userToCheck->birth_date = $request->birth_date;
+                    }
+
+                    $check = $category->isUserEligible($userToCheck, true);
+                    if (!$check['eligible']) {
+                        return response()->json(['message' => $check['reason']], 422);
+                    }
                 }
             }
         }
@@ -297,6 +331,40 @@ class TeamController extends Controller
 
         if (!$isCaptain) {
             return response()->json(['message' => 'Sem permissão para editar este atleta.'], 403);
+        }
+
+        // Validate player eligibility for the category (especially age/gender) if updated
+        $championshipId = $request->championship_id;
+        $teamChampionships = \DB::table('championship_team')
+            ->where('team_id', $id)
+            ->when($championshipId, function ($q) use ($championshipId) {
+                return $q->where('championship_id', $championshipId);
+            })
+            ->get();
+
+        if (!$isAdmin && $teamChampionships->isNotEmpty()) {
+            if (empty($player->birth_date) && !$request->filled('birth_date')) {
+                return response()->json(['message' => 'A data de nascimento é obrigatória para atletas inscritos em campeonatos.'], 422);
+            }
+        }
+
+        foreach ($teamChampionships as $tc) {
+            if ($tc->category_id) {
+                $category = \App\Models\Category::find($tc->category_id);
+                if ($category) {
+                    $userToCheck = clone $player;
+                    if ($request->has('gender')) {
+                        $userToCheck->gender = $request->gender;
+                    }
+                    if ($request->has('birth_date')) {
+                        $userToCheck->birth_date = $request->birth_date;
+                    }
+                    $check = $category->isUserEligible($userToCheck, true);
+                    if (!$check['eligible']) {
+                        return response()->json(['message' => $check['reason']], 422);
+                    }
+                }
+            }
         }
 
         // Se for atleta exclusivo, admin, ou o PRÓPRIO usuário se editando, pode editar tudo

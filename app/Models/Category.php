@@ -41,7 +41,7 @@ class Category extends Model
     /**
      * Verifica se um usuário é elegível para esta categoria
      */
-    public function isUserEligible($user)
+    public function isUserEligible($user, $checkAge = true)
     {
         if (!$user)
             return true; // Se for jogador temporário (sem registro), não validamos ID aqui
@@ -75,7 +75,7 @@ class Category extends Model
         }
 
         // 2. Validar Idade
-        if (($this->min_age || $this->max_age)) {
+        if ($checkAge && ($this->min_age || $this->max_age)) {
             // Check if user has birth_date. If not, skip validation?
             if (!empty($user->birth_date)) {
                 try {

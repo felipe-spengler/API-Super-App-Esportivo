@@ -178,10 +178,10 @@ class AdminTeamController extends Controller
         if (!empty($validated['category_id'])) {
             $category = \App\Models\Category::findOrFail($validated['category_id']);
 
-            // Verifica o capitão apenas se for informado explicitamente para a categoria
+            // Verifica o capitão apenas se for informado explicitamente para a categoria (do not check age)
             $checkCaptain = !empty($validated['captain_id']) ? \App\Models\User::find($validated['captain_id']) : null;
             if ($checkCaptain) {
-                $check = $category->isUserEligible($checkCaptain);
+                $check = $category->isUserEligible($checkCaptain, false);
                 if (!$check['eligible']) {
                     return response()->json([
                         'message' => "O capitão {$checkCaptain->name} não atende aos requisitos da categoria {$category->name}.",
