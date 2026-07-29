@@ -809,7 +809,7 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
                                             <div className="absolute left-8 sm:left-1/2 top-0 bottom-0 w-px bg-gray-200 -ml-px" />
 
                                             {/* MVP Votes Summary */}
-                                            {match?.status === 'finished' && match?.mvp_votes_summary && (
+                                            {(match?.status === 'finished' || match?.status === 'live') && match?.mvp_votes_summary && (
                                                 <div className="mb-6 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-xl p-4 shadow-sm animate-in fade-in duration-300 relative z-15">
                                                     <div className="flex items-center gap-2 mb-3">
                                                         <span className="text-lg">🏆</span>

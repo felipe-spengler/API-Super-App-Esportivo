@@ -12,44 +12,18 @@ interface MatchMvpTabProps {
 export function MatchMvpTab({ match, rosters, onVoteSubmitted }: MatchMvpTabProps) {
     const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [viewTime, setViewTime] = useState<number>(0);
     const [hasVotedLocal, setHasVotedLocal] = useState(false);
 
     const isLive = match?.status === 'live';
     const isFinished = match?.status === 'finished';
-    const isMobile = window.innerWidth < 768;
-    const syncTimer = match?.match_details?.sync_timer;
-    const matchTime = syncTimer?.time ?? 0;
-    const isPast10Min = matchTime >= 600; // 10 minutos (600 segundos)
-
-    const sessionKey = `mvp_view_time_${match?.id}`;
     const voteKey = `mvp_voted_${match?.id}`;
 
-    // Track active viewing time on mobile for live matches
     useEffect(() => {
-        if (!isLive || !isMobile || !match?.id) return;
-
-        // Check if already voted
+        if (!match?.id) return;
         if (localStorage.getItem(voteKey)) {
             setHasVotedLocal(true);
-            return;
         }
-
-        const stored = sessionStorage.getItem(sessionKey);
-        let current = stored ? parseInt(stored) : 0;
-        setViewTime(current);
-
-        const interval = setInterval(() => {
-            // Only count if match is past 10 minutes
-            if (matchTime >= 600) {
-                current += 1;
-                setViewTime(current);
-                sessionStorage.setItem(sessionKey, current.toString());
-            }
-        }, 1000);
-
-        return () => clearInterval(interval);
-    }, [isLive, isMobile, match?.id, matchTime]);
+    }, [match?.id]);
 
     // Handle vote submission
     const handleVote = async () => {
@@ -78,10 +52,6 @@ export function MatchMvpTab({ match, rosters, onVoteSubmitted }: MatchMvpTabProp
             setIsSubmitting(false);
         }
     };
-
-    const secondsRemaining = Math.max(0, 300 - viewTime);
-    const minutesRemaining = Math.ceil(secondsRemaining / 60);
-    const progressPercentage = Math.min(100, (viewTime / 300) * 100);
 
     return (
         <div className="flex flex-col items-center justify-center py-6 px-4">
@@ -135,55 +105,8 @@ export function MatchMvpTab({ match, rosters, onVoteSubmitted }: MatchMvpTabProp
                 </div>
             )}
 
-            {/* 3. SE A PARTIDA ESTIVER ATIVA (AO VIVO), NÃO FOR DISPOSITIVO MÓVEL */}
-            {!match?.mvp && isLive && !hasVotedLocal && !isMobile && (
-                <div className="w-full max-w-md bg-yellow-50 border border-yellow-200 rounded-2xl p-6 text-center shadow-sm">
-                    <Smartphone className="w-12 h-12 text-yellow-600 mx-auto mb-3" />
-                    <h4 className="text-lg font-bold text-yellow-900 mb-1">Votação disponível no celular</h4>
-                    <p className="text-sm text-yellow-700">Acesse este jogo pelo seu celular para votar no Craque do Jogo após acompanhar 5 minutos de partida.</p>
-                </div>
-            )}
-
-            {/* 4. SE A PARTIDA ESTIVER ATIVA (AO VIVO), FOR DISPOSITIVO MÓVEL, MAS JOGO TEM MENOS DE 10 MIN */}
-            {!match?.mvp && isLive && !hasVotedLocal && isMobile && !isPast10Min && (
-                <div className="w-full max-w-md bg-indigo-50 border border-indigo-100 rounded-2xl p-6 text-center shadow-sm">
-                    <Vote className="w-12 h-12 text-indigo-500 mx-auto mb-3 animate-pulse" />
-                    <h4 className="text-lg font-bold text-indigo-900 mb-1">Aguardando início da votação</h4>
-                    <p className="text-sm text-indigo-700">A votação de MVP do público iniciará automaticamente a partir dos 10 minutos de partida.</p>
-                    <div className="mt-4 text-xs font-semibold text-indigo-500 uppercase tracking-wider">
-                        Tempo atual: {Math.floor(matchTime / 60)}m
-                    </div>
-                </div>
-            )}
-
-            {/* 5. SE A PARTIDA ESTIVER ATIVA (AO VIVO), FOR CELULAR, JOGO > 10 MIN, MAS AINDA NÃO COMPLETOU 5 MIN DE TELA */}
-            {!match?.mvp && isLive && !hasVotedLocal && isMobile && isPast10Min && viewTime < 300 && (
-                <div className="w-full max-w-md bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-                    <div className="flex items-center gap-3 mb-4">
-                        <Smartphone className="w-8 h-8 text-indigo-650 shrink-0" />
-                        <div>
-                            <h4 className="font-bold text-gray-800 text-sm">Validando presença no jogo</h4>
-                            <p className="text-xs text-gray-500">Mantenha a tela aberta para habilitar seu voto.</p>
-                        </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                        <div className="flex justify-between text-xs font-bold text-gray-700">
-                            <span>Acompanhando partida...</span>
-                            <span>Faltam {minutesRemaining} min</span>
-                        </div>
-                        <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden border border-gray-200/55">
-                            <div 
-                                className="h-full bg-indigo-600 transition-all duration-1000 ease-out"
-                                style={{ width: `${progressPercentage}%` }}
-                            />
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* 6. VOTAÇÃO DESBLOQUEADA E PRONTA PARA SELEÇÃO */}
-            {!match?.mvp && isLive && !hasVotedLocal && isMobile && isPast10Min && viewTime >= 300 && (
+            {/* 3. VOTAÇÃO DESBLOQUEADA E PRONTA PARA SELEÇÃO */}
+            {!match?.mvp && isLive && !hasVotedLocal && (
                 <div className="w-full max-w-md bg-white border border-gray-200 rounded-2xl p-5 shadow-lg animate-in fade-in slide-in-from-bottom duration-300">
                     <div className="flex items-center gap-2 mb-4 border-b border-gray-100 pb-3">
                         <Award className="text-yellow-500 shrink-0" />

@@ -72,6 +72,7 @@ export function AdminMatchManager() {
     const [isGeneratingKnockout, setIsGeneratingKnockout] = useState(false);
     const [rosters, setRosters] = useState<{ home: any[], away: any[] }>({ home: [], away: [] });
     const [loadingRosters, setLoadingRosters] = useState(false);
+    const [mvpVotesSummary, setMvpVotesSummary] = useState<any>(null);
     const [selectedMvpId, setSelectedMvpId] = useState<string | number>('');
     const [isSavingMvp, setIsSavingMvp] = useState(false);
     const [selectedPernaId, setSelectedPernaId] = useState<string | number>('');
@@ -105,6 +106,7 @@ export function AdminMatchManager() {
 
             // Atualiza apenas elencos — NÃO chama setSelectedMatch para não criar loop
             setRosters(data.rosters || { home: [], away: [] });
+            setMvpVotesSummary(data.mvp_votes_summary || null);
         } catch (error) {
             console.error("Erro ao carregar detalhes completos", error);
         } finally {
@@ -1101,6 +1103,7 @@ export function AdminMatchManager() {
                 isSavingPerna={isSavingPerna}
                 navigateToSumula={navigateToSumula}
                 navigate={navigate}
+                mvpVotesSummary={mvpVotesSummary}
             />
             {/* Add Modal extracted */}
             <AdminMatchCreateModal

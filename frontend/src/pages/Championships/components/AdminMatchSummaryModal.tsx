@@ -21,6 +21,7 @@ interface MatchSummaryModalProps {
     isSavingPerna: boolean;
     navigateToSumula: (matchId: number, sportSlug: string) => void;
     navigate: (path: string) => void;
+    mvpVotesSummary?: any;
 }
 
 export function AdminMatchSummaryModal({
@@ -41,7 +42,8 @@ export function AdminMatchSummaryModal({
     handleSavePerna,
     isSavingPerna,
     navigateToSumula,
-    navigate
+    navigate,
+    mvpVotesSummary
 }: MatchSummaryModalProps) {
     const [expandedTeams, setExpandedTeams] = React.useState<Record<number | string, boolean>>({});
     const [competitorTimes, setCompetitorTimes] = React.useState<any[]>([]);
@@ -420,6 +422,38 @@ export function AdminMatchSummaryModal({
                                     <div className="text-[10px] text-amber-600 font-black uppercase tracking-wider">Craque do Jogo (MVP)</div>
                                 </div>
                             </div>
+
+                            {mvpVotesSummary && (
+                                <div className="grid grid-cols-3 gap-2 text-center mb-3">
+                                    <div className="bg-white/80 p-2 rounded-lg border border-amber-100/80">
+                                        <span className="text-[9px] text-gray-500 font-extrabold uppercase block mb-0.5">📱 Público</span>
+                                        {mvpVotesSummary.public ? (
+                                            <div>
+                                                <p className="font-bold text-amber-900 text-xs truncate">{mvpVotesSummary.public.name}</p>
+                                                <p className="text-[9px] text-gray-400 font-bold mt-0.5">{mvpVotesSummary.public.votes_count} votos</p>
+                                            </div>
+                                        ) : (
+                                            <span className="text-[9px] text-gray-400 italic">Sem votos</span>
+                                        )}
+                                    </div>
+                                    <div className="bg-white/80 p-2 rounded-lg border border-amber-100/80">
+                                        <span className="text-[9px] text-gray-500 font-extrabold uppercase block mb-0.5">📝 Mesário</span>
+                                        {mvpVotesSummary.mesario ? (
+                                            <p className="font-bold text-amber-900 text-xs truncate">{mvpVotesSummary.mesario.name}</p>
+                                        ) : (
+                                            <span className="text-[9px] text-gray-400 italic">Sem voto</span>
+                                        )}
+                                    </div>
+                                    <div className="bg-white/80 p-2 rounded-lg border border-amber-100/80">
+                                        <span className="text-[9px] text-gray-500 font-extrabold uppercase block mb-0.5">⚖️ Árbitro</span>
+                                        {mvpVotesSummary.arbitro ? (
+                                            <p className="font-bold text-amber-900 text-xs truncate">{mvpVotesSummary.arbitro.name}</p>
+                                        ) : (
+                                            <span className="text-[9px] text-gray-400 italic">Sem voto</span>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
 
                             {loadingRosters ? (
                                 <div className="flex items-center gap-2 text-xs text-amber-400 py-2">
