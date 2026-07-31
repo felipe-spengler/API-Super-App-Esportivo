@@ -217,8 +217,8 @@ export function EventLeaderboard() {
                                                 <GripVertical className="w-5 h-5 text-indigo-500" />
                                             </div>
                                         )}
-                                        <span className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${!isEditingTiebreaker ? getMedalClass(team.position) : 'bg-gray-200 text-gray-600'}`}>
-                                            {team.position}
+                                        <span className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${!isEditingTiebreaker ? getMedalClass(index + 1) : 'bg-gray-200 text-gray-600'}`}>
+                                            {index + 1}
                                         </span>
                                     </td>
                                     <td className="px-4 py-3">

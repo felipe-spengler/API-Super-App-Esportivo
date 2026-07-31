@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Camera, Upload, ArrowLeft, Loader2, User, Plus, X } from 'lucide-react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
+import { compressImage } from '../utils/imageCompressor';
 
 export function Register() {
     const navigate = useNavigate();
@@ -34,13 +35,15 @@ export function Register() {
     }
 
     const handleDocumentSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+        const rawFile = e.target.files?.[0];
+        if (!rawFile) return;
 
         setLoading(true);
         const toastId = toast.loading('Analisando documento com IA...');
-
         try {
+            // Compress document before sending for OCR
+            const file = await compressImage(rawFile, 2 * 1024 * 1024, 1024, 0.7);
+
             const formDataOCR = new FormData();
             formDataOCR.append('document', file);
 
@@ -83,20 +86,36 @@ export function Register() {
         }
     };
 
-    const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
-            const newFiles = Array.from(e.target.files);
+            const rawFiles = Array.from(e.target.files);
 
             // Validate limits (max 3 total)
-            if (photos.length + newFiles.length > 3) {
+            if (photos.length + rawFiles.length > 3) {
                 toast.error("Você pode adicionar no máximo 3 fotos.");
                 return;
             }
 
-            const newPreviews = newFiles.map(file => URL.createObjectURL(file));
+            setLoading(true);
+            const compressToastId = toast.loading('Processando e otimizando imagens...');
 
-            setPhotos(prev => [...prev, ...newFiles]);
-            setPhotoPreviews(prev => [...prev, ...newPreviews]);
+            try {
+                // Compress each image on the fly
+                const compressedFiles = await Promise.all(
+                    rawFiles.map(file => compressImage(file, 2 * 1024 * 1024, 1024, 0.75))
+                );
+
+                const newPreviews = compressedFiles.map(file => URL.createObjectURL(file));
+
+                setPhotos(prev => [...prev, ...compressedFiles]);
+                setPhotoPreviews(prev => [...prev, ...newPreviews]);
+                toast.dismiss(compressToastId);
+            } catch (err) {
+                console.error("Erro ao processar imagens", err);
+                toast.error("Erro ao processar algumas fotos.", { id: compressToastId });
+            } finally {
+                setLoading(false);
+            }
         }
     };
 

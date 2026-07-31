@@ -41,6 +41,11 @@ RUN docker-php-ext-configure gd \
 # ADICIONADO: zip na lista de extensões
 RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd intl pdo_sqlite zip
 
+# 4.1 Configurar limites de upload e memória do PHP
+RUN echo "upload_max_filesize = 8M" > /usr/local/etc/php/conf.d/uploads.ini \
+    && echo "post_max_size = 8M" >> /usr/local/etc/php/conf.d/uploads.ini \
+    && echo "memory_limit = 256M" >> /usr/local/etc/php/conf.d/uploads.ini
+
 # 5. Obter Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
