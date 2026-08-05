@@ -41,6 +41,7 @@ const DEFAULT_ELEMENTS: Element[] = [
 
     { id: 'championship', type: 'text', x: 540, y: 1690, fontSize: 40, color: '#FFFFFF', align: 'center', label: 'Nome Campeonato', zIndex: 2, content: '{CAMPEONATO}' },
     { id: 'round', type: 'text', x: 540, y: 1750, fontSize: 30, color: '#FFFFFF', align: 'center', label: 'Rodada/Fase', zIndex: 2, content: '{RODADA}' },
+    { id: 'category', type: 'text', x: 540, y: 1810, fontSize: 30, color: '#FFB700', align: 'center', label: 'Categoria', zIndex: 2, content: '{CATEGORIA}', fontFamily: 'Roboto' },
 ];
 
 export function ArtEditor() {
@@ -139,6 +140,7 @@ export function ArtEditor() {
             setElements([
                 { id: 'championship', type: 'text', x: 540, y: 250, fontSize: 45, color: '#FFFFFF', align: 'center', label: 'Campeonato', zIndex: 2, content: '{CAMPEONATO}', fontFamily: 'Roboto' },
                 { id: 'round', type: 'text', x: 540, y: 320, fontSize: 35, color: '#FFB700', align: 'center', label: 'Rodada/Fase', zIndex: 2, content: '{RODADA}', fontFamily: 'Roboto' },
+                { id: 'category', type: 'text', x: 540, y: 380, fontSize: 30, color: '#FFFFFF', align: 'center', label: 'Categoria', zIndex: 2, content: '{CATEGORIA}', fontFamily: 'Roboto' },
                 { id: 'team_a', type: 'image', x: 250, y: 800, width: 400, height: 400, label: 'Brasão Mandante', zIndex: 2, content: 'team_a' },
                 { id: 'team_b', type: 'image', x: 830, y: 800, width: 400, height: 400, label: 'Brasão Visitante', zIndex: 2, content: 'team_b' },
                 { id: 'vs', type: 'text', x: 540, y: 1000, fontSize: 80, color: '#FFB700', align: 'center', label: 'X (Versus)', zIndex: 2, content: 'X', fontFamily: 'Roboto-Bold' },
@@ -149,6 +151,7 @@ export function ArtEditor() {
             setElements([
                 { id: 'bg', type: 'image', x: 540, y: 960, width: 1080, height: 1920, label: 'Background', zIndex: 0, content: 'bg_confronto' },
                 { id: 'championship', type: 'text', x: 540, y: 250, fontSize: 45, color: '#FFFFFF', align: 'center', label: 'Campeonato', zIndex: 2, content: '{CAMPEONATO}', fontFamily: 'Roboto' },
+                { id: 'category', type: 'text', x: 540, y: 310, fontSize: 35, color: '#FFB700', align: 'center', label: 'Categoria', zIndex: 2, content: '{CATEGORIA}', fontFamily: 'Roboto' },
                 { id: 'team_a', type: 'image', x: 250, y: 800, width: 400, height: 400, label: 'Brasão Mandante', zIndex: 2, content: 'team_a' },
                 { id: 'team_b', type: 'image', x: 830, y: 800, width: 400, height: 400, label: 'Brasão Visitante', zIndex: 2, content: 'team_b' },
 
@@ -198,6 +201,7 @@ export function ArtEditor() {
             setElements([
                 { id: 'championship', type: 'text', x: 540, y: 250, fontSize: 45, color: '#FFFFFF', align: 'center', label: 'Campeonato', zIndex: 2, content: '{CAMPEONATO}', fontFamily: 'Roboto' },
                 { id: 'round', type: 'text', x: 540, y: 320, fontSize: 35, color: '#FFB700', align: 'center', label: 'Rodada/Fase', zIndex: 2, content: '{RODADA}', fontFamily: 'Roboto' },
+                { id: 'category', type: 'text', x: 540, y: 380, fontSize: 30, color: '#FFFFFF', align: 'center', label: 'Categoria', zIndex: 2, content: '{CATEGORIA}', fontFamily: 'Roboto' },
                 { id: 'title', type: 'text', x: 540, y: 800, fontSize: 80, color: '#FFFFFF', align: 'center', label: 'Título Bateria', zIndex: 2, content: 'BATERIA PROGRAMADA', fontFamily: 'Roboto-Bold' },
                 { id: 'date', type: 'text', x: 540, y: 1300, fontSize: 60, color: '#FFB700', align: 'center', label: 'Data/Hora', zIndex: 2, content: 'DD/MM HH:MM', fontFamily: 'Roboto' },
                 { id: 'local', type: 'text', x: 540, y: 1400, fontSize: 35, color: '#FFFFFF', align: 'center', label: 'Local', zIndex: 2, content: 'Local da Bateria', fontFamily: 'Roboto' }
@@ -283,6 +287,25 @@ export function ArtEditor() {
             label: 'Novo Texto',
             zIndex: elements.length + 1,
             content: 'Novo Texto',
+            fontFamily: 'Roboto'
+        };
+        setElements(prev => [...prev, newEl]);
+        setActiveElementId(newEl.id);
+        setShowElements(true);
+    };
+
+    const handleAddCategoryElement = () => {
+        const newEl: Element = {
+            id: 'category_' + Date.now(),
+            type: 'text',
+            x: CANVAS_WIDTH / 2,
+            y: CANVAS_HEIGHT / 2 + 150,
+            fontSize: 35,
+            color: '#FFB700',
+            align: 'center',
+            label: 'Categoria',
+            zIndex: elements.length + 1,
+            content: '{CATEGORIA}',
             fontFamily: 'Roboto'
         };
         setElements(prev => [...prev, newEl]);
@@ -731,6 +754,10 @@ export function ArtEditor() {
                                                 e.stopPropagation();
                                                 handleAddElement();
                                             }} title="Adicionar novo elemento de texto"><Type size={14} /></span>
+                                            <span className="p-1 hover:bg-indigo-50 rounded text-indigo-650 cursor-pointer" onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleAddCategoryElement();
+                                            }} title="Adicionar Categoria do Campeonato"><Award size={14} /></span>
                                             {showElements ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                                         </div>
                                     </button>

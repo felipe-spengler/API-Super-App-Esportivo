@@ -340,6 +340,10 @@ trait ArtCardTrait
                 $replacements['{PC}'] = $sH;
                 $replacements['{PV}'] = $sA;
 
+                if ($match->category) {
+                    $replacements['{CATEGORIA}'] = mb_strtoupper($match->category->name);
+                }
+
                 if ($match->homeTeam) {
                     $replacements['{TC}'] = mb_strtoupper($match->homeTeam->name);
                     $replacements['team_a'] = $this->getTeamLogoPath($match->homeTeam);
@@ -347,6 +351,19 @@ trait ArtCardTrait
                 if ($match->awayTeam) {
                     $replacements['{TF}'] = mb_strtoupper($match->awayTeam->name);
                     $replacements['team_b'] = $this->getTeamLogoPath($match->awayTeam);
+                }
+            }
+
+            if (empty($replacements['{CATEGORIA}']) && $playerTeam && $championship) {
+                $pivot = \DB::table('championship_team')
+                    ->where('championship_id', $championship->id)
+                    ->where('team_id', $playerTeam->id)
+                    ->first();
+                if ($pivot && $pivot->category_id) {
+                    $cat = \App\Models\Category::find($pivot->category_id);
+                    if ($cat) {
+                        $replacements['{CATEGORIA}'] = mb_strtoupper($cat->name);
+                    }
                 }
             }
 
