@@ -36,6 +36,8 @@ export function ChampionshipForm() {
         elderly_minimum_age: 60,
         allow_shopping_registration: true,
         location_name: '',
+        has_bulk_discount: false,
+        bulk_discount_settings: [] as any[],
         // Statistics configuration
         include_repescagem_goals: false,
         include_repescagem_assists: false,
@@ -101,6 +103,8 @@ export function ChampionshipForm() {
                     elderly_minimum_age: data.elderly_minimum_age || 60,
                     allow_shopping_registration: data.allow_shopping_registration !== undefined ? !!data.allow_shopping_registration : true,
                     location_name: data.races && data.races.length > 0 ? data.races[0].location_name : '',
+                    has_bulk_discount: !!(data.bulk_discount_settings && data.bulk_discount_settings.length > 0),
+                    bulk_discount_settings: data.bulk_discount_settings || [],
                     // Statistics configuration
                     include_repescagem_goals: !!data.include_repescagem_goals,
                     include_repescagem_assists: !!data.include_repescagem_assists,
@@ -136,6 +140,7 @@ export function ChampionshipForm() {
         const payload = {
             ...formData,
             sport_id: parseInt(formData.sport_id),
+            bulk_discount_settings: formData.has_bulk_discount ? formData.bulk_discount_settings : null
         };
 
         try {
@@ -758,6 +763,106 @@ export function ChampionshipForm() {
                                     </div>
                                 )}
                             </div>
+
+                            {/* Inscrição Coletiva */}
+                            {formData.registration_type === 'individual' && (
+                                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-4">
+                                    <label className="flex items-center gap-3 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.has_bulk_discount}
+                                            onChange={e => {
+                                                const checked = e.target.checked;
+                                                setFormData({ 
+                                                    ...formData, 
+                                                    has_bulk_discount: checked,
+                                                    bulk_discount_settings: checked && formData.bulk_discount_settings.length === 0 
+                                                        ? [{ min_athletes: 5, max_athletes: 14, discount_percentage: 10 }]
+                                                        : formData.bulk_discount_settings
+                                                });
+                                            }}
+                                            className="w-5 h-5 text-indigo-600 rounded"
+                                        />
+                                        <span className="font-bold text-slate-800">Oferecer desconto progressivo para inscrições coletivas (em lote)</span>
+                                    </label>
+                                    {formData.has_bulk_discount && (
+                                        <div className="pl-8 space-y-4">
+                                            <p className="text-xs text-slate-500 font-medium">Configure as faixas de descontos com base na quantidade de atletas inscritos juntos.</p>
+                                            {formData.bulk_discount_settings.map((rule: any, idx: number) => (
+                                                <div key={idx} className="flex flex-wrap items-center gap-3 bg-white p-3 rounded-lg border border-slate-200">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs text-slate-500 font-bold">Mínimo:</span>
+                                                        <input
+                                                            type="number" min="1"
+                                                            value={rule.min_athletes}
+                                                            onChange={e => {
+                                                                const copy = [...formData.bulk_discount_settings];
+                                                                copy[idx].min_athletes = Number(e.target.value);
+                                                                setFormData({ ...formData, bulk_discount_settings: copy });
+                                                            }}
+                                                            className="w-20 px-2 py-1 border border-slate-300 rounded text-sm"
+                                                        />
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs text-slate-500 font-bold">Máximo:</span>
+                                                        <input
+                                                            type="number" min="1"
+                                                            value={rule.max_athletes}
+                                                            onChange={e => {
+                                                                const copy = [...formData.bulk_discount_settings];
+                                                                copy[idx].max_athletes = Number(e.target.value);
+                                                                setFormData({ ...formData, bulk_discount_settings: copy });
+                                                            }}
+                                                            className="w-20 px-2 py-1 border border-slate-300 rounded text-sm"
+                                                        />
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs text-slate-500 font-bold">Desconto:</span>
+                                                        <div className="relative">
+                                                            <input
+                                                                type="number" min="0" max="100"
+                                                                value={rule.discount_percentage}
+                                                                onChange={e => {
+                                                                    const copy = [...formData.bulk_discount_settings];
+                                                                    copy[idx].discount_percentage = Number(e.target.value);
+                                                                    setFormData({ ...formData, bulk_discount_settings: copy });
+                                                                }}
+                                                                className="w-20 pr-6 pl-2 py-1 border border-slate-300 rounded text-sm"
+                                                            />
+                                                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500">%</span>
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const copy = formData.bulk_discount_settings.filter((_: any, i: number) => i !== idx);
+                                                            setFormData({ ...formData, bulk_discount_settings: copy });
+                                                        }}
+                                                        className="ml-auto text-xs text-red-600 font-bold uppercase hover:underline"
+                                                    >
+                                                        Remover
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setFormData({
+                                                        ...formData,
+                                                        bulk_discount_settings: [
+                                                            ...formData.bulk_discount_settings,
+                                                            { min_athletes: 15, max_athletes: 999, discount_percentage: 15 }
+                                                        ]
+                                                    });
+                                                }}
+                                                className="text-indigo-600 font-bold text-xs uppercase hover:underline"
+                                            >
+                                                + Adicionar faixa de desconto
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         <div className="pt-6 border-t border-gray-100 flex justify-end">

@@ -114,6 +114,7 @@ Route::get('/championships/{id}/race', [EventController::class, 'raceDetails']);
 Route::get('/championships/{id}/race-results', [EventController::class, 'raceResults']);
 Route::get('/championships/{id}/times', [EventController::class, 'times']);
 Route::post('/championships/{id}/race/register', [RaceInscriptionController::class, 'publicRegister']);
+Route::post('/championships/{id}/race/register-bulk', [RaceInscriptionController::class, 'publicRegisterBulk']);
 Route::post('/championships/{id}/race/track', [RaceInscriptionController::class, 'publicTrackRegistration']);
 Route::post('/inscriptions/{id}/recreate-payment', [RacePaymentController::class, 'recreatePayment']);
 Route::get('/championships/{id}/mvp', [EventController::class, 'mvp']);

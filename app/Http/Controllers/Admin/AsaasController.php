@@ -115,8 +115,65 @@ class AsaasController extends Controller
         if (!$externalReference)
             return;
 
+        // Caso 1.1: Inscrição Coletiva de Corrida
+        if (str_starts_with($externalReference, 'PG_')) {
+            $groupId = str_replace('PG_', '', $externalReference);
+            $results = RaceResult::with(['user', 'race.championship', 'category.parent'])->where('payment_group_id', $groupId)->get();
+
+            foreach ($results as $result) {
+                if ($result->status_payment !== 'paid') {
+                    $result->update([
+                        'status_payment' => 'paid',
+                        'payment_method' => $payment['billingType'] ?? 'asaas'
+                    ]);
+
+                    // Baixa no Estoque dos Brindes (Produtos Inclusos na Categoria)
+                    if ($result->category) {
+                        try {
+                            $included = $result->category->products();
+                            if ($included && $included->count() > 0) {
+                                foreach ($included as $item) {
+                                    $product = $item['product'];
+                                    $qty = $item['quantity'] ?? 1;
+                                    if ($product && $product->stock_quantity !== null) {
+                                        $product->decrement('stock_quantity', $qty);
+                                        Log::info("Stock reduced for Gift Product {$product->id}: -{$qty} (RaceResult {$result->id})");
+                                    }
+                                }
+                            }
+                        } catch (\Throwable $stockEx) {
+                            Log::error("Erro ao baixar estoque de brindes RR {$result->id}: " . $stockEx->getMessage());
+                        }
+                    }
+
+                    // Baixa no Estoque dos Itens de Loja Adicionais
+                    try {
+                        if ($result->shop_items && is_array($result->shop_items)) {
+                            foreach ($result->shop_items as $item) {
+                                $prod = \App\Models\Product::find($item['product_id']);
+                                if ($prod && $prod->stock_quantity !== null) {
+                                    $prod->decrement('stock_quantity', $item['quantity'] ?? 1);
+                                    Log::info("Stock reduced for Additional Shop Item {$prod->id}: -" . ($item['quantity'] ?? 1));
+                                }
+                            }
+                        }
+                    } catch (\Throwable $stockEx) {
+                        Log::error("Erro ao baixar estoque de loja RR {$result->id}: " . $stockEx->getMessage());
+                    }
+
+                    try {
+                        $this->sendInscriptionConfirmation($result);
+                    } catch (\Throwable $mailEx) {
+                        Log::error("Pagamento Confirmado RR {$result->id}, mas erro ao enviar e-mail: " . $mailEx->getMessage());
+                    }
+
+                    Log::info("RaceResult {$result->id} (Group {$groupId}) marked as PAID");
+                }
+            }
+        }
+
         // Caso 1: Inscrição Individual de Corrida
-        if (str_starts_with($externalReference, 'RR_')) {
+        elseif (str_starts_with($externalReference, 'RR_')) {
             $id = str_replace('RR_', '', $externalReference);
             $result = RaceResult::with(['user', 'race.championship', 'category.parent'])->find($id);
             if ($result && $result->status_payment !== 'paid') {

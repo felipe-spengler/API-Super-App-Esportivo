@@ -44,7 +44,8 @@ class Championship extends Model
         'include_knockout_standings',
         'include_knockout_goals',
         'include_knockout_assists',
-        'include_knockout_cards'
+        'include_knockout_cards',
+        'bulk_discount_settings'
     ];
 
     protected $casts = [
@@ -73,6 +74,7 @@ class Championship extends Model
         'allow_shopping_registration' => 'boolean',
         'remove_bg_on_art' => 'boolean',
         'tiebreaker_priority' => 'array',
+        'bulk_discount_settings' => 'array',
     ];
 
     public function club()

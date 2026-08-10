@@ -28,7 +28,9 @@ class RaceResult extends Model
         'payment_info',
         'shop_items',
         'kit_delivered',
-        'kit_delivered_at'
+        'kit_delivered_at',
+        'payment_group_id',
+        'payment_group_leader'
     ];
 
     protected $casts = [
@@ -38,6 +40,7 @@ class RaceResult extends Model
         'payment_info' => 'array',
         'kit_delivered' => 'boolean',
         'kit_delivered_at' => 'datetime',
+        'payment_group_leader' => 'boolean',
     ];
 
     public function race()

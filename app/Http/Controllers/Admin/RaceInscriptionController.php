@@ -446,6 +446,391 @@ class RaceInscriptionController extends Controller
         }
     }
 
+    // Registro Coletivo (Site)
+    public function publicRegisterBulk(Request $request, $championshipId)
+    {
+        if ($request->has('athletes') && is_string($request->athletes)) {
+            $decoded = json_decode($request->athletes, true);
+            $request->merge(['athletes' => is_array($decoded) ? $decoded : []]);
+        }
+
+        $request->validate([
+            'athletes' => 'required|array|min:1',
+            'athletes.*.name' => 'required|string|max:255',
+            'athletes.*.email' => 'required|email',
+            'athletes.*.phone' => 'required|string|max:255',
+            'athletes.*.document' => 'required|string|max:255',
+            'athletes.*.birth_date' => 'required|date',
+            'athletes.*.gender' => 'required|string|in:M,F,O',
+            'athletes.*.category_id' => 'required|exists:categories,id',
+            'athletes.*.is_pcd' => 'nullable|boolean',
+            'athletes.*.gifts' => 'nullable|array',
+            'athletes.*.shop_items' => 'nullable|array',
+            'coupon_code' => 'nullable|string',
+            'payment_method' => 'nullable|string|in:PIX,CREDIT_CARD,BOLETO'
+        ]);
+
+        $race = Race::where('championship_id', $championshipId)->first();
+        if (!$race) {
+            $championship = Championship::find($championshipId);
+            if ($championship && $championship->format === 'racing') {
+                $race = Race::create([
+                    'championship_id' => $championshipId,
+                    'start_datetime' => $championship->start_date,
+                    'location_name' => 'A definir',
+                    'kits_info' => 'Informações do kit em breve'
+                ]);
+            } else {
+                return response()->json(['error' => 'Evento não encontrado ou não configurado como corrida.'], 404);
+            }
+        }
+
+        $championship = $race->championship;
+        $athletes = $request->athletes;
+        $count = count($athletes);
+
+        // Calcular Desconto Coletivo Progressivo
+        $bulkDiscountPct = 0;
+        if ($championship->bulk_discount_settings && is_array($championship->bulk_discount_settings)) {
+            foreach ($championship->bulk_discount_settings as $rule) {
+                if ($count >= ($rule['min_athletes'] ?? 0) && $count <= ($rule['max_athletes'] ?? 9999)) {
+                    $bulkDiscountPct = (float) ($rule['discount_percentage'] ?? 0);
+                    break;
+                }
+            }
+        }
+
+        $paymentGroupId = (string) Str::uuid();
+        $totalPrice = 0;
+        $resultsToCreate = [];
+
+        try {
+            DB::beginTransaction();
+
+            $index = 0;
+            foreach ($athletes as $athleteData) {
+                $selectedCategory = Category::with(['parent', 'children'])->findOrFail($athleteData['category_id']);
+                $mainCategory = $selectedCategory->parent_id ? $selectedCategory->parent : $selectedCategory;
+                $category = $selectedCategory;
+
+                $eventYear = $championship->start_date ? \Carbon\Carbon::parse($championship->start_date)->year : date('Y');
+                $referenceDate = \Carbon\Carbon::createFromDate($eventYear, 12, 31);
+                $athleteAge = (int) $referenceDate->diffInYears(\Carbon\Carbon::parse($athleteData['birth_date']), true);
+
+                if ($mainCategory->children->count() > 0) {
+                    if (!empty($athleteData['is_pcd'])) {
+                        $subCategory = $mainCategory->children
+                            ->filter(function ($child) use ($athleteData) {
+                                $nameMatch = str_contains(strtolower($child->name), 'pcd');
+                                $childGender = strtolower($child->gender ?? '');
+                                if ($childGender && $childGender !== 'mixed' && $childGender !== 'misto') {
+                                    $userGender = strtolower($athleteData['gender']);
+                                    if ($userGender === 'm') $userGender = 'male';
+                                    if ($userGender === 'f') $userGender = 'female';
+                                    $normalizedChildGender = $childGender;
+                                    if ($normalizedChildGender === 'm') $normalizedChildGender = 'male';
+                                    if ($normalizedChildGender === 'f') $normalizedChildGender = 'female';
+                                    if ($userGender !== $normalizedChildGender) return false;
+                                }
+                                return $nameMatch;
+                            })
+                            ->first();
+                    }
+
+                    if (!isset($subCategory)) {
+                        $subCategory = $mainCategory->children
+                            ->filter(function ($child) use ($athleteAge, $athleteData) {
+                                $min = $child->min_age ?? 0;
+                                $max = $child->max_age ?? 999;
+                                if ($athleteAge < $min || $athleteAge > $max) return false;
+
+                                $childGender = strtolower($child->gender ?? '');
+                                if ($childGender && $childGender !== 'mixed' && $childGender !== 'misto') {
+                                    $userGender = strtolower($athleteData['gender']);
+                                    if ($userGender === 'm') $userGender = 'male';
+                                    if ($userGender === 'f') $userGender = 'female';
+                                    $normalizedChildGender = $childGender;
+                                    if ($normalizedChildGender === 'm') $normalizedChildGender = 'male';
+                                    if ($normalizedChildGender === 'f') $normalizedChildGender = 'female';
+                                    if ($userGender !== $normalizedChildGender) return false;
+                                }
+                                return true;
+                            })
+                            ->first();
+                    }
+
+                    if ($subCategory) {
+                        $category = $subCategory;
+                    }
+                }
+
+                $catGender = strtolower($category->gender ?? $mainCategory->gender ?? '');
+                if ($catGender && $catGender !== 'mixed' && $catGender !== 'misto') {
+                    $userGender = strtolower($athleteData['gender']);
+                    if ($userGender === 'm') $userGender = 'male';
+                    if ($userGender === 'f') $userGender = 'female';
+                    $normalizedCatGender = $catGender;
+                    if ($normalizedCatGender === 'm') $normalizedCatGender = 'male';
+                    if ($normalizedCatGender === 'f') $normalizedCatGender = 'female';
+                    if ($userGender !== $normalizedCatGender) {
+                        return response()->json(['error' => "Gênero incompatível para o atleta {$athleteData['name']}."], 422);
+                    }
+                }
+
+                if ($category->min_age && $athleteAge < $category->min_age) {
+                    return response()->json(['error' => "Idade não permitida para o atleta {$athleteData['name']}. Mínima: {$category->min_age}."], 422);
+                }
+                if ($category->max_age && $athleteAge > $category->max_age) {
+                    return response()->json(['error' => "Idade não permitida para o atleta {$athleteData['name']}. Máxima: {$category->max_age}."], 422);
+                }
+
+                $user = User::where('cpf', $athleteData['document'])
+                    ->orWhere('email', $athleteData['email'])
+                    ->first();
+
+                if ($user) {
+                    $exists = RaceResult::where('race_id', $race->id)->where('user_id', $user->id)->exists();
+                    if ($exists) {
+                        return response()->json(['error' => "O atleta {$athleteData['name']} já está inscrito neste evento."], 422);
+                    }
+                    $user->update(array_filter([
+                        'birth_date' => $user->birth_date ?: $athleteData['birth_date'],
+                        'gender' => $user->gender ?: $athleteData['gender'],
+                        'phone' => $user->phone ?: $athleteData['phone'],
+                        'cpf' => $user->cpf ?: $athleteData['document'],
+                    ]));
+                } else {
+                    $user = User::create([
+                        'name' => $athleteData['name'],
+                        'email' => $athleteData['email'],
+                        'phone' => $athleteData['phone'],
+                        'cpf' => $athleteData['document'],
+                        'birth_date' => $athleteData['birth_date'],
+                        'gender' => $athleteData['gender'],
+                        'club_id' => $championship->club_id,
+                        'password' => bcrypt(Str::random(12)),
+                    ]);
+                }
+
+                if ($request->hasFile("athletes.{$index}.photo")) {
+                    try {
+                        $imageController = new ImageUploadController();
+                        $photoRequest = new Request();
+                        $photoRequest->files->set('photo', $request->file("athletes.{$index}.photo"));
+                        $photoRequest->merge(['remove_bg' => false]);
+                        $imageController->uploadPlayerPhoto($photoRequest, $user->id);
+                    } catch (\Exception $photoEx) {
+                        Log::error("Erro foto bulk: " . $photoEx->getMessage());
+                    }
+                }
+
+                $pcdDocumentUrl = null;
+                if (!empty($athleteData['is_pcd']) && $request->hasFile("athletes.{$index}.pcd_document")) {
+                    $path = $request->file("athletes.{$index}.pcd_document")->store('pcd_documents', 'public');
+                    $pcdDocumentUrl = '/storage/' . $path;
+                }
+
+                $originalPrice = (float) $mainCategory->price;
+                if ($category->id !== $mainCategory->id) {
+                    $originalPrice += (float) ($category->price ?? 0);
+                }
+
+                if (isset($athleteData['gifts']) && is_array($athleteData['gifts'])) {
+                    foreach ($athleteData['gifts'] as $gift) {
+                        $prod = Product::find($gift['product_id']);
+                        if ($prod && is_array($prod->variants)) {
+                            foreach ($prod->variants as $v) {
+                                if (is_array($v) && isset($v['value']) && $v['value'] === $gift['variant']) {
+                                    $originalPrice += (float) ($v['surcharge'] ?? 0);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                $discountPct = 0;
+                $hasAutoDiscount = false;
+
+                if ($championship->has_elderly_discount && $athleteAge >= $championship->elderly_minimum_age) {
+                    $discountPct = max($discountPct, (float) $championship->elderly_discount_percentage);
+                    $hasAutoDiscount = true;
+                }
+
+                if (!empty($athleteData['is_pcd']) && $championship->has_pcd_discount) {
+                    $discountPct = max($discountPct, (float) $championship->pcd_discount_percentage);
+                    $hasAutoDiscount = true;
+                }
+
+                $finalDiscountPct = max($discountPct, $bulkDiscountPct);
+                if ($finalDiscountPct > 0) {
+                    $hasAutoDiscount = true;
+                }
+
+                $athleteFinalPrice = $originalPrice * (1 - ($finalDiscountPct / 100));
+
+                $shopTotal = 0;
+                if (isset($athleteData['shop_items']) && is_array($athleteData['shop_items'])) {
+                    foreach ($athleteData['shop_items'] as $item) {
+                        $prod = Product::find($item['product_id']);
+                        if ($prod) {
+                            $itemPrice = (float) $prod->price;
+                            if (isset($item['variant']) && is_array($prod->variants)) {
+                                foreach ($prod->variants as $v) {
+                                    if (is_array($v) && isset($v['value']) && $v['value'] === $item['variant']) {
+                                        $itemPrice += (float) ($v['surcharge'] ?? 0);
+                                    }
+                                }
+                            }
+                            $shopTotal += $itemPrice * (int) ($item['quantity'] ?? 1);
+                        }
+                    }
+                }
+                $athleteFinalPrice += $shopTotal;
+
+                $couponId = null;
+                if ($request->coupon_code && !$hasAutoDiscount) {
+                    $coupon = Coupon::where('club_id', $championship->club_id)->where('code', $request->coupon_code)->first();
+                    if ($coupon && (!$coupon->max_uses || $coupon->used_count < $coupon->max_uses) && (!$coupon->expires_at || !$coupon->expires_at->endOfDay()->isPast())) {
+                        if ($coupon->discount_type === 'percent') {
+                            $athleteFinalPrice -= ($athleteFinalPrice - $shopTotal) * ($coupon->discount_value / 100);
+                        } else {
+                            $athleteFinalPrice -= $coupon->discount_value;
+                        }
+                        $couponId = $coupon->id;
+                        $coupon->increment('used_count');
+                    }
+                }
+
+                if ($athleteFinalPrice < 0) $athleteFinalPrice = 0;
+
+                $totalPrice += $athleteFinalPrice;
+
+                $resultsToCreate[] = [
+                    'user' => $user,
+                    'category' => $category,
+                    'main_category' => $mainCategory,
+                    'price' => $athleteFinalPrice,
+                    'original_price' => $originalPrice,
+                    'is_pcd' => !empty($athleteData['is_pcd']),
+                    'pcd_document_url' => $pcdDocumentUrl,
+                    'gifts' => $athleteData['gifts'] ?? null,
+                    'shop_items' => $athleteData['shop_items'] ?? null,
+                    'coupon_id' => $couponId,
+                    'payment_group_leader' => ($index === 0)
+                ];
+
+                $index++;
+            }
+
+            $createdResults = [];
+            $status = ($totalPrice > 0) ? 'pending' : 'paid';
+
+            foreach ($resultsToCreate as $r) {
+                $lastBib = RaceResult::where('race_id', $race->id)->max(DB::raw('CAST(bib_number AS SIGNED)'));
+                $newBib = $lastBib ? $lastBib + 1 : 1;
+
+                $result = RaceResult::create([
+                    'race_id' => $race->id,
+                    'user_id' => $r['user']->id,
+                    'name' => $r['user']->name,
+                    'bib_number' => (string) $newBib,
+                    'category_id' => $r['category']->id,
+                    'status_payment' => $status,
+                    'payment_method' => $status === 'paid' ? 'free' : null,
+                    'is_pcd' => $r['is_pcd'],
+                    'pcd_document_url' => $r['pcd_document_url'],
+                    'gifts' => $r['gifts'],
+                    'coupon_id' => $r['coupon_id'],
+                    'shop_items' => $r['shop_items'],
+                    'payment_group_id' => $paymentGroupId,
+                    'payment_group_leader' => $r['payment_group_leader']
+                ]);
+
+                if ($status === 'paid') {
+                    try {
+                        $included = $r['category']->products();
+                        foreach ($included as $item) {
+                            $product = $item['product'];
+                            $qty = $item['quantity'] ?? 1;
+                            if ($product && $product->stock_quantity !== null) {
+                                $product->decrement('stock_quantity', $qty);
+                            }
+                        }
+                        if ($r['shop_items']) {
+                            foreach ($r['shop_items'] as $item) {
+                                $prod = Product::find($item['product_id']);
+                                if ($prod && $prod->stock_quantity !== null) {
+                                    $prod->decrement('stock_quantity', $item['quantity'] ?? 1);
+                                }
+                            }
+                        }
+                    } catch (\Exception $se) {
+                        Log::error("Erro estoque grátis bulk: " . $se->getMessage());
+                    }
+                }
+
+                $createdResults[] = $result;
+            }
+
+            $paymentInfo = null;
+            if ($status === 'pending') {
+                $leaderResult = $createdResults[0];
+                $leaderUser = $resultsToCreate[0]['user'];
+
+                $asaas = new AsaasService($championship->club);
+                $description = "Inscrição Coletiva: {$championship->name} - {$count} atletas";
+                $payment = $asaas->createPayment(
+                    $leaderUser,
+                    $totalPrice,
+                    substr($description, 0, 250),
+                    "PG_{$paymentGroupId}",
+                    null,
+                    $request->input('payment_method', 'UNDEFINED')
+                );
+
+                if (isset($payment['id'])) {
+                    $pix = $asaas->getPixQrCode($payment['id']);
+                    $paymentInfo = [
+                        'asaas_id' => $payment['id'],
+                        'invoice_url' => $payment['invoiceUrl'],
+                        'pix_qr_code' => $pix['encodedImage'] ?? null,
+                        'pix_copy_paste' => $pix['payload'] ?? null,
+                        'expiration' => $payment['dueDate'],
+                        'value' => $totalPrice
+                    ];
+
+                    foreach ($createdResults as $res) {
+                        $res->update([
+                            'payment_method' => 'asaas',
+                            'asaas_payment_id' => $payment['id'],
+                            'payment_info' => $paymentInfo
+                        ]);
+                    }
+
+                    try {
+                        Mail::to($leaderUser->email)->send(new InscriptionPaymentMail($leaderResult, $paymentInfo));
+                    } catch (\Exception $me) {
+                        Log::error("Erro e-mail bulk: " . $me->getMessage());
+                    }
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Inscrições em lote realizadas com sucesso!',
+                'payment_group_id' => $paymentGroupId,
+                'requires_payment' => $totalPrice > 0,
+                'price' => $totalPrice,
+                'payment_data' => $paymentInfo
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Erro ao processar inscrições: ' . $e->getMessage()], 500);
+        }
+    }
+
     // Acompanhar Inscrição (Público)
     public function publicTrackRegistration(Request $request, $championshipId)
     {
@@ -476,6 +861,27 @@ class RaceInscriptionController extends Controller
 
         if (!$registration) {
             return response()->json(['error' => 'Inscrição não encontrada para este evento.'], 422);
+        }
+
+        if ($registration->payment_group_id) {
+            $groupResults = RaceResult::where('payment_group_id', $registration->payment_group_id)
+                ->with(['category.parent', 'user'])
+                ->get();
+
+            return response()->json([
+                'result' => $registration,
+                'group_results' => $groupResults,
+                'requires_payment' => $registration->status_payment === 'pending',
+                'payment_data' => $registration->payment_info,
+                'price' => $registration->payment_info['value'] ?? $groupResults->sum(function ($r) {
+                    $m = $r->category->parent_id ? $r->category->parent : $r->category;
+                    $p = (float) $m->price;
+                    if ($r->category_id !== $m->id) {
+                        $p += (float) ($r->category->price ?? 0);
+                    }
+                    return $p;
+                })
+            ]);
         }
 
         $mainCategory = $registration->category->parent_id ? $registration->category->parent : $registration->category;

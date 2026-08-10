@@ -121,7 +121,8 @@ class AdminChampionshipController extends Controller
             'include_knockout_standings' => 'nullable|boolean',
             'include_knockout_goals' => 'nullable|boolean',
             'include_knockout_assists' => 'nullable|boolean',
-            'include_knockout_cards' => 'nullable|boolean'
+            'include_knockout_cards' => 'nullable|boolean',
+            'bulk_discount_settings' => 'nullable|array'
         ]);
 
         if (isset($validated['status'])) {

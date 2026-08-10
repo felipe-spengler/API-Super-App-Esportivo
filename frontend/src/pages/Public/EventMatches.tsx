@@ -232,7 +232,7 @@ export function EventMatches() {
                     <div className="p-4 relative">
                         <div className="flex items-center justify-between">
                             {/* Home Team */}
-                            <div className="flex-1 flex flex-col items-center text-center gap-2">
+                            <div className="flex-1 min-w-0 flex flex-col items-center text-center gap-2">
                                 <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center overflow-hidden border border-gray-200 group-hover:border-indigo-200 transition-colors">
                                     {match.home_team?.logo || match.home_team?.logo_url ? (
                                         <img src={match.home_team.logo || match.home_team.logo_url} alt={match.home_team.name} className="w-full h-full object-cover" />
@@ -277,7 +277,7 @@ export function EventMatches() {
                             </div>
 
                             {/* Away Team */}
-                            <div className="flex-1 flex flex-col items-center text-center gap-2">
+                            <div className="flex-1 min-w-0 flex flex-col items-center text-center gap-2">
                                 <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center overflow-hidden border border-gray-200 group-hover:border-indigo-200 transition-colors">
                                     {match.away_team?.logo || match.away_team?.logo_url ? (
                                         <img src={match.away_team.logo || match.away_team.logo_url} alt={match.away_team.name} className="w-full h-full object-cover" />

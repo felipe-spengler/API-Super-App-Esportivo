@@ -266,7 +266,7 @@ export function EventDetails() {
 
                     {/* Category Selector */}
                     {champ.categories && champ.categories.length > 0 && (
-                        <div className="mt-4 flex gap-2 overflow-x-auto pb-2 justify-center">
+                        <div className="mt-4 flex gap-2 overflow-x-auto pb-2 justify-start md:justify-center px-4 md:px-0">
                             {champ.categories.map((cat: any) => (
                                 <button
                                     key={cat.id}

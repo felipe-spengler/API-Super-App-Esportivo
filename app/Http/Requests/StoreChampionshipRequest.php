@@ -48,6 +48,7 @@ class StoreChampionshipRequest extends FormRequest
             'include_knockout_assists' => 'nullable|boolean',
             'include_knockout_cards' => 'nullable|boolean',
             'location_name' => 'nullable|string',
+            'bulk_discount_settings' => 'nullable|array',
         ];
     }
 

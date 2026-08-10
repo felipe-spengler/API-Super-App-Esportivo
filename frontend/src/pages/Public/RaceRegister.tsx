@@ -20,6 +20,27 @@ export function RaceRegister() {
     const [championship, setChampionship] = useState<any>(null);
     const [step, setStep] = useState(1);
 
+    const [athletes, setAthletes] = useState<any[]>([
+        {
+            name: '',
+            email: '',
+            phone: '',
+            document: '',
+            birth_date: '',
+            gender: '',
+            category_id: '',
+            is_pcd: false,
+            gifts: [],
+            shop_items: [],
+            photoFile: null,
+            photoPreview: null,
+            pcdFile: null,
+            parentCategoryId: null,
+            giftSelections: {}
+        }
+    ]);
+    const [currentAthleteIndex, setCurrentAthleteIndex] = useState(0);
+
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -49,6 +70,56 @@ export function RaceRegister() {
 
     const [shopProducts, setShopProducts] = useState<any[]>([]);
     const [shopItems, setShopItems] = useState<any[]>([]);
+
+    const saveStatesToCurrentAthlete = () => {
+        setAthletes(prev => {
+            const copy = [...prev];
+            copy[currentAthleteIndex] = {
+                ...copy[currentAthleteIndex],
+                name: formData.name,
+                email: formData.email,
+                phone: formData.phone,
+                document: formData.document,
+                birth_date: formData.birth_date,
+                gender: formData.gender,
+                category_id: formData.category_id,
+                is_pcd: formData.is_pcd,
+                gifts: Object.entries(giftSelections).map(([productId, variant]) => ({
+                    product_id: productId,
+                    variant: variant
+                })),
+                shop_items: shopItems,
+                photoFile: photoFile,
+                photoPreview: photoPreview,
+                pcdFile: pcdFile,
+                parentCategoryId: parentCategoryId,
+                giftSelections: giftSelections
+            };
+            return copy;
+        });
+    };
+
+    const loadAthleteIntoStates = (index: number, currentList = athletes) => {
+        const ath = currentList[index];
+        if (!ath) return;
+        setFormData(prev => ({
+            ...prev,
+            name: ath.name || '',
+            email: ath.email || '',
+            phone: ath.phone || '',
+            document: ath.document || '',
+            birth_date: ath.birth_date || '',
+            gender: ath.gender || '',
+            category_id: ath.category_id || '',
+            is_pcd: ath.is_pcd || false
+        }));
+        setPhotoFile(ath.photoFile || null);
+        setPhotoPreview(ath.photoPreview || null);
+        setPcdFile(ath.pcdFile || null);
+        setParentCategoryId(ath.parentCategoryId || null);
+        setGiftSelections(ath.giftSelections || {});
+        setShopItems(ath.shop_items || []);
+    };
 
     const [trackingCpf, setTrackingCpf] = useState('');
     const [trackingBirthDate, setTrackingBirthDate] = useState('');
@@ -189,137 +260,173 @@ export function RaceRegister() {
         return total;
     };
 
-    const getAutoSubcategory = () => {
-        const eventDate = championship?.start_date ? new Date(championship.start_date) : new Date();
-        const eventYear = eventDate.getFullYear();
-        
-        console.log('--- [DEBUG AUTOSUB] ---');
-        console.log('Nascimento no Form:', formData.birth_date);
-        console.log('Gênero no Form:', formData.gender);
-        console.log('Parent ID:', parentCategoryId);
+    const getBulkDiscountPercentage = (count = athletes.length) => {
+        let bulkDiscountPct = 0;
+        if (championship?.bulk_discount_settings && Array.isArray(championship.bulk_discount_settings)) {
+            for (const rule of championship.bulk_discount_settings) {
+                if (count >= (rule.min_athletes ?? 0) && count <= (rule.max_athletes ?? 9999)) {
+                    bulkDiscountPct = Number(rule.discount_percentage ?? 0);
+                    break;
+                }
+            }
+        }
+        return bulkDiscountPct;
+    };
 
-        if (!parentCategoryId || !formData.birth_date || !formData.gender) {
-            console.log('[AutoSub] Pulando: Faltam dados básicos.');
+    const getAthleteSubcategory = (athlete: any) => {
+        if (!athlete.parentCategoryId || !athlete.birth_date || !athlete.gender) {
             return null;
         }
 
-        const mainCat = championship?.categories?.find((c: any) => String(c.id) === String(parentCategoryId));
+        const mainCat = championship?.categories?.find((c: any) => String(c.id) === String(athlete.parentCategoryId));
         if (!mainCat) return null;
 
         const children = championship.categories.filter((c: any) => String(c.parent_id) === String(mainCat.id));
-        
-        const birthDate = new Date(formData.birth_date);
-        const age = eventYear - birthDate.getFullYear();
-        
-        console.log('Idade Calculada para o Evento:', age);
-        console.log('Subcategorias Candidatas:', children.length);
-
         if (children.length === 0) return null;
-        
-        // 1. Prioridade PCD: Se é PCD, busca categoria que tenha "PcD" no nome E RESPEITE O GÊNERO
-        if (formData.is_pcd) {
+
+        const eventDate = championship?.start_date ? new Date(championship.start_date) : new Date();
+        const age = eventDate.getFullYear() - new Date(athlete.birth_date).getFullYear();
+
+        if (athlete.is_pcd) {
             const pcdSub = children.find((c: any) => {
                 const nameMatch = (c.name || '').toLowerCase().includes('pcd');
-                
                 const childGen = (c.gender || '').toLowerCase();
-                const userGen = (formData.gender === 'M' ? 'male' : formData.gender === 'F' ? 'female' : 'other');
+                const userGen = (athlete.gender === 'M' ? 'male' : athlete.gender === 'F' ? 'female' : 'other');
                 const normChildGen = (childGen === 'm' ? 'male' : childGen === 'f' ? 'female' : childGen);
                 const genderMatch = !normChildGen || normChildGen === 'mixed' || normChildGen === 'misto' || userGen === normChildGen;
-                
                 return nameMatch && genderMatch;
             });
-
-            if (pcdSub) {
-                console.log('[AutoSub] Perfil PCD detectado. Priorizando categoria PcD compatível:', pcdSub.name);
-                return pcdSub;
-            }
+            if (pcdSub) return pcdSub;
         }
 
-        // 2. Busca por Idade e Gênero
-        const found = children.find((child: any) => {
+        return children.find((child: any) => {
             const min = child.min_age ?? 0;
             const max = child.max_age ?? 999;
             const childGen = (child.gender || '').toLowerCase();
-            const userGen = (formData.gender === 'M' ? 'male' : formData.gender === 'F' ? 'female' : 'other');
+            const userGen = (athlete.gender === 'M' ? 'male' : athlete.gender === 'F' ? 'female' : 'other');
             const normChildGen = (childGen === 'm' ? 'male' : childGen === 'f' ? 'female' : childGen);
-
             const ageMatch = age >= min && age <= max;
             const genderMatch = !normChildGen || normChildGen === 'mixed' || normChildGen === 'misto' || userGen === normChildGen;
-
             return ageMatch && genderMatch;
-        });
-
-        console.log('Resultado AutoSub:', found ? found.name : 'NENHUMA COMPATÍVEL');
-        return found || null;
+        }) || null;
     };
 
-    const calculateTotal = () => {
-        const mainCat = championship?.categories?.find((c: any) => String(c.id) === String(parentCategoryId));
-        const autoSub = getAutoSubcategory();
+    const calculateSingleAthletePrice = (athlete: any, bulkPct = 0) => {
+        const mainCat = championship?.categories?.find((c: any) => String(c.id) === String(athlete.parentCategoryId));
+        const selectedCat = championship?.categories?.find((c: any) => String(c.id) === String(athlete.category_id));
+        const autoSub = getAthleteSubcategory(athlete);
 
-        // Preço base vem SEMPRE da categoria PAI
-        const basePrice = Number(mainCat?.price || selectedCategory?.price || 0);
-        // Adicional da subcategoria (se houver automática)
-        const subPrice = (autoSub && String(autoSub.id) !== String(parentCategoryId)) ? Number(autoSub.price || 0) : 0;
+        const basePrice = Number(mainCat?.price || selectedCat?.price || 0);
+        const subPrice = (autoSub && String(autoSub.id) !== String(athlete.parentCategoryId)) ? Number(autoSub.price || 0) : 0;
 
-        let surcharge = getGiftsSurcharge();
+        let surcharge = 0;
+        if (athlete.giftSelections) {
+            const currentSelectedCat = autoSub || mainCat || selectedCat;
+            currentSelectedCat?.products_details?.forEach((item: any) => {
+                const selectedValue = athlete.giftSelections[item.product.id];
+                if (selectedValue && item.product.variants) {
+                    const variant = item.product.variants.find((v: any) =>
+                        typeof v === 'object' ? v.value === selectedValue : v === selectedValue
+                    );
+                    if (variant && typeof variant === 'object' && variant.surcharge) {
+                        surcharge += Number(variant.surcharge);
+                    }
+                }
+            });
+        }
+
         let regTotal = basePrice + subPrice + surcharge;
 
-        // Descontos Automáticos (Idoso / PCD) - NÃO CUMULATIVOS
         let discountPct = 0;
         let hasAutoDiscount = false;
 
-        // Cálculo de Idade
-        if (formData.birth_date) {
+        if (athlete.birth_date) {
             const eventDate = championship.start_date ? new Date(championship.start_date) : new Date();
-            const eventYear = eventDate.getFullYear();
-            const birthDate = new Date(formData.birth_date);
-            const age = eventYear - birthDate.getFullYear();
-            
+            const age = eventDate.getFullYear() - new Date(athlete.birth_date).getFullYear();
             if (championship.has_elderly_discount && age >= (championship.elderly_minimum_age || 60)) {
-                const disc = Number(championship.elderly_discount_percentage || 0);
-                discountPct = Math.max(discountPct, disc);
+                discountPct = Math.max(discountPct, Number(championship.elderly_discount_percentage || 0));
                 hasAutoDiscount = true;
-                console.log(`[DEBUG] Candidato a Desconto Idoso: ${disc}%`);
             }
         }
 
-        if (formData.is_pcd && championship.has_pcd_discount) {
-            const disc = Number(championship.pcd_discount_percentage || 0);
-            discountPct = Math.max(discountPct, disc);
+        if (athlete.is_pcd && championship.has_pcd_discount) {
+            discountPct = Math.max(discountPct, Number(championship.pcd_discount_percentage || 0));
             hasAutoDiscount = true;
-            console.log(`[DEBUG] Candidato a Desconto PCD: ${disc}%`);
         }
 
-        console.log(`[DEBUG] Desconto Automático Final Selecionado: ${discountPct}%`);
-        
-        // Aplica desconto sobre o valor da inscrição apenas
-        const originalRegTotal = regTotal;
-        regTotal = originalRegTotal * (1 - (discountPct / 100));
+        const finalDiscountPct = Math.max(discountPct, bulkPct);
+        if (finalDiscountPct > 0) {
+            hasAutoDiscount = true;
+        }
 
-        let shopTotal = getShopTotal();
-        let currentTotal = regTotal + shopTotal;
+        regTotal = regTotal * (1 - (finalDiscountPct / 100));
 
-        let discountValue = 0;
-        if (couponInfo && !hasAutoDiscount) {
+        let shopTotal = 0;
+        if (athlete.shop_items) {
+            athlete.shop_items.forEach((item: any) => {
+                const product = shopProducts.find(p => p.id === item.product_id);
+                if (product) {
+                    let price = Number(product.price);
+                    if (item.variant && product.variants) {
+                        const v = product.variants.find((v: any) => (typeof v === 'object' ? v.value === item.variant : v === item.variant));
+                        if (v && typeof v === 'object' && v.surcharge) {
+                            price += Number(v.surcharge);
+                        }
+                    }
+                    shopTotal += price * item.quantity;
+                }
+            });
+        }
+
+        const athleteTotal = regTotal + shopTotal;
+        return {
+            total: Math.max(0, athleteTotal),
+            regTotal,
+            shopTotal,
+            hasAutoDiscount,
+            discountPct: finalDiscountPct,
+            subPrice,
+            surcharge,
+            basePrice
+        };
+    };
+
+    const calculateTotal = () => {
+        const bulkPct = getBulkDiscountPercentage();
+        let grandTotal = 0;
+
+        athletes.forEach(ath => {
+            const { total } = calculateSingleAthletePrice(ath, bulkPct);
+            grandTotal += total;
+        });
+
+        if (couponInfo) {
             const discType = couponInfo.discount_type;
             const discVal = Number(couponInfo.discount_value);
-            const isPercent = discType === 'percent';
-            
-            if (isPercent) {
-                // Cupom sobre o valor JÁ descontado (ou original se não houver)? 
-                // No backend estamos fazendo sobre o valor da inscrição MENOS descontos?
-                // Vamos seguir a lógica do backend: (finalPrice - shopTotal) * discount
-                discountValue = regTotal * (discVal / 100);
+            if (discType === 'percent') {
+                let totalEligibleForCoupon = 0;
+                athletes.forEach(ath => {
+                    const info = calculateSingleAthletePrice(ath, bulkPct);
+                    if (!info.hasAutoDiscount) {
+                        totalEligibleForCoupon += info.regTotal;
+                    }
+                });
+                grandTotal -= totalEligibleForCoupon * (discVal / 100);
             } else {
-                discountValue = discVal;
+                grandTotal -= discVal;
             }
-            currentTotal -= discountValue;
         }
 
-        const result = Math.max(0, currentTotal);
-        console.log('[CalcTotal] basePrice:', basePrice, 'subPrice:', subPrice, 'discountPct:', discountPct, 'TOTAL FINAL:', result);
-        return result;
+        return Math.max(0, grandTotal);
+    };
+
+    const getAutoSubcategory = () => {
+        return getAthleteSubcategory({
+            parentCategoryId,
+            birth_date: formData.birth_date,
+            gender: formData.gender,
+            is_pcd: formData.is_pcd
+        });
     };
 
     async function loadData() {
@@ -378,62 +485,83 @@ export function RaceRegister() {
     };
 
     const handleRegister = async () => {
-        if (!formData.category_id || !formData.name || !formData.email || !formData.document || !formData.phone || !formData.birth_date || !formData.gender) {
-            alert('Por favor, preencha todos os campos obrigatórios.');
-            return;
-        }
+        const currentAthlete = {
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            document: formData.document,
+            birth_date: formData.birth_date,
+            gender: formData.gender,
+            category_id: formData.category_id,
+            is_pcd: formData.is_pcd,
+            gifts: Object.entries(giftSelections).map(([productId, variant]) => ({
+                product_id: productId,
+                variant: variant
+            })),
+            shop_items: shopItems,
+            photoFile: photoFile,
+            photoPreview: photoPreview,
+            pcdFile: pcdFile,
+            parentCategoryId: parentCategoryId,
+            giftSelections: giftSelections
+        };
 
+        const allAthletes = [...athletes];
+        allAthletes[currentAthleteIndex] = currentAthlete;
 
-
-        if (formData.is_pcd && !pcdFile) {
-            alert('Você declarou ser PCD. É obrigatório anexar o documento comprobatório para receber o desconto.');
-            return;
+        for (let i = 0; i < allAthletes.length; i++) {
+            const ath = allAthletes[i];
+            if (!ath.category_id || !ath.name || !ath.email || !ath.document || !ath.phone || !ath.birth_date || !ath.gender) {
+                alert(`Por favor, preencha todos os campos obrigatórios para o Atleta ${i + 1} (${ath.name || 'Sem nome'}).`);
+                return;
+            }
+            if (ath.is_pcd && !ath.pcdFile) {
+                alert(`O Atleta ${i + 1} (${ath.name}) foi declarado como PCD, mas o documento comprobatório não foi anexado.`);
+                return;
+            }
         }
 
         try {
             setSaving(true);
             const data = new FormData();
-            data.append('name', formData.name);
-            data.append('email', formData.email);
-            data.append('phone', formData.phone);
-            data.append('document', formData.document);
-            data.append('birth_date', formData.birth_date);
-            data.append('gender', formData.gender);
-            const autoSub = getAutoSubcategory();
-            const finalCategoryId = autoSub ? autoSub.id.toString() : formData.category_id;
 
-            data.append('category_id', finalCategoryId);
-            data.append('remove_bg', formData.remove_bg ? '1' : '0');
-            if (photoFile) {
-                data.append('photo', photoFile);
-            }
-            data.append('is_pcd', formData.is_pcd ? '1' : '0');
-            if (formData.is_pcd && pcdFile) {
-                data.append('pcd_document', pcdFile);
-            }
+            const athletesPayload = allAthletes.map((ath, idx) => {
+                const autoSub = getAthleteSubcategory(ath);
+                const finalCategoryId = autoSub ? autoSub.id.toString() : ath.category_id;
 
-            // Gifts
-            const selectedGifts = Object.entries(giftSelections).map(([productId, variant]) => ({
-                product_id: productId,
-                variant: variant
-            }));
-            data.append('gifts', JSON.stringify(selectedGifts));
+                if (ath.photoFile) {
+                    data.append(`athletes.${idx}.photo`, ath.photoFile);
+                }
+                if (ath.is_pcd && ath.pcdFile) {
+                    data.append(`athletes.${idx}.pcd_document`, ath.pcdFile);
+                }
 
-            // Shop Items
-            data.append('shop_items', JSON.stringify(shopItems));
+                return {
+                    name: ath.name,
+                    email: ath.email,
+                    phone: ath.phone,
+                    document: ath.document,
+                    birth_date: ath.birth_date,
+                    gender: ath.gender,
+                    category_id: finalCategoryId,
+                    is_pcd: ath.is_pcd,
+                    gifts: ath.gifts,
+                    shop_items: ath.shop_items
+                };
+            });
 
+            data.append('athletes', JSON.stringify(athletesPayload));
             if (formData.coupon_code) {
                 data.append('coupon_code', formData.coupon_code);
             }
             data.append('payment_method', chosenMethod);
 
-            const response = await api.post(`/championships/${id}/race/register`, data, {
+            const response = await api.post(`/championships/${id}/race/register-bulk`, data, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
 
-            // Se a categoria for paga, podemos guardar a info de que precisa pagar
             setRegistrationData(response.data);
-            setStep(7); // Success step
+            setStep(7);
         } catch (error: any) {
             console.error(error);
             const errorMsg = error.response?.data?.error || error.response?.data?.message || 'Erro ao realizar inscrição. Verifique os dados e tente novamente.';
@@ -997,6 +1125,99 @@ export function RaceRegister() {
                 {step === 5 && (
                     <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-6">
                         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+                            <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+                                <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight italic">Atletas Inscritos ({athletes.length})</h2>
+                                <button
+                                    onClick={() => {
+                                        saveStatesToCurrentAthlete();
+                                        const newAthlete = {
+                                            name: '',
+                                            email: '',
+                                            phone: '',
+                                            document: '',
+                                            birth_date: '',
+                                            gender: '',
+                                            category_id: '',
+                                            is_pcd: false,
+                                            gifts: [],
+                                            shop_items: [],
+                                            photoFile: null,
+                                            photoPreview: null,
+                                            pcdFile: null,
+                                            parentCategoryId: null,
+                                            giftSelections: {}
+                                        };
+                                        const newList = [...athletes, newAthlete];
+                                        setAthletes(newList);
+                                        const newIdx = newList.length - 1;
+                                        setCurrentAthleteIndex(newIdx);
+                                        loadAthleteIntoStates(newIdx, newList);
+                                        setStep(1);
+                                    }}
+                                    className="py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black uppercase text-[10px] tracking-widest transition-colors flex items-center gap-1 shadow-md shadow-indigo-100"
+                                >
+                                    + Adicionar Atleta
+                                </button>
+                            </div>
+
+                            <div className="space-y-4">
+                                {athletes.map((ath, idx) => {
+                                    const { total, shopTotal } = calculateSingleAthletePrice(ath, getBulkDiscountPercentage());
+                                    const isCurrent = idx === currentAthleteIndex;
+                                    return (
+                                        <div key={idx} className={`p-4 rounded-2xl border-2 transition-all ${isCurrent ? 'border-indigo-600 bg-indigo-50/20' : 'border-slate-100 bg-slate-50/50'}`}>
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md mb-1 inline-block">Atleta #{idx + 1}</span>
+                                                    <h3 className="font-black text-slate-800 uppercase text-sm italic">{ath.name || 'Nome não preenchido'}</h3>
+                                                    <p className="text-[10px] text-slate-500 font-bold uppercase mt-1">
+                                                        {(championship?.categories?.find((c: any) => String(c.id) === String(ath.parentCategoryId)))?.name || 'Sem categoria'}
+                                                        {getAthleteSubcategory(ath) && ` - Subcategoria: ${getAthleteSubcategory(ath)?.name}`}
+                                                    </p>
+                                                    {shopTotal > 0 && (
+                                                        <p className="text-[10px] text-indigo-600 font-bold uppercase mt-0.5">
+                                                            + R$ {shopTotal.toFixed(2)} em produtos adicionais
+                                                        </p>
+                                                    )}
+                                                </div>
+                                                <div className="text-right">
+                                                    <span className="block font-black text-slate-900 text-base">R$ {total.toFixed(2)}</span>
+                                                    <div className="flex gap-2 mt-2 justify-end">
+                                                        <button
+                                                            onClick={() => {
+                                                                saveStatesToCurrentAthlete();
+                                                                setCurrentAthleteIndex(idx);
+                                                                loadAthleteIntoStates(idx);
+                                                                setStep(1);
+                                                            }}
+                                                            className="text-[10px] font-black text-indigo-600 uppercase hover:underline"
+                                                        >
+                                                            Editar
+                                                        </button>
+                                                        {athletes.length > 1 && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    const newList = athletes.filter((_, i) => i !== idx);
+                                                                    setAthletes(newList);
+                                                                    const newIdx = 0;
+                                                                    setCurrentAthleteIndex(newIdx);
+                                                                    loadAthleteIntoStates(newIdx, newList);
+                                                                }}
+                                                                className="text-[10px] font-black text-red-600 uppercase hover:underline"
+                                                            >
+                                                                Excluir
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6">
                             <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight mb-2 italic">Cupom de Desconto</h2>
 
                             <div className="space-y-4">
@@ -1004,13 +1225,13 @@ export function RaceRegister() {
                                 <div className="flex gap-2">
                                     <input
                                         className="flex-1 px-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold uppercase text-sm disabled:opacity-50"
-                                        placeholder={(championship?.has_elderly_discount && (new Date(championship.start_date || new Date()).getFullYear() - new Date(formData.birth_date || new Date()).getFullYear()) >= (championship.elderly_minimum_age || 60)) || (formData.is_pcd && championship.has_pcd_discount) ? "DESCONTO AUTOMÁTICO ATIVO" : "CÓDIGO"}
+                                        placeholder="CÓDIGO"
                                         value={formData.coupon_code}
                                         onChange={e => {
                                             setFormData({ ...formData, coupon_code: e.target.value.toUpperCase() });
                                             setCouponInfo(null);
                                         }}
-                                        disabled={!!couponInfo || (championship?.has_elderly_discount && (new Date(championship.start_date || new Date()).getFullYear() - new Date(formData.birth_date || new Date()).getFullYear()) >= (championship.elderly_minimum_age || 60)) || (formData.is_pcd && championship.has_pcd_discount)}
+                                        disabled={!!couponInfo}
                                     />
                                     {!couponInfo ? (
                                         <button
@@ -1022,7 +1243,6 @@ export function RaceRegister() {
                                                         code: formData.coupon_code,
                                                         club_id: championship.club_id
                                                     });
-                                                    console.log('[CouponValidate] Dados recebidos:', response.data);
                                                     setCouponInfo(response.data);
                                                 } catch (err) {
                                                     alert("Cupom não encontrado ou expirado.");
@@ -1030,7 +1250,7 @@ export function RaceRegister() {
                                                     setCouponValidating(false);
                                                 }
                                             }}
-                                            disabled={couponValidating || !formData.coupon_code || (championship?.has_elderly_discount && (new Date(championship.start_date || new Date()).getFullYear() - new Date(formData.birth_date || new Date()).getFullYear()) >= (championship.elderly_minimum_age || 60)) || (formData.is_pcd && championship.has_pcd_discount)}
+                                            disabled={couponValidating || !formData.coupon_code}
                                             className="px-6 py-4 bg-black text-white rounded-xl font-black uppercase text-xs tracking-widest hover:bg-slate-800 disabled:opacity-50 transition-colors"
                                         >
                                             {couponValidating ? <Loader2 className="animate-spin w-4 h-4" /> : 'Aplicar'}
@@ -1063,66 +1283,33 @@ export function RaceRegister() {
 
                             <div className="pt-6 border-t border-slate-100 space-y-3">
                                 <h3 className="font-black text-slate-900 uppercase text-xs italic">Resumo do Pedido</h3>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-slate-500 font-bold uppercase">Inscrição ({(championship?.categories?.find((c: any) => String(c.id) === String(parentCategoryId)))?.name || selectedCategory?.name || '---'})</span>
-                                    <span className="font-black text-slate-900">R$ {Number((championship?.categories?.find((c: any) => String(c.id) === String(parentCategoryId)))?.price || selectedCategory?.price || 0).toFixed(2)}</span>
-                                </div>
-                                {getAutoSubcategory() && (
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-slate-500 font-bold uppercase italic border-l-2 border-slate-100 pl-2">Subcategoria ({getAutoSubcategory()?.name})</span>
-                                        <span className="font-black text-slate-700 font-medium">+ R$ {Number(getAutoSubcategory()?.price || 0).toFixed(2)}</span>
-                                    </div>
-                                )}
-                                {getGiftsSurcharge() > 0 && (
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-slate-500 font-bold uppercase italic border-l-2 border-slate-100 pl-2">Adicional Brindes (Variantes)</span>
-                                        <span className="font-black text-slate-900">+ R$ {getGiftsSurcharge().toFixed(2)}</span>
-                                    </div>
-                                )}
-                                {getShopTotal() > 0 && (
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-slate-500 font-bold uppercase italic border-l-2 border-indigo-100 pl-2">Produtos Extra</span>
-                                        <span className="font-black text-indigo-600">+ R$ {getShopTotal().toFixed(2)}</span>
-                                    </div>
-                                )}
-                                {(() => {
-                                    const eventDate = championship?.start_date ? new Date(championship.start_date) : new Date();
-                                    const age = eventDate.getFullYear() - (formData.birth_date ? new Date(formData.birth_date).getFullYear() : eventDate.getFullYear());
-                                    const isElderly = championship?.has_elderly_discount && age >= (championship.elderly_minimum_age || 60);
-                                    const isPcd = formData.is_pcd && championship?.has_pcd_discount;
-
-                                    const elderlyPct = isElderly ? Number(championship.elderly_discount_percentage) : 0;
-                                    const pcdPct = isPcd ? Number(championship.pcd_discount_percentage) : 0;
-
-                                    if (!isElderly && !isPcd) return null;
-
-                                    // Mostra apenas o MAIOR desconto
-                                    const showingElderly = elderlyPct >= pcdPct && isElderly;
-                                    const activePct = Math.max(elderlyPct, pcdPct);
-                                    const label = showingElderly ? `Desconto Idoso (${elderlyPct}%)` : `Desconto PCD (${pcdPct}%)`;
-
+                                {athletes.map((ath, idx) => {
+                                    const { total } = calculateSingleAthletePrice(ath, getBulkDiscountPercentage());
                                     return (
-                                        <div className="flex justify-between text-sm text-indigo-600 italic">
-                                            <span className="font-bold uppercase">{label}</span>
-                                            <span className="font-black">- R$ {((
-                                                Number((championship?.categories?.find((c: any) => String(c.id) === String(parentCategoryId)))?.price || selectedCategory?.price || 0)
-                                                + Number(getAutoSubcategory()?.price || 0)
-                                                + getGiftsSurcharge()
-                                            ) * (activePct / 100)).toFixed(2)}</span>
+                                        <div key={idx} className="flex justify-between text-sm">
+                                            <span className="text-slate-500 font-bold uppercase">Atleta #{idx + 1}: {ath.name || 'Sem nome'}</span>
+                                            <span className="font-black text-slate-900">R$ {total.toFixed(2)}</span>
                                         </div>
                                     );
-                                })()}
-                                {couponInfo && !(championship?.has_elderly_discount && (new Date(championship.start_date || new Date()).getFullYear() - new Date(formData.birth_date || new Date()).getFullYear()) >= (championship.elderly_minimum_age || 60)) && !(formData.is_pcd && championship.has_pcd_discount) && (
+                                })}
+
+                                {getBulkDiscountPercentage() > 0 && (
+                                    <div className="flex justify-between text-sm text-indigo-600 italic font-black">
+                                        <span className="uppercase">Desconto Progressivo Coletivo ({getBulkDiscountPercentage()}%)</span>
+                                        <span>Ativo</span>
+                                    </div>
+                                )}
+
+                                {couponInfo && (
                                     <div className="flex justify-between text-sm text-emerald-600">
                                         <span className="font-bold uppercase">Desconto Cupom ({couponInfo.discount_type === 'percent' ? `${Number(couponInfo.discount_value).toFixed(0)}%` : 'Fixo'})</span>
                                         <span className="font-black italic">
                                             - R$ {(couponInfo.discount_type === 'percent' 
                                                 ? (
-                                                    (
-                                                        Number((championship?.categories?.find((c: any) => String(c.id) === String(parentCategoryId)))?.price || selectedCategory?.price || 0) 
-                                                        + Number(getAutoSubcategory()?.price || 0) 
-                                                        + getGiftsSurcharge()
-                                                    ) * (Number(couponInfo.discount_value) / 100)
+                                                    athletes.reduce((acc, ath) => {
+                                                        const info = calculateSingleAthletePrice(ath, getBulkDiscountPercentage());
+                                                        return acc + (info.hasAutoDiscount ? 0 : info.regTotal);
+                                                    }, 0) * (Number(couponInfo.discount_value) / 100)
                                                 )
                                                 : Number(couponInfo.discount_value)).toFixed(2)}
                                         </span>
@@ -1131,18 +1318,7 @@ export function RaceRegister() {
                                 <div className="flex justify-between items-center pt-3 border-t-2 border-slate-900 border-dashed">
                                     <span className="font-black text-slate-900 uppercase text-lg italic">Total a Pagar</span>
                                     <span className="font-black text-indigo-600 text-2xl italic">
-                                        {(() => {
-                                            const mainCat = championship?.categories?.find((c: any) => String(c.id) === String(parentCategoryId));
-                                            const children = championship?.categories?.filter((c: any) => String(c.parent_id) === String(mainCat?.id)) || [];
-                                            const autoSub = getAutoSubcategory();
-                                            
-                                            // Se a categoria tem filhos mas não achou nenhum compatível, trava.
-                                            if (children.length > 0 && !autoSub && formData.birth_date && formData.gender) {
-                                                return <span className="text-red-600 text-xs italic uppercase">Nenhuma subcategoria compatível com sua idade/sexo</span>;
-                                            }
-                                            
-                                            return `R$ ${calculateTotal().toFixed(2)}`;
-                                        })()}
+                                        R$ {calculateTotal().toFixed(2)}
                                     </span>
                                 </div>
                             </div>
@@ -1160,13 +1336,10 @@ export function RaceRegister() {
                                 Voltar
                             </button>
                             <button
-                                onClick={() => setStep(6)}
-                                disabled={(() => {
-                                    const mainCat = championship?.categories?.find((c: any) => String(c.id) === String(parentCategoryId));
-                                    const children = championship?.categories?.filter((c: any) => String(c.parent_id) === String(mainCat?.id)) || [];
-                                    const autoSub = getAutoSubcategory();
-                                    return children.length > 0 && !autoSub;
-                                })()}
+                                onClick={() => {
+                                    saveStatesToCurrentAthlete();
+                                    setStep(6);
+                                }}
                                 className="flex-1 py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-700 disabled:opacity-50 shadow-xl flex items-center justify-center gap-3 transition-all"
                             >
                                 Revisar Pedido
