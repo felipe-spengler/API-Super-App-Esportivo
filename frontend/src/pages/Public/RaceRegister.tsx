@@ -909,6 +909,7 @@ export function RaceRegister() {
                                         return;
                                     }
 
+                                    saveStatesToCurrentAthlete();
                                     // Check if category has gifts
                                     if (selectedCategory?.products_details?.length > 0) {
                                         setStep(3);
@@ -977,7 +978,15 @@ export function RaceRegister() {
                         </div>
 
                         <div className="flex gap-4">
-                            <button onClick={() => setStep(2)} className="px-8 py-5 text-slate-400 font-black uppercase text-xs tracking-widest hover:text-slate-600 transition-colors">Voltar</button>
+                            <button
+                                onClick={() => {
+                                    saveStatesToCurrentAthlete();
+                                    setStep(2);
+                                }}
+                                className="px-8 py-5 text-slate-400 font-black uppercase text-xs tracking-widest hover:text-slate-600 transition-colors"
+                            >
+                                Voltar
+                            </button>
                             <button
                                 onClick={() => {
                                     // Validar se todos os obrigatórios com variações foram selecionados
@@ -991,6 +1000,7 @@ export function RaceRegister() {
                                         alert(`Por favor, selecione o tamanho para: ${missing.map((m: any) => m.product.name).join(', ')}`);
                                         return;
                                     }
+                                    saveStatesToCurrentAthlete();
                                     if (championship.allow_shopping_registration) {
                                         setStep(4);
                                     } else {
@@ -1110,9 +1120,21 @@ export function RaceRegister() {
                         </div>
 
                         <div className="flex gap-4">
-                            <button onClick={() => selectedCategory?.products_details?.length > 0 ? setStep(3) : setStep(2)} className="px-8 py-5 text-slate-400 font-black uppercase text-xs tracking-widest hover:text-slate-600 transition-colors">Voltar</button>
                             <button
-                                onClick={() => setStep(5)}
+                                onClick={() => {
+                                    saveStatesToCurrentAthlete();
+                                    if (selectedCategory?.products_details?.length > 0) setStep(3);
+                                    else setStep(2);
+                                }}
+                                className="px-8 py-5 text-slate-400 font-black uppercase text-xs tracking-widest hover:text-slate-600 transition-colors"
+                            >
+                                Voltar
+                            </button>
+                            <button
+                                onClick={() => {
+                                    saveStatesToCurrentAthlete();
+                                    setStep(5);
+                                }}
                                 className="flex-1 py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-700 shadow-xl flex items-center justify-center gap-3 transition-all"
                             >
                                 Próximo Passo
@@ -1327,6 +1349,7 @@ export function RaceRegister() {
                         <div className="flex gap-4">
                             <button
                                 onClick={() => {
+                                    saveStatesToCurrentAthlete();
                                     if (championship.allow_shopping_registration) setStep(4);
                                     else if (selectedCategory?.products_details?.length > 0) setStep(3);
                                     else setStep(2);
