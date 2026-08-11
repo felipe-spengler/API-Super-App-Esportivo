@@ -18,7 +18,7 @@
     "@emotion/is-prop-valid": "^1.4.0",
     "@iconify/react": "^6.0.2",
     "@types/react-beautiful-dnd": "^13.1.8",
-    "axios": "^1.13.4",
+    "axios": "^1.18.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "framer-motion": "^12.29.2",
