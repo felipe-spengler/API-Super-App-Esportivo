@@ -228,9 +228,14 @@ class TeamController extends Controller
 
             if ($request->boolean('remove_bg')) {
                 try {
+                    $userId = (int)$userData->id;
                     $php = PHP_BINARY;
                     $artisan = base_path('artisan');
-                    $cmd = "{$php} {$artisan} player:process-photos {$userData->id}";
+                    $escapedPhp = escapeshellarg($php);
+                    $escapedArtisan = escapeshellarg($artisan);
+                    $escapedUserId = escapeshellarg($userId);
+
+                    $cmd = "{$escapedPhp} {$escapedArtisan} player:process-photos {$escapedUserId}";
                     if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
                         pclose(popen("start /B " . $cmd, "r"));
                     } else {
@@ -433,10 +438,14 @@ class TeamController extends Controller
             // Background process for AI background removal if requested
             if (($request->boolean('remove_bg') || $request->input('remove_bg') == '1')) {
                 try {
-                    $userId = $player->id;
+                    $userId = (int)$player->id;
                     $php = PHP_BINARY;
                     $artisan = base_path('artisan');
-                    $cmd = "{$php} {$artisan} player:process-photos {$userId}";
+                    $escapedPhp = escapeshellarg($php);
+                    $escapedArtisan = escapeshellarg($artisan);
+                    $escapedUserId = escapeshellarg($userId);
+
+                    $cmd = "{$escapedPhp} {$escapedArtisan} player:process-photos {$escapedUserId}";
 
                     if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
                         pclose(popen("start /B " . $cmd, "r"));

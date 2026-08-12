@@ -90,7 +90,13 @@ trait ArtCardTrait
             }
 
             if ($pythonBin && file_exists($scriptPath)) {
-                $cmd = "export U2NET_HOME={$cacheDir} && export NUMBA_CACHE_DIR={$cacheDir} && {$pythonBin} \"{$scriptPath}\" \"{$originalAbsPath}\" \"{$outputAbsPath}\" 2>&1";
+                $escapedCacheDir = escapeshellarg($cacheDir);
+                $escapedPythonBin = escapeshellcmd($pythonBin);
+                $escapedScriptPath = escapeshellarg($scriptPath);
+                $escapedOriginalAbsPath = escapeshellarg($originalAbsPath);
+                $escapedOutputAbsPath = escapeshellarg($outputAbsPath);
+
+                $cmd = "export U2NET_HOME={$escapedCacheDir} && export NUMBA_CACHE_DIR={$escapedCacheDir} && {$escapedPythonBin} {$escapedScriptPath} {$escapedOriginalAbsPath} {$escapedOutputAbsPath} 2>&1";
                 \Log::info("[ArtCardTrait] Rodando rembg: {$cmd}");
                 $cmdOut = [];
                 $cmdRet = -1;

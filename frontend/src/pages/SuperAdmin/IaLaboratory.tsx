@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Upload, Wand2, Loader2, Image as ImageIcon, CheckCircle2, AlertCircle, Download, Camera } from 'lucide-react';
 import api from '../../services/api';
+import { sanitizeUrl } from '../../utils/security';
 
 export function IaLaboratory() {
     const [file, setFile] = useState<File | null>(null);
@@ -211,7 +212,7 @@ export function IaLaboratory() {
                                 </div>
 
                                 <a
-                                    href={getImageUrl(result.photo_nobg_url)}
+                                    href={sanitizeUrl(getImageUrl(result.photo_nobg_url))}
                                     download="atleta-sem-fundo.png"
                                     className="w-full py-3 bg-green-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-green-700 transition-all shadow-lg shadow-green-100"
                                 >

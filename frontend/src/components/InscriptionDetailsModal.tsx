@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Trophy, Calendar, FileText, Share2, Camera, Loader2, Download, CheckCircle2, User } from 'lucide-react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
+import { sanitizeUrl } from '../utils/security';
 
 interface InscriptionDetailsModalProps {
     inscription: any;
@@ -201,7 +202,7 @@ export function InscriptionDetailsModal({ inscription, isOpen, onClose, onUpdate
 
                             <div className="w-full flex flex-col gap-2">
                                 <a 
-                                    href={`${artUrl}?download=true`}
+                                    href={sanitizeUrl(`${artUrl}?download=true`)}
                                     download={`confirmado-${inscription.id}.jpg`}
                                     target="_blank"
                                     rel="noopener noreferrer"

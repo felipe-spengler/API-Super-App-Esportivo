@@ -765,7 +765,7 @@ class AdminMatchController extends Controller
                         if (isset($context['match_id']) && $context['match_id'] == $id) {
                             $metadata = $context['metadata'] ?? [];
                             $fileEvents[] = [
-                                'id' => 'log_' . md5($line), // Unique ID fake
+                                'id' => 'log_' . hash('sha256', $line), // Unique ID fake
                                 'team_id' => $metadata['team_id'] ?? null,
                                 'player_id' => $metadata['player_id'] ?? null,
                                 'event_type' => $eventType,

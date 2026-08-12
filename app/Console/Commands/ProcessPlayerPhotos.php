@@ -66,10 +66,16 @@ class ProcessPlayerPhotos extends Command
                 }
 
                 if ($pythonBin) {
+                    $escapedCacheDir = escapeshellarg($cacheDir);
+                    $escapedPythonBin = escapeshellcmd($pythonBin);
+                    $escapedScriptPath = escapeshellarg($scriptPath);
+                    $escapedInputAbsPath = escapeshellarg($inputAbsPath);
+                    $escapedOutputAbsPath = escapeshellarg($outputAbsPath);
+
                     if ($isWindows) {
-                        $command = "set U2NET_HOME={$cacheDir} && set NUMBA_CACHE_DIR={$cacheDir} && {$pythonBin} \"{$scriptPath}\" \"{$inputAbsPath}\" \"{$outputAbsPath}\" 2>&1";
+                        $command = "set U2NET_HOME={$escapedCacheDir} && set NUMBA_CACHE_DIR={$escapedCacheDir} && {$escapedPythonBin} {$escapedScriptPath} {$escapedInputAbsPath} {$escapedOutputAbsPath} 2>&1";
                     } else {
-                        $command = "export U2NET_HOME={$cacheDir} && export NUMBA_CACHE_DIR={$cacheDir} && {$pythonBin} \"{$scriptPath}\" \"{$inputAbsPath}\" \"{$outputAbsPath}\" 2>&1";
+                        $command = "export U2NET_HOME={$escapedCacheDir} && export NUMBA_CACHE_DIR={$escapedCacheDir} && {$escapedPythonBin} {$escapedScriptPath} {$escapedInputAbsPath} {$escapedOutputAbsPath} 2>&1";
                     }
 
                     Log::info("ProcessPlayerPhotos: Running for index {$index}: " . $command);

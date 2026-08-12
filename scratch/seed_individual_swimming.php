@@ -259,7 +259,7 @@ try {
 } catch (\Throwable $e) {
     \DB::rollBack();
     echo "=== ERROR SEEDING INDIVIDUAL SWIMMING ===\n";
-    echo $e->getMessage() . "\n";
-    echo $e->getTraceAsString() . "\n";
+    \Illuminate\Support\Facades\Log::error("Seeding failed: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+    echo "=== ERROR SEEDING INDIVIDUAL SWIMMING ===\nCheck Laravel logs for more details.\n";
     exit(1);
 }

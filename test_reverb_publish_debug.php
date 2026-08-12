@@ -10,6 +10,6 @@ try {
     echo "Dispatched ChampionshipTimesUpdated event to 9099...\n";
     broadcast(new App\Events\ChampionshipTimesUpdated(73));
     echo "Success!\n";
-} catch (\Exception $e) {
-    echo "Failed: " . $e->getMessage() . "\n";
+    \Illuminate\Support\Facades\Log::error("test_reverb_publish_debug failed", ['exception' => $e]);
+    echo "Failed: check Laravel logs for error details.\n";
 }

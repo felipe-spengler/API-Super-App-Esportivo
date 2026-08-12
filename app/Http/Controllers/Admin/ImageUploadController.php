@@ -165,12 +165,16 @@ class ImageUploadController extends Controller
             // TRIGGER BACKGROUND AI PROCESSING
             if ($request->boolean('remove_bg')) {
                 try {
-                    $userId = $player->id;
+                    $userId = (int)$player->id;
                     $isWindows = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
 
                     $php = PHP_BINARY;
                     $artisan = base_path('artisan');
-                    $cmd = "{$php} {$artisan} player:process-photos {$userId}";
+                    $escapedPhp = escapeshellarg($php);
+                    $escapedArtisan = escapeshellarg($artisan);
+                    $escapedUserId = escapeshellarg($userId);
+
+                    $cmd = "{$escapedPhp} {$escapedArtisan} player:process-photos {$escapedUserId}";
 
                     \Log::info("ImageUploadController Background - Triggering AI for User {$userId}. Cmd: {$cmd}");
 
@@ -583,7 +587,13 @@ class ImageUploadController extends Controller
                 if (!file_exists($cacheDir))
                     @mkdir($cacheDir, 0775, true);
 
-                $command = "export U2NET_HOME={$cacheDir} && export NUMBA_CACHE_DIR={$cacheDir} && {$pythonBin} \"{$scriptPath}\" \"{$inputAbsPath}\" \"{$outputAbsPath}\" 2>&1";
+                $escapedCacheDir = escapeshellarg($cacheDir);
+                $escapedPythonBin = escapeshellcmd($pythonBin);
+                $escapedScriptPath = escapeshellarg($scriptPath);
+                $escapedInputAbsPath = escapeshellarg($inputAbsPath);
+                $escapedOutputAbsPath = escapeshellarg($outputAbsPath);
+
+                $command = "export U2NET_HOME={$escapedCacheDir} && export NUMBA_CACHE_DIR={$escapedCacheDir} && {$escapedPythonBin} {$escapedScriptPath} {$escapedInputAbsPath} {$escapedOutputAbsPath} 2>&1";
 
                 \Log::info("Lab AI Test - Command: " . $command);
 

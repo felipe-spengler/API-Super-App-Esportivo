@@ -28,7 +28,8 @@ try {
     echo Illuminate\Support\Facades\Artisan::output();
     echo "\n✅ Seed concluído com sucesso!";
 } catch (\Exception $e) {
-    echo "❌ Erro ao rodar seed: " . $e->getMessage();
+    \Illuminate\Support\Facades\Log::error($e);
+    echo "❌ Erro ao rodar seed. Verifique os logs do Laravel.";
 }
 
 echo "</pre>";

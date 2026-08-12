@@ -8,6 +8,7 @@ import {
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { sanitizeUrl } from '../../utils/security';
 
 export function RaceRegister() {
     const { id } = useParams();
@@ -1568,7 +1569,7 @@ export function RaceRegister() {
                                             <p className="text-indigo-600/70 text-[10px] font-bold uppercase mt-1">Clique no botão abaixo para ir ao checkout seguro</p>
                                         </div>
                                         <a
-                                            href={registrationData.payment_data.invoice_url}
+                                            href={sanitizeUrl(registrationData.payment_data.invoice_url)}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="w-full py-4 bg-indigo-600 text-white rounded-xl font-black uppercase text-xs tracking-widest text-center hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200"
@@ -1586,7 +1587,7 @@ export function RaceRegister() {
                                             <p className="text-slate-400 text-[10px] font-bold uppercase mt-1">O boleto foi gerado com sucesso</p>
                                         </div>
                                         <a
-                                            href={registrationData.payment_data.invoice_url}
+                                            href={sanitizeUrl(registrationData.payment_data.invoice_url)}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="w-full py-4 bg-white text-slate-900 rounded-xl font-black uppercase text-xs tracking-widest text-center hover:bg-slate-100 transition-all"

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Share2 } from 'lucide-react';
 import api from '../services/api';
+import { sanitizeUrl } from '../utils/security';
 
 interface MatchArtTabProps {
     match: any;
@@ -11,7 +12,7 @@ export function MatchArtTab({ match }: MatchArtTabProps) {
         <div className="flex flex-col items-center justify-center py-6">
             <div className="w-full max-w-sm flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-300">
                 <a
-                    href={`${api.defaults.baseURL}/public/art/match/${match.id}/scheduled?download=true`}
+                    href={sanitizeUrl(`${api.defaults.baseURL}/public/art/match/${match.id}/scheduled?download=true`)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="relative w-full aspect-video bg-gray-200 rounded-2xl overflow-hidden shadow-xl border border-white hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] group cursor-pointer"
@@ -36,7 +37,7 @@ export function MatchArtTab({ match }: MatchArtTabProps) {
                     </h3>
                     <p className="text-gray-500 text-sm mb-4">Compartilhe as informações do jogo!</p>
                     <a
-                        href={`${api.defaults.baseURL}/public/art/match/${match.id}/scheduled?download=true`}
+                        href={sanitizeUrl(`${api.defaults.baseURL}/public/art/match/${match.id}/scheduled?download=true`)}
                         download={`jogo-${match.id}.jpg`}
                         target="_blank"
                         rel="noopener noreferrer"

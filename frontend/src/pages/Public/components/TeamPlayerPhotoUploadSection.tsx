@@ -3,6 +3,7 @@ import { Camera, Loader2, Plus, Download, Trash2 } from 'lucide-react';
 import api from '../../../services/api';
 import { useAuth } from '../../../context/AuthContext';
 import { prepareImageForUpload } from '../../../utils/imageCompressor';
+import { sanitizeUrl } from '../../../utils/security';
 
 interface TeamPlayerPhotoUploadSectionProps {
     playerId: string;
@@ -223,7 +224,7 @@ export function TeamPlayerPhotoUploadSection({ playerId, teamId, currentPhotos }
                                                 }}
                                             />
                                         </label>
-                                        <a href={hasPhoto} target="_blank" rel="noopener noreferrer" download={`foto-${playerId}-${index}.png`} className="cursor-pointer p-2 bg-white rounded-full hover:bg-gray-100" title="Baixar Foto">
+                                        <a href={sanitizeUrl(hasPhoto)} target="_blank" rel="noopener noreferrer" download={`foto-${playerId}-${index}.png`} className="cursor-pointer p-2 bg-white rounded-full hover:bg-gray-100" title="Baixar Foto">
                                             <Download className="w-4 h-4 text-gray-700" />
                                         </a>
                                         <button type="button" onClick={() => handleDelete(index)} className="cursor-pointer p-2 bg-white rounded-full hover:bg-red-50 text-red-600" title="Remover Foto">

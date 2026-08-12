@@ -1,6 +1,7 @@
 import React from 'react';
 import { Share2, User } from 'lucide-react';
 import api from '../services/api';
+import { sanitizeUrl } from '../utils/security';
 
 interface MatchPernaTabProps {
     match: any;
@@ -12,7 +13,7 @@ export function MatchPernaTab({ match }: MatchPernaTabProps) {
             {match?.perna_de_pau ? (
                 <div className="w-full max-w-sm flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-300">
                     <a
-                        href={`${api.defaults.baseURL}/public/art/match/${match.id}/perna-de-pau`}
+                        href={sanitizeUrl(`${api.defaults.baseURL}/public/art/match/${match.id}/perna-de-pau`)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="relative w-full aspect-[4/5] bg-gray-200 rounded-2xl overflow-hidden shadow-xl border border-white hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] group cursor-pointer"
@@ -37,7 +38,7 @@ export function MatchPernaTab({ match }: MatchPernaTabProps) {
                         </h3>
                         <p className="text-gray-500 text-sm font-medium mb-3">O famigerado Perna de Pau da partida</p>
                         <a
-                            href={`${api.defaults.baseURL}/public/art/match/${match.id}/perna-de-pau`}
+                            href={sanitizeUrl(`${api.defaults.baseURL}/public/art/match/${match.id}/perna-de-pau`)}
                             download={`perna-de-pau-${match.id}-${match.perna_de_pau.name}.jpg`}
                             target="_blank"
                             rel="noopener noreferrer"

@@ -232,7 +232,7 @@ class RaceInscriptionController extends Controller
                     if ($request->getUserResolver()) {
                         $photoRequest->setUserResolver($request->getUserResolver());
                     }
-                    $imageController->uploadPlayerPhoto($photoRequest, $user->id);
+                    $imageController->uploadPlayerPhoto($photoRequest, (int)$user->id);
                 } catch (\Exception $photoEx) {
                     Log::error("Erro ao fazer upload de foto na inscrição: " . $photoEx->getMessage());
                     // Não cancela a inscrição por falha no upload de foto
@@ -618,7 +618,7 @@ class RaceInscriptionController extends Controller
                         $photoRequest = new Request();
                         $photoRequest->files->set('photo', $request->file("athletes.{$index}.photo"));
                         $photoRequest->merge(['remove_bg' => false]);
-                        $imageController->uploadPlayerPhoto($photoRequest, $user->id);
+                        $imageController->uploadPlayerPhoto($photoRequest, (int)$user->id);
                     } catch (\Exception $photoEx) {
                         Log::error("Erro foto bulk: " . $photoEx->getMessage());
                     }

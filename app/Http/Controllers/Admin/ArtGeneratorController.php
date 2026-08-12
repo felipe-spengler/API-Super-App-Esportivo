@@ -663,13 +663,13 @@ class ArtGeneratorController extends Controller
                  .box { background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
                  </style></head><body>";
 
-        $html .= "<h1>Debug: Player {$player->name} (ID: {$player->id})</h1>";
+        $html .= "<h1>Debug: Player " . e($player->name) . " (ID: " . (int)$player->id . ")</h1>";
 
         // 1. Original
         $html .= "<div class='box'><h2>1. Imagem Original Salva (photo_path)</h2>";
-        $html .= "<p>DB Path: <code>" . ($player->photo_path ?: 'NULL') . "</code></p>";
+        $html .= "<p>DB Path: <code>" . e($player->photo_path ?: 'NULL') . "</code></p>";
         if ($player->photo_path) {
-            $urlRel = '/storage/' . $player->photo_path;
+            $urlRel = '/storage/' . e($player->photo_path);
             $html .= "<div class='checker'><img src='{$urlRel}' alt='Original' /></div>";
         }
         $html .= "</div>";
@@ -686,14 +686,15 @@ class ArtGeneratorController extends Controller
                 $inputAbsPath = storage_path('app/public/' . $player->photo_path);
                 $outputAbsPath = storage_path('app/public/players/' . pathinfo($nobgPath, PATHINFO_BASENAME));
                 $processed = $this->runRembgAndGetPath($inputAbsPath, pathinfo($outputAbsPath, PATHINFO_BASENAME));
-                $html .= "<p><b>Resultado:</b> " . ($processed ? "Sucesso! arquivo: {$processed}" : "Falhou. Ver logs Laravel.") . "</p>";
+                $html .= "<p><b>Resultado:</b> " . ($processed ? "Sucesso! arquivo: " . e($processed) : "Falhou. Ver logs Laravel.") . "</p>";
             } catch (\Exception $e) {
-                $html .= "<p style='color:red'>Erro: {$e->getMessage()}</p>";
+                \Illuminate\Support\Facades\Log::error("Erro rembg: " . $e->getMessage());
+                $html .= "<p style='color:red'>Erro ao processar imagem. Verifique os logs.</p>";
             }
             $html .= "</div>";
         }
 
-        $html .= "<p>Expected Path: <code>{$nobgPath}</code></p>";
+        $html .= "<p>Expected Path: <code>" . e($nobgPath) . "</code></p>";
         $hasNobg = false;
         $fileToLoad = null;
 
@@ -709,7 +710,7 @@ class ArtGeneratorController extends Controller
             }
 
             if ($hasNobg) {
-                $html .= "<div class='checker'><img src='/storage/{$nobgPath}' alt='NoBG' /></div>";
+                $html .= "<div class='checker'><img src='/storage/" . e($nobgPath) . "' alt='NoBG' /></div>";
             } else {
                 $html .= "<p style='color:red;'>Arquivo _nobg não existe fisicamente no disco.</p>";
             }
@@ -719,7 +720,7 @@ class ArtGeneratorController extends Controller
         // 3. _processed Version
         $processedPath = $player->photo_path ? preg_replace('/\.[^.]+$/i', '_processed.png', $player->photo_path) : null;
         $html .= "<div class='box'><h2>3. Versão Processada (_processed.png)</h2>";
-        $html .= "<p>Expected Path: <code>{$processedPath}</code></p>";
+        $html .= "<p>Expected Path: <code>" . e($processedPath) . "</code></p>";
         $hasProcessed = false;
 
         if ($processedPath) {
@@ -727,7 +728,7 @@ class ArtGeneratorController extends Controller
             $p2 = public_path('storage/' . $processedPath);
             if (file_exists($p1) || file_exists($p2)) {
                 $hasProcessed = true;
-                $html .= "<div class='checker'><img src='/storage/{$processedPath}' alt='Processed' /></div>";
+                $html .= "<div class='checker'><img src='/storage/" . e($processedPath) . "' alt='Processed' /></div>";
             } else {
                 $html .= "<p style='color:red;'>Arquivo _processed.png não existe.</p>";
             }

@@ -99,7 +99,10 @@ class RaceResultController extends Controller
                     try {
                         $php = PHP_BINARY;
                         $artisan = base_path('artisan');
-                        $cmd = "{$php} {$artisan} player:process-photos {$user->id}";
+                        $escapedPhp = escapeshellarg($php);
+                        $escapedArtisan = escapeshellarg($artisan);
+                        $escapedUserId = escapeshellarg((int)$user->id);
+                        $cmd = "{$escapedPhp} {$escapedArtisan} player:process-photos {$escapedUserId}";
                         
                         if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
                             pclose(popen("start /B " . $cmd, "r"));

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Share2, User, Vote, Smartphone, Award, ShieldAlert, CheckCircle } from 'lucide-react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
+import { sanitizeUrl } from '../utils/security';
 
 interface MatchMvpTabProps {
     match: any;
@@ -59,7 +60,7 @@ export function MatchMvpTab({ match, rosters, onVoteSubmitted }: MatchMvpTabProp
             {match?.mvp && (
                 <div className="w-full max-w-sm flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-300">
                     <a
-                        href={`${api.defaults.baseURL}/public/art/match/${match.id}/mvp`}
+                        href={sanitizeUrl(`${api.defaults.baseURL}/public/art/match/${match.id}/mvp`)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="relative w-full aspect-[4/5] bg-gray-200 rounded-2xl overflow-hidden shadow-xl border border-white hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] group cursor-pointer"
@@ -84,7 +85,7 @@ export function MatchMvpTab({ match, rosters, onVoteSubmitted }: MatchMvpTabProp
                         </h3>
                         <p className="text-gray-500 text-sm font-medium mb-3">Eleito o Craque da Partida</p>
                         <a
-                            href={`${api.defaults.baseURL}/public/art/match/${match.id}/mvp`}
+                            href={sanitizeUrl(`${api.defaults.baseURL}/public/art/match/${match.id}/mvp`)}
                             download={`craque-${match.id}-${match.mvp.name}.jpg`}
                             target="_blank"
                             rel="noopener noreferrer"

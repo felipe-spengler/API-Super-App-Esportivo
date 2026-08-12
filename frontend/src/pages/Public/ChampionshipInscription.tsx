@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { sanitizeUrl } from '../../utils/security';
 
 export function ChampionshipInscription() {
     const { id } = useParams();
@@ -641,7 +642,7 @@ export function ChampionshipInscription() {
 
                                 {registrationData?.payment_data?.invoice_url && (chosenMethod === 'CREDIT_CARD' || chosenMethod === 'BOLETO') && (
                                     <a
-                                        href={registrationData.payment_data.invoice_url}
+                                        href={sanitizeUrl(registrationData.payment_data.invoice_url)}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="block w-full py-4 bg-indigo-600 text-white rounded-xl font-bold uppercase text-sm tracking-widest text-center hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all"
