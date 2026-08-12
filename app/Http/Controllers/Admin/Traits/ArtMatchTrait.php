@@ -57,6 +57,7 @@ trait ArtMatchTrait
                 'Local da Partida' => mb_strtoupper($match->location ?? 'LOCAL A DEFINIR'),
                 '{TC}' => $match->homeTeam ? mb_strtoupper($match->homeTeam->name) : '',
                 '{TF}' => $match->awayTeam ? mb_strtoupper($match->awayTeam->name) : '',
+                '{CATEGORIA}' => $match->category ? mb_strtoupper($match->category->name) : '',
             ];
             $replacements['team_a'] = $match->homeTeam ? $this->getTeamLogoPath($match->homeTeam) : null;
             $replacements['team_b'] = $match->awayTeam ? $this->getTeamLogoPath($match->awayTeam) : null;
@@ -207,6 +208,7 @@ trait ArtMatchTrait
                 '{PF}' => $match->away_score ?? 0,
                 '{TC}' => $match->homeTeam ? mb_strtoupper($match->homeTeam->name) : '',
                 '{TF}' => $match->awayTeam ? mb_strtoupper($match->awayTeam->name) : '',
+                '{CATEGORIA}' => $match->category ? mb_strtoupper($match->category->name) : '',
             ];
             $replacements['team_a'] = $match->homeTeam ? $this->getTeamLogoPath($match->homeTeam) : null;
             $replacements['team_b'] = $match->awayTeam ? $this->getTeamLogoPath($match->awayTeam) : null;
