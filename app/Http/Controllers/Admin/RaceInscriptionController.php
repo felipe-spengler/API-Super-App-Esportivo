@@ -96,6 +96,7 @@ class RaceInscriptionController extends Controller
         $athleteAge = (int) $referenceDate->diffInYears(\Carbon\Carbon::parse($request->birth_date), true);
 
         // A subcategoria deve ser automática conforme idade e gênero se a categoria principal tiver filhos.
+        $subCategory = null;
         if ($mainCategory->children->count() > 0) {
             // 1. Prioridade PCD: Se é PCD, busca categoria que tenha "PcD" no nome
             if ($request->boolean('is_pcd')) {
@@ -512,6 +513,7 @@ class RaceInscriptionController extends Controller
                 $selectedCategory = Category::with(['parent', 'children'])->findOrFail($athleteData['category_id']);
                 $mainCategory = $selectedCategory->parent_id ? $selectedCategory->parent : $selectedCategory;
                 $category = $selectedCategory;
+                $subCategory = null;
 
                 $eventYear = $championship->start_date ? \Carbon\Carbon::parse($championship->start_date)->year : date('Y');
                 $referenceDate = \Carbon\Carbon::createFromDate($eventYear, 12, 31);
