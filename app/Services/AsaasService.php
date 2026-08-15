@@ -55,18 +55,25 @@ class AsaasService
         return $response->json() ?? [];
     }
 
-    /**
-     * Busca ou cria cliente no Asaas
-     */
     public function getOrCreateCustomer($user): string
     {
-        $cpf = preg_replace('/[^0-9]/', '', $user->cpf);
+        $cpf = preg_replace('/[^0-9]/', '', $user->cpf ?? '');
+
+        if (empty($cpf)) {
+            throw new \Exception("CPF do usuário é obrigatório para registrar o pagamento no Asaas.");
+        }
 
         // Buscar por CPF
         $search = $this->request("/customers?cpfCnpj={$cpf}");
 
         if (!empty($search['data'])) {
-            return $search['data'][0]['id'];
+            // Garante que o CPF retornado bate exatamente com o CPF pesquisado para segurança extra
+            foreach ($search['data'] as $customer) {
+                $customerCpf = preg_replace('/[^0-9]/', '', $customer['cpfCnpj'] ?? '');
+                if ($customerCpf === $cpf) {
+                    return $customer['id'];
+                }
+            }
         }
 
         // Criar novo
@@ -74,7 +81,7 @@ class AsaasService
             'name' => $user->name,
             'cpfCnpj' => $cpf,
             'email' => $user->email,
-            'mobilePhone' => preg_replace('/[^0-9]/', '', $user->phone),
+            'mobilePhone' => preg_replace('/[^0-9]/', '', $user->phone ?? ''),
             'externalReference' => (string) $user->id,
             'notificationDisabled' => true // Desativa notificações (Email/SMS) para evitar custos extras por envio
         ];
