@@ -4,19 +4,27 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Trophy, Calendar, ChevronRight, Loader2, AlertCircle, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
 import { InscriptionDetailsModal } from '../../components/InscriptionDetailsModal';
 
 export function MyInscriptions() {
     const navigate = useNavigate();
+    const { user, loading: authLoading } = useAuth();
     const [loading, setLoading] = useState(true);
     const [inscriptions, setInscriptions] = useState<any[]>([]);
     const [selectedInscription, setSelectedInscription] = useState<any>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     useEffect(() => {
-        loadInscriptions();
-    }, []);
+        if (!authLoading) {
+            if (!user) {
+                navigate('/login', { state: { from: '/profile/inscriptions' } });
+            } else {
+                loadInscriptions();
+            }
+        }
+    }, [user, authLoading]);
 
     const loadInscriptions = async () => {
         try {
@@ -61,7 +69,7 @@ export function MyInscriptions() {
             </div>
 
             <div className="max-w-lg mx-auto p-4 space-y-4">
-                {loading ? (
+                {loading || authLoading ? (
                     <div className="flex items-center justify-center py-20">
                         <Loader2 className="animate-spin text-indigo-600" />
                     </div>

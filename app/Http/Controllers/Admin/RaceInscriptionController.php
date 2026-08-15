@@ -821,6 +821,7 @@ class RaceInscriptionController extends Controller
 
             return response()->json([
                 'message' => 'Inscrições em lote realizadas com sucesso!',
+                'result' => $leaderResult->load('user'),
                 'payment_group_id' => $paymentGroupId,
                 'requires_payment' => $totalPrice > 0,
                 'price' => $totalPrice,

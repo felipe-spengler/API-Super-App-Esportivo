@@ -61,6 +61,40 @@ class RacePaymentController extends Controller
             DB::beginTransaction();
             $asaas = new AsaasService($result->race->championship->club);
 
+            $isGroup = !empty($result->payment_group_id);
+            
+            if ($isGroup) {
+                $groupResults = RaceResult::where('payment_group_id', $result->payment_group_id)
+                    ->with('user')
+                    ->get();
+                $leaderResult = $groupResults->where('payment_group_leader', true)->first() ?: $result;
+                $paymentUser = $leaderResult->user;
+                $amount = $result->payment_info['value'] ?? $groupResults->sum(function ($r) {
+                    $m = $r->category->parent_id ? $r->category->parent : $r->category;
+                    $p = (float) $m->price;
+                    if ($r->category_id !== $m->id) {
+                        $p += (float) ($r->category->price ?? 0);
+                    }
+                    return $p;
+                });
+                
+                $description = "Inscrição Coletiva (Renovada): {$result->race->championship->name} - " . count($groupResults) . " atletas";
+                $externalReference = "PG_{$result->payment_group_id}";
+            } else {
+                $paymentUser = $result->user;
+                // Calcular Preço (SOMA CATEGORIA + SUBCATEGORIA se não salvo no payment_info)
+                $mainCategory = $result->category->parent_id ? $result->category->parent : $result->category;
+                $amount = $result->payment_info['value'] ?? (float) $mainCategory->price;
+
+                // Se for subcategoria e não tiver o valor salvo em payment_info, PRECISAMOS somar o adicional da subcategoria
+                if (!isset($result->payment_info['value']) && $result->category->id !== $mainCategory->id) {
+                    $amount += (float) ($result->category->price ?? 0);
+                }
+
+                $description = "Inscrição (Renovada): {$result->race->championship->name} - {$result->category->name}";
+                $externalReference = "RR_{$result->id}";
+            }
+
             if ($result->asaas_payment_id) {
                 try {
                     $asaas->deletePayment($result->asaas_payment_id);
@@ -68,17 +102,7 @@ class RacePaymentController extends Controller
                 }
             }
 
-            // Calcular Preço (SOMA CATEGORIA + SUBCATEGORIA se não salvo no payment_info)
-            $mainCategory = $result->category->parent_id ? $result->category->parent : $result->category;
-            $amount = $result->payment_info['value'] ?? (float) $mainCategory->price;
-
-            // Se for subcategoria e não tiver o valor salvo em payment_info, PRECISAMOS somar o adicional da subcategoria
-            if (!isset($result->payment_info['value']) && $result->category->id !== $mainCategory->id) {
-                $amount += (float) ($result->category->price ?? 0);
-            }
-
-            $description = "Inscrição (Renovada): {$result->race->championship->name} - {$result->category->name}";
-            $payment = $asaas->createPayment($result->user, $amount, substr($description, 0, 250), "RR_{$result->id}", null, $request->payment_method);
+            $payment = $asaas->createPayment($paymentUser, $amount, substr($description, 0, 250), $externalReference, null, $request->payment_method);
 
             if (isset($payment['id'])) {
                 $pix = ($request->payment_method === 'PIX' || $request->payment_method === 'UNDEFINED') ? $asaas->getPixQrCode($payment['id']) : null;
@@ -90,10 +114,29 @@ class RacePaymentController extends Controller
                     'expiration' => $payment['dueDate'],
                     'value' => $amount
                 ];
-                $result->update(['payment_method' => 'asaas', 'asaas_payment_id' => $payment['id'], 'payment_info' => $paymentInfo]);
-                try {
-                    Mail::to($result->user->email)->send(new InscriptionPaymentMail($result, $paymentInfo));
-                } catch (\Exception $me) {
+
+                if ($isGroup) {
+                    foreach ($groupResults as $res) {
+                        $res->update([
+                            'payment_method' => 'asaas', 
+                            'asaas_payment_id' => $payment['id'], 
+                            'payment_info' => $paymentInfo
+                        ]);
+                    }
+                    try {
+                        Mail::to($paymentUser->email)->send(new InscriptionPaymentMail($leaderResult, $paymentInfo));
+                    } catch (\Exception $me) {
+                    }
+                } else {
+                    $result->update([
+                        'payment_method' => 'asaas', 
+                        'asaas_payment_id' => $payment['id'], 
+                        'payment_info' => $paymentInfo
+                    ]);
+                    try {
+                        Mail::to($result->user->email)->send(new InscriptionPaymentMail($result, $paymentInfo));
+                    } catch (\Exception $me) {
+                    }
                 }
             }
 

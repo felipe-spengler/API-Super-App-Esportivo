@@ -94,6 +94,10 @@ class AsaasService
             $dueDate = now()->addDays(3)->format('Y-m-d');
         }
 
+        if ($billingType === 'CREDIT_CARD') {
+            $billingType = 'UNDEFINED';
+        }
+
         $payload = [
             'customer' => $customerId,
             'billingType' => $billingType, // UNDEFINED permite que o usuário escolha entre PIX, Cartão ou Boleto no checkout do Asaas
