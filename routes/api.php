@@ -377,6 +377,7 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
         Route::post('/races/{id}/results/import', [RaceResultController::class, 'uploadCsv']);
         Route::put('/results/{id}', [RaceResultController::class, 'update']);
         Route::patch('/results/{id}/payment', [RaceResultController::class, 'updatePayment']);
+        Route::post('/results/{id}/resend-email', [RaceResultController::class, 'resendEmail']);
         Route::get('/championships/{id}/results/export', [RaceResultController::class, 'exportCsv']);
 
         // Configurações

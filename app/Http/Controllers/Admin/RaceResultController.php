@@ -9,6 +9,9 @@ use App\Models\RaceResult;
 use App\Models\User;
 use App\Models\Category;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\InscriptionPaymentMail;
+use App\Mail\InscriptionConfirmedMail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -224,5 +227,30 @@ class RaceResultController extends Controller
             }
             fclose($file);
         }, 200, $headers);
+    }
+
+    /**
+     * Reenviar email de status
+     */
+    public function resendEmail(Request $request, $id)
+    {
+        $result = RaceResult::with(['user', 'category', 'race.championship'])->findOrFail($id);
+        
+        if (!$result->user || !$result->user->email) {
+            return response()->json(['error' => 'Atleta não possui email cadastrado.'], 400);
+        }
+
+        try {
+            if ($result->status_payment === 'paid') {
+                Mail::to($result->user->email)->send(new InscriptionConfirmedMail($result));
+            } else {
+                $paymentInfo = $result->payment_info ?? [];
+                Mail::to($result->user->email)->send(new InscriptionPaymentMail($result, $paymentInfo));
+            }
+            return response()->json(['message' => 'Email enviado com sucesso.']);
+        } catch (\Exception $e) {
+            Log::error('Erro ao reenviar email: ' . $e->getMessage());
+            return response()->json(['error' => 'Erro ao enviar email: ' . $e->getMessage()], 500);
+        }
     }
 }

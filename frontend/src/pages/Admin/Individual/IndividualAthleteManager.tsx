@@ -157,6 +157,16 @@ export function IndividualAthleteManager() {
         window.open(`${api.defaults.baseURL}/admin/championships/${id}/results/export`, '_blank');
     };
 
+    const handleResendEmail = async (athleteId: number) => {
+        try {
+            const toastId = toast.loading('Enviando e-mail...');
+            await api.post(`/admin/results/${athleteId}/resend-email`);
+            toast.success('E-mail enviado com sucesso!', { id: toastId });
+        } catch (error: any) {
+            toast.error(error.response?.data?.error || 'Erro ao reenviar e-mail');
+        }
+    };
+
     const filteredAthletes = athletes.filter(a => {
         const matchesSearch = (a.name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
             (a.category?.name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -299,7 +309,11 @@ export function IndividualAthleteManager() {
                                                 >
                                                     <Wand2 size={20} />
                                                 </a>
-                                                <button className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all">
+                                                <button 
+                                                    onClick={() => handleResendEmail(athlete.id)}
+                                                    title="Reenviar E-mail"
+                                                    className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                                                >
                                                     <Mail size={20} />
                                                 </button>
                                             </div>
