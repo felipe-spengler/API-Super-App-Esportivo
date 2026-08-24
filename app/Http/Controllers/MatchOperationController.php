@@ -330,7 +330,22 @@ class MatchOperationController extends Controller
                 'position' => $player->pivot->position,
                 'participated_sets' => $participatedSets
             ];
-        })->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)->values();
+        })->sort(function ($a, $b) {
+            $numA = $a['number'] !== null && $a['number'] !== '' ? (int)$a['number'] : null;
+            $numB = $b['number'] !== null && $b['number'] !== '' ? (int)$b['number'] : null;
+
+            if ($numA !== null && $numB !== null) {
+                if ($numA === $numB) {
+                    return strnatcasecmp($a['name'], $b['name']);
+                }
+                return $numA <=> $numB;
+            }
+
+            if ($numA !== null) return -1;
+            if ($numB !== null) return 1;
+
+            return strnatcasecmp($a['name'], $b['name']);
+        })->values();
     }
 
     // LANÇAR EVENTO (GOL, PONTO, CARTÃO)

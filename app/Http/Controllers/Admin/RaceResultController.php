@@ -234,7 +234,7 @@ class RaceResultController extends Controller
      */
     public function resendEmail(Request $request, $id)
     {
-        $result = RaceResult::with(['user', 'category', 'race.championship'])->findOrFail($id);
+        $result = RaceResult::with(['user', 'category', 'race.championship.club'])->findOrFail($id);
         
         if (!$result->user || !$result->user->email) {
             return response()->json(['error' => 'Atleta não possui email cadastrado.'], 400);
@@ -245,6 +245,39 @@ class RaceResultController extends Controller
                 Mail::to($result->user->email)->send(new InscriptionConfirmedMail($result));
             } else {
                 $paymentInfo = $result->payment_info ?? [];
+
+                // Tenta gerar a cobrança no Asaas se não existir
+                if (empty($paymentInfo) && $result->category && $result->category->price > 0 && $result->race && $result->race->championship && $result->race->championship->club) {
+                    try {
+                        $asaas = new \App\Services\AsaasService($result->race->championship->club);
+                        $payment = $asaas->createPayment(
+                            $result->user,
+                            $result->category->price,
+                            "Inscrição: {$result->race->championship->name} - {$result->name}",
+                            "RR_{$result->id}",
+                            null,
+                            $result->payment_method ?? 'UNDEFINED'
+                        );
+
+                        if (isset($payment['id'])) {
+                            $pix = $asaas->getPixQrCode($payment['id']);
+                            $paymentInfo = [
+                                'asaas_id' => $payment['id'],
+                                'invoice_url' => $payment['invoiceUrl'],
+                                'pix_qr_code' => $pix['encodedImage'] ?? null,
+                                'pix_copy_paste' => $pix['payload'] ?? null,
+                                'expiration' => $payment['dueDate']
+                            ];
+                            
+                            $result->payment_info = $paymentInfo;
+                            $result->asaas_payment_id = $payment['id'];
+                            $result->save();
+                        }
+                    } catch (\Exception $pe) {
+                        Log::error("Erro ao gerar Asaas no resendEmail: " . $pe->getMessage());
+                    }
+                }
+
                 Mail::to($result->user->email)->send(new InscriptionPaymentMail($result, $paymentInfo));
             }
             return response()->json(['message' => 'Email enviado com sucesso.']);

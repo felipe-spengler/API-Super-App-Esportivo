@@ -173,16 +173,18 @@
                         {{ $paymentData['pix_copy_paste'] }}
                     </div>
                 </div>
-            @else
+            @elseif(isset($paymentData['invoice_url']))
                 <div style="text-align: center; margin: 30px 0;">
                     <p>Clique no botão abaixo para acessar sua fatura e escolher a forma de pagamento:</p>
                     <a href="{{ $paymentData['invoice_url'] }}" class="btn">Pagar Inscrição</a>
                 </div>
             @endif
 
+            @if(isset($paymentData['expiration']))
             <p style="font-size: 13px;">O prazo para realizar o pagamento é até
                 <strong>{{ \Carbon\Carbon::parse($paymentData['expiration'])->format('d/m/Y') }}</strong>. Após esta
                 data, sua inscrição poderá ser cancelada.</p>
+            @endif
         </div>
         <div class="footer">
             &copy; {{ date('Y') }} Esportes7 Platform. Este é um e-mail automático, por favor não responda.
