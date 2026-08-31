@@ -537,6 +537,24 @@ class AdminMatchController extends Controller
             return response()->json($eventArray, 201);
         }
 
+        // Prevenção de Double Submit Atômico (Debounce de 2 segundos via Cache)
+        // Usamos status 200 para que o PWA/Offline Sync considere como "sucesso" e remova da fila.
+        $lockKey = sprintf(
+            'debounce_event_%s_%s_%s_%s_%s',
+            $match->id,
+            $validated['event_type'],
+            $validated['team_id'] ?? 'none',
+            $validated['player_id'] ?? 'none',
+            $validated['minute'] ?? 'none'
+        );
+
+        if (!cache()->add($lockKey, true, 2)) {
+            return response()->json([
+                'message' => 'Evento duplicado ignorado (debounce).',
+                'double_submit' => true
+            ], 200);
+        }
+
         $metadata = is_array($validated['metadata'] ?? null) ? $validated['metadata'] : [];
 
         if ($validated['event_type'] === 'foul' && !empty($validated['player_id'])) {
