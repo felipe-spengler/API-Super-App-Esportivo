@@ -272,9 +272,10 @@ export function AdminMatchSummaryModal({
     if (!isOpen || !match) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-                <div className="p-4 bg-green-600 text-white flex items-center justify-between">
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-hidden">
+            <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl flex flex-col max-h-[95vh] animate-in zoom-in-95 duration-200">
+                <div className="p-4 bg-green-600 text-white flex items-center justify-between shrink-0">
                     <div className="flex items-center gap-2">
                         <CheckCircle className="w-5 h-5" />
                         <h3 className="font-bold">Resumo da Partida</h3>
@@ -286,7 +287,7 @@ export function AdminMatchSummaryModal({
 
 
                 {/* Tabs Navigation */}
-                <div className="flex border-b border-gray-100 bg-gray-50/50">
+                <div className="flex border-b border-gray-100 bg-gray-50/50 shrink-0">
                     <button
                         onClick={() => setActiveTab('summary')}
                         className={`flex-1 py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'summary' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
@@ -312,7 +313,7 @@ export function AdminMatchSummaryModal({
                 </div>
 
                 {activeTab === 'summary' && (
-                    <div className="p-8">
+                    <div className="p-4 sm:p-8 flex-1 overflow-y-auto">
                         {isTimesOrLapsFormat ? (
                             isTeam ? (
                                 /* Team Time-based Header */
