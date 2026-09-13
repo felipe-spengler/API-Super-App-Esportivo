@@ -52,7 +52,7 @@ export const PrintHeaderInfo = ({ match }: { match: any }) => (
                 <tr>
                     <td className="border border-black p-1 w-[40%]"><b>Categoria:</b> {match.championship?.sport?.name || 'Esporte'}</td>
                     <td className="border border-black p-1 w-[30%]"><b>Fase:</b> {match.phase || 'Fase Única'}</td>
-                    <td className="border border-black p-1 w-[30%]"><b>Rodada:</b> {match.round_name || '-'}</td>
+                    <td className="border border-black p-1 w-[30%]"><b>Rodada:</b> {match.round_name || (match.round_number ? `${match.round_number}ª Rodada` : '-')}</td>
                 </tr>
             </tbody>
         </table>

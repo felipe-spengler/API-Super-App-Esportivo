@@ -172,7 +172,11 @@ export const PrintFootball = ({ match, rosters, events }: { match: any, rosters:
                         <tbody>
                             <tr>
                                 <td className="border border-black p-1"><b>Local:</b> <EditableSpan text={match.location} /></td>
-                                <td className="border border-black p-1 w-[30%]"><b>Data:</b> <EditableSpan text={match.start_time ? new Date(match.start_time).toLocaleDateString() : ''} /></td>
+                                <td className="border border-black p-1 w-[40%]">
+                                    <b>Data:</b> <EditableSpan text={match.start_time ? new Date(match.start_time).toLocaleDateString() : ''} />
+                                    <span className="mx-2">|</span>
+                                    <b>Hora:</b> <EditableSpan text={match.start_time ? new Date(match.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''} />
+                                </td>
                             </tr>
                             <tr><td className="border border-black p-1" colSpan={2}><b>Arbitragem:</b> <EditableSpan text={match.match_details?.arbitration?.referee} placeholder="Nome do Árbitro" /></td></tr>
                             <tr><td className="border border-black p-1" colSpan={2}><b>Auxiliares:</b> <EditableSpan text={[match.match_details?.arbitration?.assistant1, match.match_details?.arbitration?.assistant2].filter(Boolean).join(' / ')} placeholder="Nome dos Auxiliares" /></td></tr>

@@ -392,6 +392,23 @@ class MatchOperationController extends Controller
                     $details['current_set_score'] = ['home' => 0, 'away' => $playerPoints];
                 }
             }
+        } else if ($type === 'irregularity') {
+            $action = $request->input('metadata.irregularity_action');
+            if ($action === 'wo') {
+                if ($teamId == $match->home_team_id) {
+                    $match->home_score = 0;
+                    $match->away_score = 3;
+                } else {
+                    $match->home_score = 3;
+                    $match->away_score = 0;
+                }
+            } else if ($action === 'remove_goals') {
+                if ($teamId == $match->home_team_id) {
+                    $match->home_score = 0;
+                } else {
+                    $match->away_score = 0;
+                }
+            }
         }
 
         // Push event

@@ -1147,6 +1147,7 @@ export function AdminMatchManager() {
                 isOpen={isAuditOpen}
                 onClose={() => setIsAuditOpen(false)}
                 match={selectedMatch}
+                rosters={rosters}
             />
         </div>
     );

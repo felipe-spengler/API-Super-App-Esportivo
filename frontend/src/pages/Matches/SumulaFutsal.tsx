@@ -8,6 +8,74 @@ import { FoulsTimelineModal } from './components/FoulsTimelineModal';
 
 /* --- COMPONENTES AUXILIARES REUTILIZÁVEIS --- */
 
+function IrregularityModal({ isOpen, onClose, onSubmit }: { isOpen: boolean, onClose: () => void, onSubmit: (action: string) => void }) {
+    if (!isOpen) return null;
+    return (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-gray-900 border border-gray-700 rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl relative">
+                <div className="p-5 pb-4 border-b border-gray-800 bg-gray-800/30 flex justify-between items-center">
+                    <h3 className="text-lg font-black text-white flex items-center gap-2">
+                        ⚠️ Irregularidade
+                    </h3>
+                    <button onClick={onClose} className="p-1.5 hover:bg-white/10 rounded-full transition-colors text-gray-400 hover:text-white">
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+                <div className="p-5 space-y-4">
+                    <p className="text-sm text-gray-300">Selecione a ação disciplinar a ser aplicada para esta equipe:</p>
+                    <button 
+                        onClick={() => onSubmit('wo')}
+                        className="w-full text-left p-4 bg-red-900/30 hover:bg-red-900/50 border border-red-500/30 rounded-2xl transition-colors"
+                    >
+                        <div className="font-bold text-red-400 mb-1">W.O.</div>
+                        <div className="text-[11px] text-gray-400">Aplica W.O. contra a equipe (3x0 ou 0x3 para o adversário).</div>
+                    </button>
+                    <button 
+                        onClick={() => onSubmit('remove_goals')}
+                        className="w-full text-left p-4 bg-orange-900/30 hover:bg-orange-900/50 border border-orange-500/30 rounded-2xl transition-colors"
+                    >
+                        <div className="font-bold text-orange-400 mb-1">Remover Gols</div>
+                        <div className="text-[11px] text-gray-400">Zera todos os gols marcados pela equipe nesta partida.</div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function ConfigModal({ isOpen, onClose, durationMinutes, setDurationMinutes }: { isOpen: boolean, onClose: () => void, durationMinutes: number, setDurationMinutes: (d: number) => void }) {
+    if (!isOpen) return null;
+    return (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-gray-900 border border-gray-700 rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl relative">
+                <div className="p-5 pb-4 border-b border-gray-800 bg-gray-800/30 flex justify-between items-center">
+                    <h3 className="text-lg font-black text-white flex items-center gap-2">
+                        ⚙️ Configurar Duração
+                    </h3>
+                    <button onClick={onClose} className="p-1.5 hover:bg-white/10 rounded-full transition-colors text-gray-400 hover:text-white">
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+                <div className="p-5 space-y-4">
+                    <label className="block text-sm font-bold text-gray-300">Duração de cada tempo (minutos)</label>
+                    <input 
+                        type="number" 
+                        value={durationMinutes} 
+                        onChange={e => setDurationMinutes(Number(e.target.value))}
+                        className="w-full bg-black/50 border border-emerald-900/50 rounded-2xl p-4 text-white text-xl font-bold font-mono outline-none focus:border-emerald-500/50 transition-colors"
+                    />
+                    <button 
+                        onClick={onClose}
+                        className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 rounded-2xl font-bold text-white shadow-lg"
+                    >
+                        Salvar
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 const ActionBtn = memo(({ onClick, disabled, className, children }: {
     onClick: () => void; disabled?: boolean; className: string; children: React.ReactNode;
 }) => (
@@ -147,6 +215,10 @@ function Scoreboard({ scoreHome, scoreAway, homeTeamName, awayTeamName, penaltyS
                 </button>
                 <div className="text-[22px] font-mono font-black text-yellow-400 tracking-widest tabular-nums leading-none">{timeLabel}</div>
                 <div className="text-[7px] text-emerald-600 uppercase font-bold mt-1 text-center leading-tight max-w-[80px]">{currentPeriod}</div>
+                <button onClick={() => {
+                    const btn = document.getElementById('configTimerBtn');
+                    if(btn) btn.click();
+                }} className="mt-1 text-[8px] text-gray-500 hover:text-emerald-400">⚙️ Ajustar</button>
             </div>
 
             {/* Away */}
@@ -175,9 +247,10 @@ interface ActionGridProps {
     onOpenCardFlow: (team: 'home' | 'away') => void;
     onOpenMvpFlow: () => void;
     onTimeout: (team: 'home' | 'away') => void;
+    onOpenIrregularity: (team: 'home' | 'away') => void;
 }
 
-function ActionGrid({ homeTeamName, awayTeamName, isRunning, isPenaltyPeriod, currentPeriod, onOpenEvent, onOpenCardFlow, onOpenMvpFlow, onTimeout }: ActionGridProps) {
+function ActionGrid({ homeTeamName, awayTeamName, isRunning, isPenaltyPeriod, currentPeriod, onOpenEvent, onOpenCardFlow, onOpenMvpFlow, onTimeout, onOpenIrregularity }: ActionGridProps) {
     const isTimeoutDisabled = ['Intervalo', 'Fim de Tempo Normal', 'Prorrogação', 'Pênaltis'].includes(currentPeriod);
 
     const renderTeamActions = (team: 'home' | 'away', name: string, gradient: string, border: string, text: string, buttonColor: string) => (
@@ -222,6 +295,13 @@ function ActionGrid({ homeTeamName, awayTeamName, isRunning, isPenaltyPeriod, cu
                 >
                     ⏱️ Pedir Tempo
                 </ActionBtn>
+                <ActionBtn 
+                    onClick={() => onOpenIrregularity(team)} 
+                    disabled={!isRunning}
+                    className="py-2.5 bg-red-900/40 hover:bg-red-900/60 text-red-400 rounded-2xl font-bold text-[11px] border border-red-500/30 shadow-sm col-span-2"
+                >
+                    ⚠️ Irregularidade
+                </ActionBtn>
             </div>
         </div>
     );
@@ -254,6 +334,10 @@ export function SumulaFutsal() {
     const [serverTimerLoaded, setServerTimerLoaded] = useState(false);
 
     const [time, setTime] = useState(0);
+    const [durationMinutes, setDurationMinutes] = useState(20);
+    const [showConfigModal, setShowConfigModal] = useState(false);
+    const [activeTimeout, setActiveTimeout] = useState<{ team: 'home'|'away', remaining: number } | null>(null);
+    const [showIrregularityModal, setShowIrregularityModal] = useState(false);
     const [isRunning, setIsRunning] = useState(false);
     const [currentPeriod, setCurrentPeriod] = useState<string>('1º Tempo');
 
@@ -315,10 +399,11 @@ export function SumulaFutsal() {
     }, [time, isRunning, currentPeriod, matchData]);
 
     const formatTime = useCallback((seconds: number) => {
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
+        const remaining = Math.max(0, (durationMinutes * 60) - seconds);
+        const mins = Math.floor(remaining / 60);
+        const secs = remaining % 60;
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    }, []);
+    }, [durationMinutes]);
 
     const fetchMatchDetails = async (isInitial = false) => {
         try {
@@ -404,14 +489,35 @@ export function SumulaFutsal() {
 
     useEffect(() => {
         let interval: any = null;
-        if (isRunning) {
-            interval = setInterval(() => setTime(t => t + 1), 1000);
+        if (activeTimeout && activeTimeout.remaining > 0) {
+            interval = setInterval(() => {
+                setActiveTimeout(prev => prev ? { ...prev, remaining: prev.remaining - 1 } : null);
+            }, 1000);
+        } else if (activeTimeout && activeTimeout.remaining <= 0) {
+            setActiveTimeout(null);
+            alert("Fim da parada técnica!");
+        }
+        return () => { if (interval) clearInterval(interval); };
+    }, [activeTimeout]);
+
+    useEffect(() => {
+        let interval: any = null;
+        if (isRunning && !activeTimeout) {
+            interval = setInterval(() => {
+                setTime(t => {
+                    if (t + 1 >= durationMinutes * 60) {
+                        setIsRunning(false);
+                        return durationMinutes * 60;
+                    }
+                    return t + 1;
+                });
+            }, 1000);
             if (matchData && (matchData.status === 'scheduled' || matchData.status === 'Agendado')) {
                 registerSystemEvent('match_start', 'Início da Partida');
             }
         }
         return () => { if (interval) clearInterval(interval); };
-    }, [isRunning]);
+    }, [isRunning, activeTimeout, durationMinutes, matchData]);
 
     useEffect(() => {
         if (!id) return;
@@ -594,6 +700,8 @@ export function SumulaFutsal() {
         const newEvent = { id: Date.now(), type, team, time: currentTime, period: currentPeriod, player_name: 'Pedido de Tempo' };
         setEvents(prev => [newEvent, ...prev]);
         setTimeouts(prev => ({ ...prev, [team]: [...(prev as any)[team], newEvent] }));
+        setIsRunning(false);
+        setActiveTimeout({ team, remaining: 90 });
         try {
             await apiPost('event', { event_type: type, team_id: teamId, minute: currentTime, period: currentPeriod, metadata: { system_period: currentPeriod } });
         } catch (e) { console.error(e); }
@@ -796,6 +904,32 @@ export function SumulaFutsal() {
         }
     };
 
+    const handleIrregularitySubmit = async (action: string) => {
+        if (!selectedTeam) return;
+        const teamId = selectedTeam === 'home' ? matchData.home_team_id : matchData.away_team_id;
+        try {
+            await apiPost('event', {
+                event_type: 'irregularity',
+                team_id: teamId,
+                minute: formatTime(time),
+                period: currentPeriod,
+                metadata: { irregularity_action: action }
+            });
+            alert('Irregularidade registrada e punição aplicada com sucesso!');
+            setShowIrregularityModal(false);
+            fetchMatchDetails();
+        } catch (e) {
+            console.error(e);
+            alert('Erro ao registrar irregularidade');
+        }
+    };
+
+    const handleOpenIrregularity = useCallback((team: 'home' | 'away') => {
+        if (!isRunning) { alert('Inicie o cronômetro!'); return; }
+        setSelectedTeam(team);
+        setShowIrregularityModal(true);
+    }, [isRunning]);
+
     const deleteSystemEvents = async (types: string[], currentPeriodOnly = false) => {
         const targets = events.filter(e => types.includes(e.type) && (currentPeriodOnly ? e.period === currentPeriod : true));
         if (targets.length === 0) return;
@@ -859,21 +993,25 @@ export function SumulaFutsal() {
             />
 
             <Scoreboard 
-                scoreHome={matchData.scoreHome} 
-                scoreAway={matchData.scoreAway} 
-                homeTeamName={matchData.home_team?.name} 
-                awayTeamName={matchData.away_team?.name} 
-                penaltyScore={penaltyScore} 
-                isPenaltyPeriod={isPenaltyPeriod} 
-                isRunning={isRunning} 
-                timeLabel={formatTime(time)} 
-                currentPeriod={currentPeriod} 
-                homeFouls={fouls.home} 
-                awayFouls={fouls.away} 
-                timeouts={timeouts} 
-                onToggleTimer={handleToggleTimer} 
-                onFoulsClick={(team) => { setFoulsModalTeam(team); setFoulsModalOpen(true); }} 
+                scoreHome={matchData?.scoreHome || 0}
+                scoreAway={matchData?.scoreAway || 0}
+                homeTeamName={matchData?.home_team?.name || 'Mandante'}
+                awayTeamName={matchData?.away_team?.name || 'Visitante'}
+                penaltyScore={penaltyScore}
+                isPenaltyPeriod={currentPeriod === 'Pênaltis'}
+                isRunning={isRunning}
+                timeLabel={formatTime(time)}
+                currentPeriod={currentPeriod}
+                homeFouls={fouls.home}
+                awayFouls={fouls.away}
+                timeouts={timeouts}
+                onToggleTimer={() => setIsRunning(!isRunning)}
+                onFoulsClick={(team) => {
+                    setFoulsModalTeam(team);
+                    setFoulsModalOpen(true);
+                }}
             />
+            <button id="configTimerBtn" className="hidden" onClick={() => setShowConfigModal(true)} />
 
             {/* Banner Offline */}
             {(!isOnline || pendingCount > 0) && (
@@ -892,6 +1030,7 @@ export function SumulaFutsal() {
                 onOpenEvent={openEventModal} 
                 onOpenCardFlow={openCardFlow} 
                 onOpenMvpFlow={openMvpFlow} 
+                onOpenIrregularity={handleOpenIrregularity}
                 onTimeout={(team) => registerSimpleEvent(team, 'timeout')} 
             />
 
@@ -969,11 +1108,54 @@ export function SumulaFutsal() {
             <FoulsTimelineModal 
                 isOpen={foulsModalOpen}
                 onClose={() => setFoulsModalOpen(false)}
-                teamName={foulsModalTeam === 'home' ? matchData.home_team?.name : matchData.away_team?.name}
+                teamName={foulsModalTeam === 'home' ? (matchData?.home_team?.name || 'Mandante') : (matchData?.away_team?.name || 'Visitante')}
                 teamKey={foulsModalTeam}
                 events={events}
                 onDeleteEvent={handleDeleteEvent}
                 currentPeriod={currentPeriod}
+            />
+
+            {/* Overlay de Timeout */}
+            {activeTimeout && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[40] flex items-center justify-center pointer-events-auto">
+                    <div className="bg-yellow-600/90 border border-yellow-500/50 p-8 rounded-3xl flex flex-col items-center justify-center shadow-[0_0_50px_rgba(202,138,4,0.3)] relative min-w-[280px]">
+                        <button 
+                            onClick={() => {
+                                setActiveTimeout(null);
+                            }}
+                            className="absolute top-3 right-3 p-1.5 hover:bg-white/20 rounded-full transition-colors text-yellow-100"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                        <div className="text-yellow-100 font-bold uppercase tracking-widest text-sm mb-2 mt-2">Parada Técnica</div>
+                        <div className="text-6xl font-mono font-black text-white tabular-nums mb-6 drop-shadow-md">
+                            {Math.floor(activeTimeout.remaining / 60).toString().padStart(2, '0')}:{(activeTimeout.remaining % 60).toString().padStart(2, '0')}
+                        </div>
+                        <button 
+                            onClick={() => {
+                                setActiveTimeout(null);
+                                setIsRunning(true);
+                            }}
+                            className="bg-white/20 hover:bg-white/30 text-white font-bold py-3 px-6 rounded-2xl transition-colors text-sm uppercase tracking-wider w-full shadow-lg border border-white/20 flex items-center justify-center gap-2"
+                        >
+                            <Play className="w-4 h-4 fill-current" />
+                            Retomar Jogo
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            <IrregularityModal 
+                isOpen={showIrregularityModal} 
+                onClose={() => setShowIrregularityModal(false)} 
+                onSubmit={handleIrregularitySubmit} 
+            />
+            
+            <ConfigModal 
+                isOpen={showConfigModal} 
+                onClose={() => setShowConfigModal(false)} 
+                durationMinutes={durationMinutes} 
+                setDurationMinutes={setDurationMinutes} 
             />
         </div>
     );

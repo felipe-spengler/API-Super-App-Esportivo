@@ -5,9 +5,10 @@ interface MatchAuditModalProps {
     isOpen: boolean;
     onClose: () => void;
     match: any; // Type it better if 'Match' is exported, for now any is fine since it's internal
+    rosters?: any;
 }
 
-export function MatchAuditModal({ isOpen, onClose, match }: MatchAuditModalProps) {
+export function MatchAuditModal({ isOpen, onClose, match, rosters }: MatchAuditModalProps) {
     if (!isOpen || !match) return null;
 
     return (
@@ -134,11 +135,28 @@ export function MatchAuditModal({ isOpen, onClose, match }: MatchAuditModalProps
                                             </div>
                                         )}
 
-                                        {event.player_name && !isVoice && !isTimer && (
-                                            <div className="text-xs font-bold text-gray-600 flex items-center gap-2">
-                                                <Users size={12} /> Atleta: {event.player_name}
-                                            </div>
-                                        )}
+                                        {event.player_name && !isVoice && !isTimer && (() => {
+                                            const rosterPlayer = rosters ? [...(rosters.home || []), ...(rosters.away || [])].find(p => p.id === event.player_id) : null;
+                                            const pNumber = rosterPlayer?.number;
+                                            const pPhoto = event.player?.photo_url || event.player?.photo || rosterPlayer?.photo_url;
+                                            
+                                            return (
+                                                <div className="flex items-center gap-3 mt-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
+                                                    {pPhoto ? (
+                                                        <img src={pPhoto} alt={event.player_name} className="w-8 h-8 rounded-full object-cover shadow-sm" />
+                                                    ) : (
+                                                        <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center shadow-sm">
+                                                            <Users size={14} className="text-gray-500" />
+                                                        </div>
+                                                    )}
+                                                    <div className="text-xs text-gray-700 flex items-center gap-1">
+                                                        <span className="text-gray-500">Atleta:</span>
+                                                        {pNumber && <span className="font-bold text-gray-800">#{pNumber}</span>}
+                                                        <span className="font-bold text-gray-900">{event.player_name}</span>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
                                     </div>
                                 );
                             })}
