@@ -23,6 +23,9 @@ services:
 
   # Reverb WebSocket Server
   reverb:
+    build:
+      context: .
+      dockerfile: Dockerfile
     image: app-esportivo-api
     restart: always
     command: sh -c "sleep 10 && php artisan reverb:start --host=0.0.0.0 --port=9090 2>&1 | tee /var/www/storage/logs/reverb.log"
