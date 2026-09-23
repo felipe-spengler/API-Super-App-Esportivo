@@ -272,7 +272,6 @@ export function AdminMatchSummaryModal({
     if (!isOpen || !match) return null;
 
     return (
-    return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-hidden">
             <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl flex flex-col max-h-[95vh] animate-in zoom-in-95 duration-200">
                 <div className="p-4 bg-green-600 text-white flex items-center justify-between shrink-0">
