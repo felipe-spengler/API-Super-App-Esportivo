@@ -98,9 +98,13 @@ class AdminChampionshipController extends Controller
 
         $validated = $request->validate([
             'name' => 'string|max:255',
+            'sport_id' => 'integer|exists:sports,id',
             'start_date' => 'date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
             'description' => 'nullable|string',
+            'registration_start_date' => 'nullable|date',
+            'registration_end_date' => 'nullable|date|after_or_equal:registration_start_date',
+            'registration_type' => 'nullable|in:individual,team',
             'format' => 'in:league,knockout,groups,league_playoffs,double_elimination,time_ranking,group_knockout,racing,laps',
             'max_teams' => 'nullable|integer|min:2',
             'status' => 'nullable|in:draft,registrations_open,in_progress,upcoming,ongoing,finished,scheduled,Agendado',
