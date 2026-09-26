@@ -73,6 +73,7 @@ export function ClubHome() {
             'natacao': 'fluent-emoji:person-swimming',
             'padel': 'fluent-emoji:ping-pong',
             'futebol-7': 'fluent-emoji:soccer-ball',
+            'futebol7': 'fluent-emoji:soccer-ball',
             'futsal': 'fluent-emoji:soccer-ball',
             'handebol': 'fluent-emoji:basketball',
             'beach-tennis': 'fluent-emoji:tennis',

@@ -605,7 +605,7 @@ export function AdminMatchManager() {
         else if (sportSlug === 'handebol') sumulaPath = `/admin/matches/${matchId}/sumula-handebol`;
         else if (sportSlug === 'beach-tennis') sumulaPath = `/admin/matches/${matchId}/sumula-beach-tennis`;
         else if (sportSlug === 'tenis') sumulaPath = `/admin/matches/${matchId}/sumula-tenis`;
-        else if (sportSlug === 'futebol-7') sumulaPath = `/admin/matches/${matchId}/sumula-futebol7`;
+        else if (sportSlug === 'futebol-7' || sportSlug === 'futebol7') sumulaPath = `/admin/matches/${matchId}/sumula-futebol7`;
         else if (sportSlug === 'futevolei') sumulaPath = `/admin/matches/${matchId}/sumula-futevolei`;
         else if (sportSlug === 'volei-de-praia') sumulaPath = `/admin/matches/${matchId}/sumula-volei-praia`;
         else if (sportSlug === 'tenis-de-mesa') sumulaPath = `/admin/matches/${matchId}/sumula-tenis-mesa`;

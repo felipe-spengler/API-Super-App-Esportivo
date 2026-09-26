@@ -38,6 +38,7 @@ const SPORT_MENUS: any = {
     futsal: 'futebol', // Alias
     society: 'futebol', // Alias
     'futebol-7': 'futebol', // Alias
+    'futebol7': 'futebol', // Alias
     handebol: [
         { label: 'Jogos', icon: Trophy, route: 'matches', color: 'orange' },
         { label: 'Classificação', icon: ListOrdered, route: 'leaderboard', color: 'blue' },
