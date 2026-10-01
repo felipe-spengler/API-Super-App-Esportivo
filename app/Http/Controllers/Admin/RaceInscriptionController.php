@@ -50,7 +50,7 @@ class RaceInscriptionController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email',
             'phone' => 'required|string|max:255',
-            'document' => 'required|string|max:255',
+            'document' => ['required', 'string', 'max:255', new \App\Rules\Cpf],
             'birth_date' => 'required|date',
             'gender' => 'required|string|in:M,F,O',
             'category_id' => 'required|exists:categories,id',
@@ -460,7 +460,7 @@ class RaceInscriptionController extends Controller
             'athletes.*.name' => 'required|string|max:255',
             'athletes.*.email' => 'required|email',
             'athletes.*.phone' => 'required|string|max:255',
-            'athletes.*.document' => 'required|string|max:255',
+            'athletes.*.document' => ['required', 'string', 'max:255', new \App\Rules\Cpf],
             'athletes.*.birth_date' => 'required|date',
             'athletes.*.gender' => 'required|string|in:M,F,O',
             'athletes.*.category_id' => 'required|exists:categories,id',
@@ -837,7 +837,7 @@ class RaceInscriptionController extends Controller
     // Acompanhar Inscrição (Público)
     public function publicTrackRegistration(Request $request, $championshipId)
     {
-        $request->validate(['document' => 'required|string', 'birth_date' => 'required|date']);
+        $request->validate(['document' => ['required', 'string', new \App\Rules\Cpf], 'birth_date' => 'required|date']);
 
         $race = Race::where('championship_id', $championshipId)->first();
         if (!$race)

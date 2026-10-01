@@ -22,7 +22,7 @@ class RacePaymentController extends Controller
     {
         $request->validate([
             'payment_method' => 'required|string|in:PIX,CREDIT_CARD,BOLETO,UNDEFINED',
-            'document' => 'nullable|string',
+            'document' => ['nullable', 'string', new \App\Rules\Cpf],
             'birth_date' => 'nullable|date',
         ]);
 

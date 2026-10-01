@@ -37,7 +37,7 @@ class AuthController extends Controller
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:6|confirmed',
             'phone' => 'nullable|string',
-            'cpf' => 'nullable|string|unique:users',
+            'cpf' => ['nullable', 'string', 'unique:users', new \App\Rules\Cpf],
             'birth_date' => 'nullable|date',
             'rg' => 'nullable|string',
             'mother_name' => 'nullable|string',
@@ -151,7 +151,7 @@ class AuthController extends Controller
             'email' => 'sometimes|string|email|max:255|unique:users,email,' . $user->id,
             'password' => 'sometimes|nullable|string|min:6',
             'phone' => 'nullable|string',
-            'cpf' => 'nullable|string',
+            'cpf' => ['nullable', 'string', new \App\Rules\Cpf],
             'device_token' => 'nullable|string',
             'photo' => 'nullable|image|max:4096', // Max 4MB
         ]);

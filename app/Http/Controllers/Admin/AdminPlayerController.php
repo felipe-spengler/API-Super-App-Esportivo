@@ -128,7 +128,7 @@ class AdminPlayerController extends Controller
             'name' => 'nullable|string|max:255',
             'nickname' => 'nullable|string|max:255',
             'email' => 'nullable|email|unique:users,email,' . $id,
-            'cpf' => 'nullable|string|unique:users,cpf,' . $id,
+            'cpf' => ['nullable', 'string', 'unique:users,cpf,' . $id, new \App\Rules\Cpf],
             'phone' => 'nullable|string',
             'birth_date' => 'nullable|date',
             'gender' => 'nullable|string|in:M,F,O',

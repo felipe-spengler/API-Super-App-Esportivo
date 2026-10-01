@@ -120,7 +120,7 @@ class TeamController extends Controller
             'position' => 'nullable|string',
             'nickname' => 'nullable|string',
             'email' => 'nullable|email',
-            'cpf' => 'nullable|string',
+            'cpf' => ['nullable', 'string', new \App\Rules\Cpf],
             'phone' => 'nullable|string',
             'gender' => 'nullable|string',
             'address' => 'nullable|string',
