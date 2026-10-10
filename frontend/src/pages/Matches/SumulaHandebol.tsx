@@ -21,6 +21,10 @@ export function SumulaHandebol() {
 
     const [events, setEvents] = useState<any[]>([]);
 
+    // Contadores de Fase 3
+    const [activeTimeout, setActiveTimeout] = useState<{ team: string, secondsRemaining: number } | null>(null);
+    const [activeSuspensions, setActiveSuspensions] = useState<Array<{ id: string, player_name: string, team: string, secondsRemaining: number }>>([]);
+
     // 🛡️ Resilience Shield
     const { isOnline, addToQueue, pendingCount , getPendingCount } = useOfflineResilience(id, 'Handebol', async (action, data) => {
         let url = '';
@@ -39,8 +43,9 @@ export function SumulaHandebol() {
     const [showMvpRoleModal, setShowMvpRoleModal] = useState(false);
     const [mvpVoteType, setMvpVoteType] = useState<'mesario' | 'arbitro' | 'final' | null>(null);
     const [selectedTeam, setSelectedTeam] = useState<'home' | 'away' | null>(null);
-    const [eventType, setEventType] = useState<'goal' | 'yellow_card' | 'red_card' | 'blue_card' | 'suspension_2min' | 'timeout' | 'mvp' | null>(null);
+    const [eventType, setEventType] = useState<'goal' | 'yellow_card' | 'red_card' | 'blue_card' | 'suspension_2min' | 'timeout' | 'mvp' | 'tiro_livre' | 'tiro_7m' | null>(null);
     const [confirmationEffect, setConfirmationEffect] = useState<string | null>(null);
+    const [showFoulTypeModal, setShowFoulTypeModal] = useState(false);
 
     // Refs for stable sync
     const timerRef = useRef({ time, isRunning, currentPeriod, matchData });
@@ -91,14 +96,27 @@ export function SumulaHandebol() {
     useEffect(() => {
         let interval: any = null;
         if (isRunning && !currentPeriod.includes('Intervalo') && !currentPeriod.includes('Fim')) {
-            interval = setInterval(() => setTime(t => t + 1), 1000);
+            interval = setInterval(() => {
+                setTime(t => t + 1);
+                setActiveSuspensions(prev => prev.map(s => ({ ...s, secondsRemaining: s.secondsRemaining - 1 })).filter(s => s.secondsRemaining > 0));
+            }, 1000);
             if (matchData && (matchData.status === 'scheduled' || matchData.status === 'Agendado')) {
                 addToQueue('event', { event_type: 'match_start', team_id: matchData.home_team_id, minute: formatTime(time), period: currentPeriod, metadata: { label: 'Início da Partida' } });
                 setMatchData((prev: any) => ({ ...prev, status: 'live' }));
             }
         }
         return () => interval && clearInterval(interval);
-    }, [isRunning, currentPeriod]);
+    }, [isRunning, currentPeriod, matchData, time]);
+
+    useEffect(() => {
+        let timeoutInterval: any = null;
+        if (activeTimeout && activeTimeout.secondsRemaining > 0) {
+            timeoutInterval = setInterval(() => {
+                setActiveTimeout(prev => prev ? (prev.secondsRemaining > 1 ? { ...prev, secondsRemaining: prev.secondsRemaining - 1 } : null) : null);
+            }, 1000);
+        }
+        return () => timeoutInterval && clearInterval(timeoutInterval);
+    }, [activeTimeout]);
 
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
@@ -107,7 +125,7 @@ export function SumulaHandebol() {
     };
 
     const handleNextPeriod = () => {
-        const periods = ['1º Tempo', 'Intervalo', '2º Tempo', 'Fim de Tempo Normal', 'Prorrogação', 'Fim'];
+        const periods = ['1º Tempo', 'Intervalo', '2º Tempo', 'Fim de Tempo Normal', '1º Tempo Prorrogação', 'Intervalo Prorrogação', '2º Tempo Prorrogação', 'Fim da Prorrogação', 'Tiros de 7 Metros', 'Fim'];
         const currentIndex = periods.indexOf(currentPeriod);
         if (currentIndex < periods.length - 1) {
             const nextPeriod = periods[currentIndex + 1];
@@ -143,13 +161,14 @@ export function SumulaHandebol() {
     const handleEvent = (team: 'home' | 'away', type: any) => {
         setSelectedTeam(team);
         setEventType(type);
-        if (type === 'timeout') { confirmEvent(null); return; }
+        if (type === 'timeout') { confirmEvent(null, type); return; }
         if (type === 'card_selection') setShowCardTypeModal(true);
+        else if (type === 'foul_selection') setShowFoulTypeModal(true);
         else setShowEventModal(true);
     };
 
-    const confirmEvent = async (player: any) => {
-        const type = eventType;
+    const confirmEvent = async (player: any, overrideType?: any) => {
+        const type = overrideType || eventType;
         const tid = selectedTeam === 'home' ? matchData.home_team_id : matchData.away_team_id;
         const pName = player ? (player.nickname || player.name) : (type === 'timeout' ? 'T.O.' : 'Equipe');
 
@@ -180,12 +199,30 @@ export function SumulaHandebol() {
             case 'suspension_2min': labelText = `2 Min: ${pName}`; break;
             case 'timeout': labelText = `Timeout: ${selectedTeam === 'home' ? 'Casa' : 'Visitante'}`; break;
             case 'mvp': labelText = `Melhor em Campo: ${pName}`; break;
+            case 'tiro_livre': labelText = `Tiro Livre: ${pName}`; break;
+            case 'tiro_7m': labelText = `Tiro de 7m: ${pName}`; break;
         }
 
         const newEvent = { id: 'temp-' + Date.now(), type, team: selectedTeam, time: formatTime(time), period: currentPeriod, player_name: pName, player_id: player?.id };
         setEvents(prev => [newEvent, ...prev]);
 
         addToQueue('event', { event_type: type, team_id: tid, player_id: player?.id || null, minute: formatTime(time), period: currentPeriod, metadata: { label: labelText } });
+        
+        // Fase 3: Ativar contadores de tela
+        if (type === 'timeout') {
+            setActiveTimeout({ team: selectedTeam || 'home', secondsRemaining: 60 });
+        } else if (type === 'suspension_2min') {
+            setActiveSuspensions(prev => [...prev, { id: Date.now().toString(), player_name: pName, team: selectedTeam || 'home', secondsRemaining: 120 }]);
+        }
+
+        // Fase 2: Parada de cronômetro automática
+        if (['timeout', 'suspension_2min', 'red_card', 'blue_card'].includes(type)) {
+            setIsRunning(false);
+            addToQueue('patch_match', {
+                match_details: { ...matchData.match_details, sync_timer: { time, isRunning: false, currentPeriod } }
+            });
+        }
+
         setShowEventModal(false);
         setEventType(null);
         setConfirmationEffect(selectedTeam);
@@ -268,6 +305,35 @@ export function SumulaHandebol() {
             )}
 
             <div className="p-3 max-w-lg mx-auto space-y-4">
+                {/* Active Timeout Display */}
+                {activeTimeout && (
+                    <div className="bg-red-500/20 border border-red-500/50 rounded-2xl p-4 flex flex-col items-center justify-center animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.3)]">
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-red-400 mb-1">
+                            TEMPO TÉCNICO: {activeTimeout.team === 'home' ? matchData.home_team?.name : matchData.away_team?.name}
+                        </span>
+                        <span className="text-4xl font-mono font-black text-white tabular-nums drop-shadow-lg">{formatTime(activeTimeout.secondsRemaining)}</span>
+                        <button onClick={() => setActiveTimeout(null)} className="mt-2 text-xs text-red-300 hover:text-white transition-colors"><Icon icon="heroicons-solid:x-circle" className="w-5 h-5" /></button>
+                    </div>
+                )}
+
+                {/* Active Suspensions Display */}
+                {activeSuspensions.length > 0 && (
+                    <div className="flex flex-col gap-2">
+                        {activeSuspensions.map(s => (
+                            <div key={s.id} className="flex items-center justify-between bg-[#1a2234] border border-orange-500/30 rounded-xl p-3 shadow-lg">
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-orange-500/20 text-orange-400 p-1.5 rounded-lg"><Icon icon="solar:clock-circle-bold" className="w-5 h-5" /></div>
+                                    <div>
+                                        <div className="text-xs font-black uppercase text-white">{s.player_name}</div>
+                                        <div className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">{s.team === 'home' ? matchData.home_team?.name : matchData.away_team?.name}</div>
+                                    </div>
+                                </div>
+                                <div className="text-xl font-mono font-black text-orange-400 tabular-nums">{formatTime(s.secondsRemaining)}</div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-3">
                     {/* Team Cards */}
                     {[
@@ -278,11 +344,14 @@ export function SumulaHandebol() {
                             <h2 className={`text-${color}-400 font-black text-[10px] uppercase tracking-[0.2em] mb-3 italic text-center w-full px-2 truncate`}>{team?.name}</h2>
                             <div className="text-6xl font-black text-white mb-6 drop-shadow-2xl tabular-nums">{score}</div>
 
-                            <div className="grid grid-cols-2 gap-2 w-full">
+                            <div className="grid grid-cols-2 gap-2 w-full mb-2">
                                 <ActionButton onClick={() => handleEvent(t, 'goal')} icon="solar:target-bold" label="Gol" colorClass="emerald" />
                                 <ActionButton onClick={() => handleEvent(t, 'suspension_2min')} icon="solar:clock-circle-bold" label="2 Min" colorClass="blue" />
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 w-full">
                                 <ActionButton onClick={() => handleEvent(t, 'timeout')} icon="solar:stopwatch-play-bold" label="T.O." colorClass="gray" />
                                 <ActionButton onClick={() => handleEvent(t, 'card_selection')} icon="solar:card-bold" label="Card" colorClass="orange" />
+                                <ActionButton onClick={() => handleEvent(t, 'foul_selection')} icon="solar:whistle-bold" label="Faltas" colorClass="indigo" />
                             </div>
                         </div>
                     ))}
@@ -406,6 +475,33 @@ export function SumulaHandebol() {
                                 </button>
                             ))}
                             <button onClick={() => setShowCardTypeModal(false)} className="py-4 mt-2 text-gray-500 font-black uppercase tracking-widest text-[10px]">Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Foul Selection Modal */}
+            {showFoulTypeModal && (
+                <div className="fixed inset-0 bg-[#0a0f18]/95 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                    <div className="bg-[#111827] w-full max-w-sm rounded-[3rem] overflow-hidden border border-white/10 shadow-3xl transform transition-all animate-in fade-in zoom-in duration-300">
+                        <div className="p-8 text-center pb-2">
+                            <h3 className="text-2xl font-black text-white italic uppercase tracking-tighter mb-1">Selecione a Falta</h3>
+                        </div>
+                        <div className="p-8 grid grid-cols-1 gap-4">
+                            {[
+                                { t: 'tiro_7m', label: 'Tiro de 7 Metros', color: 'bg-indigo-600/20', text: 'text-indigo-400', icon: 'solar:target-bold' },
+                                { t: 'tiro_livre', label: 'Tiro Livre', color: 'bg-gray-600/20', text: 'text-gray-400', icon: 'solar:whistle-bold' }
+                            ].map(foul => (
+                                <button key={foul.t} onClick={() => { setEventType(foul.t as any); setShowFoulTypeModal(false); setShowEventModal(true); }}
+                                    className={`py-6 ${foul.color} ${foul.text} border border-white/10 rounded-2xl font-black uppercase text-sm tracking-widest shadow-lg transition-all active:scale-95 flex items-center justify-between px-8 group`}>
+                                    <div className="flex items-center gap-4">
+                                        <Icon icon={foul.icon} className="w-6 h-6" />
+                                        {foul.label}
+                                    </div>
+                                    <Icon icon="heroicons-solid:chevron-right" className="w-5 h-5 opacity-30 group-hover:translate-x-2 transition-transform" />
+                                </button>
+                            ))}
+                            <button onClick={() => setShowFoulTypeModal(false)} className="py-4 mt-2 text-gray-500 font-black uppercase tracking-widest text-[10px]">Cancelar</button>
                         </div>
                     </div>
                 </div>
