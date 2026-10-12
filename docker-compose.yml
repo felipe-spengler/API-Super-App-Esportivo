@@ -67,11 +67,11 @@ services:
       - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
       - "traefik.http.routers.http-reverb.entryPoints=http"
       - "traefik.http.routers.http-reverb.middlewares=redirect-to-https"
-      - "traefik.http.routers.http-reverb.rule=Host(`esportivo.techinteligente.site`) && PathPrefix(`/app`)"
+      - "traefik.http.routers.http-reverb.rule=(Host(`esportes7.com.br`) || Host(`esportivo.techinteligente.site`)) && PathPrefix(`/app`)"
 
       # HTTPS com WebSocket
       - "traefik.http.routers.https-reverb.entryPoints=https"
-      - "traefik.http.routers.https-reverb.rule=Host(`esportivo.techinteligente.site`) && PathPrefix(`/app`)"
+      - "traefik.http.routers.https-reverb.rule=(Host(`esportes7.com.br`) || Host(`esportivo.techinteligente.site`)) && PathPrefix(`/app`)"
       - "traefik.http.routers.https-reverb.tls.certresolver=letsencrypt"
       - "traefik.http.routers.https-reverb.tls=true"
 
@@ -131,11 +131,11 @@ services:
       PMA_ABSOLUTE_URI: https://esportivo.techinteligente.site/db/
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.phpmyadmin-http.rule=Host(`esportivo.techinteligente.site`) && PathPrefix(`/db`)"
+      - "traefik.http.routers.phpmyadmin-http.rule=(Host(`esportes7.com.br`) || Host(`esportivo.techinteligente.site`)) && PathPrefix(`/db`)"
       - "traefik.http.routers.phpmyadmin-http.entrypoints=http"
       - "traefik.http.routers.phpmyadmin-http.middlewares=phpmyadmin-stripprefix,redirect-to-https"
 
-      - "traefik.http.routers.phpmyadmin-https.rule=Host(`esportivo.techinteligente.site`) && PathPrefix(`/db`)"
+      - "traefik.http.routers.phpmyadmin-https.rule=(Host(`esportes7.com.br`) || Host(`esportivo.techinteligente.site`)) && PathPrefix(`/db`)"
       - "traefik.http.routers.phpmyadmin-https.entrypoints=https"
       - "traefik.http.routers.phpmyadmin-https.tls=true"
       - "traefik.http.routers.phpmyadmin-https.tls.certresolver=letsencrypt"

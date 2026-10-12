@@ -21,7 +21,9 @@ return [
 
     // Origens explícitas para suportar: web (produção), dev local, app mobile (Capacitor iOS/Android)
     'allowed_origins' => [
-        'https://esportivo.techinteligente.site',  // web produção
+        'https://esportes7.com.br',                // novo domínio produção
+        'https://acorrerondon.com.br',              // portal acorre rondon
+        'https://esportivo.techinteligente.site',  // legado
         'http://localhost:5173',                    // dev local Vite
         'http://localhost',                         // Android WebView (Capacitor antigo)
         'https://localhost',                        // Android WebView (Capacitor novo)
