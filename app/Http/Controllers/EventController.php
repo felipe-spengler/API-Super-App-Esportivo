@@ -13,6 +13,11 @@ class EventController extends Controller
     // 1. Listar Campeonatos de um Clube (Filtrado por Esporte)
     public function championships(Request $request, $clubId)
     {
+        if (!is_numeric($clubId)) {
+            $club = \App\Models\Club::where('slug', $clubId)->first();
+            $clubId = $club ? $club->id : 0;
+        }
+
         $query = Championship::where('club_id', $clubId);
 
         if ($request->has('sport_id')) {

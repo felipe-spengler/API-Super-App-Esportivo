@@ -34,6 +34,7 @@ return [
 
     'allowed_origins_patterns' => [
         '#^http://.*\.72\.61\.37\.70\.sslip\.io$#', // Aceita qualquer subdomínio temporário do Coolify nesta VPS
+        '#^https?://(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|localhost)(:\d+)?$#', // Painel ESP32 e redes locais
     ],
 
     'allowed_headers' => ['*'],
