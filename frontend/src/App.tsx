@@ -135,6 +135,7 @@ function App() {
             <Route path="/races/:id" element={<RaceDetails />} />
             <Route path="/races/:id/results" element={<PublicRaceResults />} />
             <Route path="/races/:id/register" element={<RaceRegister />} />
+            <Route path="/public/race-register/:id" element={<RaceRegister />} />
             <Route path="/matches/:id/print" element={<MatchPrintView />} />
             <Route path="/test-upload" element={<TestUpload />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
@@ -225,6 +226,7 @@ function App() {
               <Route path="matches/:id/sumula-beach-tennis" element={<SumulaBeachTennis />} />
               <Route path="matches/:id/sumula-tenis" element={<SumulaTenis />} />
               <Route path="matches/:id/sumula-futebol7" element={<SumulaFutebol7 />} />
+              <Route path="matches/:id/sumula-futebol-7" element={<SumulaFutebol7 />} />
               <Route path="matches/:id/sumula-futevolei" element={<SumulaFutevolei />} />
               <Route path="matches/:id/sumula-volei-praia" element={<SumulaVoleiPraia />} />
               <Route path="matches/:id/sumula-tenis-mesa" element={<SumulaTenisMesa />} />

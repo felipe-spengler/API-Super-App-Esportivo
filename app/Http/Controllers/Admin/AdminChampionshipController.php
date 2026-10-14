@@ -96,6 +96,14 @@ class AdminChampionshipController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
+        if ($request->has('sport_id') || $request->has('sport') || $request->has('modality')) {
+            $rawSport = $request->input('sport_id') ?? $request->input('sport') ?? $request->input('modality');
+            $resolvedId = StoreChampionshipRequest::resolveSportId($rawSport);
+            if ($resolvedId) {
+                $request->merge(['sport_id' => $resolvedId]);
+            }
+        }
+
         $validated = $request->validate([
             'name' => 'string|max:255',
             'sport_id' => 'integer|exists:sports,id',

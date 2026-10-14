@@ -118,9 +118,30 @@ export function ChampionshipForm() {
                 setLogoUrl(data.logo_url);
                 setCoverImageUrl(data.cover_image_url);
             } else {
-                // Set default sport if available
-                if (sportsResponse.data.length > 0) {
-                    setFormData(prev => ({ ...prev, sport_id: sportsResponse.data[0].id.toString() }));
+                // Check if query params specify sport (e.g. ?sport=futebol-7 or ?sport_id=8 or ?sport=8)
+                const searchParams = new URLSearchParams(location.search);
+                const querySport = (searchParams.get('sport') || searchParams.get('sport_id') || searchParams.get('modality') || '').toLowerCase().trim();
+
+                let selectedSportId = '';
+                if (querySport) {
+                    const matched = availableSports.find((s: any) =>
+                        String(s.id) === querySport ||
+                        s.slug === querySport ||
+                        ((querySport === 'futebol7' || querySport === 'futebol 7' || querySport === 'society' || querySport === 'fut7' || querySport === 'futebol-society') && s.slug === 'futebol-7') ||
+                        s.name.toLowerCase() === querySport
+                    );
+                    if (matched) {
+                        selectedSportId = String(matched.id);
+                    }
+                }
+
+                // If only 1 sport is available for this club, pre-select it
+                if (!selectedSportId && availableSports.length === 1) {
+                    selectedSportId = String(availableSports[0].id);
+                }
+
+                if (selectedSportId) {
+                    setFormData(prev => ({ ...prev, sport_id: selectedSportId }));
                 }
             }
         } catch (err) {
@@ -134,6 +155,12 @@ export function ChampionshipForm() {
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
+
+        if (!formData.sport_id) {
+            alert('Por favor, selecione uma modalidade esportiva.');
+            return;
+        }
+
         setLoading(true);
 
         // Ensure we send numbers where expected

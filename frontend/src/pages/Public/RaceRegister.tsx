@@ -451,19 +451,46 @@ export function RaceRegister() {
             // Verificar se usuário já está inscrito
             if (user) {
                 const myInscriptions = await api.get('/my-inscriptions');
-                const existing = myInscriptions.data.find((ins: any) => ins.race?.championship_id === Number(id));
+                const existing = myInscriptions.data.find(
+                    (ins: any) => Number(ins.race?.championship_id || ins.race?.championship?.id || ins.championship_id) === Number(id)
+                );
                 if (existing) {
+                    const price = Number(existing.payment_info?.value || existing.category?.price || 0);
                     setRegistrationData({
                         result: existing,
+                        user_id: existing.user_id || existing.user?.id || user.id,
+                        status_payment: existing.status_payment,
                         requires_payment: existing.status_payment === 'pending',
-                        payment_data: existing.payment_info
+                        payment_data: existing.payment_info,
+                        price: price,
+                        discount_applied: 0
                     });
+
+                    // Preencher dados do atleta a partir da inscrição existente
+                    if (existing.user) {
+                        setFormData(prev => ({
+                            ...prev,
+                            name: existing.name || existing.user.name || prev.name,
+                            email: existing.user.email || prev.email,
+                            phone: existing.user.phone || prev.phone,
+                            document: existing.user.cpf || prev.document,
+                            birth_date: existing.user.birth_date ? new Date(existing.user.birth_date).toISOString().split('T')[0] : prev.birth_date,
+                            gender: existing.user.gender || prev.gender,
+                            category_id: existing.category_id || prev.category_id
+                        }));
+                    }
 
                     // Tentar determinar o método que estava sendo exibido
                     if (existing.payment_info?.pix_qr_code) {
                         setChosenMethod('PIX');
                     } else if (existing.payment_info?.invoice_url) {
-                        // Poderia ser cartão ou boleto. Vamos deixar como PIX se houver opção ou o que estiver no state
+                        if (existing.payment_method === 'credit_card' || existing.payment_method === 'CREDIT_CARD') {
+                            setChosenMethod('CREDIT_CARD');
+                        } else if (existing.payment_method === 'boleto' || existing.payment_method === 'BOLETO') {
+                            setChosenMethod('BOLETO');
+                        } else {
+                            setChosenMethod('CREDIT_CARD');
+                        }
                     }
 
                     setStep(7); // Ir direto para a tela de sucesso/pagamento
@@ -575,10 +602,13 @@ export function RaceRegister() {
     async function handleRecreatePayment(newMethod: 'PIX' | 'CREDIT_CARD' | 'BOLETO') {
         try {
             setSaving(true);
-            const response = await api.post(`/inscriptions/${registrationData.result.id}/recreate-payment`, {
+            const inscriptionId = registrationData?.result?.id || registrationData?.id;
+            const doc = formData.document || registrationData?.result?.user?.cpf || user?.cpf;
+            const birth = formData.birth_date || registrationData?.result?.user?.birth_date || user?.birth_date;
+            const response = await api.post(`/inscriptions/${inscriptionId}/recreate-payment`, {
                 payment_method: newMethod,
-                document: formData.document,
-                birth_date: formData.birth_date
+                document: doc,
+                birth_date: birth
             });
             setRegistrationData({
                 ...registrationData,
@@ -1470,7 +1500,7 @@ export function RaceRegister() {
                                 {registrationData?.status_payment === 'paid'
                                     ? 'Sua vaga está garantida. Agora é só se preparar para o grande dia!'
                                     : registrationData?.requires_payment
-                                        ? `Sua inscrição foi reservada. Para garantir sua vaga, realize o pagamento de R$ ${registrationData.price.toFixed(2)} via ${chosenMethod} abaixo.`
+                                        ? `Sua inscrição foi reservada. Para garantir sua vaga, realize o pagamento de R$ ${Number(registrationData?.price ?? registrationData?.payment_data?.value ?? 0).toFixed(2)} via ${chosenMethod} abaixo.`
                                         : 'Sua vaga está garantida. Agora é só se preparar para o grande dia!'}
                             </p>
                         </div>
@@ -1481,7 +1511,7 @@ export function RaceRegister() {
                                 <div className="max-w-[280px] mx-auto group">
                                     <div className="aspect-[4/5] bg-slate-50 rounded-[2rem] overflow-hidden border border-slate-100 shadow-2xl shadow-indigo-200/50 relative">
                                         <img
-                                            src={`${import.meta.env.VITE_API_URL || '/api'}/art/championship/${id}/individual/${registrationData.user_id}/atleta_confirmado`}
+                                            src={`${import.meta.env.VITE_API_URL || '/api'}/art/championship/${id}/individual/${registrationData.user_id || registrationData.result?.user_id || user?.id}/atleta_confirmado`}
                                             alt="Atleta Confirmado"
                                             className="w-full h-full object-contain"
                                         />
@@ -1490,13 +1520,14 @@ export function RaceRegister() {
                                     <div className="grid grid-cols-2 gap-3 mt-6">
                                         <button
                                             onClick={async () => {
-                                                const url = `${import.meta.env.VITE_API_URL || '/api'}/art/championship/${id}/individual/${registrationData.user_id}/atleta_confirmado`;
+                                                const targetUserId = registrationData.user_id || registrationData.result?.user_id || user?.id;
+                                                const url = `${import.meta.env.VITE_API_URL || '/api'}/art/championship/${id}/individual/${targetUserId}/atleta_confirmado`;
                                                 try {
                                                     const response = await fetch(url);
                                                     const blob = await response.blob();
                                                     const link = document.createElement('a');
                                                     link.href = window.URL.createObjectURL(blob);
-                                                    link.download = `confirmacao-${registrationData.user_id}.jpg`;
+                                                    link.download = `confirmacao-${targetUserId}.jpg`;
                                                     link.click();
                                                 } catch (e) { toast.error("Erro ao baixar arte"); }
                                             }}
@@ -1506,7 +1537,8 @@ export function RaceRegister() {
                                         </button>
                                         <button
                                             onClick={() => {
-                                                const url = `${import.meta.env.VITE_API_URL || '/api'}/art/championship/${id}/individual/${registrationData.user_id}/atleta_confirmado`;
+                                                const targetUserId = registrationData.user_id || registrationData.result?.user_id || user?.id;
+                                                const url = `${import.meta.env.VITE_API_URL || '/api'}/art/championship/${id}/individual/${targetUserId}/atleta_confirmado`;
                                                 if (navigator.share) {
                                                     navigator.share({
                                                         title: 'Estou confirmado!',
@@ -1646,7 +1678,13 @@ export function RaceRegister() {
                                     <div className="bg-amber-50 border border-amber-200 p-6 rounded-2xl text-center">
                                         <AlertCircle className="text-amber-600 mx-auto mb-2" />
                                         <p className="text-amber-800 font-bold text-sm">Houve um atraso na geração do seu pagamento.</p>
-                                        <p className="text-amber-600 text-[10px] mt-1">Sua inscrição foi reservada. Você receberá os dados de pagamento em seu e-mail em instantes ou pode tentar novamente na área do atleta.</p>
+                                        <p className="text-amber-600 text-[10px] mt-1 mb-4">Sua inscrição foi reservada. Você pode gerar a cobrança agora mesmo abaixo:</p>
+                                        <button
+                                            onClick={() => handleRecreatePayment('PIX')}
+                                            className="px-6 py-3 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-wider hover:bg-indigo-700 transition-all shadow-md active:scale-95"
+                                        >
+                                            Gerar PIX Agora
+                                        </button>
                                     </div>
                                 )}
                             </div>

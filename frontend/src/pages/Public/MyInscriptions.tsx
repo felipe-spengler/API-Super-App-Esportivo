@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Trophy, Calendar, ChevronRight, Loader2, AlertCircle, FileText } from 'lucide-react';
+import { ArrowLeft, Trophy, Calendar, ChevronRight, Loader2, AlertCircle, FileText, CreditCard } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -78,7 +78,13 @@ export function MyInscriptions() {
                         key={ins.id}
                         onClick={() => {
                             if (!ins.status_payment || ins.status_payment === 'pending') {
-                                navigate(`/public/race-register/${ins.race?.championship_id}`);
+                                const champId = ins.race?.championship_id || ins.race?.championship?.id || ins.championship_id;
+                                if (champId) {
+                                    navigate(`/races/${champId}/register`);
+                                } else {
+                                    setSelectedInscription(ins);
+                                    setIsModalOpen(true);
+                                }
                             } else {
                                 setSelectedInscription(ins);
                                 setIsModalOpen(true);
@@ -114,12 +120,27 @@ export function MyInscriptions() {
                             )}
 
                             {(ins.status_payment !== 'paid') && (
-                                <p className="text-[10px] text-indigo-600 font-bold mt-2 flex items-center gap-1">
-                                    <AlertCircle size={10} /> Toque para pagar e confirmar sua vaga
-                                </p>
+                                <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
+                                    <p className="text-[11px] text-amber-600 font-bold flex items-center gap-1">
+                                        <AlertCircle size={13} /> Toque para pagar e confirmar sua vaga
+                                    </p>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            const champId = ins.race?.championship_id || ins.race?.championship?.id || ins.championship_id;
+                                            if (champId) {
+                                                navigate(`/races/${champId}/register`);
+                                            }
+                                        }}
+                                        className="flex items-center gap-1.5 text-xs font-bold text-white bg-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm active:scale-95"
+                                    >
+                                        <CreditCard size={13} />
+                                        Pagar Agora
+                                    </button>
+                                </div>
                             )}
                         </div>
-                        <ChevronRight className="w-5 h-5 text-gray-300" />
+                        <ChevronRight className="w-5 h-5 text-gray-300 ml-2 shrink-0" />
                     </div>
                 ))}
 

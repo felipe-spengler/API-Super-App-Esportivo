@@ -277,14 +277,18 @@ export function Matches() {
                 'handebol': '/sumula-handebol',
                 'beach-tennis': '/sumula-beach-tennis',
                 'tenis': '/sumula-tenis',
+                'futebol-7': '/sumula-futebol7',
                 'futebol7': '/sumula-futebol7',
+                'futebol 7': '/sumula-futebol7',
+                'society': '/sumula-futebol7',
+                'fut7': '/sumula-futebol7',
                 'futevolei': '/sumula-futevolei',
                 'volei-praia': '/sumula-volei-praia',
                 'tenis-mesa': '/sumula-tenis-mesa',
                 'jiu-jitsu': '/sumula-jiu-jitsu'
             };
 
-            const suffix = sumulaRoutes[sportSlug] || 'sumula';
+            const suffix = sumulaRoutes[sportSlug] || '/sumula';
             setIsArbitrationOpen(false);
             window.location.href = `/admin/matches/${selectedMatch.id}${suffix}`;
         } catch (error) {
@@ -722,7 +726,11 @@ export function Matches() {
                                         'handebol': '/sumula-handebol',
                                         'beach-tennis': '/sumula-beach-tennis',
                                         'tenis': '/sumula-tenis',
+                                        'futebol-7': '/sumula-futebol7',
                                         'futebol7': '/sumula-futebol7',
+                                        'futebol 7': '/sumula-futebol7',
+                                        'society': '/sumula-futebol7',
+                                        'fut7': '/sumula-futebol7',
                                         'futevolei': '/sumula-futevolei',
                                         'volei-praia': '/sumula-volei-praia',
                                         'tenis-mesa': '/sumula-tenis-mesa',

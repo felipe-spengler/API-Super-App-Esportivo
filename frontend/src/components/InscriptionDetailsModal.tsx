@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { X, Trophy, Calendar, FileText, Share2, Camera, Loader2, Download, CheckCircle2, User } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { X, Trophy, Calendar, FileText, Share2, Camera, Loader2, Download, CheckCircle2, User, CreditCard } from 'lucide-react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import { sanitizeUrl } from '../utils/security';
@@ -12,6 +13,7 @@ interface InscriptionDetailsModalProps {
 }
 
 export function InscriptionDetailsModal({ inscription, isOpen, onClose, onUpdate }: InscriptionDetailsModalProps) {
+    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<'details' | 'art'>('details');
     const [uploading, setUploading] = useState(false);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -129,10 +131,25 @@ export function InscriptionDetailsModal({ inscription, isOpen, onClose, onUpdate
                                         {category.parent?.name ? `${category.parent.name} — ` : ''}
                                         {category.name || 'Individual'}
                                     </p>
-                                    <div className="mt-2 flex items-center gap-2">
-                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${isConfirmed ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                    <div className="mt-2 flex flex-col gap-2">
+                                        <span className={`self-start px-2 py-0.5 rounded text-[10px] font-bold uppercase ${isConfirmed ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
                                             {isConfirmed ? 'Inscrição Confirmada' : 'Pendente de Pagamento'}
                                         </span>
+                                        {!isConfirmed && (
+                                            <button
+                                                onClick={() => {
+                                                    const champId = championship.id || inscription.race?.championship_id || inscription.championship_id;
+                                                    if (champId) {
+                                                        onClose();
+                                                        navigate(`/races/${champId}/register`);
+                                                    }
+                                                }}
+                                                className="mt-1 flex items-center justify-center gap-1.5 w-full py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 transition-colors shadow-sm active:scale-95"
+                                            >
+                                                <CreditCard size={13} />
+                                                Efetuar Pagamento
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             </div>
