@@ -545,7 +545,7 @@ class AdminMatchController extends Controller
             $match->id,
             $validated['event_type'],
             $validated['team_id'] ?? 'none',
-            $validated['player_id'] ?? 'none'
+            $validated['player_id'] ?? ($validated['metadata']['staff_name'] ?? 'none')
         );
 
         // Aumentamos o debounce de gols para 5 segundos, e 2 segundos para o restante.
@@ -603,8 +603,12 @@ class AdminMatchController extends Controller
 
         $typeName = $types[$event->event_type] ?? $event->event_type;
         $desc = "Evento: $typeName";
-        if ($player)
+        if ($player) {
             $desc .= " - " . ($player->nickname ?: $player->name);
+        } elseif (!empty($event->metadata['staff_name'])) {
+            $role = !empty($event->metadata['staff_role']) ? " ({$event->metadata['staff_role']})" : " (Comissão)";
+            $desc .= " - " . $event->metadata['staff_name'] . $role;
+        }
         if ($team)
             $desc .= " (" . ($team->short_name ?: $team->name) . ")";
         if ($event->game_time)
@@ -758,7 +762,7 @@ class AdminMatchController extends Controller
                     'game_time' => $e->game_time ?? '00:00',
                     'period' => $e->period ?? '1º Set',
                     'metadata' => $e->metadata,
-                    'player_name' => $player ? ($player->nickname ?: $player->name) : ($e->metadata['player_name'] ?? null),
+                    'player_name' => $player ? ($player->nickname ?: $player->name) : (!empty($e->metadata['staff_name']) ? ($e->metadata['staff_name'] . (!empty($e->metadata['staff_role']) ? " ({$e->metadata['staff_role']})" : " (Comissão)")) : ($e->metadata['player_name'] ?? null)),
                     'player_number' => $number,
                     'created_at' => $e->created_at->toIso8601String(),
                 ];

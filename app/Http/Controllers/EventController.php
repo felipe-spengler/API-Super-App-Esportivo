@@ -1178,6 +1178,9 @@ class EventController extends Controller
                     $pName = null;
                     if ($e->player) {
                         $pName = $e->player->nickname ?: $e->player->name;
+                    } elseif (!empty($metadata['staff_name'])) {
+                        $roleSuffix = !empty($metadata['staff_role']) ? " ({$metadata['staff_role']})" : " (Comissão)";
+                        $pName = $metadata['staff_name'] . $roleSuffix;
                     } else {
                         // Fallback to metadata
                         $pName = $metadata['player_name'] ?? ($metadata['original_player_name'] ?? null);

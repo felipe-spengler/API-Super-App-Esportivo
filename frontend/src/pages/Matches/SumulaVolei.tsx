@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, RefreshCw, PlusCircle, History, Trophy, X, Repeat, ArrowRightLeft, UserPlus, AlertOctagon, XCircle, Trash2 } from 'lucide-react';
 import api from '../../services/api';
 import { useOfflineResilience } from '../../hooks/useOfflineResilience';
+import { EventParticipantSelectionModal } from './components/EventParticipantSelectionModal';
 
 export function SumulaVolei() {
     const { id } = useParams();
@@ -14,6 +15,7 @@ export function SumulaVolei() {
     const [rotations, setRotations] = useState<any>({ home: Array(6).fill(null), away: Array(6).fill(null) });
     const [sets, setSets] = useState<any[]>([]);
     const [teamPlayers, setTeamPlayers] = useState<any>({ home: [], away: [] });
+    const [teamStaff, setTeamStaff] = useState<any>({ home: [], away: [] });
     const [events, setEvents] = useState<any[]>([]);
 
     // UI Modal States
@@ -25,7 +27,7 @@ export function SumulaVolei() {
     const [pointFlow, setPointFlow] = useState<{ step: 'type' | 'player', teamId: number, type?: string } | null>(null);
 
     // Card Flow State
-    const [cardFlow, setCardFlow] = useState<{ teamId: number } | null>(null);
+    const [cardFlow, setCardFlow] = useState<{ teamId: number, type?: 'yellow_card' | 'red_card' } | null>(null);
 
     // MVP Flow State
     const [mvpFlow, setMvpFlow] = useState<{ step: 'role' | 'team' | 'player', teamId?: number } | null>(null);
@@ -246,6 +248,10 @@ export function SumulaVolei() {
             const homeP = homeTeam?.players || [];
             const awayP = awayTeam?.players || [];
             setTeamPlayers({ home: homeP, away: awayP });
+
+            const homeS = data.rosters?.home_staff || homeTeam?.staff || [];
+            const awayS = data.rosters?.away_staff || awayTeam?.staff || [];
+            setTeamStaff({ home: homeS, away: awayS });
         }
 
         setLoading(false);
@@ -451,23 +457,50 @@ export function SumulaVolei() {
         setCardFlow({ teamId });
     }
 
-    const confirmCard = async (playerId: number, cardType: 'yellow' | 'red') => {
+    const confirmCard = async (participant: any, cardType: 'yellow' | 'red', alsoApplyRed = false) => {
         if (!cardFlow) return;
         const { teamId } = cardFlow;
         setCardFlow(null);
+
+        const isStaff = participant.is_staff === true;
+        const pName = isStaff
+            ? `${participant.name} (${participant.role || 'Comissão'})`
+            : participant.name;
 
         try {
             await apiCall('event', `/admin/matches/${id}/events`, {
                 event_type: cardType === 'yellow' ? 'yellow_card' : 'red_card',
                 team_id: teamId,
-                player_id: playerId,
+                player_id: isStaff ? null : participant.id,
                 minute: elapsedTime,
-                period: `${volleyState.current_set}º Set`,
+                period: `${volleyState?.current_set || 1}º Set`,
                 metadata: {
-                    system_period: `${volleyState.current_set}º Set`
+                    is_staff: isStaff,
+                    staff_name: isStaff ? participant.name : undefined,
+                    staff_role: isStaff ? participant.role : undefined,
+                    system_period: `${volleyState?.current_set || 1}º Set`
                 }
             });
-            alert(`Cartão ${cardType === 'yellow' ? 'Amarelo' : 'Vermelho'} registrado!`);
+
+            if (alsoApplyRed) {
+                await apiCall('event', `/admin/matches/${id}/events`, {
+                    event_type: 'red_card',
+                    team_id: teamId,
+                    player_id: isStaff ? null : participant.id,
+                    minute: elapsedTime,
+                    period: `${volleyState?.current_set || 1}º Set`,
+                    metadata: {
+                        is_staff: isStaff,
+                        staff_name: isStaff ? participant.name : undefined,
+                        staff_role: isStaff ? participant.role : undefined,
+                        label: 'Cartão Vermelho (2º Amarelo)',
+                        system_period: `${volleyState?.current_set || 1}º Set`
+                    }
+                });
+            }
+
+            fetchState(true);
+            alert(`Cartão ${cardType === 'yellow' ? 'Amarelo' : 'Vermelho'} registrado para ${pName}!`);
         } catch (e) {
             alert("Erro ao registrar cartão");
         }
@@ -1031,7 +1064,8 @@ export function SumulaVolei() {
                                 };
 
                                 // Get player info from event mapping or object
-                                const pName = ev.player_name || (ev.player ? (ev.player.nickname || ev.player.name) : (ev.metadata?.player_name || ''));
+                                const isStaffEv = ev.metadata?.is_staff === true || !!ev.metadata?.staff_name;
+                                const pName = ev.player_name || (ev.player ? (ev.player.nickname || ev.player.name) : (ev.metadata?.staff_name ? `${ev.metadata.staff_name} (${ev.metadata.staff_role || 'Comissão'})` : (ev.metadata?.player_name || '')));
                                 const pNum = ev.player_number || ev.player?.number;
                                 const playerInfo = pName ? `${pName}${pNum ? ` (#${pNum})` : ''}` : '';
 
@@ -1223,27 +1257,51 @@ export function SumulaVolei() {
                 </div>
             )}
 
-            {/* Card Modal */}
-            {cardFlow && (
-                <div className="fixed inset-0 bg-black/80 z-50 flex items-end sm:items-center justify-center">
-                    <div className="bg-gray-800 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-6">
-                        <h3 className="text-center font-bold text-xl mb-4 text-yellow-400 flex items-center justify-center gap-2"><AlertOctagon /> Aplicar Cartão</h3>
-                        <div className="mb-4 text-xs text-center text-gray-400">Clique na <span className="font-bold text-yellow-500">Esquerda</span> ou <span className="font-bold text-red-500">Direita</span> do jogador para selecionar o tipo de cartão.</div>
-                        <div className="grid grid-cols-1 gap-2 max-h-80 overflow-y-auto mb-4">
-                            {(cardFlow.teamId === matchData.home_team_id ? teamPlayers.home : teamPlayers.away).map((p: any) => (
-                                <div key={p.id} className="flex items-center gap-2 bg-gray-700/50 rounded p-1">
-                                    <button onClick={() => confirmCard(p.id, 'yellow')} className="w-12 h-12 bg-yellow-500 rounded font-bold text-black hover:bg-yellow-400 flex items-center justify-center">CA</button>
-                                    <div className="flex-1 flex flex-col justify-center px-4">
-                                        <span className="font-bold text-lg">{p.number}</span>
-                                        <span className="text-xs truncate">{p.nickname || p.name.split(' ')[0]}</span>
-                                    </div>
-                                    <button onClick={() => confirmCard(p.id, 'red')} className="w-12 h-12 bg-red-600 rounded font-bold text-white hover:bg-red-500 flex items-center justify-center">CV</button>
-                                </div>
-                            ))}
+            {/* Card Flow Type Chooser Modal */}
+            {cardFlow && !cardFlow.type && (
+                <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
+                    <div className="bg-[#111827] w-full max-w-sm rounded-3xl border border-white/10 shadow-2xl p-6 text-center space-y-4">
+                        <h3 className="text-xl font-black text-white">Aplicar Cartão</h3>
+                        <p className="text-xs text-gray-400">
+                            {cardFlow.teamId === matchData.home_team_id ? matchData.home_team?.name : matchData.away_team?.name}
+                        </p>
+                        <div className="space-y-2 pt-2">
+                            <button
+                                onClick={() => setCardFlow(prev => prev ? { ...prev, type: 'yellow_card' } : null)}
+                                className="w-full py-4 px-4 bg-yellow-500 hover:bg-yellow-400 text-black font-black text-sm uppercase rounded-2xl flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-all"
+                            >
+                                <span className="text-2xl">🟨</span> Cartão Amarelo (Advertência)
+                            </button>
+                            <button
+                                onClick={() => setCardFlow(prev => prev ? { ...prev, type: 'red_card' } : null)}
+                                className="w-full py-4 px-4 bg-red-600 hover:bg-red-500 text-white font-black text-sm uppercase rounded-2xl flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-all"
+                            >
+                                <span className="text-2xl">🟥</span> Cartão Vermelho (Penalidade)
+                            </button>
+                            <button
+                                onClick={() => setCardFlow(null)}
+                                className="w-full py-2.5 text-gray-500 hover:text-gray-300 font-bold text-xs uppercase tracking-widest transition-colors"
+                            >
+                                Cancelar
+                            </button>
                         </div>
-                        <button onClick={() => setCardFlow(null)} className="mt-4 w-full py-4 text-gray-400 font-bold">Cancelar</button>
                     </div>
                 </div>
+            )}
+
+            {/* Card Participant Selection Modal */}
+            {cardFlow && cardFlow.type && (
+                <EventParticipantSelectionModal
+                    isOpen={true}
+                    teamName={cardFlow.teamId === matchData.home_team_id ? (matchData.home_team?.name || 'Mandante') : (matchData.away_team?.name || 'Visitante')}
+                    teamId={cardFlow.teamId}
+                    eventType={cardFlow.type}
+                    roster={cardFlow.teamId === matchData.home_team_id ? (teamPlayers.home || []) : (teamPlayers.away || [])}
+                    staff={cardFlow.teamId === matchData.home_team_id ? (teamStaff.home || []) : (teamStaff.away || [])}
+                    events={events}
+                    onSelect={(participant, alsoApplyRed) => confirmCard(participant, cardFlow.type === 'yellow_card' ? 'yellow' : 'red', alsoApplyRed)}
+                    onClose={() => setCardFlow(null)}
+                />
             )}
 
             {/* MVP Flow Modal */}

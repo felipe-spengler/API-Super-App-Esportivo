@@ -151,6 +151,9 @@ class MatchOperationController extends Controller
                     $pName = null;
                     if ($player) {
                         $pName = $player->nickname ?: $player->name;
+                    } elseif (!empty($metadata['staff_name'])) {
+                        $roleSuffix = !empty($metadata['staff_role']) ? " ({$metadata['staff_role']})" : " (Comissão)";
+                        $pName = $metadata['staff_name'] . $roleSuffix;
                     } elseif (!empty($metadata['player_name'])) {
                         $pName = $metadata['player_name'];
                     } elseif (!empty($metadata['label']) && preg_match('/\((.*?)\)/', $metadata['label'], $matches)) {

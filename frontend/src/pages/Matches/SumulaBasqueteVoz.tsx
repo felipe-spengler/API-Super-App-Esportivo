@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Mic, MicOff, Check, X, Timer, Play, Pause, Plus, AlertOctagon, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Mic, MicOff, Check, X, Timer, Play, Pause, Plus, AlertOctagon, RefreshCw, Flag } from 'lucide-react';
 import api from '../../services/api';
+import { EventParticipantSelectionModal } from './components/EventParticipantSelectionModal';
 import { SpeechRecognition } from '@capacitor-community/speech-recognition';
 import { Capacitor } from '@capacitor/core';
 import echo from '../../services/echo';
@@ -26,6 +27,7 @@ export function SumulaBasqueteVoz() {
     const [loading, setLoading] = useState(true);
     const [matchData, setMatchData] = useState<any>(null);
     const [rosters, setRosters] = useState<any>({ home: [], away: [] });
+    const [manualFoulTeam, setManualFoulTeam] = useState<'home' | 'away' | null>(null);
 
     // Timer
     const [time, setTime] = useState(600);
@@ -817,8 +819,39 @@ export function SumulaBasqueteVoz() {
                 alert("Craque oficial definido com sucesso!");
                 setShowMvpPlayerModal(false);
             } catch (e: any) {
-                alert("Erro ao registrar craque: " + e.message);
+                alert("Erro ao definir craque: " + (e.response?.data?.message || e.message));
             }
+        }
+    };
+
+    const confirmManualFoul = async (participant: any) => {
+        if (!manualFoulTeam || !matchData) return;
+        const teamId = manualFoulTeam === 'home' ? matchData.home_team_id : matchData.away_team_id;
+        const isStaff = participant.is_staff === true;
+        const pName = isStaff ? `${participant.name} (${participant.role || 'Comissão'})` : participant.name;
+        const currentTime = formatTime(600 - time);
+
+        try {
+            await api.post(`/admin/matches/${id}/events`, {
+                event_type: isStaff ? 'technical_foul' : 'foul',
+                team_id: teamId,
+                minute: currentTime,
+                period: currentQuarter,
+                player_id: isStaff ? null : participant.id,
+                value: 0,
+                metadata: {
+                    is_staff: isStaff,
+                    staff_name: isStaff ? participant.name : undefined,
+                    staff_role: isStaff ? participant.role : undefined,
+                    system_period: currentQuarter,
+                    label: isStaff ? `Falta Técnica (Comissão): ${pName}` : `Falta: ${pName}`
+                }
+            });
+            fetchMatchDetails();
+            setManualFoulTeam(null);
+            alert(`Falta registrada para ${pName}!`);
+        } catch (e: any) {
+            alert("Erro ao registrar falta: " + (e.response?.data?.message || e.message));
         }
     };
 
@@ -995,14 +1028,28 @@ export function SumulaBasqueteVoz() {
                     <div className="text-xs text-gray-400 font-bold uppercase truncate mt-1 bg-gray-900/40 px-2 py-0.5 rounded-md border border-gray-800/30 max-w-[120px] mx-auto">
                         {matchData.home_team?.name || 'Casa'}
                     </div>
+                    <button
+                        type="button"
+                        onClick={() => setManualFoulTeam('home')}
+                        className="mt-2.5 py-1.5 px-3 bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 mx-auto transition-all active:scale-95 shadow-sm"
+                    >
+                        <Flag size={11} /> Falta
+                    </button>
                 </div>
-                <div className="w-px h-16 bg-gray-800 self-center"></div>
+                <div className="w-px h-24 bg-gray-800 self-center"></div>
                 <div className="text-center flex-1 min-w-0">
                     <div className="text-7xl font-black text-white leading-none tracking-tighter tabular-nums">{matchData.scoreAway}</div>
                     <div className="text-[10px] text-orange-500 font-bold uppercase tracking-[0.2em] mt-2">VISITANTE</div>
                     <div className="text-xs text-gray-400 font-bold uppercase truncate mt-1 bg-gray-900/40 px-2 py-0.5 rounded-md border border-gray-800/30 max-w-[120px] mx-auto">
                         {matchData.away_team?.name || 'Visitante'}
                     </div>
+                    <button
+                        type="button"
+                        onClick={() => setManualFoulTeam('away')}
+                        className="mt-2.5 py-1.5 px-3 bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 mx-auto transition-all active:scale-95 shadow-sm"
+                    >
+                        <Flag size={11} /> Falta
+                    </button>
                 </div>
             </div>
 
@@ -1281,6 +1328,20 @@ export function SumulaBasqueteVoz() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {manualFoulTeam && (
+                <EventParticipantSelectionModal
+                    isOpen={true}
+                    teamName={manualFoulTeam === 'home' ? (matchData.home_team?.name || 'Casa') : (matchData.away_team?.name || 'Visitante')}
+                    teamId={manualFoulTeam === 'home' ? matchData.home_team_id : matchData.away_team_id}
+                    eventType={'foul'}
+                    roster={manualFoulTeam === 'home' ? (rosters.home || []) : (rosters.away || [])}
+                    staff={manualFoulTeam === 'home' ? (rosters.home_staff || []) : (rosters.away_staff || [])}
+                    events={matchData.events || []}
+                    onSelect={confirmManualFoul}
+                    onClose={() => setManualFoulTeam(null)}
+                />
             )}
         </div>
     );

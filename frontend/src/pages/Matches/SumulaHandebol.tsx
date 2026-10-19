@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Icon } from '@iconify/react';
 import api from '../../services/api';
 import { useOfflineResilience } from '../../hooks/useOfflineResilience';
+import { EventParticipantSelectionModal } from './components/EventParticipantSelectionModal';
 
 export function SumulaHandebol() {
     const { id } = useParams();
@@ -167,10 +168,13 @@ export function SumulaHandebol() {
         else setShowEventModal(true);
     };
 
-    const confirmEvent = async (player: any, overrideType?: any) => {
+    const confirmEvent = async (player: any, overrideType?: any, alsoApplyRed = false) => {
         const type = overrideType || eventType;
         const tid = selectedTeam === 'home' ? matchData.home_team_id : matchData.away_team_id;
-        const pName = player ? (player.nickname || player.name) : (type === 'timeout' ? 'T.O.' : 'Equipe');
+        const isStaff = player && player.is_staff === true;
+        const pName = isStaff
+            ? `${player.name} (${player.role || 'Comissão'})`
+            : (player ? (player.nickname || player.name) : (type === 'timeout' ? 'T.O.' : 'Equipe'));
 
         if (type === 'mvp' && mvpVoteType && mvpVoteType !== 'final') {
             try {
@@ -203,10 +207,68 @@ export function SumulaHandebol() {
             case 'tiro_7m': labelText = `Tiro de 7m: ${pName}`; break;
         }
 
-        const newEvent = { id: 'temp-' + Date.now(), type, team: selectedTeam, time: formatTime(time), period: currentPeriod, player_name: pName, player_id: player?.id };
+        const newEvent = {
+            id: 'temp-' + Date.now(),
+            type,
+            team: selectedTeam,
+            time: formatTime(time),
+            period: currentPeriod,
+            player_name: pName,
+            player_id: isStaff ? null : (player?.id || null),
+            metadata: {
+                is_staff: isStaff,
+                staff_name: isStaff ? player.name : undefined,
+                staff_role: isStaff ? player.role : undefined,
+                label: labelText
+            }
+        };
         setEvents(prev => [newEvent, ...prev]);
 
-        addToQueue('event', { event_type: type, team_id: tid, player_id: player?.id || null, minute: formatTime(time), period: currentPeriod, metadata: { label: labelText } });
+        addToQueue('event', {
+            event_type: type,
+            team_id: tid,
+            player_id: isStaff ? null : (player?.id || null),
+            minute: formatTime(time),
+            period: currentPeriod,
+            metadata: {
+                label: labelText,
+                is_staff: isStaff,
+                staff_name: isStaff ? player.name : undefined,
+                staff_role: isStaff ? player.role : undefined,
+            }
+        });
+
+        if (alsoApplyRed) {
+            const redEv = {
+                id: 'temp-' + (Date.now() + 1),
+                type: 'red_card',
+                team: selectedTeam,
+                time: formatTime(time),
+                period: currentPeriod,
+                player_name: pName,
+                player_id: isStaff ? null : (player?.id || null),
+                metadata: {
+                    is_staff: isStaff,
+                    staff_name: isStaff ? player.name : undefined,
+                    staff_role: isStaff ? player.role : undefined,
+                    label: `Cartão Vermelho (2º Amarelo): ${pName}`
+                }
+            };
+            setEvents(prev => [redEv, ...prev]);
+            addToQueue('event', {
+                event_type: 'red_card',
+                team_id: tid,
+                player_id: isStaff ? null : (player?.id || null),
+                minute: formatTime(time),
+                period: currentPeriod,
+                metadata: {
+                    label: `Cartão Vermelho (2º Amarelo): ${pName}`,
+                    is_staff: isStaff,
+                    staff_name: isStaff ? player.name : undefined,
+                    staff_role: isStaff ? player.role : undefined,
+                }
+            });
+        }
         
         // Fase 3: Ativar contadores de tela
         if (type === 'timeout') {
@@ -216,7 +278,7 @@ export function SumulaHandebol() {
         }
 
         // Fase 2: Parada de cronômetro automática
-        if (['timeout', 'suspension_2min', 'red_card', 'blue_card'].includes(type)) {
+        if (['timeout', 'suspension_2min', 'red_card', 'blue_card'].includes(type) || alsoApplyRed) {
             setIsRunning(false);
             addToQueue('patch_match', {
                 match_details: { ...matchData.match_details, sync_timer: { time, isRunning: false, currentPeriod } }
@@ -390,9 +452,12 @@ export function SumulaHandebol() {
                                 <div className="flex items-center gap-4">
                                     <div className="w-10 h-10 rounded-xl bg-black/20 flex items-center justify-center text-[10px] font-black text-gray-500 group-hover:text-indigo-400 transition-colors">{ev.time}</div>
                                     <div>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 flex-wrap">
                                             <span className={`w-1.5 h-1.5 rounded-full ${ev.team === 'home' ? 'bg-blue-400' : 'bg-emerald-400'}`} />
                                             <span className="text-xs font-black uppercase tracking-wide text-gray-200">{ev.player_name}</span>
+                                            {(ev.metadata?.is_staff || ev.metadata?.staff_name) && (
+                                                <span className="text-[9px] font-black text-amber-400 bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 rounded-md uppercase tracking-wider">Comissão</span>
+                                            )}
                                         </div>
                                         <div className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mt-0.5">{ev.type} • {ev.period}</div>
                                     </div>
@@ -507,49 +572,21 @@ export function SumulaHandebol() {
                 </div>
             )}
 
-            {/* Player Selection Modal (Premium List View) */}
-            {showEventModal && (
-                <div className="fixed inset-0 bg-[#0a0f18]/95 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-[#111827] w-full max-w-lg rounded-[3rem] overflow-hidden border border-white/10 shadow-3xl max-h-[90vh] flex flex-col transform transition-all animate-in fade-in fill-mode-both duration-300 translate-y-0">
-                        <div className="p-8 border-b border-white/5 flex justify-between items-center bg-[#1a2234]/30">
-                            <div>
-                                <h3 className="font-black uppercase tracking-tighter text-2xl italic text-white flex items-center gap-3">
-                                    <span className={`w-2 h-8 ${selectedTeam === 'home' ? 'bg-indigo-500' : 'bg-emerald-500'} rounded-full`} />
-                                    {eventType}
-                                </h3>
-                                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-1">{selectedTeam === 'home' ? matchData.home_team?.name : matchData.away_team?.name}</p>
-                            </div>
-                            <button onClick={() => setShowEventModal(false)} className="p-3 bg-white/5 hover:bg-white/10 rounded-full transition-colors"><Icon icon="heroicons-solid:x" className="w-6 h-6" /></button>
-                        </div>
-                        <div className="p-4 overflow-y-auto flex-1 custom-scrollbar">
-                            <div className="space-y-2">
-                                {(selectedTeam === 'home' ? rosters.home : rosters.away)
-                                    .sort((a: any, b: any) => (parseInt(a.pivot?.number || a.number || 0)) - (parseInt(b.pivot?.number || b.number || 0)))
-                                    .map((p: any) => (
-                                        <button key={p.id} onClick={() => confirmEvent(p)} className="w-full group px-6 py-4 bg-[#1a2234]/60 hover:bg-indigo-600/20 border border-white/5 hover:border-indigo-500/50 rounded-2xl transition-all duration-300 flex items-center justify-between text-left">
-                                            <div className="flex items-center gap-5">
-                                                <div className="w-10 h-10 rounded-xl bg-black/40 flex items-center justify-center text-lg font-black text-white group-hover:text-indigo-400 group-hover:scale-110 transition-all tabular-nums">
-                                                    {p.pivot?.number || p.number || '#'}
-                                                </div>
-                                                <div>
-                                                    <div className="text-sm font-black uppercase tracking-wide text-gray-100 group-hover:text-white transition-colors">{p.name}</div>
-                                                    {p.nickname && <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest group-hover:text-indigo-300/50 transition-colors">{p.nickname}</div>}
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-4">
-                                                {renderSuspensions(p.id, selectedTeam!)}
-                                                <Icon icon="heroicons-solid:chevron-right" className="w-5 h-5 text-gray-700 group-hover:text-indigo-400 group-hover:translate-x-1 transition-all" />
-                                            </div>
-                                        </button>
-                                    ))}
-
-                                <button onClick={() => confirmEvent(null)} className="w-full py-5 mt-4 bg-white/5 hover:bg-white/10 rounded-2xl font-black uppercase text-gray-500 hover:text-white tracking-[0.2em] text-[10px] transition-all border border-dashed border-white/10 flex items-center justify-center gap-3">
-                                    <Icon icon="solar:users-group-rounded-bold" className="w-5 h-5" /> EQUIPE / OUTRO
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            {/* Player & Staff Selection Modal */}
+            {showEventModal && selectedTeam && (
+                <EventParticipantSelectionModal 
+                    isOpen={showEventModal}
+                    teamName={selectedTeam === 'home' ? matchData.home_team?.name : matchData.away_team?.name}
+                    teamId={selectedTeam === 'home' ? matchData.home_team_id : matchData.away_team_id}
+                    eventType={eventType}
+                    roster={selectedTeam === 'home' ? (rosters.home || []) : (rosters.away || [])}
+                    staff={selectedTeam === 'home' ? (rosters.home_staff || []) : (rosters.away_staff || [])}
+                    events={events}
+                    allowTeamFoul={['tiro_7m', 'tiro_livre'].includes(eventType || '')}
+                    onSelectTeamFoul={() => confirmEvent(null)}
+                    onSelect={(p, alsoApplyRed) => confirmEvent(p, undefined, alsoApplyRed)}
+                    onClose={() => setShowEventModal(false)}
+                />
             )}
         </div>
     );

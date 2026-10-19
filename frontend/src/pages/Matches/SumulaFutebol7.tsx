@@ -6,6 +6,7 @@ import { useOfflineResilience } from '../../hooks/useOfflineResilience';
 import { getMatchPhrase } from '../../utils/matchPhrases';
 import { FoulsTimelineModal } from './components/FoulsTimelineModal';
 import { PenaltyShootoutModal } from './components/PenaltyShootoutModal';
+import { EventParticipantSelectionModal } from './components/EventParticipantSelectionModal';
 
 /* --- COMPONENTES AUXILIARES REUTILIZÁVEIS --- */
 
@@ -605,7 +606,7 @@ export function SumulaFutebol7() {
         } catch (e) { console.error(e); }
     };
 
-    const confirmEvent = async (player: any) => {
+    const confirmEvent = async (player: any, alsoApplyRed = false) => {
         if (!matchData || !selectedTeam || !eventType) return;
         const teamId = selectedTeam === 'home' ? matchData.home_team_id : matchData.away_team_id;
         const opponentTeamId = selectedTeam === 'home' ? matchData.away_team_id : matchData.home_team_id;
@@ -632,42 +633,73 @@ export function SumulaFutebol7() {
             setSelectedPlayer(player); setShowEventModal(false); setShowShootoutOptions(true); return;
         }
 
-        if (eventType === 'yellow_card') {
-            const prevYellow = player.id
-                ? events.find(e => e.type === 'yellow_card' && e.player_id === player.id)
-                : events.find(e => e.type === 'yellow_card' && e.player_name === player.name);
-            if (prevYellow) {
-                const ok = window.confirm(
-                    `⚠️ ATENÇÃO — 2º CARTÃO AMARELO!\n\n` +
-                    `"${player.name}" já recebeu um cartão amarelo nesta partida.\n\n` +
-                    `Deseja confirmar o lançamento?`
-                );
-                if (!ok) return;
-            }
-        }
-
+        const isStaff = player && player.is_staff === true;
         const isGoalContra = player && player.isOwnGoal;
-        const pName = player ? (isGoalContra ? `${player.name} (Gol Contra)` : player.name) : 'Falta Coletiva';
+        const pName = isStaff
+            ? `${player.name} (${player.role || 'Comissão'})`
+            : (player ? (isGoalContra ? `${player.name} (Gol Contra)` : player.name) : 'Falta Coletiva');
 
         try {
             const response = await apiPost('event', {
                 event_type: eventType,
                 team_id: player ? (player.isOpponent ? opponentTeamId : teamId) : teamId,
                 minute: currentTime, period: currentPeriod,
-                player_id: (player && player.id !== 'unknown') ? player.id : null,
-                metadata: { own_goal: isGoalContra || false, system_period: currentPeriod }
+                player_id: (!isStaff && player && player.id !== 'unknown') ? player.id : null,
+                metadata: {
+                    own_goal: isGoalContra || false,
+                    is_staff: isStaff,
+                    staff_name: isStaff ? player.name : undefined,
+                    staff_role: isStaff ? player.role : undefined,
+                    system_period: currentPeriod
+                }
             });
             const newEvent = {
                 id: response?.data?.id || Date.now(), type: eventType,
                 team: player ? (player.isOpponent ? (selectedTeam === 'home' ? 'away' : 'home') : selectedTeam) : selectedTeam,
                 time: currentTime, period: currentPeriod,
                 player_name: pName,
-                player_id: (player && player.id !== 'unknown') ? player.id : null,
+                player_id: (!isStaff && player && player.id !== 'unknown') ? player.id : null,
                 own_goal: isGoalContra,
-                metadata: response?.data?.metadata ?? {}
+                metadata: {
+                    is_staff: isStaff,
+                    staff_name: isStaff ? player.name : undefined,
+                    staff_role: isStaff ? player.role : undefined,
+                }
             };
             
             setEvents(prev => [newEvent, ...prev]);
+
+            if (alsoApplyRed) {
+                const redRes = await apiPost('event', {
+                    event_type: 'red_card',
+                    team_id: teamId,
+                    minute: currentTime,
+                    period: currentPeriod,
+                    player_id: isStaff ? null : player.id,
+                    metadata: {
+                        is_staff: isStaff,
+                        staff_name: isStaff ? player.name : undefined,
+                        staff_role: isStaff ? player.role : undefined,
+                        label: 'Cartão Vermelho (2º Amarelo)',
+                        system_period: currentPeriod
+                    }
+                });
+                const redEvent = {
+                    id: redRes?.data?.id || (Date.now() + 1),
+                    type: 'red_card',
+                    team: selectedTeam,
+                    time: currentTime,
+                    period: currentPeriod,
+                    player_name: pName,
+                    player_id: isStaff ? null : (player.id ?? null),
+                    metadata: {
+                        is_staff: isStaff,
+                        staff_name: isStaff ? player.name : undefined,
+                        staff_role: isStaff ? player.role : undefined,
+                    }
+                };
+                setEvents(prev => [redEvent, ...prev]);
+            }
             
             if (eventType === 'goal') {
                 setMatchData((prev: any) => {
@@ -1036,11 +1068,17 @@ export function SumulaFutebol7() {
             )}
 
             {showEventModal && selectedTeam && (
-                <PlayerSelectionModal 
-                    roster={selectedTeam === 'home' ? rosters.home : rosters.away} 
+                <EventParticipantSelectionModal 
+                    isOpen={showEventModal}
                     teamName={selectedTeam === 'home' ? matchData.home_team?.name : matchData.away_team?.name} 
+                    teamId={selectedTeam === 'home' ? matchData.home_team_id : matchData.away_team_id}
                     eventType={eventType} 
+                    roster={selectedTeam === 'home' ? (rosters.home || []) : (rosters.away || [])} 
+                    staff={selectedTeam === 'home' ? (rosters.home_staff || []) : (rosters.away_staff || [])}
+                    events={events}
                     isSelectingOwnGoal={isSelectingOwnGoal} 
+                    allowTeamFoul={eventType === 'foul'}
+                    onSelectTeamFoul={() => confirmEvent(null)}
                     onSelect={confirmEvent} 
                     onToggleOwnGoal={() => setIsSelectingOwnGoal(!isSelectingOwnGoal)} 
                     onClose={() => { setShowEventModal(false); setIsSelectingOwnGoal(false); }} 
@@ -1144,80 +1182,7 @@ function MvpTeamModal({ homeTeamName, awayTeamName, onSelect, onClose }: { homeT
     );
 }
 
-interface PlayerSelectionModalProps {
-    roster: any[];
-    teamName: string;
-    eventType: string | null;
-    isSelectingOwnGoal: boolean;
-    onSelect: (player: any) => void;
-    onToggleOwnGoal: () => void;
-    onClose: () => void;
-}
 
-function PlayerSelectionModal({ roster, teamName, eventType, isSelectingOwnGoal, onSelect, onToggleOwnGoal, onClose }: PlayerSelectionModalProps) {
-    return (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm">
-            <div className="bg-[#111827] w-full max-w-md sm:rounded-3xl rounded-t-3xl border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
-                <div className="p-4 bg-gradient-to-r from-emerald-950/80 to-teal-950/80 border-b border-emerald-800/30 flex items-center justify-between sticky top-0 z-10">
-                    <div>
-                        <h3 className="font-black text-lg text-white">
-                            {isSelectingOwnGoal ? '⚠️ Gol Contra — Quem marcou?' : 'Selecione o Jogador'}
-                        </h3>
-                        <p className="text-xs text-emerald-400/70 uppercase tracking-wide mt-0.5">
-                            {teamName} {eventType && <span className="ml-2 text-emerald-300">· {eventType.replace('_', ' ')}</span>}
-                        </p>
-                    </div>
-                    <button onClick={onClose} className="p-2 bg-white/5 hover:bg-white/10 rounded-xl transition-colors"><X size={18} /></button>
-                </div>
-
-                <div className="overflow-y-auto p-4 flex-1">
-                    {eventType === 'goal' && !isSelectingOwnGoal && (
-                        <div className="mb-4">
-                            <button onClick={onToggleOwnGoal} className="w-full py-4 px-2 bg-red-950/40 hover:bg-red-900/50 rounded-2xl border border-red-700/40 flex items-center justify-center gap-2 transition-all active:scale-95">
-                                <AlertCircle size={18} className="text-red-400" />
-                                <span className="text-xs font-bold uppercase text-red-400">Marcar como Gol Contra</span>
-                            </button>
-                        </div>
-                    )}
-                    {isSelectingOwnGoal && (
-                        <div className="mb-3 px-3 py-2 bg-red-950/30 border border-red-700/30 rounded-2xl flex items-center gap-2 text-red-400 text-xs font-bold">
-                            <AlertCircle size={14} /> Gol contra — escolha quem marcou
-                            <button onClick={onToggleOwnGoal} className="ml-auto underline opacity-70">Cancelar</button>
-                        </div>
-                    )}
-                    {roster.length === 0 ? (
-                        <div className="p-10 text-center bg-white/5 rounded-2xl border border-dashed border-white/10">
-                            <Users className="w-8 h-8 text-gray-600 mx-auto mb-2 opacity-30" />
-                            <p className="text-sm text-gray-500">Nenhum jogador cadastrado.</p>
-                        </div>
-                    ) : (
-                        <div className="space-y-1">
-                            {roster.map((player: any) => (
-                                <button key={player.id}
-                                    onClick={() => onSelect(isSelectingOwnGoal ? { ...player, isOwnGoal: true } : player)}
-                                    className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all group border active:scale-[0.98] ${isSelectingOwnGoal
-                                        ? 'bg-red-950/30 hover:bg-red-900/40 border-red-800/30 hover:border-red-600/50'
-                                        : 'bg-white/5 hover:bg-emerald-950/40 border-transparent hover:border-emerald-700/40'
-                                    }`}>
-                                    <div className={`w-9 h-9 rounded-full flex items-center justify-center font-black text-sm shrink-0 ${isSelectingOwnGoal ? 'bg-red-700/60 text-red-200' : 'bg-emerald-800/60 text-emerald-200 group-hover:bg-emerald-600'} transition-colors`}>
-                                        {player.number || '#'}
-                                    </div>
-                                    <div className="flex flex-col items-start text-left">
-                                        <span className="font-bold text-sm text-gray-100">
-                                            {player.name}
-                                            {player.nickname && <span className="ml-1 text-emerald-400 opacity-80 text-[10px] font-medium">({player.nickname})</span>}
-                                        </span>
-                                        {player.position && <span className="text-[9px] text-gray-600 uppercase tracking-tight">{player.position}</span>}
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-}
 
 interface TimelineRowProps {
     ev: any;
@@ -1313,8 +1278,11 @@ function TimelineRow({ ev, homeTeamId, onDelete }: TimelineRowProps) {
                         {isOwnGoal && ev.type === 'goal' && (
                             <span className="text-[9px] font-black text-red-400 bg-red-500/15 border border-red-500/30 px-2 py-0.5 rounded-full uppercase tracking-wider">contra</span>
                         )}
+                        {(ev.metadata?.is_staff || ev.metadata?.staff_name) && (
+                            <span className="text-[9px] font-black text-amber-400 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-full uppercase tracking-wider">Comissão</span>
+                        )}
                     </div>
-                    {ev.player_name && ev.player_name !== '?' && <span className="text-[10px] text-gray-500 mt-0.5">{ev.player_name}</span>}
+                    {ev.player_name && ev.player_name !== '?' && <span className="text-[10px] text-gray-400 mt-0.5">{ev.player_name}</span>}
                 </div>
             </div>
             

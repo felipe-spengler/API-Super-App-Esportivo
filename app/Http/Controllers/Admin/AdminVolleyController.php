@@ -52,11 +52,30 @@ class AdminVolleyController extends Controller
             'away' => $this->formatRotation($dbRotations[$match->away_team_id] ?? collect([]))
         ];
 
+        $homeCt = DB::table('championship_team')
+            ->where('championship_id', $champId)
+            ->where('team_id', $match->home_team_id)
+            ->first();
+        $awayCt = DB::table('championship_team')
+            ->where('championship_id', $champId)
+            ->where('team_id', $match->away_team_id)
+            ->first();
+
+        $homeStaff = ($homeCt && $homeCt->staff) ? (json_decode($homeCt->staff, true) ?: []) : [];
+        $awayStaff = ($awayCt && $awayCt->staff) ? (json_decode($awayCt->staff, true) ?: []) : [];
+
+        if ($match->homeTeam) $match->homeTeam->staff = $homeStaff;
+        if ($match->awayTeam) $match->awayTeam->staff = $awayStaff;
+
         return response()->json([
             'match' => $match,
             'state' => $volleyState,
             'sets' => $sets,
-            'current_rotations' => $formattedRotations
+            'current_rotations' => $formattedRotations,
+            'rosters' => [
+                'home_staff' => $homeStaff,
+                'away_staff' => $awayStaff,
+            ]
         ]);
     }
 
