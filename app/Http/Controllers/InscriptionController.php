@@ -159,6 +159,19 @@ class InscriptionController extends Controller
 
             DB::commit();
 
+            // Se a inscrição for gratuita ($status === 'paid'), notificar o clube imediatamente
+            if ($status === 'paid') {
+                try {
+                    \App\Services\TeamInscriptionService::notifyClubInscriptionConfirmed($ctId, [
+                        'price' => $finalPrice,
+                        'is_free' => true,
+                        'payment_method' => 'free'
+                    ]);
+                } catch (\Throwable $mailEx) {
+                    Log::error("Erro ao notificar clube sobre inscrição gratuita da equipe CT {$ctId}: " . $mailEx->getMessage());
+                }
+            }
+
             return response()->json([
                 'message' => 'Inscrição realizada com sucesso!',
                 'team_id' => $team->id,

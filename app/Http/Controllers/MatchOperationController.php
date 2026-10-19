@@ -267,10 +267,32 @@ class MatchOperationController extends Controller
         if (!isset($details['positions']))
             $details['positions'] = $positions;
 
+        // Carregar comissão técnica dos times no campeonato
+        $homeCt = DB::table('championship_team')
+            ->where('championship_id', $champId)
+            ->where('team_id', $match->home_team_id)
+            ->first();
+        $awayCt = DB::table('championship_team')
+            ->where('championship_id', $champId)
+            ->where('team_id', $match->away_team_id)
+            ->first();
+
+        $homeStaff = ($homeCt && $homeCt->staff) ? (json_decode($homeCt->staff, true) ?: []) : [];
+        $awayStaff = ($awayCt && $awayCt->staff) ? (json_decode($awayCt->staff, true) ?: []) : [];
+
+        if ($match->homeTeam) {
+            $match->homeTeam->staff = $homeStaff;
+        }
+        if ($match->awayTeam) {
+            $match->awayTeam->staff = $awayStaff;
+        }
+
         // Carregar jogadores reais dos times (Rosters já carregados e filtrados no topo)
         $rosters = [
             'home' => $this->formatRoster($match->homeTeam, $participationMap),
             'away' => $this->formatRoster($match->awayTeam, $participationMap),
+            'home_staff' => $homeStaff,
+            'away_staff' => $awayStaff,
         ];
 
         // Calcular votação do MVP

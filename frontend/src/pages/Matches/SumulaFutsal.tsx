@@ -5,6 +5,7 @@ import api from '../../services/api';
 import { useOfflineResilience } from '../../hooks/useOfflineResilience';
 import { getMatchPhrase } from '../../utils/matchPhrases';
 import { FoulsTimelineModal } from './components/FoulsTimelineModal';
+import { PenaltyShootoutModal } from './components/PenaltyShootoutModal';
 
 /* --- COMPONENTES AUXILIARES REUTILIZÁVEIS --- */
 
@@ -259,7 +260,7 @@ function ActionGrid({ homeTeamName, awayTeamName, isRunning, isPenaltyPeriod, cu
             
             <ActionBtn 
                 onClick={() => onOpenEvent(team, 'goal')} 
-                disabled={!isRunning}
+                disabled={!isPenaltyPeriod && !isRunning}
                 className={`w-full py-5 ${buttonColor} hover:brightness-110 rounded-2xl font-black text-base shadow-lg border border-white/10 text-white`}
             >
                 {isPenaltyPeriod ? '⚽  PÊNALTI' : '⚽  GOL'}
@@ -353,6 +354,7 @@ export function SumulaFutsal() {
     const [foulsModalOpen, setFoulsModalOpen] = useState(false);
     const [foulsModalTeam, setFoulsModalTeam] = useState<'home' | 'away'>('home');
     const [showShootoutOptions, setShowShootoutOptions] = useState(false);
+    const [showPenaltyModal, setShowPenaltyModal] = useState(false);
     const [selectedPlayer, setSelectedPlayer] = useState<any>(null);
     const [isSelectingOwnGoal, setIsSelectingOwnGoal] = useState(false);
     
@@ -625,6 +627,7 @@ export function SumulaFutsal() {
                     setTime(0);
                     timerRef.current = { ...timerRef.current, currentPeriod: newPeriod, time: 0 };
                     registerSystemEvent('period_start', 'Início dos Pênaltis.');
+                    setShowPenaltyModal(true);
                 }
             } else { handleFinish(); return; }
         } else if (currentPeriod === 'Fim de Tempo Normal') {
@@ -639,6 +642,7 @@ export function SumulaFutsal() {
                 setTime(0);
                 timerRef.current = { ...timerRef.current, currentPeriod: newPeriod, time: 0 };
                 registerSystemEvent('period_start', 'Início dos Pênaltis.');
+                setShowPenaltyModal(true);
             } else { handleFinish(); return; }
         } else if (currentPeriod === 'Prorrogação') {
             if (!window.confirm('Encerrar Prorrogação?')) return;
@@ -651,6 +655,7 @@ export function SumulaFutsal() {
                 setTime(0);
                 timerRef.current = { ...timerRef.current, currentPeriod: newPeriod, time: 0 };
                 registerSystemEvent('period_start', 'Início dos Pênaltis.');
+                setShowPenaltyModal(true);
             } else { handleFinish(); return; }
         } else if (currentPeriod === 'Pênaltis') {
             if (!window.confirm('Encerrar Disputa de Pênaltis?')) return;
@@ -665,6 +670,10 @@ export function SumulaFutsal() {
     };
 
     const openEventModal = useCallback((team: 'home' | 'away', type: any) => {
+        if (currentPeriod === 'Pênaltis') {
+            setShowPenaltyModal(true);
+            return;
+        }
         if (!isRunning) {
             registerSystemEvent('user_action_blocked', `Tentativa de lançar '${type}' com cronômetro parado`);
             alert('Atenção: Inicie o cronômetro para poder lançar eventos!');
@@ -672,7 +681,7 @@ export function SumulaFutsal() {
         }
         registerSystemEvent('user_action', `Abriu modal de '${type}' para ${team === 'home' ? 'Mandante' : 'Visitante'}`);
         setSelectedTeam(team); setEventType(type); setShowEventModal(true);
-    }, [isRunning]);
+    }, [isRunning, currentPeriod]);
 
     const openCardFlow = useCallback((team: 'home' | 'away') => {
         if (!isRunning) { alert('Inicie o cronômetro para lançar eventos!'); return; }
@@ -798,6 +807,41 @@ export function SumulaFutsal() {
         }
     };
 
+    const handleRegisterPenalty = async (team: 'home' | 'away', player: any, outcome: 'score' | 'saved' | 'post' | 'out') => {
+        if (!matchData) return;
+        const type = outcome === 'score' ? 'shootout_goal' : 'shootout_miss';
+        const teamId = team === 'home' ? matchData.home_team_id : matchData.away_team_id;
+        const currentTime = formatTime(time);
+        try {
+            const response = await apiPost('event', {
+                event_type: type,
+                team_id: teamId,
+                minute: currentTime,
+                period: 'Pênaltis',
+                player_id: player?.id && player.id !== 'unknown' ? player.id : null,
+                metadata: { outcome }
+            });
+            const newEv = {
+                id: response?.data?.id || Date.now(),
+                type,
+                team,
+                time: currentTime,
+                period: 'Pênaltis',
+                player_name: player?.name || 'Não identificado',
+                player_id: player?.id && player.id !== 'unknown' ? player.id : null,
+                metadata: { outcome },
+                outcome
+            };
+            setEvents(prev => [newEv, ...prev]);
+            if (outcome === 'score') {
+                setPenaltyScore(prev => ({ ...prev, [team]: prev[team] + 1 }));
+            }
+        } catch (e: any) {
+            console.error(e);
+            alert('Erro ao registrar cobrança de pênalti: ' + (e?.message || 'Falha de conexão'));
+        }
+    };
+
     const handleShootoutResult = async (outcome: 'score' | 'saved' | 'post' | 'out') => {
         if (!selectedPlayer || !selectedTeam) return;
         const type = outcome === 'score' ? 'shootout_goal' : 'shootout_miss';
@@ -805,7 +849,7 @@ export function SumulaFutsal() {
         const currentTime = formatTime(time);
         try {
             const response = await apiPost('event', { event_type: type, team_id: teamId, minute: currentTime, period: currentPeriod, player_id: selectedPlayer.id, metadata: { outcome } });
-            setEvents(prev => [{ id: response?.data?.id || Date.now(), type, team: selectedTeam, time: currentTime, period: currentPeriod, player_name: selectedPlayer.name, player_id: selectedPlayer.id }, ...prev]);
+            setEvents(prev => [{ id: response?.data?.id || Date.now(), type, team: selectedTeam, time: currentTime, period: currentPeriod, player_name: selectedPlayer.name, player_id: selectedPlayer.id, metadata: { outcome }, outcome }, ...prev]);
             if (outcome === 'score') setPenaltyScore(prev => ({ ...prev, [selectedTeam]: prev[selectedTeam] + 1 }));
             setShowShootoutOptions(false); setSelectedPlayer(null);
         } catch (e) { console.error(e); alert('Erro ao registrar pênalti'); }
@@ -1021,6 +1065,34 @@ export function SumulaFutsal() {
                 </div>
             )}
 
+            {/* Banner Disputa de Pênaltis Ativa */}
+            {(isPenaltyPeriod || penaltyScore.home > 0 || penaltyScore.away > 0) && (
+                <div className="mx-3 mt-2 max-w-4xl sm:mx-auto">
+                    <button
+                        onClick={() => setShowPenaltyModal(true)}
+                        className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-amber-500/20 via-indigo-500/25 to-emerald-500/20 border-2 border-indigo-500/50 hover:border-indigo-400 text-white flex items-center justify-between shadow-xl transition-all active:scale-[0.99] group"
+                    >
+                        <div className="flex items-center gap-3">
+                            <span className="text-xl group-hover:scale-110 transition-transform">⚽</span>
+                            <div className="text-left">
+                                <span className="text-[10px] font-black uppercase tracking-wider text-amber-300 block">
+                                    Disputa de Pênaltis (Desempate)
+                                </span>
+                                <span className="text-sm font-black text-white">
+                                    {isPenaltyPeriod ? 'Disputa em Andamento — Abrir Painel' : 'Ver Detalhes dos Pênaltis'}
+                                </span>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2 bg-black/60 px-3.5 py-1.5 rounded-xl border border-white/10 text-xs font-black">
+                            <span className="text-emerald-400">{penaltyScore.home}</span>
+                            <span className="text-gray-500">×</span>
+                            <span className="text-emerald-400">{penaltyScore.away}</span>
+                            <span className="text-[10px] text-indigo-300 ml-1">Abrir ➔</span>
+                        </div>
+                    </button>
+                </div>
+            )}
+
             <ActionGrid 
                 homeTeamName={matchData.home_team?.name} 
                 awayTeamName={matchData.away_team?.name} 
@@ -1061,6 +1133,25 @@ export function SumulaFutsal() {
             </div>
 
             {/* Modals e Subfluxos */}
+            <PenaltyShootoutModal 
+                isOpen={showPenaltyModal}
+                onClose={() => setShowPenaltyModal(false)}
+                homeTeamName={matchData.home_team?.name || 'Mandante'}
+                awayTeamName={matchData.away_team?.name || 'Visitante'}
+                homeTeamLogo={matchData.home_team?.logo_url}
+                awayTeamLogo={matchData.away_team?.logo_url}
+                homeTeamId={matchData.home_team_id}
+                awayTeamId={matchData.away_team_id}
+                homeScore={matchData.scoreHome || 0}
+                awayScore={matchData.scoreAway || 0}
+                penaltyScore={penaltyScore}
+                rosters={rosters}
+                events={events}
+                onRegisterPenalty={handleRegisterPenalty}
+                onDeletePenalty={handleDeleteEvent}
+                onFinishMatch={handleFinish}
+            />
+
             {showShootoutOptions && selectedPlayer && (
                 <ShootoutModal 
                     playerName={selectedPlayer.name} 

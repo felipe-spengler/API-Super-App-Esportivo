@@ -1,10 +1,26 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Users, Shield, Trophy, Loader2, Plus, User as UserIcon, CheckCircle, Clock, Trash2, X, Edit, Copy } from 'lucide-react';
+import { ArrowLeft, Users, Shield, Trophy, Loader2, Plus, User as UserIcon, CheckCircle, Clock, Trash2, X, Edit, Copy, Briefcase, UserCheck } from 'lucide-react';
 import api from '../../services/api';
 import { PlayerEditModal } from '../Players/PlayerEditModal';
 import { useAuth } from '../../context/AuthContext';
 import { clsx } from 'clsx';
+
+export interface StaffMember {
+    role: string;
+    name: string;
+}
+
+const COMMON_STAFF_ROLES = [
+    'Técnico',
+    'Auxiliar Técnico',
+    'Preparador Físico',
+    'Massagista',
+    'Fisioterapeuta',
+    'Médico',
+    'Roupeiro',
+    'Diretor'
+];
 
 interface Player {
     id: number;
@@ -24,6 +40,7 @@ interface Championship {
     pivot?: {
         category_id?: number | null;
         captain_id?: number | null;
+        staff?: StaffMember[] | null;
     };
 }
 
@@ -79,6 +96,18 @@ export function TeamDetails() {
     const [copySourceId, setCopySourceId] = useState<number | null | 'general'>('general');
     const [previewPlayers, setPreviewPlayers] = useState<Player[]>([]);
     const [loadingPreview, setLoadingPreview] = useState(false);
+
+    // Staff states
+    const [showStaffModal, setShowStaffModal] = useState(false);
+    const [editingStaffIndex, setEditingStaffIndex] = useState<number | null>(null);
+    const [staffRole, setStaffRole] = useState('');
+    const [staffName, setStaffName] = useState('');
+    const [savingStaff, setSavingStaff] = useState(false);
+
+    const selectedChampionship = team?.championships.find(c => c.id === selectedChampionshipId);
+    const currentStaff: StaffMember[] = Array.isArray(selectedChampionship?.pivot?.staff)
+        ? (selectedChampionship?.pivot?.staff as StaffMember[])
+        : [];
 
     useEffect(() => {
         if (!showCopyModal) return;
@@ -252,6 +281,108 @@ export function TeamDetails() {
         }
     }
 
+    function openAddStaff() {
+        setEditingStaffIndex(null);
+        setStaffRole('');
+        setStaffName('');
+        setShowStaffModal(true);
+    }
+
+    function openEditStaff(index: number) {
+        const member = currentStaff[index];
+        if (!member) return;
+        setEditingStaffIndex(index);
+        setStaffRole(member.role);
+        setStaffName(member.name);
+        setShowStaffModal(true);
+    }
+
+    async function handleSaveStaff(e: React.FormEvent) {
+        e.preventDefault();
+        if (!selectedChampionshipId) return;
+        if (!staffRole.trim() || !staffName.trim()) {
+            alert('Por favor, informe a função e o nome do membro da equipe.');
+            return;
+        }
+
+        setSavingStaff(true);
+        try {
+            const updatedStaff: StaffMember[] = [...currentStaff];
+            if (editingStaffIndex !== null) {
+                updatedStaff[editingStaffIndex] = { role: staffRole.trim(), name: staffName.trim() };
+            } else {
+                updatedStaff.push({ role: staffRole.trim(), name: staffName.trim() });
+            }
+
+            await api.patch(`/admin/teams/${id}/championship-staff`, {
+                championship_id: selectedChampionshipId,
+                category_id: selectedChampionship?.pivot?.category_id,
+                staff: updatedStaff
+            });
+
+            if (team) {
+                const updatedChampionships = team.championships.map(c => {
+                    if (c.id === selectedChampionshipId) {
+                        return {
+                            ...c,
+                            pivot: {
+                                ...c.pivot,
+                                staff: updatedStaff
+                            }
+                        };
+                    }
+                    return c;
+                });
+                setTeam({ ...team, championships: updatedChampionships });
+            }
+
+            setShowStaffModal(false);
+            setStaffRole('');
+            setStaffName('');
+            setEditingStaffIndex(null);
+        } catch (error: any) {
+            console.error(error);
+            alert(error.response?.data?.message || 'Erro ao salvar membro da comissão técnica.');
+        } finally {
+            setSavingStaff(false);
+        }
+    }
+
+    async function handleDeleteStaff(index: number) {
+        if (!selectedChampionshipId) return;
+        const member = currentStaff[index];
+        if (!member) return;
+        if (!window.confirm(`Remover "${member.name}" (${member.role}) da equipe deste campeonato?`)) return;
+
+        try {
+            const updatedStaff = currentStaff.filter((_, idx) => idx !== index);
+            await api.patch(`/admin/teams/${id}/championship-staff`, {
+                championship_id: selectedChampionshipId,
+                category_id: selectedChampionship?.pivot?.category_id,
+                staff: updatedStaff
+            });
+
+            if (team) {
+                const updatedChampionships = team.championships.map(c => {
+                    if (c.id === selectedChampionshipId) {
+                        return {
+                            ...c,
+                            pivot: {
+                                ...c.pivot,
+                                staff: updatedStaff
+                            }
+                        };
+                    }
+                    return c;
+                });
+                setTeam({ ...team, championships: updatedChampionships });
+            }
+        } catch (error: any) {
+            console.error(error);
+            alert(error.response?.data?.message || 'Erro ao remover membro da comissão técnica.');
+        }
+    }
+
     async function handleDeleteTeam() {
         if (!window.confirm('Tem certeza que deseja excluir esta equipe permanentemente? Esta ação não pode ser desfeita.')) return;
         try {
@@ -417,11 +548,11 @@ export function TeamDetails() {
                         </div>
 
                         {/* Elenco */}
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 md:col-span-2">
+                        <div className={clsx("bg-white rounded-xl shadow-sm border border-gray-100 p-6", selectedChampionshipId ? "md:col-span-1" : "md:col-span-2")}>
                             <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center gap-2">
                                     <Users className="w-5 h-5 text-indigo-600" />
-                                    <h3 className="font-bold text-gray-900">Elenco Atual</h3>
+                                    <h3 className="font-bold text-gray-900">Elenco de Atletas</h3>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     {selectedChampionshipId && (
@@ -510,9 +641,172 @@ export function TeamDetails() {
                                 )}
                             </div>
                         </div>
+
+                        {/* Comissão Técnica / Equipe */}
+                        {selectedChampionshipId && (
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 md:col-span-1 flex flex-col">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-2">
+                                        <Briefcase className="w-5 h-5 text-indigo-600" />
+                                        <div>
+                                            <h3 className="font-bold text-gray-900 leading-tight">Comissão Técnica / Equipe</h3>
+                                            <p className="text-xs text-gray-400">Técnico, massagista, auxiliar, etc.</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={openAddStaff}
+                                        className="px-2.5 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg flex items-center gap-1 text-xs font-bold hover:bg-indigo-100 transition-colors shadow-sm"
+                                    >
+                                        <Plus className="w-3.5 h-3.5" /> Add Membro
+                                    </button>
+                                </div>
+
+                                <div className="space-y-3 flex-1">
+                                    {currentStaff.length === 0 ? (
+                                        <div className="text-center py-10 px-4 bg-gray-50/60 rounded-xl border border-dashed border-gray-200">
+                                            <UserCheck className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                                            <p className="text-gray-500 font-medium text-sm">Nenhum membro cadastrado</p>
+                                            <p className="text-gray-400 text-xs mt-1">Cadastre técnico, massagista ou outros profissionais para este campeonato.</p>
+                                            <button
+                                                onClick={openAddStaff}
+                                                className="mt-3 px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 transition-all inline-flex items-center gap-1 shadow-sm"
+                                            >
+                                                <Plus className="w-3 h-3" /> Cadastrar Primeiro Membro
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        currentStaff.map((member, sIdx) => (
+                                            <div
+                                                key={sIdx}
+                                                className="flex justify-between items-center p-3 hover:bg-gray-50 rounded-lg border border-gray-100 hover:border-indigo-100 transition-all bg-white"
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-100 to-purple-100 text-indigo-700 flex items-center justify-center font-bold text-xs uppercase shadow-inner">
+                                                        {member.name.substring(0, 2).toUpperCase()}
+                                                    </div>
+                                                    <div>
+                                                        <span className="inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 mb-0.5">
+                                                            {member.role}
+                                                        </span>
+                                                        <h4 className="text-sm font-bold text-gray-900 leading-tight">
+                                                            {member.name}
+                                                        </h4>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-1">
+                                                    <button
+                                                        onClick={() => openEditStaff(sIdx)}
+                                                        className="p-1.5 text-indigo-500 hover:bg-indigo-50 rounded-md transition-colors"
+                                                        title="Editar Membro"
+                                                    >
+                                                        <Edit className="w-3.5 h-3.5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteStaff(sIdx)}
+                                                        className="p-1.5 text-red-400 hover:bg-red-50 rounded-md transition-colors"
+                                                        title="Remover Membro"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )
             }
+
+            {/* Staff Modal */}
+            {showStaffModal && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gradient-to-r from-indigo-50 to-purple-50">
+                            <div className="flex items-center gap-2">
+                                <Briefcase className="w-5 h-5 text-indigo-600" />
+                                <h3 className="text-lg font-bold text-gray-900">
+                                    {editingStaffIndex !== null ? 'Editar Membro da Equipe' : 'Adicionar Membro da Equipe'}
+                                </h3>
+                            </div>
+                            <button
+                                onClick={() => { setShowStaffModal(false); setEditingStaffIndex(null); }}
+                                className="p-1.5 hover:bg-white/60 rounded-full transition-colors text-gray-500"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSaveStaff} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1">
+                                    Função / Cargo <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={staffRole}
+                                    onChange={e => setStaffRole(e.target.value)}
+                                    placeholder="Ex: Técnico, Massagista, Auxiliar..."
+                                    required
+                                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                                />
+
+                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                    <span className="text-[11px] text-gray-400 w-full mb-0.5">Sugestões rápidas:</span>
+                                    {COMMON_STAFF_ROLES.map(role => (
+                                        <button
+                                            type="button"
+                                            key={role}
+                                            onClick={() => setStaffRole(role)}
+                                            className={clsx(
+                                                "text-[11px] px-2 py-0.5 rounded-full border transition-all",
+                                                staffRole === role
+                                                    ? "bg-indigo-600 text-white border-indigo-600"
+                                                    : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200"
+                                            )}
+                                        >
+                                            {role}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1">
+                                    Nome Completo <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={staffName}
+                                    onChange={e => setStaffName(e.target.value)}
+                                    placeholder="Ex: Paulo Roberto da Silva"
+                                    required
+                                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                                />
+                            </div>
+
+                            <div className="pt-3 border-t border-gray-100 flex justify-end gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => { setShowStaffModal(false); setEditingStaffIndex(null); }}
+                                    className="px-4 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm font-semibold hover:bg-gray-50"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={savingStaff}
+                                    className="px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 shadow-sm"
+                                >
+                                    {savingStaff && <Loader2 className="w-4 h-4 animate-spin" />}
+                                    {editingStaffIndex !== null ? 'Atualizar Membro' : 'Salvar Membro'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
 
             {/* Hidden Championships List in Roster Mode (Use Selector to view them) */}
             {/* We hide the Championships card in roster mode to focus on the roster */}

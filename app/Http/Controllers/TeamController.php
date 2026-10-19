@@ -73,7 +73,7 @@ class TeamController extends Controller
             })->values());
         }
 
-        // Map the category name to each championship
+        // Map the category name and staff to each championship
         $team->championships->each(function ($championship) {
             $categoryId = $championship->pivot->category_id;
             if ($categoryId) {
@@ -81,6 +81,15 @@ class TeamController extends Controller
                 $championship->category_name = $category ? $category->name : null;
             } else {
                 $championship->category_name = null;
+            }
+
+            $rawStaff = $championship->pivot->staff ?? null;
+            if (is_string($rawStaff)) {
+                $championship->pivot->staff = json_decode($rawStaff, true) ?: [];
+            } elseif (is_array($rawStaff)) {
+                $championship->pivot->staff = $rawStaff;
+            } else {
+                $championship->pivot->staff = [];
             }
         });
 
@@ -562,6 +571,65 @@ class TeamController extends Controller
         return response()->json([
             'message' => 'Time atualizado com sucesso!',
             'team' => $team
+        ]);
+    }
+
+    // 10. Atualizar Equipe / Comissão Técnica para um Campeonato
+    public function updateChampionshipStaff(Request $request, $id)
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'championship_id' => 'required|exists:championships,id',
+            'category_id' => 'nullable|exists:categories,id',
+            'staff' => 'nullable|array',
+            'staff.*.role' => 'required_with:staff|string|max:100',
+            'staff.*.name' => 'required_with:staff|string|max:150',
+        ]);
+
+        $team = Team::findOrFail($id);
+
+        $isAdmin = $user->is_admin;
+        $isGlobalCaptain = ($team->captain_id === $user->id);
+        $isChampionshipCaptain = \DB::table('championship_team')
+            ->where('team_id', $id)
+            ->where('championship_id', $validated['championship_id'])
+            ->where('captain_id', $user->id)
+            ->exists();
+
+        if (!$isAdmin && !$isGlobalCaptain && !$isChampionshipCaptain) {
+            return response()->json(['message' => 'Sem permissão para gerenciar a equipe técnica deste time neste campeonato.'], 403);
+        }
+
+        $query = \DB::table('championship_team')
+            ->where('team_id', $id)
+            ->where('championship_id', $validated['championship_id']);
+
+        if (!empty($validated['category_id'])) {
+            $query->where('category_id', $validated['category_id']);
+        }
+
+        $staffList = $validated['staff'] ?? [];
+        $cleanStaff = [];
+        foreach ($staffList as $item) {
+            if (!empty($item['role']) && !empty($item['name'])) {
+                $cleanStaff[] = [
+                    'role' => trim($item['role']),
+                    'name' => trim($item['name'])
+                ];
+            }
+        }
+
+        $staffJson = count($cleanStaff) > 0 ? json_encode($cleanStaff, JSON_UNESCAPED_UNICODE) : null;
+
+        $query->update([
+            'staff' => $staffJson,
+            'updated_at' => now(),
+        ]);
+
+        return response()->json([
+            'message' => 'Equipe/Comissão técnica atualizada com sucesso!',
+            'staff' => $cleanStaff
         ]);
     }
 }

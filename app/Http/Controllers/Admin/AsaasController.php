@@ -289,6 +289,18 @@ class AsaasController extends Controller
                 }
 
                 Log::info("ChampionshipTeam {$id} marked as PAID");
+
+                // Notificar o clube por e-mail sobre a inscrição do time paga e efetivada
+                try {
+                    $amount = $payment['value'] ?? $payment['netValue'] ?? 0;
+                    \App\Services\TeamInscriptionService::notifyClubInscriptionConfirmed($id, [
+                        'price' => $amount,
+                        'is_free' => false,
+                        'payment_method' => $payment['billingType'] ?? 'asaas'
+                    ]);
+                } catch (\Throwable $mailEx) {
+                    Log::error("Pagamento Confirmado CT {$id}, mas erro ao notificar clube: " . $mailEx->getMessage());
+                }
             }
         }
 

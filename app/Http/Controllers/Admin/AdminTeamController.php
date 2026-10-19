@@ -49,7 +49,7 @@ class AdminTeamController extends Controller
             ])
             ->findOrFail($id);
 
-        // Map the category name to each championship
+        // Map the category name and staff to each championship
         $team->championships->each(function ($championship) {
             $categoryId = $championship->pivot->category_id;
             if ($categoryId) {
@@ -57,6 +57,15 @@ class AdminTeamController extends Controller
                 $championship->category_name = $category ? $category->name : null;
             } else {
                 $championship->category_name = null;
+            }
+
+            $rawStaff = $championship->pivot->staff ?? null;
+            if (is_string($rawStaff)) {
+                $championship->pivot->staff = json_decode($rawStaff, true) ?: [];
+            } elseif (is_array($rawStaff)) {
+                $championship->pivot->staff = $rawStaff;
+            } else {
+                $championship->pivot->staff = [];
             }
         });
 
@@ -385,5 +394,54 @@ class AdminTeamController extends Controller
         ]);
 
         return response()->json(['message' => 'Líder da categoria atualizado com sucesso!']);
+    }
+
+    // Update technical staff / comissão técnica for specific championship
+    public function updateChampionshipStaff(Request $request, $teamId)
+    {
+        $validated = $request->validate([
+            'championship_id' => 'required|exists:championships,id',
+            'category_id' => 'nullable|exists:categories,id',
+            'staff' => 'nullable|array',
+            'staff.*.role' => 'required_with:staff|string|max:100',
+            'staff.*.name' => 'required_with:staff|string|max:150',
+        ]);
+
+        $query = \DB::table('championship_team')
+            ->where('team_id', $teamId)
+            ->where('championship_id', $validated['championship_id']);
+
+        if (!empty($validated['category_id'])) {
+            $query->where('category_id', $validated['category_id']);
+        }
+
+        $staffList = $validated['staff'] ?? [];
+        $cleanStaff = [];
+        foreach ($staffList as $item) {
+            if (!empty($item['role']) && !empty($item['name'])) {
+                $cleanStaff[] = [
+                    'role' => trim($item['role']),
+                    'name' => trim($item['name'])
+                ];
+            }
+        }
+
+        $staffJson = count($cleanStaff) > 0 ? json_encode($cleanStaff, JSON_UNESCAPED_UNICODE) : null;
+
+        $query->update([
+            'staff' => $staffJson,
+            'updated_at' => now(),
+        ]);
+
+        \App\Services\AuditLogger::log(
+            'team.championship_staff_update',
+            "Atualizou a comissão técnica/equipe do time ID {$teamId} no campeonato ID {$validated['championship_id']}",
+            ['team_id' => $teamId, 'championship_id' => $validated['championship_id'], 'staff_count' => count($cleanStaff)]
+        );
+
+        return response()->json([
+            'message' => 'Equipe/Comissão técnica atualizada com sucesso!',
+            'staff' => $cleanStaff
+        ]);
     }
 }

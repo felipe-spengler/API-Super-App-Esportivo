@@ -187,6 +187,7 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::delete('/teams/{id}/players/{playerId}', [TeamController::class, 'removePlayer']);
     Route::post('/teams/{id}/upload-player-photo/{playerId}', [TeamController::class, 'uploadPlayerPhoto']);
     Route::delete('/teams/{id}/delete-player-photo/{playerId}', [TeamController::class, 'deletePlayerPhoto']);
+    Route::patch('/teams/{id}/championship-staff', [TeamController::class, 'updateChampionshipStaff']);
 
     // Área Admin (Web) - Protegido com middleware 'admin'
     Route::prefix('admin')->middleware(['admin'])->group(function () {
@@ -250,6 +251,7 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
         Route::delete('/teams/{id}', [AdminTeamController::class, 'destroy']);
         Route::post('/teams/{id}/add-to-championship', [AdminTeamController::class, 'addToChampionship']);
         Route::patch('/teams/{id}/championship-captain', [AdminTeamController::class, 'updateChampionshipCaptain']);
+        Route::patch('/teams/{id}/championship-staff', [AdminTeamController::class, 'updateChampionshipStaff']);
         Route::post('/teams/{id}/remove-from-championship', [AdminTeamController::class, 'removeFromChampionship']);
         Route::post('/teams/{id}/copy-roster', [AdminTeamController::class, 'copyRoster']);
         Route::delete('/teams/{id}/players/{playerId}', [AdminTeamController::class, 'removePlayer']);

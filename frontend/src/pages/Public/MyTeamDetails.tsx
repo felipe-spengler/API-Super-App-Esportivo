@@ -1,9 +1,26 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Users, Shield, Plus, User, Edit2, MoreHorizontal, Trash2, CheckCircle, Clock, Trophy, Copy, Loader2, ArrowRight, X } from 'lucide-react';
+import { ArrowLeft, Users, Shield, Plus, User, Edit2, MoreHorizontal, Trash2, CheckCircle, Clock, Trophy, Copy, Loader2, ArrowRight, X, Briefcase, UserCheck } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { prepareImageForUpload } from '../../utils/imageCompressor';
+import { clsx } from 'clsx';
+
+export interface StaffMember {
+    role: string;
+    name: string;
+}
+
+const COMMON_STAFF_ROLES = [
+    'Técnico',
+    'Auxiliar Técnico',
+    'Preparador Físico',
+    'Massagista',
+    'Fisioterapeuta',
+    'Médico',
+    'Roupeiro',
+    'Diretor'
+];
 
 interface Player {
     id: number;
@@ -39,6 +56,7 @@ interface Championship {
     pivot?: {
         captain_id?: number | null;
         category_id?: number | null;
+        staff?: StaffMember[] | null;
     };
 }
 
@@ -64,6 +82,19 @@ export function MyTeamDetails() {
     const [viewMode, setViewMode] = useState<'selector' | 'roster'>('selector');
     const [selectedChampionshipId, setSelectedChampionshipId] = useState<number | null>(null);
     const [isCopying, setIsCopying] = useState(false);
+    const [activeTab, setActiveTab] = useState<'players' | 'staff'>('players');
+
+    // Staff states
+    const [showStaffModal, setShowStaffModal] = useState(false);
+    const [editingStaffIndex, setEditingStaffIndex] = useState<number | null>(null);
+    const [staffRole, setStaffRole] = useState('');
+    const [staffName, setStaffName] = useState('');
+    const [savingStaff, setSavingStaff] = useState(false);
+
+    const selectedChampionship = team?.championships.find(c => c.id === selectedChampionshipId);
+    const currentStaff: StaffMember[] = Array.isArray(selectedChampionship?.pivot?.staff)
+        ? (selectedChampionship?.pivot?.staff as StaffMember[])
+        : [];
 
     // Form states
     const [newPlayerName, setNewPlayerName] = useState('');
@@ -157,7 +188,110 @@ export function MyTeamDetails() {
 
     function handleSelectChampionship(champId: number | null) {
         setSelectedChampionshipId(champId);
+        setActiveTab('players');
         setViewMode('roster');
+    }
+
+    function openAddStaff() {
+        setEditingStaffIndex(null);
+        setStaffRole('');
+        setStaffName('');
+        setShowStaffModal(true);
+    }
+
+    function openEditStaff(index: number) {
+        const member = currentStaff[index];
+        if (!member) return;
+        setEditingStaffIndex(index);
+        setStaffRole(member.role);
+        setStaffName(member.name);
+        setShowStaffModal(true);
+    }
+
+    async function handleSaveStaff(e: React.FormEvent) {
+        e.preventDefault();
+        if (!selectedChampionshipId) return;
+        if (!staffRole.trim() || !staffName.trim()) {
+            alert('Por favor, informe a função e o nome do membro da equipe.');
+            return;
+        }
+
+        setSavingStaff(true);
+        try {
+            const updatedStaff: StaffMember[] = [...currentStaff];
+            if (editingStaffIndex !== null) {
+                updatedStaff[editingStaffIndex] = { role: staffRole.trim(), name: staffName.trim() };
+            } else {
+                updatedStaff.push({ role: staffRole.trim(), name: staffName.trim() });
+            }
+
+            await api.patch(`/teams/${id}/championship-staff`, {
+                championship_id: selectedChampionshipId,
+                category_id: selectedChampionship?.pivot?.category_id,
+                staff: updatedStaff
+            });
+
+            if (team) {
+                const updatedChampionships = team.championships.map(c => {
+                    if (c.id === selectedChampionshipId) {
+                        return {
+                            ...c,
+                            pivot: {
+                                ...c.pivot,
+                                staff: updatedStaff
+                            }
+                        };
+                    }
+                    return c;
+                });
+                setTeam({ ...team, championships: updatedChampionships });
+            }
+
+            setShowStaffModal(false);
+            setStaffRole('');
+            setStaffName('');
+            setEditingStaffIndex(null);
+        } catch (error: any) {
+            console.error(error);
+            alert(error.response?.data?.message || 'Erro ao salvar membro da comissão técnica.');
+        } finally {
+            setSavingStaff(false);
+        }
+    }
+
+    async function handleDeleteStaff(index: number) {
+        if (!selectedChampionshipId) return;
+        const member = currentStaff[index];
+        if (!member) return;
+        if (!window.confirm(`Remover "${member.name}" (${member.role}) da equipe deste campeonato?`)) return;
+
+        try {
+            const updatedStaff = currentStaff.filter((_, idx) => idx !== index);
+            await api.patch(`/teams/${id}/championship-staff`, {
+                championship_id: selectedChampionshipId,
+                category_id: selectedChampionship?.pivot?.category_id,
+                staff: updatedStaff
+            });
+
+            if (team) {
+                const updatedChampionships = team.championships.map(c => {
+                    if (c.id === selectedChampionshipId) {
+                        return {
+                            ...c,
+                            pivot: {
+                                ...c.pivot,
+                                staff: updatedStaff
+                            }
+                        };
+                    }
+                    return c;
+                });
+                setTeam({ ...team, championships: updatedChampionships });
+            }
+        } catch (error: any) {
+            console.error(error);
+            alert(error.response?.data?.message || 'Erro ao remover membro da comissão técnica.');
+        }
     }
 
     async function handleCopyFromGeneral() {
@@ -358,15 +492,24 @@ export function MyTeamDetails() {
                     </div>
                 </div>
                 {isCaptain && viewMode === 'roster' && (
-                    <button
-                        onClick={() => {
-                            resetForm();
-                            setShowAddModal(true);
-                        }}
-                        className="p-2 bg-indigo-50 text-indigo-600 rounded-lg flex items-center gap-1 text-xs font-bold hover:bg-indigo-100"
-                    >
-                        <Plus className="w-4 h-4" /> Add Jogador
-                    </button>
+                    activeTab === 'players' ? (
+                        <button
+                            onClick={() => {
+                                resetForm();
+                                setShowAddModal(true);
+                            }}
+                            className="p-2 bg-indigo-50 text-indigo-600 rounded-lg flex items-center gap-1 text-xs font-bold hover:bg-indigo-100"
+                        >
+                            <Plus className="w-4 h-4" /> Add Jogador
+                        </button>
+                    ) : (
+                        <button
+                            onClick={openAddStaff}
+                            className="p-2 bg-indigo-50 text-indigo-600 rounded-lg flex items-center gap-1 text-xs font-bold hover:bg-indigo-100"
+                        >
+                            <Plus className="w-4 h-4" /> Add Membro
+                        </button>
+                    )
                 )}
             </div>
 
@@ -435,77 +578,277 @@ export function MyTeamDetails() {
                             </button>
                         </div>
 
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                            <div className="p-4 bg-gray-50 border-b border-gray-100 flex flex-col gap-3">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                                        <Users className="w-4 h-4" />
-                                        Atletas ({team.players.length})
-                                    </span>
+                        {/* Tabs: Atletas vs Comissão Técnica */}
+                        {selectedChampionshipId && (
+                            <div className="flex bg-gray-200/70 p-1 rounded-xl">
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveTab('players')}
+                                    className={clsx(
+                                        "flex-1 py-2 text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all",
+                                        activeTab === 'players'
+                                            ? "bg-white text-indigo-600 shadow-sm"
+                                            : "text-gray-500 hover:text-gray-800"
+                                    )}
+                                >
+                                    <Users className="w-4 h-4" />
+                                    Atletas ({team.players.length})
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveTab('staff')}
+                                    className={clsx(
+                                        "flex-1 py-2 text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all",
+                                        activeTab === 'staff'
+                                            ? "bg-white text-indigo-600 shadow-sm"
+                                            : "text-gray-500 hover:text-gray-800"
+                                    )}
+                                >
+                                    <Briefcase className="w-4 h-4" />
+                                    Comissão Técnica ({currentStaff.length})
+                                </button>
+                            </div>
+                        )}
+
+                        {/* View: Atletas */}
+                        {(activeTab === 'players' || !selectedChampionshipId) && (
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                                <div className="p-4 bg-gray-50 border-b border-gray-100 flex flex-col gap-3">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                                            <Users className="w-4 h-4" />
+                                            Atletas ({team.players.length})
+                                        </span>
+                                    </div>
+
+                                    {selectedChampionshipId && isCaptain && (
+                                        <button
+                                            onClick={handleCopyFromGeneral}
+                                            disabled={isCopying}
+                                            className="w-full py-2 bg-emerald-50 text-emerald-700 rounded-lg flex items-center justify-center gap-2 text-xs font-bold border border-emerald-100 active:scale-95 transition-all disabled:opacity-50"
+                                        >
+                                            {isCopying ? <Loader2 className="w-3 h-3 animate-spin" /> : <Copy className="w-3 h-3" />}
+                                            SINCRONIZAR COM BASE GERAL
+                                        </button>
+                                    )}
                                 </div>
 
-                                {selectedChampionshipId && isCaptain && (
-                                    <button
-                                        onClick={handleCopyFromGeneral}
-                                        disabled={isCopying}
-                                        className="w-full py-2 bg-emerald-50 text-emerald-700 rounded-lg flex items-center justify-center gap-2 text-xs font-bold border border-emerald-100 active:scale-95 transition-all disabled:opacity-50"
-                                    >
-                                        {isCopying ? <Loader2 className="w-3 h-3 animate-spin" /> : <Copy className="w-3 h-3" />}
-                                        SINCRONIZAR COM BASE GERAL
-                                    </button>
-                                )}
-                            </div>
-
-                            <div className="divide-y divide-gray-100">
-                                {team.players.map(player => (
-                                    <div key={player.id} className="p-4 flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 overflow-hidden">
-                                                {player.photo_url ? <img src={player.photo_url} className="w-full h-full object-cover" /> : <User className="w-5 h-5" />}
-                                            </div>
-                                            <div>
-                                                <div className="font-bold text-gray-900 text-sm flex items-center gap-2">
-                                                    {player.pivot?.temp_player_name || player.name}
-                                                    {player.id === user?.id && (
-                                                        <span className="bg-indigo-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded-sm uppercase tracking-tighter">VOCÊ</span>
-                                                    )}
-                                                    {player.pivot?.number && <span className="ml-1 text-gray-400">#{player.pivot.number}</span>}
+                                <div className="divide-y divide-gray-100">
+                                    {team.players.map(player => (
+                                        <div key={player.id} className="p-4 flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 overflow-hidden">
+                                                    {player.photo_url ? <img src={player.photo_url} className="w-full h-full object-cover" /> : <User className="w-5 h-5" />}
                                                 </div>
-                                                <div className="text-[10px] text-gray-400 font-mono">ID: {player.id} • {player.pivot?.position || player.position}</div>
+                                                <div>
+                                                    <div className="font-bold text-gray-900 text-sm flex items-center gap-2">
+                                                        {player.pivot?.temp_player_name || player.name}
+                                                        {player.id === user?.id && (
+                                                            <span className="bg-indigo-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded-sm uppercase tracking-tighter">VOCÊ</span>
+                                                        )}
+                                                        {player.pivot?.number && <span className="ml-1 text-gray-400">#{player.pivot.number}</span>}
+                                                    </div>
+                                                    <div className="text-[10px] text-gray-400 font-mono">ID: {player.id} • {player.pivot?.position || player.position}</div>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center gap-2">
+                                                {player.pivot?.is_approved ? (
+                                                    <span className="text-emerald-500"><CheckCircle className="w-4 h-4" /></span>
+                                                ) : (
+                                                    <span className="text-orange-500"><Clock className="w-4 h-4" /></span>
+                                                )}
+
+                                                {isCaptain && (
+                                                    <div className="flex gap-1">
+                                                        <button onClick={() => openEditModal(player)} className="p-2 text-gray-400 hover:text-indigo-500 transition-colors">
+                                                            <Edit2 className="w-4 h-4" />
+                                                        </button>
+                                                        <button onClick={() => handleDeletePlayer(player.id)} className="p-2 text-gray-400 hover:text-red-500 transition-colors">
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
+                                    ))}
 
-                                        <div className="flex items-center gap-2">
-                                            {player.pivot?.is_approved ? (
-                                                <span className="text-emerald-500"><CheckCircle className="w-4 h-4" /></span>
-                                            ) : (
-                                                <span className="text-orange-500"><Clock className="w-4 h-4" /></span>
-                                            )}
+                                    {team.players.length === 0 && (
+                                        <div className="p-8 text-center text-gray-400 text-sm">
+                                            Nenhum jogador vinculado neste contexto.
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* View: Comissão Técnica / Equipe */}
+                        {activeTab === 'staff' && selectedChampionshipId && (
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                                <div className="p-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
+                                    <div>
+                                        <span className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                                            <Briefcase className="w-4 h-4 text-indigo-600" />
+                                            Comissão Técnica & Equipe
+                                        </span>
+                                        <p className="text-[11px] text-gray-400 mt-0.5">Técnico, massagista, auxiliar e demais funções</p>
+                                    </div>
+                                    {isCaptain && (
+                                        <button
+                                            onClick={openAddStaff}
+                                            className="px-2.5 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg flex items-center gap-1 text-xs font-bold hover:bg-indigo-100 transition-colors shadow-sm"
+                                        >
+                                            <Plus className="w-3.5 h-3.5" /> Adicionar
+                                        </button>
+                                    )}
+                                </div>
+
+                                <div className="divide-y divide-gray-100">
+                                    {currentStaff.map((member, sIdx) => (
+                                        <div key={sIdx} className="p-4 flex items-center justify-between hover:bg-gray-50/50 transition-colors">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-100 to-purple-100 text-indigo-700 flex items-center justify-center font-bold text-xs uppercase shadow-inner">
+                                                    {member.name.substring(0, 2).toUpperCase()}
+                                                </div>
+                                                <div>
+                                                    <span className="inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 mb-0.5">
+                                                        {member.role}
+                                                    </span>
+                                                    <div className="font-bold text-gray-900 text-sm leading-tight">{member.name}</div>
+                                                </div>
+                                            </div>
 
                                             {isCaptain && (
-                                                <div className="flex gap-1">
-                                                    <button onClick={() => openEditModal(player)} className="p-2 text-gray-400 hover:text-indigo-500 transition-colors">
+                                                <div className="flex items-center gap-1">
+                                                    <button
+                                                        onClick={() => openEditStaff(sIdx)}
+                                                        className="p-2 text-gray-400 hover:text-indigo-600 transition-colors"
+                                                        title="Editar Membro"
+                                                    >
                                                         <Edit2 className="w-4 h-4" />
                                                     </button>
-                                                    <button onClick={() => handleDeletePlayer(player.id)} className="p-2 text-gray-400 hover:text-red-500 transition-colors">
+                                                    <button
+                                                        onClick={() => handleDeleteStaff(sIdx)}
+                                                        className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                                                        title="Remover Membro"
+                                                    >
                                                         <Trash2 className="w-4 h-4" />
                                                     </button>
                                                 </div>
                                             )}
                                         </div>
-                                    </div>
-                                ))}
+                                    ))}
 
-                                {team.players.length === 0 && (
-                                    <div className="p-8 text-center text-gray-400 text-sm">
-                                        Nenhum jogador vinculado neste contexto.
-                                    </div>
-                                )}
+                                    {currentStaff.length === 0 && (
+                                        <div className="p-8 text-center text-gray-400 text-sm">
+                                            <UserCheck className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                                            <p className="font-medium text-gray-600">Nenhum membro cadastrado nesta comissão.</p>
+                                            <p className="text-xs text-gray-400 mt-1">Cadastre técnico, massagista, preparador físico ou outros profissionais para este campeonato.</p>
+                                            {isCaptain && (
+                                                <button
+                                                    onClick={openAddStaff}
+                                                    className="mt-3 px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 transition-all inline-flex items-center gap-1 shadow-sm"
+                                                >
+                                                    <Plus className="w-3.5 h-3.5" /> Adicionar Primeiro Membro
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                        </div>
+                        )}
                     </div>
                 )}
             </div>
+
+            {/* Staff Modal */}
+            {showStaffModal && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gradient-to-r from-indigo-50 to-purple-50">
+                            <div className="flex items-center gap-2">
+                                <Briefcase className="w-5 h-5 text-indigo-600" />
+                                <h3 className="text-lg font-bold text-gray-900">
+                                    {editingStaffIndex !== null ? 'Editar Membro da Equipe' : 'Adicionar Membro da Equipe'}
+                                </h3>
+                            </div>
+                            <button
+                                onClick={() => { setShowStaffModal(false); setEditingStaffIndex(null); }}
+                                className="p-1.5 hover:bg-white/60 rounded-full transition-colors text-gray-500"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSaveStaff} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1">
+                                    Função / Cargo <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={staffRole}
+                                    onChange={e => setStaffRole(e.target.value)}
+                                    placeholder="Ex: Técnico, Massagista, Auxiliar..."
+                                    required
+                                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                                />
+
+                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                    <span className="text-[11px] text-gray-400 w-full mb-0.5">Sugestões rápidas:</span>
+                                    {COMMON_STAFF_ROLES.map(role => (
+                                        <button
+                                            type="button"
+                                            key={role}
+                                            onClick={() => setStaffRole(role)}
+                                            className={clsx(
+                                                "text-[11px] px-2 py-0.5 rounded-full border transition-all",
+                                                staffRole === role
+                                                    ? "bg-indigo-600 text-white border-indigo-600"
+                                                    : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200"
+                                            )}
+                                        >
+                                            {role}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1">
+                                    Nome Completo <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={staffName}
+                                    onChange={e => setStaffName(e.target.value)}
+                                    placeholder="Ex: Paulo Roberto da Silva"
+                                    required
+                                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                                />
+                            </div>
+
+                            <div className="pt-3 border-t border-gray-100 flex justify-end gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => { setShowStaffModal(false); setEditingStaffIndex(null); }}
+                                    className="px-4 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm font-semibold hover:bg-gray-50"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={savingStaff}
+                                    className="px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 shadow-sm"
+                                >
+                                    {savingStaff && <Loader2 className="w-4 h-4 animate-spin" />}
+                                    {editingStaffIndex !== null ? 'Atualizar Membro' : 'Salvar Membro'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
 
             {/* Add/Edit Player Modal */}
             {showAddModal && (

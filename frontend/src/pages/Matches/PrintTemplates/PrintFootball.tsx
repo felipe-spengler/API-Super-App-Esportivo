@@ -2,7 +2,7 @@ import React from 'react';
 import { EditableSpan } from './PrintBase';
 
 export const PrintFootball = ({ match, rosters, events }: { match: any, rosters: any, events: any[] }) => {
-    const TeamBlock = ({ team, players }: { team: any, players: any[] }) => {
+    const TeamBlock = ({ team, players, staff }: { team: any, players: any[], staff?: any[] }) => {
         const homeId = match.home_team_id || match.home_team?.id;
         const awayId = match.away_team_id || match.away_team?.id;
         const isHomeTeam = team.id === homeId;
@@ -146,6 +146,18 @@ export const PrintFootball = ({ match, rosters, events }: { match: any, rosters:
                         </table>
                     </div>
                 </div>
+
+                {/* Comissão Técnica */}
+                {staff && staff.length > 0 && (
+                    <div className="mt-2 border border-black p-1 text-[11px] bg-gray-50 flex flex-wrap gap-x-4 gap-y-1">
+                        <span className="font-bold uppercase tracking-wider text-black">Comissão Técnica:</span>
+                        {staff.map((s: any, idx: number) => (
+                            <span key={idx} className="text-gray-900">
+                                <b className="font-semibold">{s.role}:</b> <EditableSpan text={s.name} />
+                            </span>
+                        ))}
+                    </div>
+                )}
             </div>
         );
     };
@@ -215,9 +227,17 @@ export const PrintFootball = ({ match, rosters, events }: { match: any, rosters:
                 </div>
             </div>
 
-            <TeamBlock team={(match.home_team || match.homeTeam) || { name: 'Time Mandante' }} players={rosters.home} />
+            <TeamBlock
+                team={(match.home_team || match.homeTeam) || { name: 'Time Mandante' }}
+                players={rosters.home}
+                staff={rosters.home_staff || (match.home_team || match.homeTeam)?.staff}
+            />
             <div className="border-t-2 border-dashed border-gray-400 my-4 no-print relative"><span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white px-2 text-xs text-gray-500">Corte Aqui (Opcional)</span></div>
-            <TeamBlock team={(match.away_team || match.awayTeam) || { name: 'Time Visitante' }} players={rosters.away} />
+            <TeamBlock
+                team={(match.away_team || match.awayTeam) || { name: 'Time Visitante' }}
+                players={rosters.away}
+                staff={rosters.away_staff || (match.away_team || match.awayTeam)?.staff}
+            />
         </>
     );
 };
