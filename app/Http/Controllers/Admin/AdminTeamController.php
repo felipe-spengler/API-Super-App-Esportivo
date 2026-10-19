@@ -399,6 +399,11 @@ class AdminTeamController extends Controller
     // Update technical staff / comissão técnica for specific championship
     public function updateChampionshipStaff(Request $request, $teamId)
     {
+        $user = $request->user();
+        if ($user && $user->club_id) {
+            Team::where('id', $teamId)->where('club_id', $user->club_id)->firstOrFail();
+        }
+
         $validated = $request->validate([
             'championship_id' => 'required|exists:championships,id',
             'category_id' => 'nullable|exists:categories,id',

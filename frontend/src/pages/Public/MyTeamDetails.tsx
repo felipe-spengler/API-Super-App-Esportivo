@@ -456,10 +456,11 @@ export function MyTeamDetails() {
         setEditingPlayer(null);
     }
 
-    // Helper to evaluate if the user is a captain globally or for the specific selected championship
+    // Helper to evaluate if the user is a captain globally or for the specific selected championship, or admin
     const isGlobalCaptain = user?.id === team?.captain_id;
     const isChampionshipCaptain = selectedChampionshipId && team?.championships.find(c => c.id === selectedChampionshipId)?.pivot?.captain_id === user?.id;
-    const isCaptain = isGlobalCaptain || isChampionshipCaptain;
+    const isAdmin = Boolean(user?.role === 'admin' || user?.is_admin || user?.role === 'super_admin');
+    const isCaptain = isGlobalCaptain || isChampionshipCaptain || isAdmin;
 
     if (loading) return <div className="p-8 text-center text-gray-500">Carregando...</div>;
     if (!team) return <div className="p-8 text-center text-gray-500">Time não encontrado</div>;
