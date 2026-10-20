@@ -37,6 +37,7 @@ export function ClubForm() {
     // Form Data
     const [formData, setFormData] = useState({
         name: '',
+        contact_email: '',
         slug: '',
         city_id: '',
         primary_color: '#000000',
@@ -69,6 +70,7 @@ export function ClubForm() {
                 setFormData({
                     ...formData,
                     name: club.name,
+                    contact_email: club.contact_email || '',
                     slug: club.slug,
                     city_id: club.city_id,
                     primary_color: club.primary_color || '#000000',
@@ -95,6 +97,7 @@ export function ClubForm() {
 
         const payload: any = {
             name: formData.name,
+            contact_email: formData.contact_email,
             slug: formData.slug,
             primary_color: formData.primary_color,
             secondary_color: formData.secondary_color,
@@ -116,8 +119,11 @@ export function ClubForm() {
             } else {
                 // Add admin fields for new creation
                 payload.admin_name = formData.admin_name;
-                payload.admin_email = formData.admin_email;
+                payload.admin_email = formData.admin_email || formData.contact_email;
                 payload.admin_password = formData.admin_password;
+                if (!payload.contact_email && payload.admin_email) {
+                    payload.contact_email = payload.admin_email;
+                }
 
                 await api.post('/admin/clubs-manage', payload);
                 toast.success('Clube criado com sucesso!');
@@ -205,6 +211,18 @@ export function ClubForm() {
                             {!isEditing && (
                                 <p className="text-xs text-gray-400 mt-1">Slug gerado: {formData.slug}</p>
                             )}
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Email do Clube (Contato / Notificações)</label>
+                            <input
+                                type="email"
+                                placeholder="contato@clube.com"
+                                className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                value={formData.contact_email}
+                                onChange={e => setFormData({ ...formData, contact_email: e.target.value })}
+                            />
+                            <p className="text-xs text-gray-400 mt-1">E-mail oficial para receber confirmações de inscrição de times e comunicados.</p>
                         </div>
 
                         <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">

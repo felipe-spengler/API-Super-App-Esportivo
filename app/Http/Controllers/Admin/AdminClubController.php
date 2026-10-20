@@ -38,6 +38,7 @@ class AdminClubController extends Controller
 
         $request->validate([
             'name' => 'required|string|max:255',
+            'contact_email' => 'nullable|email|max:255',
             'slug' => 'nullable|string|unique:clubs,slug',
             'city_id' => 'required_without:new_city_name|nullable|exists:cities,id',
             'new_city_name' => 'required_without:city_id|nullable|string',
@@ -79,6 +80,7 @@ class AdminClubController extends Controller
                 'name' => $request->name,
                 'slug' => $slug,
                 'city_id' => $cityId,
+                'contact_email' => $request->contact_email ?? $request->admin_email,
                 'primary_color' => $request->primary_color ?? '#4f46e5',
                 'secondary_color' => $request->secondary_color ?? '#ffffff',
                 'is_active' => true,
@@ -152,6 +154,7 @@ class AdminClubController extends Controller
 
         $data = $request->validate([
             'name' => 'sometimes|string|max:255',
+            'contact_email' => 'nullable|email|max:255',
             'slug' => 'sometimes|string|unique:clubs,slug,' . $id,
             'city_id' => 'sometimes|exists:cities,id',
             'primary_color' => 'nullable|string',
