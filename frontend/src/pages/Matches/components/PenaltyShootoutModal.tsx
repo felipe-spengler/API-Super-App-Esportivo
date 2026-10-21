@@ -1,5 +1,17 @@
-import React, { useState, useMemo } from 'react';
-import { X, Check, Trash2, Trophy, Users, Shield, Loader2, UserPlus, AlertCircle } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { 
+    X, 
+    Trash2, 
+    Trophy, 
+    UserPlus, 
+    Search, 
+    History, 
+    Check, 
+    ArrowRight,
+    Users,
+    AlertCircle,
+    RotateCcw
+} from 'lucide-react';
 
 export interface PenaltyShootoutModalProps {
     isOpen: boolean;
@@ -42,7 +54,7 @@ export function PenaltyShootoutModal({
 }: PenaltyShootoutModalProps) {
     if (!isOpen) return null;
 
-    // Extrair cobranças em ordem cronológica (id crescente)
+    // Cobranças em ordem cronológica
     const shootoutEvents = useMemo(() => {
         return events
             .filter(e => e.type === 'shootout_goal' || e.type === 'shootout_miss')
@@ -52,22 +64,32 @@ export function PenaltyShootoutModal({
     const homeKicks = useMemo(() => shootoutEvents.filter(e => e.team === 'home'), [shootoutEvents]);
     const awayKicks = useMemo(() => shootoutEvents.filter(e => e.team === 'away'), [shootoutEvents]);
 
-    // Determinar o próximo time a bater
-    // Padrão alternado: se Mandante bateu mais que Visitante, a vez é do Visitante
-    const defaultNextTeam: 'home' | 'away' = homeKicks.length <= awayKicks.length ? 'home' : 'away';
+    // Próximo time sugerido (alternância automática: se mandante tem menos ou igual, é mandante)
+    const suggestedNextTeam: 'home' | 'away' = homeKicks.length <= awayKicks.length ? 'home' : 'away';
 
-    const [selectedTeam, setSelectedTeam] = useState<'home' | 'away'>(defaultNextTeam);
+    const [selectedTeam, setSelectedTeam] = useState<'home' | 'away'>(suggestedNextTeam);
     const [selectedPlayer, setSelectedPlayer] = useState<any | null>(null);
-    const [customPlayerName, setCustomPlayerName] = useState('');
-    const [isCustomPlayer, setIsCustomPlayer] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [filterQuery, setFilterQuery] = useState('');
 
-    // Ajustar número total de slots (mínimo 5 rodadas regulamentares, expande nas alternadas)
+    // Modais secundários
+    const [showPlayerModal, setShowPlayerModal] = useState(false);
+    const [showHistoryModal, setShowHistoryModal] = useState(false);
+    const [playerFilter, setPlayerFilter] = useState('');
+    const [customPlayerName, setCustomPlayerName] = useState('');
+    const [customPlayerNumber, setCustomPlayerNumber] = useState('');
+    const [isAddingCustomPlayer, setIsAddingCustomPlayer] = useState(false);
+
+    // Atualiza automaticamente o time sugerido quando o número de cobranças muda
+    useEffect(() => {
+        setSelectedTeam(suggestedNextTeam);
+        setSelectedPlayer(null);
+    }, [shootoutEvents.length]);
+
+    // Número total de rodadas a exibir (mínimo 5, expande se morte súbita)
     const maxKicks = Math.max(homeKicks.length, awayKicks.length);
     const totalRounds = Math.max(5, maxKicks + (homeKicks.length === awayKicks.length ? 1 : 0));
 
-    // Cálculos de vencedor (Matemático nas 5 primeiras ou Morte Súbita)
+    // Cálculos de vencedor matemático ou morte súbita
     const winnerInfo = useMemo(() => {
         const goalsHome = penaltyScore.home;
         const goalsAway = penaltyScore.away;
@@ -83,19 +105,19 @@ export function PenaltyShootoutModal({
                 return {
                     winner: 'home',
                     name: homeTeamName,
-                    desc: `Vitória garantida nas cobranças normais (${goalsHome} x ${goalsAway})`
+                    desc: `Vitória garantida nas 5 cobranças (${goalsHome} x ${goalsAway})`
                 };
             }
             if (goalsAway > goalsHome + remainingHome) {
                 return {
                     winner: 'away',
                     name: awayTeamName,
-                    desc: `Vitória garantida nas cobranças normais (${goalsAway} x ${goalsHome})`
+                    desc: `Vitória garantida nas 5 cobranças (${goalsAway} x ${goalsHome})`
                 };
             }
         }
 
-        // Alternadas / Morte Súbita (quando ambos já cobraram 5 ou mais e têm o mesmo número de cobranças)
+        // Morte Súbita (quando ambos já cobraram 5 ou mais e têm mesmo número de cobranças)
         if (kicksHome >= 5 && kicksAway >= 5 && kicksHome === kicksAway) {
             if (goalsHome > goalsAway) {
                 return {
@@ -116,54 +138,89 @@ export function PenaltyShootoutModal({
         return null;
     }, [penaltyScore, homeKicks, awayKicks, homeTeamName, awayTeamName]);
 
-    // Elenco do time atualmente selecionado
+    // Elenco do time selecionado
     const currentRoster = useMemo(() => {
-        const list = selectedTeam === 'home' ? (rosters.home || []) : (rosters.away || []);
-        if (!filterQuery.trim()) return list;
-        const q = filterQuery.toLowerCase();
-        return list.filter((p: any) =>
-            (p.name && p.name.toLowerCase().includes(q)) ||
-            (p.nickname && p.nickname.toLowerCase().includes(q)) ||
-            (p.number && String(p.number).includes(q))
-        );
-    }, [selectedTeam, rosters, filterQuery]);
+        const list = selectedTeam === 'home'
+            ? (rosters?.home || (rosters as any)?.home_players || [])
+            : (rosters?.away || (rosters as any)?.away_players || []);
+        return Array.isArray(list) ? list : [];
+    }, [selectedTeam, rosters]);
 
-    // IDs de jogadores que já cobraram para destacar
-    const alreadyKickedPlayerIds = useMemo(() => {
+    // Filtragem de jogadores no modal de escolha
+    const filteredRoster = useMemo(() => {
+        if (!playerFilter.trim()) return currentRoster;
+        const q = playerFilter.toLowerCase().trim();
+        return currentRoster.filter((p: any) => {
+            const name = (p.name || '').toLowerCase();
+            const nick = (p.nickname || '').toLowerCase();
+            const num = String(p.number ?? p.pivot?.number ?? '');
+            return name.includes(q) || nick.includes(q) || num.includes(q);
+        });
+    }, [currentRoster, playerFilter]);
+
+    // Mapeamento de jogadores que já cobraram pênalti neste time (com o número da rodada)
+    const alreadyKickedInfo = useMemo(() => {
         const kicks = selectedTeam === 'home' ? homeKicks : awayKicks;
-        return new Set(kicks.map(k => k.player_id).filter(Boolean));
+        const map = new Map<string | number, number>();
+        kicks.forEach((k, idx) => {
+            if (k.player_id) {
+                map.set(Number(k.player_id), idx + 1);
+                map.set(String(k.player_id), idx + 1);
+            }
+        });
+        return map;
     }, [selectedTeam, homeKicks, awayKicks]);
 
     const handleSelectTeam = (team: 'home' | 'away') => {
         setSelectedTeam(team);
         setSelectedPlayer(null);
-        setIsCustomPlayer(false);
-        setCustomPlayerName('');
-        setFilterQuery('');
     };
 
     const handleConfirmOutcome = async (outcome: 'score' | 'saved' | 'post' | 'out') => {
-        let playerToRegister = selectedPlayer;
-        if (isCustomPlayer && customPlayerName.trim()) {
-            playerToRegister = { id: 'unknown', name: customPlayerName.trim(), number: '' };
-        } else if (!playerToRegister) {
-            const nextRoundNum = (selectedTeam === 'home' ? homeKicks.length : awayKicks.length) + 1;
-            playerToRegister = { id: 'unknown', name: `Cobrador #${nextRoundNum}`, number: '' };
+        // Se ainda não escolheu o jogador, abre o modal de seleção para o usuário escolher da lista!
+        if (!selectedPlayer) {
+            setShowPlayerModal(true);
+            return;
         }
 
         setIsSubmitting(true);
         try {
-            await onRegisterPenalty(selectedTeam, playerToRegister, outcome);
-
-            // Alternar automaticamente para o time adversário para agilizar
-            setSelectedTeam(prev => (prev === 'home' ? 'away' : 'home'));
+            await onRegisterPenalty(selectedTeam, selectedPlayer, outcome);
             setSelectedPlayer(null);
-            setIsCustomPlayer(false);
-            setCustomPlayerName('');
-            setFilterQuery('');
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const handleSelectPlayerFromModal = (player: any) => {
+        setSelectedPlayer(player);
+        setShowPlayerModal(false);
+        setPlayerFilter('');
+        setIsAddingCustomPlayer(false);
+    };
+
+    const handleAddCustomPlayer = () => {
+        if (!customPlayerName.trim()) return;
+        const custom = {
+            id: 'unknown',
+            name: customPlayerName.trim(),
+            number: customPlayerNumber.trim() || ''
+        };
+        setSelectedPlayer(custom);
+        setCustomPlayerName('');
+        setCustomPlayerNumber('');
+        setIsAddingCustomPlayer(false);
+        setShowPlayerModal(false);
+    };
+
+    const handleSkipPlayerIdentification = () => {
+        const nextRoundNum = (selectedTeam === 'home' ? homeKicks.length : awayKicks.length) + 1;
+        setSelectedPlayer({
+            id: 'unknown',
+            name: `Cobrador #${nextRoundNum}`,
+            number: ''
+        });
+        setShowPlayerModal(false);
     };
 
     const getOutcomeBadge = (kick: any) => {
@@ -204,138 +261,153 @@ export function PenaltyShootoutModal({
         };
     };
 
+    const currentTeamName = selectedTeam === 'home' ? homeTeamName : awayTeamName;
+    const currentTeamKicksCount = selectedTeam === 'home' ? homeKicks.length : awayKicks.length;
+    const nextKickNumber = currentTeamKicksCount + 1;
+
     return (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/85 backdrop-blur-md p-3 sm:p-4 overflow-y-auto">
-            <div className="bg-[#0b1120] w-full max-w-3xl rounded-3xl border border-indigo-500/30 shadow-2xl shadow-indigo-950/60 overflow-hidden flex flex-col my-auto max-h-[92vh]">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/85 backdrop-blur-md p-2.5 sm:p-4 overflow-y-auto">
+            {/* Modal Principal Compacto - Feito para caber na tela do celular sem rolagem */}
+            <div className="bg-[#0b1120] w-full max-w-lg rounded-3xl border border-indigo-500/30 shadow-2xl shadow-indigo-950/60 overflow-hidden flex flex-col my-auto max-h-[96vh]">
                 
-                {/* Header Superior */}
-                <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-4 sm:p-5 border-b border-white/10 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-2xl bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center text-xl shadow-inner">
+                {/* 1. Header Superior Compacto */}
+                <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 px-3.5 py-2.5 sm:px-4 sm:py-3 border-b border-white/10 flex items-center justify-between shrink-0">
+                    <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center text-base shadow-inner">
                             ⚽
                         </div>
                         <div>
-                            <div className="flex items-center gap-2">
-                                <h2 className="text-lg sm:text-xl font-black text-white tracking-tight uppercase">
+                            <div className="flex items-center gap-1.5">
+                                <h2 className="text-sm sm:text-base font-black text-white tracking-tight uppercase">
                                     Disputa de Pênaltis
                                 </h2>
-                                <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30">
-                                    Desempate
+                                <span className="text-[9px] uppercase font-black px-1.5 py-0.2 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                                    {homeScore}x{awayScore}
                                 </span>
                             </div>
-                            <p className="text-xs text-gray-400">
-                                Tempo Normal: {homeScore} x {awayScore}
+                            <p className="text-[10px] text-gray-400">
+                                Total: {shootoutEvents.length} cobranças registradas
                             </p>
                         </div>
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="p-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors border border-white/5"
-                        title="Fechar modal (continuar na súmula)"
-                    >
-                        <X size={20} />
-                    </button>
+
+                    <div className="flex items-center gap-1.5">
+                        {shootoutEvents.length > 0 && (
+                            <button
+                                onClick={() => setShowHistoryModal(true)}
+                                className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-colors border border-white/10 flex items-center gap-1 text-[11px] font-bold"
+                                title="Ver Histórico de Cobranças"
+                            >
+                                <History size={13} />
+                                <span className="hidden xs:inline">Histórico</span>
+                                <span className="bg-white/10 px-1.5 py-0.2 rounded-full text-[9px]">
+                                    {shootoutEvents.length}
+                                </span>
+                            </button>
+                        )}
+                        <button
+                            onClick={onClose}
+                            className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors border border-white/5"
+                            title="Voltar para a Súmula"
+                        >
+                            <X size={18} />
+                        </button>
+                    </div>
                 </div>
 
-                <div className="p-4 sm:p-6 overflow-y-auto space-y-6 flex-1">
+                {/* Corpo do Painel Principal */}
+                <div className="p-3 sm:p-4 space-y-2.5 sm:space-y-3 overflow-y-auto flex-1">
                     
-                    {/* Banner de Vencedor (se houver) */}
+                    {/* Banner de Vencedor (quando garantido) */}
                     {winnerInfo && (
-                        <div className="bg-gradient-to-r from-amber-500/20 via-yellow-500/25 to-amber-500/20 border-2 border-yellow-500/60 rounded-3xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 animate-in fade-in slide-in-from-top-4 duration-300 shadow-xl shadow-yellow-900/20">
-                            <div className="flex items-center gap-3 text-center sm:text-left">
-                                <div className="w-12 h-12 rounded-2xl bg-yellow-400 text-black flex items-center justify-center shrink-0 shadow-lg font-black text-2xl">
-                                    <Trophy size={26} />
+                        <div className="bg-gradient-to-r from-amber-500/20 via-yellow-500/25 to-amber-500/20 border-2 border-yellow-500/60 rounded-2xl p-2.5 flex items-center justify-between gap-2 shadow-lg shadow-yellow-900/20">
+                            <div className="flex items-center gap-2 truncate">
+                                <div className="w-8 h-8 rounded-xl bg-yellow-400 text-black flex items-center justify-center shrink-0 shadow font-black">
+                                    <Trophy size={16} />
                                 </div>
-                                <div>
-                                    <h4 className="font-black text-yellow-300 text-base sm:text-lg uppercase tracking-wide">
-                                        🏆 {winnerInfo.name} Venceu os Pênaltis!
-                                    </h4>
-                                    <p className="text-xs text-yellow-200/80 font-medium">
+                                <div className="truncate">
+                                    <div className="font-black text-yellow-300 text-xs sm:text-sm uppercase tracking-wide truncate">
+                                        🏆 {winnerInfo.name} Venceu!
+                                    </div>
+                                    <div className="text-[10px] text-yellow-200/80 truncate">
                                         {winnerInfo.desc}
-                                    </p>
+                                    </div>
                                 </div>
                             </div>
                             {onFinishMatch && (
                                 <button
                                     onClick={onFinishMatch}
-                                    className="px-5 py-2.5 bg-yellow-400 hover:bg-yellow-300 text-black font-black text-xs uppercase tracking-wider rounded-xl shadow-lg active:scale-95 transition-all"
+                                    className="px-3 py-1.5 bg-yellow-400 hover:bg-yellow-300 text-black font-black text-[11px] uppercase tracking-wider rounded-xl shadow active:scale-95 transition-all shrink-0"
                                 >
-                                    Encerrar Partida
+                                    Encerrar
                                 </button>
                             )}
                         </div>
                     )}
 
-                    {/* Placar dos Pênaltis */}
-                    <div className="bg-gradient-to-b from-white/[0.04] to-transparent rounded-3xl border border-white/10 p-4 sm:p-5">
-                        <div className="grid grid-cols-5 items-center gap-2">
+                    {/* Placar & Pontos das Cobranças */}
+                    <div className="bg-gradient-to-b from-white/[0.04] to-transparent rounded-2xl border border-white/10 p-2.5 sm:p-3">
+                        <div className="grid grid-cols-5 items-center gap-1.5">
                             {/* Mandante */}
-                            <div className="col-span-2 flex flex-col items-center sm:items-start gap-1">
-                                <div className="flex items-center gap-2 max-w-full">
+                            <div className="col-span-2 flex flex-col items-center sm:items-start text-center sm:text-left">
+                                <div className="flex items-center gap-1.5 max-w-full truncate">
                                     {homeTeamLogo ? (
-                                        <img src={homeTeamLogo} alt={homeTeamName} className="w-7 h-7 sm:w-9 sm:h-9 object-contain rounded-lg" />
+                                        <img src={homeTeamLogo} alt={homeTeamName} className="w-5 h-5 sm:w-6 sm:h-6 object-contain rounded" />
                                     ) : (
-                                        <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-blue-600/30 border border-blue-500/40 flex items-center justify-center text-xs font-black text-blue-300">
+                                        <div className="w-5 h-5 rounded bg-blue-600/30 border border-blue-500/40 flex items-center justify-center text-[10px] font-black text-blue-300">
                                             {homeTeamName.slice(0, 2).toUpperCase()}
                                         </div>
                                     )}
-                                    <span className="font-black text-sm sm:text-base text-gray-100 truncate text-center sm:text-left">
+                                    <span className="font-black text-xs sm:text-sm text-gray-100 truncate">
                                         {homeTeamName}
                                     </span>
                                 </div>
-                                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-                                    {homeKicks.length} {homeKicks.length === 1 ? 'cobrança' : 'cobranças'}
+                                <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">
+                                    {homeKicks.length} {homeKicks.length === 1 ? 'batido' : 'batidos'}
                                 </span>
                             </div>
 
                             {/* Placar Central */}
                             <div className="col-span-1 flex flex-col items-center justify-center">
-                                <div className="flex items-center gap-2 sm:gap-3 bg-black/60 px-4 py-2 rounded-2xl border border-white/10 shadow-inner">
-                                    <span className="font-black text-2xl sm:text-4xl text-emerald-400 tabular-nums">
+                                <div className="flex items-center gap-1.5 bg-black/60 px-3 py-1 rounded-xl border border-white/10 shadow-inner">
+                                    <span className="font-black text-xl sm:text-2xl text-emerald-400 tabular-nums">
                                         {penaltyScore.home}
                                     </span>
-                                    <span className="text-gray-500 font-black text-sm">×</span>
-                                    <span className="font-black text-2xl sm:text-4xl text-emerald-400 tabular-nums">
+                                    <span className="text-gray-500 font-bold text-xs">×</span>
+                                    <span className="font-black text-xl sm:text-2xl text-emerald-400 tabular-nums">
                                         {penaltyScore.away}
                                     </span>
                                 </div>
                             </div>
 
                             {/* Visitante */}
-                            <div className="col-span-2 flex flex-col items-center sm:items-end gap-1">
-                                <div className="flex items-center sm:flex-row-reverse gap-2 max-w-full">
+                            <div className="col-span-2 flex flex-col items-center sm:items-end text-center sm:text-right">
+                                <div className="flex items-center sm:flex-row-reverse gap-1.5 max-w-full truncate">
                                     {awayTeamLogo ? (
-                                        <img src={awayTeamLogo} alt={awayTeamName} className="w-7 h-7 sm:w-9 sm:h-9 object-contain rounded-lg" />
+                                        <img src={awayTeamLogo} alt={awayTeamName} className="w-5 h-5 sm:w-6 sm:h-6 object-contain rounded" />
                                     ) : (
-                                        <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-emerald-600/30 border border-emerald-500/40 flex items-center justify-center text-xs font-black text-emerald-300">
+                                        <div className="w-5 h-5 rounded bg-emerald-600/30 border border-emerald-500/40 flex items-center justify-center text-[10px] font-black text-emerald-300">
                                             {awayTeamName.slice(0, 2).toUpperCase()}
                                         </div>
                                     )}
-                                    <span className="font-black text-sm sm:text-base text-gray-100 truncate text-center sm:text-right">
+                                    <span className="font-black text-xs sm:text-sm text-gray-100 truncate">
                                         {awayTeamName}
                                     </span>
                                 </div>
-                                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-                                    {awayKicks.length} {awayKicks.length === 1 ? 'cobrança' : 'cobranças'}
+                                <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">
+                                    {awayKicks.length} {awayKicks.length === 1 ? 'batido' : 'batidos'}
                                 </span>
                             </div>
                         </div>
 
-                        {/* Quadradinhos de Progresso das Cobranças */}
-                        <div className="mt-5 pt-5 border-t border-white/10 space-y-3">
-                            <div className="text-[11px] font-black uppercase tracking-wider text-gray-400 text-center flex items-center justify-center gap-2">
-                                <span>Sequência das Cobranças</span>
-                                <span className="text-[9px] px-2 py-0.5 rounded-full bg-white/5 text-gray-400">
-                                    {totalRounds > 5 ? 'Alternadas / Morte Súbita' : 'Série Regular de 5'}
-                                </span>
-                            </div>
-
+                        {/* Sequência Compacta de Cobranças (Bolinhas) */}
+                        <div className="mt-2.5 pt-2 border-t border-white/10 space-y-1.5">
                             {/* Linha Mandante */}
-                            <div className="bg-black/30 p-2.5 rounded-2xl border border-white/5 flex items-center gap-3">
-                                <div className="w-20 sm:w-28 text-[11px] font-bold text-gray-300 truncate shrink-0">
+                            <div className="flex items-center gap-2">
+                                <span className="w-14 sm:w-16 text-[10px] font-bold text-gray-400 truncate shrink-0">
                                     {homeTeamName}
-                                </div>
-                                <div className="flex items-center gap-2 overflow-x-auto flex-1 py-1">
+                                </span>
+                                <div className="flex items-center gap-1.5 overflow-x-auto flex-1 py-0.5">
                                     {Array.from({ length: totalRounds }).map((_, idx) => {
                                         const kick = homeKicks[idx];
                                         const isNext = !kick && idx === homeKicks.length && selectedTeam === 'home';
@@ -345,13 +417,10 @@ export function PenaltyShootoutModal({
                                             return (
                                                 <div
                                                     key={idx}
-                                                    className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl ${badge.bg} border ${badge.border} flex flex-col items-center justify-center shadow-lg shrink-0 transition-transform hover:scale-105`}
-                                                    title={`#${idx + 1} - ${kick.player_name || 'Jogador'}: ${badge.label}`}
+                                                    className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg ${badge.bg} border ${badge.border} flex items-center justify-center text-[11px] font-black text-white shrink-0 shadow`}
+                                                    title={`#${idx + 1} ${kick.player_name || 'Jogador'}: ${badge.label}`}
                                                 >
-                                                    <span className="text-sm leading-none">{badge.icon}</span>
-                                                    <span className="text-[7px] font-black uppercase tracking-tighter opacity-90 mt-0.5">
-                                                        {badge.label}
-                                                    </span>
+                                                    {badge.icon}
                                                 </div>
                                             );
                                         }
@@ -360,11 +429,10 @@ export function PenaltyShootoutModal({
                                             return (
                                                 <div
                                                     key={idx}
-                                                    className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl border-2 border-dashed border-indigo-400 bg-indigo-500/20 text-indigo-300 flex flex-col items-center justify-center shrink-0 animate-pulse"
-                                                    title="Próxima cobrança deste time"
+                                                    className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg border-2 border-dashed border-indigo-400 bg-indigo-500/20 text-indigo-300 flex items-center justify-center text-[10px] font-black shrink-0 animate-pulse"
+                                                    title="Próxima cobrança do mandante"
                                                 >
-                                                    <span className="text-xs font-black">#{idx + 1}</span>
-                                                    <span className="text-[7px] font-bold uppercase">Vez</span>
+                                                    #{idx + 1}
                                                 </div>
                                             );
                                         }
@@ -372,7 +440,7 @@ export function PenaltyShootoutModal({
                                         return (
                                             <div
                                                 key={idx}
-                                                className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl border border-white/10 bg-white/[0.02] text-gray-600 flex items-center justify-center text-xs font-bold shrink-0"
+                                                className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg border border-white/10 bg-white/[0.02] text-gray-600 flex items-center justify-center text-[10px] font-bold shrink-0"
                                             >
                                                 {idx + 1}
                                             </div>
@@ -382,11 +450,11 @@ export function PenaltyShootoutModal({
                             </div>
 
                             {/* Linha Visitante */}
-                            <div className="bg-black/30 p-2.5 rounded-2xl border border-white/5 flex items-center gap-3">
-                                <div className="w-20 sm:w-28 text-[11px] font-bold text-gray-300 truncate shrink-0">
+                            <div className="flex items-center gap-2">
+                                <span className="w-14 sm:w-16 text-[10px] font-bold text-gray-400 truncate shrink-0">
                                     {awayTeamName}
-                                </div>
-                                <div className="flex items-center gap-2 overflow-x-auto flex-1 py-1">
+                                </span>
+                                <div className="flex items-center gap-1.5 overflow-x-auto flex-1 py-0.5">
                                     {Array.from({ length: totalRounds }).map((_, idx) => {
                                         const kick = awayKicks[idx];
                                         const isNext = !kick && idx === awayKicks.length && selectedTeam === 'away';
@@ -396,13 +464,10 @@ export function PenaltyShootoutModal({
                                             return (
                                                 <div
                                                     key={idx}
-                                                    className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl ${badge.bg} border ${badge.border} flex flex-col items-center justify-center shadow-lg shrink-0 transition-transform hover:scale-105`}
-                                                    title={`#${idx + 1} - ${kick.player_name || 'Jogador'}: ${badge.label}`}
+                                                    className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg ${badge.bg} border ${badge.border} flex items-center justify-center text-[11px] font-black text-white shrink-0 shadow`}
+                                                    title={`#${idx + 1} ${kick.player_name || 'Jogador'}: ${badge.label}`}
                                                 >
-                                                    <span className="text-sm leading-none">{badge.icon}</span>
-                                                    <span className="text-[7px] font-black uppercase tracking-tighter opacity-90 mt-0.5">
-                                                        {badge.label}
-                                                    </span>
+                                                    {badge.icon}
                                                 </div>
                                             );
                                         }
@@ -411,11 +476,10 @@ export function PenaltyShootoutModal({
                                             return (
                                                 <div
                                                     key={idx}
-                                                    className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl border-2 border-dashed border-emerald-400 bg-emerald-500/20 text-emerald-300 flex flex-col items-center justify-center shrink-0 animate-pulse"
-                                                    title="Próxima cobrança deste time"
+                                                    className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg border-2 border-dashed border-emerald-400 bg-emerald-500/20 text-emerald-300 flex items-center justify-center text-[10px] font-black shrink-0 animate-pulse"
+                                                    title="Próxima cobrança do visitante"
                                                 >
-                                                    <span className="text-xs font-black">#{idx + 1}</span>
-                                                    <span className="text-[7px] font-bold uppercase">Vez</span>
+                                                    #{idx + 1}
                                                 </div>
                                             );
                                         }
@@ -423,7 +487,7 @@ export function PenaltyShootoutModal({
                                         return (
                                             <div
                                                 key={idx}
-                                                className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl border border-white/10 bg-white/[0.02] text-gray-600 flex items-center justify-center text-xs font-bold shrink-0"
+                                                className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg border border-white/10 bg-white/[0.02] text-gray-600 flex items-center justify-center text-[10px] font-bold shrink-0"
                                             >
                                                 {idx + 1}
                                             </div>
@@ -434,168 +498,126 @@ export function PenaltyShootoutModal({
                         </div>
                     </div>
 
-                    {/* Área de Controle: Lançar Nova Cobrança */}
-                    <div className="bg-[#111827] border border-white/10 rounded-3xl p-4 sm:p-5 space-y-4 shadow-xl">
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs font-black uppercase tracking-widest text-indigo-400">
-                                🎯 Lançar Cobrança de Pênalti
-                            </span>
-                            <span className="text-xs font-bold text-gray-400">
-                                Cobrança #{((selectedTeam === 'home' ? homeKicks.length : awayKicks.length) + 1)}
-                            </span>
-                        </div>
-
-                        {/* 1. Seleção do Time que vai Bater */}
+                    {/* Área de Ação Principal: 1. Time -> 2. Jogador -> 3. Resultado */}
+                    <div className="bg-[#111827] border border-white/10 rounded-2xl p-3 sm:p-3.5 space-y-2.5 shadow-xl">
+                        
+                        {/* 1. Escolha do Time Cobrador */}
                         <div>
-                            <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-2">
-                                1. Selecione o Time Cobrador
-                            </label>
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="flex items-center justify-between mb-1.5">
+                                <label className="text-[10px] font-black uppercase tracking-wider text-indigo-300">
+                                    1. Time que vai bater
+                                </label>
+                                <span className="text-[10px] font-bold text-gray-400">
+                                    Cobrança #{nextKickNumber}
+                                </span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
                                 <button
                                     onClick={() => handleSelectTeam('home')}
-                                    className={`p-3.5 rounded-2xl border-2 font-black text-sm flex items-center justify-between transition-all ${
+                                    className={`py-2 px-3 rounded-xl border-2 font-black text-xs sm:text-sm flex items-center justify-between transition-all ${
                                         selectedTeam === 'home'
-                                            ? 'bg-blue-600/30 border-blue-500 text-white shadow-lg shadow-blue-900/30 scale-[1.01]'
+                                            ? 'bg-blue-600/30 border-blue-500 text-white shadow-lg shadow-blue-900/30'
                                             : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
                                     }`}
                                 >
                                     <span className="truncate">{homeTeamName}</span>
-                                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-black/40 text-blue-300">
-                                        {homeKicks.length} batidos
-                                    </span>
+                                    {selectedTeam === 'home' && (
+                                        <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-blue-500 text-white shrink-0 ml-1">
+                                            VEZ
+                                        </span>
+                                    )}
                                 </button>
 
                                 <button
                                     onClick={() => handleSelectTeam('away')}
-                                    className={`p-3.5 rounded-2xl border-2 font-black text-sm flex items-center justify-between transition-all ${
+                                    className={`py-2 px-3 rounded-xl border-2 font-black text-xs sm:text-sm flex items-center justify-between transition-all ${
                                         selectedTeam === 'away'
-                                            ? 'bg-emerald-600/30 border-emerald-500 text-white shadow-lg shadow-emerald-900/30 scale-[1.01]'
+                                            ? 'bg-emerald-600/30 border-emerald-500 text-white shadow-lg shadow-emerald-900/30'
                                             : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
                                     }`}
                                 >
                                     <span className="truncate">{awayTeamName}</span>
-                                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-black/40 text-emerald-300">
-                                        {awayKicks.length} batidos
-                                    </span>
+                                    {selectedTeam === 'away' && (
+                                        <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-emerald-500 text-white shrink-0 ml-1">
+                                            VEZ
+                                        </span>
+                                    )}
                                 </button>
                             </div>
                         </div>
 
-                        {/* 2. Seleção do Jogador Cobrador */}
+                        {/* 2. Escolha do Jogador Cobrador (Abre em Modal!) */}
                         <div>
-                            <div className="flex items-center justify-between mb-2">
-                                <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
-                                    2. Selecione o Jogador Cobrador
+                            <div className="flex items-center justify-between mb-1.5">
+                                <label className="text-[10px] font-black uppercase tracking-wider text-indigo-300">
+                                    2. Jogador Batedor
                                 </label>
-                                <button
-                                    onClick={() => {
-                                        setIsCustomPlayer(!isCustomPlayer);
-                                        setSelectedPlayer(null);
-                                    }}
-                                    className="text-[11px] font-bold text-indigo-400 hover:underline flex items-center gap-1"
-                                >
-                                    <UserPlus size={12} />
-                                    {isCustomPlayer ? 'Voltar para Lista' : 'Cobrador Avulso'}
-                                </button>
+                                <span className="text-[10px] text-gray-400">
+                                    {currentRoster.length} jogador(es) no time
+                                </span>
                             </div>
 
-                            {isCustomPlayer ? (
-                                <div className="space-y-2">
-                                    <input
-                                        type="text"
-                                        placeholder="Nome do cobrador avulso (ex: Camisa 10, Convidado...)"
-                                        value={customPlayerName}
-                                        onChange={e => setCustomPlayerName(e.target.value)}
-                                        className="w-full px-4 py-3 bg-black/40 border border-indigo-500/40 rounded-2xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                        autoFocus
-                                    />
-                                    <p className="text-[11px] text-gray-500 italic">
-                                        Digite o nome do jogador se ele não estiver no elenco oficial.
-                                    </p>
+                            {selectedPlayer ? (
+                                <div className="w-full p-2.5 rounded-xl border border-indigo-500/60 bg-indigo-950/40 text-white flex items-center justify-between shadow-md">
+                                    <div className="flex items-center gap-2.5 truncate">
+                                        <div className="w-8 h-8 rounded-lg bg-indigo-600 border border-indigo-400 flex items-center justify-center font-black text-xs text-white shrink-0 shadow">
+                                            {selectedPlayer.number ? `#${selectedPlayer.number}` : '⚽'}
+                                        </div>
+                                        <div className="truncate text-left">
+                                            <div className="text-xs font-black text-white truncate">
+                                                {selectedPlayer.nickname || selectedPlayer.name}
+                                            </div>
+                                            <div className="text-[9px] text-indigo-300 font-bold">
+                                                {selectedPlayer.number ? `Camisa #${selectedPlayer.number}` : 'Cobrador Selecionado'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => setShowPlayerModal(true)}
+                                        className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-[11px] font-bold text-gray-200 transition-colors shrink-0 ml-2"
+                                    >
+                                        Trocar
+                                    </button>
                                 </div>
                             ) : (
-                                <div className="space-y-2">
-                                    {currentRoster.length > 8 && (
-                                        <input
-                                            type="text"
-                                            placeholder="Filtrar por nome ou número..."
-                                            value={filterQuery}
-                                            onChange={e => setFilterQuery(e.target.value)}
-                                            className="w-full px-3 py-2 bg-black/40 border border-white/10 rounded-xl text-white text-xs placeholder-gray-500 focus:outline-none focus:border-indigo-500"
-                                        />
-                                    )}
-
-                                    <div className="max-h-40 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 gap-2 pr-1">
-                                        {currentRoster.length === 0 ? (
-                                            <div className="col-span-full py-4 text-center text-xs text-gray-500">
-                                                Nenhum jogador cadastrado. Você pode bater com cobrador avulso.
-                                            </div>
-                                        ) : (
-                                            currentRoster.map((player: any) => {
-                                                const isSelected = selectedPlayer?.id === player.id;
-                                                const hasKicked = alreadyKickedPlayerIds.has(player.id);
-                                                return (
-                                                    <button
-                                                        key={player.id}
-                                                        onClick={() => setSelectedPlayer(player)}
-                                                        className={`p-2 rounded-xl text-left border flex items-center gap-2 transition-all ${
-                                                            isSelected
-                                                                ? 'bg-indigo-600 border-indigo-400 text-white shadow-md'
-                                                                : hasKicked
-                                                                    ? 'bg-white/[0.02] border-white/5 text-gray-500 opacity-60 hover:opacity-100'
-                                                                    : 'bg-white/5 border-white/10 text-gray-200 hover:bg-white/10'
-                                                        }`}
-                                                    >
-                                                        <div className={`w-6 h-6 rounded-lg flex items-center justify-center font-black text-xs shrink-0 ${
-                                                            isSelected ? 'bg-white text-indigo-700' : 'bg-black/40 text-gray-300'
-                                                        }`}>
-                                                            {player.number || '#'}
-                                                        </div>
-                                                        <div className="truncate flex-1">
-                                                            <div className="text-xs font-bold truncate">
-                                                                {player.nickname || player.name}
-                                                            </div>
-                                                            {hasKicked && (
-                                                                <div className="text-[9px] text-amber-400 font-semibold leading-tight">
-                                                                    Já cobrou
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </button>
-                                                );
-                                            })
-                                        )}
-                                    </div>
-                                    {selectedPlayer && (
-                                        <div className="text-xs text-indigo-300 font-bold bg-indigo-950/40 border border-indigo-800/40 px-3 py-1.5 rounded-xl flex items-center justify-between">
-                                            <span>
-                                                Cobrador Selecionado: <b>{selectedPlayer.number ? `#${selectedPlayer.number} ` : ''}{selectedPlayer.name}</b>
-                                            </span>
-                                            <button
-                                                onClick={() => setSelectedPlayer(null)}
-                                                className="text-gray-400 hover:text-white"
-                                            >
-                                                Trocar
-                                            </button>
+                                <button
+                                    onClick={() => setShowPlayerModal(true)}
+                                    className="w-full p-3 rounded-xl border-2 border-dashed border-indigo-500/50 bg-indigo-500/10 hover:bg-indigo-500/20 text-white flex items-center justify-between transition-all group active:scale-[0.99]"
+                                >
+                                    <div className="flex items-center gap-2.5 truncate">
+                                        <div className="w-8 h-8 rounded-lg bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center text-indigo-300 group-hover:scale-110 transition-transform shrink-0">
+                                            <UserPlus size={16} />
                                         </div>
-                                    )}
-                                </div>
+                                        <div className="text-left truncate">
+                                            <div className="text-xs font-black text-white truncate">
+                                                Escolher Batedor ({currentTeamName})
+                                            </div>
+                                            <div className="text-[9px] text-indigo-300 font-medium">
+                                                Toque para abrir a lista de jogadores
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-1 text-[11px] font-bold text-indigo-300 bg-indigo-500/20 px-2.5 py-1 rounded-lg shrink-0">
+                                        <span>Lista</span>
+                                        <ArrowRight size={12} />
+                                    </div>
+                                </button>
                             )}
                         </div>
 
-                        {/* 3. Botões Grandes de Resultado */}
+                        {/* 3. Botões Grandes de Resultado da Cobrança */}
                         <div>
-                            <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-2">
-                                3. Registre o Resultado da Cobrança
+                            <label className="text-[10px] font-black uppercase tracking-wider text-indigo-300 block mb-1.5">
+                                3. Resultado da Cobrança
                             </label>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                            <div className="grid grid-cols-2 gap-2">
                                 {/* GOL */}
                                 <button
                                     disabled={isSubmitting}
                                     onClick={() => handleConfirmOutcome('score')}
-                                    className="col-span-2 sm:col-span-1 py-4 bg-emerald-600 hover:bg-emerald-500 rounded-2xl font-black text-white text-base border-b-4 border-emerald-900 shadow-lg shadow-emerald-950/50 active:scale-95 disabled:opacity-50 transition-all flex flex-col items-center justify-center gap-1"
+                                    className="py-3 px-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 rounded-xl font-black text-white text-sm border-b-4 border-emerald-900 shadow-md shadow-emerald-950/40 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
                                 >
-                                    <span className="text-2xl">⚽</span>
+                                    <span className="text-xl">⚽</span>
                                     <span>GOL</span>
                                 </button>
 
@@ -603,9 +625,9 @@ export function PenaltyShootoutModal({
                                 <button
                                     disabled={isSubmitting}
                                     onClick={() => handleConfirmOutcome('saved')}
-                                    className="py-4 bg-indigo-600 hover:bg-indigo-500 rounded-2xl font-black text-white text-sm border-b-4 border-indigo-900 shadow-lg shadow-indigo-950/50 active:scale-95 disabled:opacity-50 transition-all flex flex-col items-center justify-center gap-1"
+                                    className="py-3 px-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 rounded-xl font-black text-white text-xs sm:text-sm border-b-4 border-indigo-900 shadow-md shadow-indigo-950/40 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center gap-1.5"
                                 >
-                                    <span className="text-2xl">🧤</span>
+                                    <span className="text-xl">🧤</span>
                                     <span>DEFENDEU</span>
                                 </button>
 
@@ -613,9 +635,9 @@ export function PenaltyShootoutModal({
                                 <button
                                     disabled={isSubmitting}
                                     onClick={() => handleConfirmOutcome('post')}
-                                    className="py-4 bg-amber-600 hover:bg-amber-500 rounded-2xl font-black text-white text-sm border-b-4 border-amber-900 shadow-lg shadow-amber-950/50 active:scale-95 disabled:opacity-50 transition-all flex flex-col items-center justify-center gap-1"
+                                    className="py-3 px-3 bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 rounded-xl font-black text-white text-xs sm:text-sm border-b-4 border-amber-900 shadow-md shadow-amber-950/40 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center gap-1.5"
                                 >
-                                    <span className="text-2xl">🏁</span>
+                                    <span className="text-xl">🏁</span>
                                     <span>NA TRAVE</span>
                                 </button>
 
@@ -623,9 +645,9 @@ export function PenaltyShootoutModal({
                                 <button
                                     disabled={isSubmitting}
                                     onClick={() => handleConfirmOutcome('out')}
-                                    className="col-span-2 sm:col-span-1 py-4 bg-rose-600 hover:bg-rose-500 rounded-2xl font-black text-white text-sm border-b-4 border-rose-900 shadow-lg shadow-rose-950/50 active:scale-95 disabled:opacity-50 transition-all flex flex-col items-center justify-center gap-1"
+                                    className="py-3 px-3 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 rounded-xl font-black text-white text-xs sm:text-sm border-b-4 border-rose-900 shadow-md shadow-rose-950/40 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center gap-1.5"
                                 >
-                                    <span className="text-2xl">❌</span>
+                                    <span className="text-xl">❌</span>
                                     <span>PRA FORA</span>
                                 </button>
                             </div>
@@ -633,16 +655,255 @@ export function PenaltyShootoutModal({
 
                     </div>
 
-                    {/* Histórico das Cobranças Realizadas com Opção de Excluir */}
-                    {shootoutEvents.length > 0 && (
-                        <div className="bg-black/30 rounded-3xl border border-white/5 p-4 space-y-3">
-                            <div className="flex items-center justify-between text-xs font-bold text-gray-400">
-                                <span>Histórico Detalhado ({shootoutEvents.length} cobranças)</span>
-                                <span className="text-[10px] text-gray-500 italic">Clique na lixeira para corrigir se errou</span>
-                            </div>
+                </div>
 
-                            <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
-                                {shootoutEvents.map((kick, idx) => {
+                {/* Footer do Modal Principal */}
+                <div className="px-3.5 py-2.5 bg-slate-900 border-t border-white/10 flex items-center justify-between gap-2 shrink-0">
+                    <button
+                        onClick={onClose}
+                        className="px-3.5 py-2 bg-white/5 hover:bg-white/10 text-gray-300 font-bold text-xs uppercase tracking-wider rounded-xl transition-colors"
+                    >
+                        Voltar para a Súmula
+                    </button>
+
+                    {onFinishMatch && (
+                        <button
+                            onClick={onFinishMatch}
+                            className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-lg active:scale-95 transition-all"
+                        >
+                            Encerrar Partida
+                        </button>
+                    )}
+                </div>
+
+            </div>
+
+            {/* ========================================================= */}
+            {/* MODAL 1: ESCOLHA DO BATEDOR DA LISTA DE JOGADORES DO TIME */}
+            {/* ========================================================= */}
+            {showPlayerModal && (
+                <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center bg-black/85 backdrop-blur-md p-0 sm:p-4">
+                    <div className="bg-[#0f172a] w-full max-w-md rounded-t-3xl sm:rounded-3xl border border-indigo-500/30 shadow-2xl overflow-hidden flex flex-col max-h-[88vh] animate-in fade-in slide-in-from-bottom-6 duration-200">
+                        
+                        {/* Header do Modal de Jogadores */}
+                        <div className="p-3.5 sm:p-4 border-b border-white/10 bg-slate-900 flex items-center justify-between shrink-0">
+                            <div className="flex items-center gap-2 truncate">
+                                <div className="w-8 h-8 rounded-xl bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center text-indigo-300 font-black shrink-0">
+                                    <Users size={16} />
+                                </div>
+                                <div className="truncate text-left">
+                                    <h3 className="font-black text-sm text-white uppercase tracking-tight truncate">
+                                        Escolha o Batedor
+                                    </h3>
+                                    <p className="text-[10px] text-emerald-400 font-bold uppercase truncate">
+                                        {currentTeamName}
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    setShowPlayerModal(false);
+                                    setPlayerFilter('');
+                                    setIsAddingCustomPlayer(false);
+                                }}
+                                className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        {/* Campo de Busca Rápida */}
+                        {currentRoster.length > 5 && (
+                            <div className="p-2.5 bg-black/30 border-b border-white/5 shrink-0">
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                                    <input
+                                        type="text"
+                                        placeholder="Filtrar por nome ou número..."
+                                        value={playerFilter}
+                                        onChange={e => setPlayerFilter(e.target.value)}
+                                        className="w-full pl-8 pr-3 py-2 bg-white/5 border border-white/10 rounded-xl text-white text-xs placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+                                    />
+                                    {playerFilter && (
+                                        <button
+                                            onClick={() => setPlayerFilter('')}
+                                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                                        >
+                                            <X size={12} />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Lista de Jogadores do Elenco */}
+                        <div className="p-3 overflow-y-auto space-y-1.5 flex-1 max-h-[55vh]">
+                            {filteredRoster.length === 0 ? (
+                                <div className="py-8 text-center text-gray-400 text-xs space-y-2">
+                                    <p>Nenhum jogador encontrado para {currentTeamName}.</p>
+                                    <button
+                                        onClick={() => setIsAddingCustomPlayer(true)}
+                                        className="text-xs text-indigo-400 underline font-bold"
+                                    >
+                                        Cadastrar batedor avulso
+                                    </button>
+                                </div>
+                            ) : (
+                                filteredRoster.map((player: any) => {
+                                    const number = player.number ?? player.pivot?.number ?? '';
+                                    const name = player.nickname || player.name || 'Jogador';
+                                    const isSelected = selectedPlayer?.id === player.id;
+                                    const roundKicked = alreadyKickedInfo.get(player.id) ?? alreadyKickedInfo.get(String(player.id));
+
+                                    return (
+                                        <button
+                                            key={player.id}
+                                            onClick={() => handleSelectPlayerFromModal(player)}
+                                            className={`w-full p-2.5 rounded-xl border flex items-center justify-between gap-2.5 transition-all active:scale-[0.99] text-left ${
+                                                isSelected
+                                                    ? 'bg-indigo-600/40 border-indigo-500 text-white shadow-md'
+                                                    : roundKicked
+                                                        ? 'bg-white/[0.02] border-white/5 text-gray-400 hover:bg-white/5'
+                                                        : 'bg-white/5 border-white/10 text-white hover:bg-white/10'
+                                            }`}
+                                        >
+                                            <div className="flex items-center gap-2.5 truncate">
+                                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-black text-xs shrink-0 ${
+                                                    isSelected ? 'bg-indigo-500 text-white' : 'bg-black/40 text-gray-300 border border-white/5'
+                                                }`}>
+                                                    {number ? `#${number}` : '•'}
+                                                </div>
+                                                <div className="truncate">
+                                                    <div className="text-xs font-black truncate">
+                                                        {name}
+                                                    </div>
+                                                    {player.nickname && player.name && player.nickname !== player.name && (
+                                                        <div className="text-[10px] text-gray-400 truncate">
+                                                            {player.name}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className="shrink-0 flex items-center gap-1.5">
+                                                {roundKicked ? (
+                                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                                        Já cobrou (#{roundKicked})
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[9px] font-bold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full">
+                                                        Selecionar
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </button>
+                                    );
+                                })
+                            )}
+                        </div>
+
+                        {/* Rodapé do Modal de Jogadores: Cobrador Avulso ou Pular */}
+                        <div className="p-3 bg-slate-900 border-t border-white/10 space-y-2 shrink-0">
+                            {isAddingCustomPlayer ? (
+                                <div className="space-y-2 p-2.5 bg-black/40 rounded-xl border border-indigo-500/40">
+                                    <div className="text-[11px] font-bold text-indigo-300">
+                                        Cobrador Não Listado:
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            placeholder="Nº"
+                                            value={customPlayerNumber}
+                                            onChange={e => setCustomPlayerNumber(e.target.value)}
+                                            className="w-16 px-2.5 py-1.5 bg-white/5 border border-white/10 rounded-lg text-white text-xs text-center focus:outline-none focus:border-indigo-500"
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="Nome do batedor..."
+                                            value={customPlayerName}
+                                            onChange={e => setCustomPlayerName(e.target.value)}
+                                            className="flex-1 px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-white text-xs focus:outline-none focus:border-indigo-500"
+                                            autoFocus
+                                        />
+                                    </div>
+                                    <div className="flex justify-end gap-2 pt-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsAddingCustomPlayer(false)}
+                                            className="px-2.5 py-1 text-[11px] text-gray-400 hover:text-white"
+                                        >
+                                            Cancelar
+                                        </button>
+                                        <button
+                                            type="button"
+                                            disabled={!customPlayerName.trim()}
+                                            onClick={handleAddCustomPlayer}
+                                            className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-xs rounded-lg"
+                                        >
+                                            Confirmar
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex items-center justify-between text-xs">
+                                    <button
+                                        onClick={() => setIsAddingCustomPlayer(true)}
+                                        className="text-indigo-400 hover:text-indigo-300 font-bold flex items-center gap-1 text-[11px]"
+                                    >
+                                        <UserPlus size={12} />
+                                        <span>Batedor não listado</span>
+                                    </button>
+
+                                    <button
+                                        onClick={handleSkipPlayerIdentification}
+                                        className="text-gray-400 hover:text-white font-bold text-[11px] underline"
+                                    >
+                                        Cobrador #{nextKickNumber} (sem nome)
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                    </div>
+                </div>
+            )}
+
+            {/* ========================================================= */}
+            {/* MODAL 2: HISTÓRICO DETALHADO E CORREÇÃO DE COBRANÇAS     */}
+            {/* ========================================================= */}
+            {showHistoryModal && (
+                <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center bg-black/85 backdrop-blur-md p-0 sm:p-4">
+                    <div className="bg-[#0f172a] w-full max-w-md rounded-t-3xl sm:rounded-3xl border border-indigo-500/30 shadow-2xl overflow-hidden flex flex-col max-h-[88vh] animate-in fade-in slide-in-from-bottom-6 duration-200">
+                        
+                        <div className="p-3.5 sm:p-4 border-b border-white/10 bg-slate-900 flex items-center justify-between shrink-0">
+                            <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-xl bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center text-indigo-300 shrink-0">
+                                    <History size={16} />
+                                </div>
+                                <div className="text-left">
+                                    <h3 className="font-black text-sm text-white uppercase tracking-tight">
+                                        Histórico das Cobranças
+                                    </h3>
+                                    <p className="text-[10px] text-gray-400">
+                                        {shootoutEvents.length} cobranças registradas
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowHistoryModal(false)}
+                                className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div className="p-3 overflow-y-auto space-y-1.5 flex-1 max-h-[60vh]">
+                            {shootoutEvents.length === 0 ? (
+                                <div className="py-8 text-center text-gray-500 text-xs">
+                                    Nenhuma cobrança registrada ainda.
+                                </div>
+                            ) : (
+                                shootoutEvents.map((kick, idx) => {
                                     const badge = getOutcomeBadge(kick);
                                     const teamLabel = kick.team === 'home' ? homeTeamName : awayTeamName;
                                     return (
@@ -654,62 +915,49 @@ export function PenaltyShootoutModal({
                                                 <div className={`w-6 h-6 rounded-lg ${badge.bg} flex items-center justify-center text-xs shrink-0`}>
                                                     {badge.icon}
                                                 </div>
-                                                <div className="truncate">
-                                                    <span className="font-black text-white mr-1.5">
-                                                        #{idx + 1}
-                                                    </span>
-                                                    <span className="font-semibold text-gray-300 mr-2">
-                                                        {teamLabel}:
-                                                    </span>
-                                                    <span className="text-gray-400 font-medium">
-                                                        {kick.player_name || 'Jogador'}
-                                                    </span>
+                                                <div className="truncate text-left">
+                                                    <div className="font-black text-white truncate">
+                                                        #{idx + 1} {kick.player_name || 'Jogador'}
+                                                    </div>
+                                                    <div className="text-[10px] text-gray-400 truncate">
+                                                        {teamLabel}
+                                                    </div>
                                                 </div>
                                             </div>
 
-                                            <div className="flex items-center gap-3 shrink-0">
-                                                <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
                                                     kick.type === 'shootout_goal' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-rose-950 text-rose-400 border border-rose-800'
                                                 }`}>
                                                     {badge.label}
                                                 </span>
                                                 <button
                                                     onClick={() => onDeletePenalty(kick.id, kick.type, kick.team)}
-                                                    className="p-1 hover:bg-rose-500/20 text-gray-500 hover:text-rose-400 rounded-lg transition-colors"
-                                                    title="Excluir cobrança"
+                                                    className="p-1.5 hover:bg-rose-500/20 text-gray-500 hover:text-rose-400 rounded-lg transition-colors"
+                                                    title="Excluir esta cobrança (corrigir erro)"
                                                 >
-                                                    <Trash2 size={14} />
+                                                    <Trash2 size={13} />
                                                 </button>
                                             </div>
                                         </div>
                                     );
-                                })}
-                            </div>
+                                })
+                            )}
                         </div>
-                    )}
 
+                        <div className="p-3 bg-slate-900 border-t border-white/10 flex justify-end shrink-0">
+                            <button
+                                onClick={() => setShowHistoryModal(false)}
+                                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-colors"
+                            >
+                                Fechar
+                            </button>
+                        </div>
+
+                    </div>
                 </div>
+            )}
 
-                {/* Footer do Modal */}
-                <div className="p-4 bg-slate-900 border-t border-white/10 flex items-center justify-between gap-3">
-                    <button
-                        onClick={onClose}
-                        className="px-5 py-2.5 bg-white/5 hover:bg-white/10 text-gray-300 font-bold text-xs uppercase tracking-wider rounded-xl transition-colors"
-                    >
-                        Voltar para a Súmula
-                    </button>
-
-                    {onFinishMatch && (
-                        <button
-                            onClick={onFinishMatch}
-                            className="px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-emerald-950/40 active:scale-95 transition-all"
-                        >
-                            Encerrar Partida
-                        </button>
-                    )}
-                </div>
-
-            </div>
         </div>
     );
 }
