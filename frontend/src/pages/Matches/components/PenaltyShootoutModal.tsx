@@ -75,9 +75,6 @@ export function PenaltyShootoutModal({
     const [showPlayerModal, setShowPlayerModal] = useState(false);
     const [showHistoryModal, setShowHistoryModal] = useState(false);
     const [playerFilter, setPlayerFilter] = useState('');
-    const [customPlayerName, setCustomPlayerName] = useState('');
-    const [customPlayerNumber, setCustomPlayerNumber] = useState('');
-    const [isAddingCustomPlayer, setIsAddingCustomPlayer] = useState(false);
 
     // Atualiza automaticamente o time sugerido quando o número de cobranças muda
     useEffect(() => {
@@ -196,31 +193,6 @@ export function PenaltyShootoutModal({
         setSelectedPlayer(player);
         setShowPlayerModal(false);
         setPlayerFilter('');
-        setIsAddingCustomPlayer(false);
-    };
-
-    const handleAddCustomPlayer = () => {
-        if (!customPlayerName.trim()) return;
-        const custom = {
-            id: 'unknown',
-            name: customPlayerName.trim(),
-            number: customPlayerNumber.trim() || ''
-        };
-        setSelectedPlayer(custom);
-        setCustomPlayerName('');
-        setCustomPlayerNumber('');
-        setIsAddingCustomPlayer(false);
-        setShowPlayerModal(false);
-    };
-
-    const handleSkipPlayerIdentification = () => {
-        const nextRoundNum = (selectedTeam === 'home' ? homeKicks.length : awayKicks.length) + 1;
-        setSelectedPlayer({
-            id: 'unknown',
-            name: `Cobrador #${nextRoundNum}`,
-            number: ''
-        });
-        setShowPlayerModal(false);
     };
 
     const getOutcomeBadge = (kick: any) => {
@@ -704,7 +676,6 @@ export function PenaltyShootoutModal({
                                 onClick={() => {
                                     setShowPlayerModal(false);
                                     setPlayerFilter('');
-                                    setIsAddingCustomPlayer(false);
                                 }}
                                 className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
                             >
@@ -739,14 +710,8 @@ export function PenaltyShootoutModal({
                         {/* Lista de Jogadores do Elenco */}
                         <div className="p-3 overflow-y-auto space-y-1.5 flex-1 max-h-[55vh]">
                             {filteredRoster.length === 0 ? (
-                                <div className="py-8 text-center text-gray-400 text-xs space-y-2">
-                                    <p>Nenhum jogador encontrado para {currentTeamName}.</p>
-                                    <button
-                                        onClick={() => setIsAddingCustomPlayer(true)}
-                                        className="text-xs text-indigo-400 underline font-bold"
-                                    >
-                                        Cadastrar batedor avulso
-                                    </button>
+                                <div className="py-8 text-center text-gray-400 text-xs">
+                                    Nenhum jogador encontrado para {currentTeamName}.
                                 </div>
                             ) : (
                                 filteredRoster.map((player: any) => {
@@ -802,66 +767,18 @@ export function PenaltyShootoutModal({
                             )}
                         </div>
 
-                        {/* Rodapé do Modal de Jogadores: Cobrador Avulso ou Pular */}
-                        <div className="p-3 bg-slate-900 border-t border-white/10 space-y-2 shrink-0">
-                            {isAddingCustomPlayer ? (
-                                <div className="space-y-2 p-2.5 bg-black/40 rounded-xl border border-indigo-500/40">
-                                    <div className="text-[11px] font-bold text-indigo-300">
-                                        Cobrador Não Listado:
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <input
-                                            type="text"
-                                            placeholder="Nº"
-                                            value={customPlayerNumber}
-                                            onChange={e => setCustomPlayerNumber(e.target.value)}
-                                            className="w-16 px-2.5 py-1.5 bg-white/5 border border-white/10 rounded-lg text-white text-xs text-center focus:outline-none focus:border-indigo-500"
-                                        />
-                                        <input
-                                            type="text"
-                                            placeholder="Nome do batedor..."
-                                            value={customPlayerName}
-                                            onChange={e => setCustomPlayerName(e.target.value)}
-                                            className="flex-1 px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-white text-xs focus:outline-none focus:border-indigo-500"
-                                            autoFocus
-                                        />
-                                    </div>
-                                    <div className="flex justify-end gap-2 pt-1">
-                                        <button
-                                            type="button"
-                                            onClick={() => setIsAddingCustomPlayer(false)}
-                                            className="px-2.5 py-1 text-[11px] text-gray-400 hover:text-white"
-                                        >
-                                            Cancelar
-                                        </button>
-                                        <button
-                                            type="button"
-                                            disabled={!customPlayerName.trim()}
-                                            onClick={handleAddCustomPlayer}
-                                            className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-xs rounded-lg"
-                                        >
-                                            Confirmar
-                                        </button>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="flex items-center justify-between text-xs">
-                                    <button
-                                        onClick={() => setIsAddingCustomPlayer(true)}
-                                        className="text-indigo-400 hover:text-indigo-300 font-bold flex items-center gap-1 text-[11px]"
-                                    >
-                                        <UserPlus size={12} />
-                                        <span>Batedor não listado</span>
-                                    </button>
-
-                                    <button
-                                        onClick={handleSkipPlayerIdentification}
-                                        className="text-gray-400 hover:text-white font-bold text-[11px] underline"
-                                    >
-                                        Cobrador #{nextKickNumber} (sem nome)
-                                    </button>
-                                </div>
-                            )}
+                        {/* Rodapé do Modal de Jogadores */}
+                        <div className="p-3 bg-slate-900 border-t border-white/10 flex justify-end shrink-0">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setShowPlayerModal(false);
+                                    setPlayerFilter('');
+                                }}
+                                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-colors"
+                            >
+                                Fechar
+                            </button>
                         </div>
 
                     </div>
