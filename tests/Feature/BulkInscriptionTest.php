@@ -329,4 +329,54 @@ class BulkInscriptionTest extends TestCase
             'payment_method' => 'boleto'
         ]);
     }
+
+    public function test_delete_race_result_unlinks_athlete_and_allows_re_registration()
+    {
+        $user = User::factory()->create([
+            'email' => 'admin_del@example.com',
+            'is_admin' => true
+        ]);
+
+        $club = Club::factory()->create();
+        $sport = Sport::factory()->create();
+        $championship = Championship::create([
+            'club_id' => $club->id,
+            'sport_id' => $sport->id,
+            'name' => 'Corrida Delete Test',
+            'format' => 'racing',
+            'start_date' => now()->addDays(5),
+        ]);
+        $race = Race::create([
+            'championship_id' => $championship->id,
+            'start_datetime' => now()->addDays(5),
+        ]);
+        $category = Category::create([
+            'championship_id' => $championship->id,
+            'name' => 'Geral',
+            'price' => 50.00
+        ]);
+
+        $athleteUser = User::factory()->create([
+            'email' => 'carla_test@example.com',
+            'name' => 'Carla Priscila'
+        ]);
+
+        $result = RaceResult::create([
+            'race_id' => $race->id,
+            'user_id' => $athleteUser->id,
+            'category_id' => $category->id,
+            'name' => 'Carla Priscila',
+            'bib_number' => '225',
+            'status_payment' => 'pending'
+        ]);
+
+        // Exclui a inscrição da corrida
+        $response = $this->actingAs($user)->deleteJson("/api/admin/results/{$result->id}");
+        $response->assertStatus(200);
+
+        // Garante que o registro foi removido de race_results
+        $this->assertDatabaseMissing('race_results', [
+            'id' => $result->id
+        ]);
+    }
 }

@@ -143,12 +143,26 @@ class RaceResultController extends Controller
     }
 
     /**
-     * Excluir inscrição/resultado
+     * Excluir inscrição/resultado de atleta
      */
     public function destroy($id)
     {
-        RaceResult::findOrFail($id)->delete();
-        return response()->json(['message' => 'Removido com sucesso!']);
+        $result = RaceResult::findOrFail($id);
+
+        try {
+            \App\Services\AuditLogger::log('race_result.delete', "Excluiu a inscrição do atleta '{$result->name}' (ID: {$result->id}, BIB: {$result->bib_number}) da corrida #{$result->race_id}", [
+                'race_result_id' => $result->id,
+                'race_id' => $result->race_id,
+                'user_id' => $result->user_id,
+                'bib_number' => $result->bib_number,
+                'athlete_name' => $result->name
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning("Falha ao registrar audit log na exclusão do race result: " . $e->getMessage());
+        }
+
+        $result->delete();
+        return response()->json(['message' => 'Inscrição removida com sucesso!']);
     }
 
     /**

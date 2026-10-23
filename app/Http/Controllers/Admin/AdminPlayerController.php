@@ -219,8 +219,8 @@ class AdminPlayerController extends Controller
             \DB::table('teams')->where('captain_id', $id)->update(['captain_id' => null]);
             \DB::table('championship_team')->where('captain_id', $id)->update(['captain_id' => null]);
             
-            // Set null or delete in race results
-            \DB::table('race_results')->where('user_id', $id)->update(['user_id' => null]);
+            // Delete race results
+            \DB::table('race_results')->where('user_id', $id)->delete();
             
             // Delete competitor times
             try {

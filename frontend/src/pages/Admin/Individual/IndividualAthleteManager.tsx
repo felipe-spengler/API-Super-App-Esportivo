@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { 
     Users, Search, Filter, Download, UserPlus, FileCheck, Mail, Wand2, 
-    X, Table, Upload, AlertCircle, SlidersHorizontal, Shirt, UserCheck, Check, CreditCard, CheckCircle2 
+    X, Table, Upload, AlertCircle, SlidersHorizontal, Shirt, UserCheck, Check, CreditCard, CheckCircle2,
+    Trash2, AlertTriangle
 } from 'lucide-react';
 import api from '../../../services/api';
 import { compressImage } from '../../../utils/imageCompressor';
@@ -30,6 +31,10 @@ export function IndividualAthleteManager() {
     const [categories, setCategories] = useState<any[]>([]);
     const [file, setFile] = useState<File | null>(null);
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
+
+    // Estado do Modal de Confirmação de Exclusão de Atleta do Evento
+    const [athleteToDelete, setAthleteToDelete] = useState<Athlete | null>(null);
+    const [deletingAthlete, setDeletingAthlete] = useState<boolean>(false);
 
     // Estados do Modal de Alteração de Pagamento (Backup Webhook)
     const [selectedAthleteForPayment, setSelectedAthleteForPayment] = useState<Athlete | null>(null);
@@ -324,6 +329,23 @@ export function IndividualAthleteManager() {
         }
     };
 
+    const handleConfirmDelete = async () => {
+        if (!athleteToDelete) return;
+        setDeletingAthlete(true);
+        const toastId = toast.loading('Excluindo atleta do evento...');
+        try {
+            await api.delete(`/admin/results/${athleteToDelete.id}`);
+            setAthletes(prev => prev.filter(a => a.id !== athleteToDelete.id));
+            toast.success(`Inscrição de ${athleteToDelete.name} excluída com sucesso!`, { id: toastId });
+            setAthleteToDelete(null);
+        } catch (error: any) {
+            console.error('Erro ao excluir atleta:', error);
+            toast.error(error.response?.data?.error || error.response?.data?.message || 'Erro ao excluir atleta do evento.', { id: toastId });
+        } finally {
+            setDeletingAthlete(false);
+        }
+    };
+
     const filteredAthletes = athletes.filter(a => {
         const matchesSearch = (a.name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
             (a.team_name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -424,8 +446,16 @@ export function IndividualAthleteManager() {
                                 {filteredAthletes.map(athlete => (
                                     <tr key={athlete.id} className="hover:bg-slate-50/50 transition-colors">
                                         <td className="px-6 py-4">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-12 h-12 bg-slate-100 rounded-xl overflow-hidden border border-slate-200 flex items-center justify-center font-black text-slate-400 text-xs shrink-0 bg-slate-900 text-white">
+                                            <div className="flex items-center gap-3">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setAthleteToDelete(athlete)}
+                                                    title={`Excluir ${athlete.name} deste evento`}
+                                                    className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-400 hover:text-rose-600 border border-slate-200 hover:border-rose-200 flex items-center justify-center transition-all shrink-0 group/x"
+                                                >
+                                                    <X size={15} strokeWidth={2.5} className="group-hover/x:scale-110 transition-transform" />
+                                                </button>
+                                                <div className="w-12 h-12 bg-slate-900 text-white rounded-xl overflow-hidden border border-slate-200 flex items-center justify-center font-black text-xs shrink-0">
                                                     {athlete.bib_number || '--'}
                                                 </div>
                                                 <div>
@@ -495,6 +525,13 @@ export function IndividualAthleteManager() {
                                                     className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
                                                 >
                                                     <Mail size={20} />
+                                                </button>
+                                                <button 
+                                                    onClick={() => setAthleteToDelete(athlete)}
+                                                    title="Excluir Atleta do Evento"
+                                                    className="p-2.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                                                >
+                                                    <Trash2 size={20} />
                                                 </button>
                                             </div>
                                         </td>
@@ -1138,6 +1175,68 @@ export function IndividualAthleteManager() {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal: Confirmação de Exclusão do Atleta do Evento */}
+            {athleteToDelete && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 flex items-center justify-center p-3 md:p-4 overflow-y-auto">
+                    <div className="bg-white rounded-[24px] md:rounded-[32px] w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden my-auto flex flex-col">
+                        <div className="p-6 md:p-8 text-center space-y-4">
+                            <div className="w-16 h-16 bg-rose-50 text-rose-600 rounded-3xl mx-auto flex items-center justify-center border border-rose-100 shadow-inner">
+                                <AlertTriangle size={32} />
+                            </div>
+                            
+                            <div className="space-y-2">
+                                <h2 className="text-xl font-black text-slate-900">
+                                    Excluir Atleta do Evento?
+                                </h2>
+                                <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                                    Tem certeza que deseja excluir a inscrição de{' '}
+                                    <strong className="text-slate-800">{athleteToDelete.name}</strong>?
+                                </p>
+                            </div>
+
+                            <div className="p-3.5 bg-rose-50/60 border border-rose-100 rounded-2xl text-left space-y-1.5 text-xs text-rose-950 font-medium">
+                                <p className="flex items-center gap-2 font-bold text-rose-700">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+                                    O registro será removido permanentemente desta corrida.
+                                </p>
+                                <p className="flex items-center gap-2 text-slate-600">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0" />
+                                    Número de peito: <strong>{athleteToDelete.bib_number || 'Sem BIB'}</strong> (será liberado).
+                                </p>
+                                <p className="flex items-center gap-2 text-slate-600">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0" />
+                                    Permite fazer um novo cadastro sem duplicidade.
+                                </p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setAthleteToDelete(null)}
+                                    disabled={deletingAthlete}
+                                    className="py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl font-bold text-xs transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleConfirmDelete}
+                                    disabled={deletingAthlete}
+                                    className="py-3 px-4 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl font-black text-xs transition-all shadow-lg shadow-rose-200 flex items-center justify-center gap-2 disabled:opacity-50"
+                                >
+                                    {deletingAthlete ? (
+                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                        <Trash2 size={16} />
+                                    )}
+                                    Sim, Excluir
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
