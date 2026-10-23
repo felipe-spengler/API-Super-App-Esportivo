@@ -179,4 +179,79 @@ class BulkInscriptionTest extends TestCase
             'status_payment' => 'pending'
         ]);
     }
+
+    public function test_export_athletes_csv_orders_by_category_subcategory_and_alphabetical(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $club = Club::factory()->create();
+        $sport = Sport::factory()->create();
+
+        $championship = Championship::create([
+            'club_id' => $club->id,
+            'sport_id' => $sport->id,
+            'name' => 'Circuito Noturno',
+            'format' => 'racing',
+            'start_date' => now()->addDays(5),
+        ]);
+
+        $race = Race::create([
+            'championship_id' => $championship->id,
+            'start_datetime' => now()->addDays(5),
+        ]);
+
+        $cat5k = Category::create([
+            'championship_id' => $championship->id,
+            'name' => '5KM',
+            'price' => 50.00
+        ]);
+
+        $cat10k = Category::create([
+            'championship_id' => $championship->id,
+            'name' => '10KM',
+            'price' => 70.00
+        ]);
+
+        $subCat10kA = Category::create([
+            'championship_id' => $championship->id,
+            'parent_id' => $cat10k->id,
+            'name' => 'M 20-29',
+            'price' => 70.00
+        ]);
+
+        $subCat10kB = Category::create([
+            'championship_id' => $championship->id,
+            'parent_id' => $cat10k->id,
+            'name' => 'M 30-39',
+            'price' => 70.00
+        ]);
+
+        // Create athletes out of order
+        RaceResult::create(['race_id' => $race->id, 'name' => 'Zélia 5K', 'category_id' => $cat5k->id, 'bib_number' => '10', 'team_name' => 'Equipe Z']);
+        RaceResult::create(['race_id' => $race->id, 'name' => 'Alice 5K', 'category_id' => $cat5k->id, 'bib_number' => '11', 'team_name' => 'Equipe A']);
+        RaceResult::create(['race_id' => $race->id, 'name' => 'Bruno 10K SubB', 'category_id' => $subCat10kB->id, 'bib_number' => '20', 'team_name' => 'Equipe B']);
+        RaceResult::create(['race_id' => $race->id, 'name' => 'Carlos 10K SubA', 'category_id' => $subCat10kA->id, 'bib_number' => '21', 'team_name' => 'Equipe C']);
+
+        $response = $this->actingAs($admin)->get("/api/admin/championships/{$championship->id}/results/export");
+
+        $response->assertStatus(200);
+        $content = $response->streamedContent();
+
+        // Check header and content
+        $this->assertStringContainsString('NOME DO ATLETA', $content);
+        $this->assertStringContainsString('CATEGORIA;SUBCATEGORIA', $content);
+
+        // Verify order:
+        // 10KM > M 20-29 (Carlos)
+        // 10KM > M 30-39 (Bruno)
+        // 5KM (Alice)
+        // 5KM (Zélia)
+        $posCarlos = strpos($content, 'Carlos 10K SubA');
+        $posBruno = strpos($content, 'Bruno 10K SubB');
+        $posAlice = strpos($content, 'Alice 5K');
+        $posZelia = strpos($content, 'Zélia 5K');
+
+        $this->assertTrue($posCarlos < $posBruno, '10KM SubA should precede 10KM SubB');
+        $this->assertTrue($posBruno < $posAlice, '10KM should precede 5KM');
+        $this->assertTrue($posAlice < $posZelia, 'Alice should precede Zélia in 5KM');
+    }
 }

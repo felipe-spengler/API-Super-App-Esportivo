@@ -156,8 +156,37 @@ export function IndividualAthleteManager() {
         }
     };
 
-    const handleExportCSV = () => {
-        window.open(`${api.defaults.baseURL}/admin/championships/${id}/results/export`, '_blank');
+    const handleExportCSV = async () => {
+        const toastId = toast.loading('Exportando lista de atletas...');
+        try {
+            const params: any = {};
+            if (selectedCategory && selectedCategory !== 'all') {
+                params.category_id = selectedCategory;
+            }
+            if (searchTerm) {
+                params.search = searchTerm;
+            }
+
+            const response = await api.get(`/admin/championships/${id}/results/export`, {
+                params,
+                responseType: 'blob'
+            });
+
+            const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `lista_atletas_inscritos_${id}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+
+            toast.success('Lista de atletas exportada com sucesso!', { id: toastId });
+        } catch (error: any) {
+            console.error('Erro ao exportar:', error);
+            toast.error('Erro ao exportar lista de atletas', { id: toastId });
+        }
     };
 
     const handleResendEmail = async (athleteId: number) => {

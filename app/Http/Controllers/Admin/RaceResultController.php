@@ -220,21 +220,128 @@ class RaceResultController extends Controller
     }
 
     /**
-     * Exportar CSV de Atletas
+     * Exportar CSV de Atletas (Ordenado por Categoria > Subcategoria > Ordem Alfabética)
      */
-    public function exportCsv($championshipId)
+    public function exportCsv(Request $request, $championshipId)
     {
         $race = Race::where('championship_id', $championshipId)->first();
-        if (!$race)
-            return response()->json(['error' => 'Corrida não encontrada'], 404);
-        $results = RaceResult::where('race_id', $race->id)->with(['category', 'user'])->get();
+        if (!$race) {
+            return response()->json(['error' => 'Corrida não encontrada para este campeonato.'], 404);
+        }
 
-        $headers = ['Content-Type' => 'text/csv', 'Content-Disposition' => 'attachment; filename="inscritos.csv"'];
-        return response()->stream(function () use ($results) {
+        $query = RaceResult::where('race_id', $race->id)->with(['category.parent', 'user']);
+
+        // Filtro opcional por categoria (se selecionado na tela)
+        if ($request->filled('category_id') && $request->category_id !== 'all') {
+            $catId = $request->category_id;
+            $subCatIds = Category::where('parent_id', $catId)->pluck('id')->toArray();
+            $targetCatIds = array_merge([$catId], $subCatIds);
+            $query->whereIn('category_id', $targetCatIds);
+        }
+
+        // Filtro opcional por busca (se digitado na tela)
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('bib_number', 'like', "%{$search}%")
+                  ->orWhere('team_name', 'like', "%{$search}%");
+            });
+        }
+
+        $results = $query->get();
+
+        // Ordenação: 1º Categoria Principal, 2º Subcategoria, 3º Ordem Alfabética do Nome (A-Z)
+        $sorted = $results->sort(function ($a, $b) {
+            // Categoria principal
+            $mainCatA = $a->category?->parent ? $a->category->parent->name : ($a->category?->name ?? 'Geral');
+            $mainCatB = $b->category?->parent ? $b->category->parent->name : ($b->category?->name ?? 'Geral');
+            $cmpMain = strcasecmp($mainCatA, $mainCatB);
+            if ($cmpMain !== 0) return $cmpMain;
+
+            // Subcategoria
+            $subCatA = $a->category?->parent ? $a->category->name : '';
+            $subCatB = $b->category?->parent ? $b->category->name : '';
+            $cmpSub = strcasecmp($subCatA, $subCatB);
+            if ($cmpSub !== 0) return $cmpSub;
+
+            // Nome do Atleta (Ordem Alfabética A-Z)
+            $nameA = $a->name ?: ($a->user?->name ?? '');
+            $nameB = $b->name ?: ($b->user?->name ?? '');
+            return strcasecmp($nameA, $nameB);
+        })->values();
+
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="atletas_inscritos.csv"',
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
+        ];
+
+        return response()->stream(function () use ($sorted) {
             $file = fopen('php://output', 'w');
-            fputcsv($file, ['BIB', 'NOME', 'EQUIPE', 'CATEGORIA', 'DOCUMENTO', 'GENERO', 'STATUS', 'METODO']);
-            foreach ($results as $row) {
-                fputcsv($file, [$row->bib_number, $row->name, $row->team_name ?? '', $row->category->name ?? 'Geral', $row->user->cpf ?? '', $row->user->gender ?? 'MISTO', $row->status_payment, $row->payment_method]);
+
+            // UTF-8 BOM para garantir acentos perfeitos no Excel brasileiro
+            fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+            // Cabeçalho completo para os organizadores
+            fputcsv($file, [
+                'BIB (PEITO)',
+                'NOME DO ATLETA',
+                'EQUIPE',
+                'CATEGORIA',
+                'SUBCATEGORIA',
+                'CPF / DOCUMENTO',
+                'TELEFONE',
+                'DATA DE NASCIMENTO',
+                'GENERO',
+                'PCD',
+                'STATUS PAGAMENTO',
+                'METODO PAGAMENTO'
+            ], ';');
+
+            foreach ($sorted as $row) {
+                $mainCat = $row->category?->parent ? $row->category->parent->name : ($row->category?->name ?? 'Geral');
+                $subCat = $row->category?->parent ? $row->category->name : '-';
+
+                $birthDateFormatted = '';
+                if ($row->user?->birth_date) {
+                    try {
+                        $birthDateFormatted = \Carbon\Carbon::parse($row->user->birth_date)->format('d/m/Y');
+                    } catch (\Exception $e) {
+                        $birthDateFormatted = (string) $row->user->birth_date;
+                    }
+                }
+
+                $statusMap = [
+                    'paid' => 'PAGO',
+                    'pending' => 'PENDENTE',
+                    'cancelled' => 'CANCELADO'
+                ];
+                $statusLabel = $statusMap[$row->status_payment] ?? strtoupper($row->status_payment ?? 'PENDENTE');
+
+                $genderMap = [
+                    'M' => 'MASCULINO',
+                    'F' => 'FEMININO',
+                    'O' => 'OUTRO'
+                ];
+                $genderLabel = $genderMap[$row->user?->gender ?? ''] ?? ($row->user?->gender ?? 'MISTO');
+
+                fputcsv($file, [
+                    $row->bib_number ?: '--',
+                    $row->name ?: ($row->user?->name ?? ''),
+                    $row->team_name ?? '',
+                    $mainCat,
+                    $subCat,
+                    $row->user?->cpf ?? '',
+                    $row->user?->phone ?? '',
+                    $birthDateFormatted,
+                    $genderLabel,
+                    $row->is_pcd ? 'SIM' : 'NÃO',
+                    $statusLabel,
+                    strtoupper($row->payment_method ?? '')
+                ], ';');
             }
             fclose($file);
         }, 200, $headers);
