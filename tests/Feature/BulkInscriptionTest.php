@@ -10,6 +10,7 @@ use App\Models\Category;
 use App\Models\Race;
 use App\Models\RaceResult;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class BulkInscriptionTest extends TestCase
@@ -253,5 +254,79 @@ class BulkInscriptionTest extends TestCase
         $this->assertTrue($posCarlos < $posBruno, '10KM SubA should precede 10KM SubB');
         $this->assertTrue($posBruno < $posAlice, '10KM should precede 5KM');
         $this->assertTrue($posAlice < $posZelia, 'Alice should precede Zélia in 5KM');
+    }
+
+    public function test_manual_update_payment_backup_webhook()
+    {
+        Mail::fake();
+
+        $user = User::factory()->create([
+            'email' => 'admin_test@example.com',
+            'is_admin' => true
+        ]);
+
+        $club = Club::factory()->create();
+        $sport = Sport::factory()->create();
+        $championship = Championship::create([
+            'club_id' => $club->id,
+            'sport_id' => $sport->id,
+            'name' => 'Corrida Backup Test',
+            'format' => 'racing',
+            'start_date' => now()->addDays(5),
+        ]);
+        $race = Race::create([
+            'championship_id' => $championship->id,
+            'start_datetime' => now()->addDays(5),
+        ]);
+        $category = Category::create([
+            'championship_id' => $championship->id,
+            'name' => 'Geral',
+            'price' => 100.00
+        ]);
+
+        $athleteUser = User::factory()->create([
+            'email' => 'atleta_backup@example.com',
+            'name' => 'Atleta Manual Test'
+        ]);
+
+        $result = RaceResult::create([
+            'race_id' => $race->id,
+            'user_id' => $athleteUser->id,
+            'category_id' => $category->id,
+            'name' => 'Atleta Manual Test',
+            'bib_number' => '555',
+            'status_payment' => 'pending',
+            'payment_method' => 'pix'
+        ]);
+
+        // Autentica como admin e altera pagamento para pago
+        $response = $this->actingAs($user)->patchJson("/api/admin/results/{$result->id}/payment", [
+            'status_payment' => 'paid',
+            'payment_method' => 'credit_card',
+            'send_email' => true
+        ]);
+
+        $response->assertStatus(200);
+        $this->assertDatabaseHas('race_results', [
+            'id' => $result->id,
+            'status_payment' => 'paid',
+            'payment_method' => 'credit_card'
+        ]);
+
+        Mail::assertSent(\App\Mail\InscriptionConfirmedMail::class);
+
+        // Altera de volta para pendente
+        $responsePending = $this->actingAs($user)->patchJson("/api/admin/results/{$result->id}/payment", [
+            'status_payment' => 'pending',
+            'payment_method' => 'boleto',
+            'send_email' => false
+        ]);
+
+        $responsePending->assertStatus(200);
+        $this->assertDatabaseHas('race_results', [
+            'id' => $result->id,
+            'status_payment' => 'pending',
+            'payment_method' => 'boleto'
+        ]);
     }
 }

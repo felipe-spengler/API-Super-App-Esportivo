@@ -8,6 +8,7 @@ use App\Models\Race;
 use App\Models\RaceResult;
 use App\Models\User;
 use App\Models\Category;
+use App\Models\Product;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\InscriptionPaymentMail;
@@ -210,17 +211,101 @@ class RaceResultController extends Controller
     }
 
     /**
-     * Atualizar apenas o pagamento
+     * Atualizar apenas o pagamento (Manual / Backup ao webhook)
      */
     public function updatePayment(Request $request, $id)
     {
-        $result = RaceResult::findOrFail($id);
-        $result->update($request->only(['status_payment', 'payment_method']));
-        return response()->json($result->load(['user', 'category']));
+        $request->validate([
+            'status_payment' => 'required|in:pending,paid,cancelled',
+            'payment_method' => 'nullable|string|max:50',
+            'send_email'     => 'nullable|boolean'
+        ]);
+
+        $result = RaceResult::with(['user', 'category.parent', 'race.championship.club'])->findOrFail($id);
+        
+        $oldStatus = $result->status_payment;
+        $newStatus = $request->input('status_payment');
+        $paymentMethod = $request->input('payment_method', $result->payment_method ?? 'pix');
+        $sendEmail = $request->boolean('send_email', false);
+
+        $result->status_payment = $newStatus;
+        $result->payment_method = $paymentMethod;
+        $result->save();
+
+        // Se mudou para pago e antes não era pago, dar baixa nos brindes e produtos extras (se aplicável)
+        if ($newStatus === 'paid' && $oldStatus !== 'paid') {
+            // Baixa no Estoque dos Brindes (Produtos Inclusos na Categoria)
+            if ($result->category) {
+                try {
+                    $included = $result->category->products();
+                    if ($included && $included->count() > 0) {
+                        foreach ($included as $item) {
+                            $product = $item['product'];
+                            $qty = $item['quantity'] ?? 1;
+                            if ($product && $product->stock_quantity !== null) {
+                                $product->decrement('stock_quantity', $qty);
+                                Log::info("Manual payment: Stock reduced for Gift Product {$product->id}: -{$qty} (RaceResult {$result->id})");
+                            }
+                        }
+                    }
+                } catch (\Throwable $stockEx) {
+                    Log::error("Erro manual ao baixar estoque de brindes RR {$result->id}: " . $stockEx->getMessage());
+                }
+            }
+
+            // Baixa no Estoque dos Itens de Loja Adicionais
+            try {
+                if ($result->shop_items && is_array($result->shop_items)) {
+                    foreach ($result->shop_items as $item) {
+                        $prod = Product::find($item['product_id']);
+                        if ($prod && $prod->stock_quantity !== null) {
+                            $prod->decrement('stock_quantity', $item['quantity'] ?? 1);
+                            Log::info("Manual payment: Stock reduced for Additional Shop Item {$prod->id}: -" . ($item['quantity'] ?? 1));
+                        }
+                    }
+                }
+            } catch (\Throwable $stockEx) {
+                Log::error("Erro manual ao baixar estoque de loja RR {$result->id}: " . $stockEx->getMessage());
+            }
+        }
+
+        // Se solicitado envio de e-mail e possui e-mail cadastrado
+        if ($sendEmail && $result->user && $result->user->email) {
+            try {
+                if ($newStatus === 'paid') {
+                    // Envia confirmação com comprovante em PDF se possível
+                    try {
+                        $receiptController = new \App\Http\Controllers\ReceiptController();
+                        $pdf = $receiptController->generatePdf($result);
+                        $pdfContent = $pdf->output();
+
+                        Mail::to($result->user->email)->send(
+                            (new InscriptionConfirmedMail($result))
+                                ->attachData($pdfContent, 'comprovante_inscricao.pdf', [
+                                    'mime' => 'application/pdf',
+                                ])
+                        );
+                    } catch (\Throwable $pdfEx) {
+                        Log::warning("Falha ao gerar PDF no updatePayment manual, enviando sem anexo: " . $pdfEx->getMessage());
+                        Mail::to($result->user->email)->send(new InscriptionConfirmedMail($result));
+                    }
+                } elseif ($newStatus === 'pending') {
+                    $paymentInfo = $result->payment_info ?? [];
+                    Mail::to($result->user->email)->send(new InscriptionPaymentMail($result, $paymentInfo));
+                }
+            } catch (\Throwable $mailEx) {
+                Log::error("Erro ao enviar e-mail após alteração manual de pagamento RR {$result->id}: " . $mailEx->getMessage());
+            }
+        }
+
+        return response()->json([
+            'message' => 'Pagamento atualizado com sucesso!',
+            'result'  => $result->load(['user', 'category'])
+        ]);
     }
 
     /**
-     * Exportar CSV de Atletas (Ordenado por Categoria > Subcategoria > Ordem Alfabética)
+     * Exportar CSV de Atletas Personalizável (Camiseta, Equipe, Categoria, Seleção de Colunas)
      */
     public function exportCsv(Request $request, $championshipId)
     {
@@ -231,12 +316,17 @@ class RaceResultController extends Controller
 
         $query = RaceResult::where('race_id', $race->id)->with(['category.parent', 'user']);
 
-        // Filtro opcional por categoria (se selecionado na tela)
+        // Filtro opcional por categoria (se selecionado na tela/modal)
         if ($request->filled('category_id') && $request->category_id !== 'all') {
             $catId = $request->category_id;
             $subCatIds = Category::where('parent_id', $catId)->pluck('id')->toArray();
             $targetCatIds = array_merge([$catId], $subCatIds);
             $query->whereIn('category_id', $targetCatIds);
+        }
+
+        // Filtro opcional por status de pagamento (se selecionado no modal)
+        if ($request->filled('status_payment') && $request->status_payment !== 'all') {
+            $query->where('status_payment', $request->status_payment);
         }
 
         // Filtro opcional por busca (se digitado na tela)
@@ -245,31 +335,101 @@ class RaceResultController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('bib_number', 'like', "%{$search}%")
-                  ->orWhere('team_name', 'like', "%{$search}%");
+                  ->orWhere('team_name', 'like', "%{$search}%")
+                  ->orWhereHas('user', function ($uq) use ($search) {
+                      $uq->where('cpf', 'like', "%{$search}%")
+                         ->orWhere('name', 'like', "%{$search}%")
+                         ->orWhere('phone', 'like', "%{$search}%");
+                  });
             });
         }
 
         $results = $query->get();
 
-        // Ordenação: 1º Categoria Principal, 2º Subcategoria, 3º Ordem Alfabética do Nome (A-Z)
-        $sorted = $results->sort(function ($a, $b) {
-            // Categoria principal
-            $mainCatA = $a->category?->parent ? $a->category->parent->name : ($a->category?->name ?? 'Geral');
-            $mainCatB = $b->category?->parent ? $b->category->parent->name : ($b->category?->name ?? 'Geral');
-            $cmpMain = strcasecmp($mainCatA, $mainCatB);
-            if ($cmpMain !== 0) return $cmpMain;
+        // Pré-carregar todos os produtos citados em gifts ou shop_items para extrair camiseta e brindes
+        $productIds = [];
+        foreach ($results as $r) {
+            if (is_array($r->gifts)) {
+                foreach ($r->gifts as $g) {
+                    if (!empty($g['product_id'])) $productIds[] = $g['product_id'];
+                }
+            }
+            if (is_array($r->shop_items)) {
+                foreach ($r->shop_items as $s) {
+                    if (!empty($s['product_id'])) $productIds[] = $s['product_id'];
+                }
+            }
+        }
+        $productsMap = !empty($productIds)
+            ? Product::whereIn('id', array_unique($productIds))->get()->keyBy('id')
+            : collect([]);
 
-            // Subcategoria
-            $subCatA = $a->category?->parent ? $a->category->name : '';
-            $subCatB = $b->category?->parent ? $b->category->name : '';
-            $cmpSub = strcasecmp($subCatA, $subCatB);
-            if ($cmpSub !== 0) return $cmpSub;
+        // Ordenação
+        $orderBy = $request->input('order_by', 'category');
+        if ($orderBy === 'bib') {
+            $sorted = $results->sortBy(fn($r) => (int) ($r->bib_number ?: 999999))->values();
+        } elseif ($orderBy === 'name') {
+            $sorted = $results->sortBy(fn($r) => mb_strtolower($r->name ?: ($r->user?->name ?? '')))->values();
+        } else {
+            // Padrão: 1º Categoria Principal, 2º Subcategoria, 3º Ordem Alfabética (A-Z)
+            $sorted = $results->sort(function ($a, $b) {
+                $mainCatA = $a->category?->parent ? $a->category->parent->name : ($a->category?->name ?? 'Geral');
+                $mainCatB = $b->category?->parent ? $b->category->parent->name : ($b->category?->name ?? 'Geral');
+                $cmpMain = strcasecmp($mainCatA, $mainCatB);
+                if ($cmpMain !== 0) return $cmpMain;
 
-            // Nome do Atleta (Ordem Alfabética A-Z)
-            $nameA = $a->name ?: ($a->user?->name ?? '');
-            $nameB = $b->name ?: ($b->user?->name ?? '');
-            return strcasecmp($nameA, $nameB);
-        })->values();
+                $subCatA = $a->category?->parent ? $a->category->name : '';
+                $subCatB = $b->category?->parent ? $b->category->name : '';
+                $cmpSub = strcasecmp($subCatA, $subCatB);
+                if ($cmpSub !== 0) return $cmpSub;
+
+                $nameA = $a->name ?: ($a->user?->name ?? '');
+                $nameB = $b->name ?: ($b->user?->name ?? '');
+                return strcasecmp($nameA, $nameB);
+            })->values();
+        }
+
+        // Mapa de todas as colunas possíveis
+        $availableColumns = [
+            'bib_number'     => 'BIB (PEITO)',
+            'name'           => 'NOME DO ATLETA',
+            'team_name'      => 'EQUIPE',
+            'category'       => 'CATEGORIA',
+            'subcategory'    => 'SUBCATEGORIA',
+            'shirt_size'     => 'TAMANHO CAMISA',
+            'gifts'          => 'KIT / BRINDES INCLUSOS',
+            'shop_items'     => 'PRODUTOS EXTRAS',
+            'status_payment' => 'STATUS PAGAMENTO',
+            'payment_method' => 'FORMA PAGAMENTO',
+            'kit_delivered'  => 'KIT ENTREGUE',
+            'created_at'     => 'DATA INSCRICAO',
+            'cpf'            => 'CPF / DOCUMENTO',
+            'phone'          => 'TELEFONE / WHATSAPP',
+            'email'          => 'E-MAIL',
+            'birth_date'     => 'DATA NASCIMENTO',
+            'age'            => 'IDADE',
+            'gender'         => 'GENERO',
+            'is_pcd'         => 'PCD',
+            'address'        => 'ENDERECO'
+        ];
+
+        // Determinar colunas selecionadas
+        $selectedKeys = [];
+        if ($request->filled('columns')) {
+            $rawCols = is_array($request->columns) ? $request->columns : explode(',', $request->columns);
+            $selectedKeys = array_values(array_intersect(array_map('trim', $rawCols), array_keys($availableColumns)));
+        }
+
+        if (empty($selectedKeys)) {
+            // Colunas padrão caso não seja especificado
+            $selectedKeys = [
+                'bib_number', 'name', 'team_name', 'category', 'subcategory',
+                'shirt_size', 'gifts', 'cpf', 'phone', 'birth_date', 'age',
+                'gender', 'is_pcd', 'status_payment', 'payment_method'
+            ];
+        }
+
+        $headersCsv = array_map(fn($key) => $availableColumns[$key], $selectedKeys);
 
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',
@@ -279,36 +439,70 @@ class RaceResultController extends Controller
             'Expires' => '0',
         ];
 
-        return response()->stream(function () use ($sorted) {
+        return response()->stream(function () use ($sorted, $selectedKeys, $headersCsv, $productsMap) {
             $file = fopen('php://output', 'w');
 
-            // UTF-8 BOM para garantir acentos perfeitos no Excel brasileiro
+            // UTF-8 BOM para garantir acentuação e caracteres corretos no Excel brasileiro
             fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
 
-            // Cabeçalho completo para os organizadores
-            fputcsv($file, [
-                'BIB (PEITO)',
-                'NOME DO ATLETA',
-                'EQUIPE',
-                'CATEGORIA',
-                'SUBCATEGORIA',
-                'CPF / DOCUMENTO',
-                'TELEFONE',
-                'DATA DE NASCIMENTO',
-                'GENERO',
-                'PCD',
-                'STATUS PAGAMENTO',
-                'METODO PAGAMENTO'
-            ], ';');
+            // Linha de cabeçalho com as colunas selecionadas
+            fputcsv($file, $headersCsv, ';');
 
             foreach ($sorted as $row) {
                 $mainCat = $row->category?->parent ? $row->category->parent->name : ($row->category?->name ?? 'Geral');
                 $subCat = $row->category?->parent ? $row->category->name : '-';
 
+                // Processar Brindes e extrair Tamanho da Camiseta
+                $shirtSizes = [];
+                $giftsList = [];
+                if (is_array($row->gifts)) {
+                    foreach ($row->gifts as $g) {
+                        $pId = $g['product_id'] ?? null;
+                        $prod = $pId ? ($productsMap[$pId] ?? null) : null;
+                        $prodName = $prod ? $prod->name : "Produto #$pId";
+                        $variant = $g['variant'] ?? null;
+
+                        $giftsList[] = $prodName . ($variant ? " ($variant)" : "");
+
+                        $isShirt = preg_match('/(camis|camiseta|t-shirt|baby\s*look|regata)/i', $prodName);
+                        if ($isShirt && $variant) {
+                            $shirtSizes[] = $variant;
+                        } elseif (!$isShirt && $variant && empty($shirtSizes) && count($row->gifts) === 1) {
+                            $shirtSizes[] = $variant;
+                        }
+                    }
+                }
+
+                // Processar Itens Extras da Loja
+                $shopList = [];
+                if (is_array($row->shop_items)) {
+                    foreach ($row->shop_items as $s) {
+                        $pId = $s['product_id'] ?? null;
+                        $prod = $pId ? ($productsMap[$pId] ?? null) : null;
+                        $prodName = $prod ? $prod->name : "Produto #$pId";
+                        $variant = $s['variant'] ?? null;
+                        $qty = $s['quantity'] ?? 1;
+
+                        $shopList[] = $prodName . ($variant ? " ($variant)" : "") . ($qty > 1 ? " x$qty" : "");
+
+                        if (empty($shirtSizes) && preg_match('/(camis|camiseta|t-shirt|baby\s*look|regata)/i', $prodName) && $variant) {
+                            $shirtSizes[] = $variant;
+                        }
+                    }
+                }
+
+                $shirtSizeFinal = !empty($shirtSizes) ? implode(', ', array_unique($shirtSizes)) : '-';
+                $giftsSummary = !empty($giftsList) ? implode('; ', $giftsList) : '-';
+                $shopSummary = !empty($shopList) ? implode('; ', $shopList) : '-';
+
+                // Data de nascimento e idade
                 $birthDateFormatted = '';
+                $age = '';
                 if ($row->user?->birth_date) {
                     try {
-                        $birthDateFormatted = \Carbon\Carbon::parse($row->user->birth_date)->format('d/m/Y');
+                        $parsedDate = \Carbon\Carbon::parse($row->user->birth_date);
+                        $birthDateFormatted = $parsedDate->format('d/m/Y');
+                        $age = (string) $parsedDate->age;
                     } catch (\Exception $e) {
                         $birthDateFormatted = (string) $row->user->birth_date;
                     }
@@ -328,20 +522,77 @@ class RaceResultController extends Controller
                 ];
                 $genderLabel = $genderMap[$row->user?->gender ?? ''] ?? ($row->user?->gender ?? 'MISTO');
 
-                fputcsv($file, [
-                    $row->bib_number ?: '--',
-                    $row->name ?: ($row->user?->name ?? ''),
-                    $row->team_name ?? '',
-                    $mainCat,
-                    $subCat,
-                    $row->user?->cpf ?? '',
-                    $row->user?->phone ?? '',
-                    $birthDateFormatted,
-                    $genderLabel,
-                    $row->is_pcd ? 'SIM' : 'NÃO',
-                    $statusLabel,
-                    strtoupper($row->payment_method ?? '')
-                ], ';');
+                // Montar cada coluna dinamicamente de acordo com a seleção
+                $lineValues = [];
+                foreach ($selectedKeys as $key) {
+                    switch ($key) {
+                        case 'bib_number':
+                            $lineValues[] = $row->bib_number ?: '--';
+                            break;
+                        case 'name':
+                            $lineValues[] = $row->name ?: ($row->user?->name ?? '');
+                            break;
+                        case 'team_name':
+                            $lineValues[] = $row->team_name ?? '';
+                            break;
+                        case 'category':
+                            $lineValues[] = $mainCat;
+                            break;
+                        case 'subcategory':
+                            $lineValues[] = $subCat;
+                            break;
+                        case 'shirt_size':
+                            $lineValues[] = $shirtSizeFinal;
+                            break;
+                        case 'gifts':
+                            $lineValues[] = $giftsSummary;
+                            break;
+                        case 'shop_items':
+                            $lineValues[] = $shopSummary;
+                            break;
+                        case 'status_payment':
+                            $lineValues[] = $statusLabel;
+                            break;
+                        case 'payment_method':
+                            $lineValues[] = strtoupper($row->payment_method ?? '');
+                            break;
+                        case 'kit_delivered':
+                            $lineValues[] = $row->kit_delivered ? 'SIM' . ($row->kit_delivered_at ? ' (' . $row->kit_delivered_at->format('d/m/Y H:i') . ')' : '') : 'NÃO';
+                            break;
+                        case 'created_at':
+                            $lineValues[] = $row->created_at ? $row->created_at->format('d/m/Y H:i') : '';
+                            break;
+                        case 'cpf':
+                            $lineValues[] = $row->user?->cpf ?? '';
+                            break;
+                        case 'phone':
+                            $lineValues[] = $row->user?->phone ?? '';
+                            break;
+                        case 'email':
+                            $lineValues[] = $row->user?->email ?? '';
+                            break;
+                        case 'birth_date':
+                            $lineValues[] = $birthDateFormatted;
+                            break;
+                        case 'age':
+                            $lineValues[] = $age;
+                            break;
+                        case 'gender':
+                            $lineValues[] = $genderLabel;
+                            break;
+                        case 'is_pcd':
+                            $lineValues[] = $row->is_pcd ? 'SIM' : 'NÃO';
+                            break;
+                        case 'address':
+                            $lineValues[] = $row->user?->address ?? '';
+                            break;
+                        default:
+                            $lineValues[] = '';
+                            break;
+                    }
+                }
+
+                fputcsv($file, $lineValues, ';');
             }
             fclose($file);
         }, 200, $headers);

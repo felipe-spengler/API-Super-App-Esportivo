@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Users, Search, Filter, Download, UserPlus, FileCheck, Mail, Wand2, X, Table, Upload, AlertCircle } from 'lucide-react';
+import { 
+    Users, Search, Filter, Download, UserPlus, FileCheck, Mail, Wand2, 
+    X, Table, Upload, AlertCircle, SlidersHorizontal, Shirt, UserCheck, Check, CreditCard, CheckCircle2 
+} from 'lucide-react';
 import api from '../../../services/api';
 import { compressImage } from '../../../utils/imageCompressor';
 import toast from 'react-hot-toast';
@@ -27,6 +30,76 @@ export function IndividualAthleteManager() {
     const [categories, setCategories] = useState<any[]>([]);
     const [file, setFile] = useState<File | null>(null);
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
+
+    // Estados do Modal de Alteração de Pagamento (Backup Webhook)
+    const [selectedAthleteForPayment, setSelectedAthleteForPayment] = useState<Athlete | null>(null);
+    const [paymentModalStatus, setPaymentModalStatus] = useState<'pending' | 'paid' | 'cancelled'>('paid');
+    const [paymentModalMethod, setPaymentModalMethod] = useState<string>('pix');
+    const [paymentModalSendEmail, setPaymentModalSendEmail] = useState<boolean>(true);
+    const [savingPayment, setSavingPayment] = useState<boolean>(false);
+
+    // Estados do Modal de Exportação Personalizada
+    const [showExportModal, setShowExportModal] = useState(false);
+    const [exporting, setExporting] = useState(false);
+    const [exportCategory, setExportCategory] = useState<string>('all');
+    const [exportPaymentStatus, setExportPaymentStatus] = useState<string>('all');
+    const [exportOrderBy, setExportOrderBy] = useState<string>('category');
+    const [selectedColumns, setSelectedColumns] = useState<string[]>([
+        'bib_number',
+        'name',
+        'team_name',
+        'category',
+        'subcategory',
+        'shirt_size',
+        'gifts',
+        'shop_items',
+        'status_payment',
+        'payment_method',
+        'cpf',
+        'phone',
+        'birth_date',
+        'age',
+        'gender'
+    ]);
+
+    const EVENT_COLUMNS = [
+        { id: 'bib_number', label: 'Número de Peito (BIB)', badge: 'Essencial' },
+        { id: 'name', label: 'Nome do Atleta', badge: 'Essencial' },
+        { id: 'team_name', label: 'Equipe / Time', badge: 'Prova' },
+        { id: 'category', label: 'Categoria Principal', badge: 'Prova' },
+        { id: 'subcategory', label: 'Subcategoria / Faixa Etária', badge: 'Prova' },
+        { id: 'shirt_size', label: 'Tamanho da Camiseta', badge: 'Kit' },
+        { id: 'gifts', label: 'Kit / Brindes Inclusos', badge: 'Kit' },
+        { id: 'shop_items', label: 'Produtos Extras Comprados', badge: 'Loja' },
+        { id: 'status_payment', label: 'Status do Pagamento', badge: 'Financeiro' },
+        { id: 'payment_method', label: 'Forma de Pagamento', badge: 'Financeiro' },
+        { id: 'kit_delivered', label: 'Kit Já Entregue?', badge: 'Logística' },
+        { id: 'created_at', label: 'Data da Inscrição', badge: 'Registro' },
+    ];
+
+    const PERSONAL_COLUMNS = [
+        { id: 'cpf', label: 'CPF / Documento', badge: 'Doc' },
+        { id: 'phone', label: 'Telefone / WhatsApp', badge: 'Contato' },
+        { id: 'email', label: 'E-mail', badge: 'Contato' },
+        { id: 'birth_date', label: 'Data de Nascimento', badge: 'Pessoal' },
+        { id: 'age', label: 'Idade Atual', badge: 'Pessoal' },
+        { id: 'gender', label: 'Gênero / Sexo', badge: 'Pessoal' },
+        { id: 'is_pcd', label: 'Atleta PCD?', badge: 'Saúde' },
+        { id: 'address', label: 'Endereço Completo', badge: 'Localização' },
+    ];
+
+    const allColumnIds = [...EVENT_COLUMNS.map(c => c.id), ...PERSONAL_COLUMNS.map(c => c.id)];
+
+    const toggleColumn = (colId: string) => {
+        setSelectedColumns(prev =>
+            prev.includes(colId) ? prev.filter(c => c !== colId) : [...prev, colId]
+        );
+    };
+
+    const selectAllColumns = () => setSelectedColumns(allColumnIds);
+    const selectEventColumnsOnly = () => setSelectedColumns(EVENT_COLUMNS.map(c => c.id));
+    const selectPersonalColumnsOnly = () => setSelectedColumns(PERSONAL_COLUMNS.map(c => c.id));
+    const deselectAllColumns = () => setSelectedColumns([]);
 
     const [formData, setFormData] = useState({
         name: '',
@@ -156,12 +229,24 @@ export function IndividualAthleteManager() {
         }
     };
 
-    const handleExportCSV = async () => {
-        const toastId = toast.loading('Exportando lista de atletas...');
+    const handleConfirmExport = async () => {
+        if (selectedColumns.length === 0) {
+            toast.error('Selecione pelo menos uma coluna para exportar!');
+            return;
+        }
+
+        const toastId = toast.loading('Gerando planilha personalizada...');
+        setExporting(true);
         try {
-            const params: any = {};
-            if (selectedCategory && selectedCategory !== 'all') {
-                params.category_id = selectedCategory;
+            const params: any = {
+                columns: selectedColumns.join(','),
+                order_by: exportOrderBy
+            };
+            if (exportCategory && exportCategory !== 'all') {
+                params.category_id = exportCategory;
+            }
+            if (exportPaymentStatus && exportPaymentStatus !== 'all') {
+                params.status_payment = exportPaymentStatus;
             }
             if (searchTerm) {
                 params.search = searchTerm;
@@ -176,16 +261,56 @@ export function IndividualAthleteManager() {
             const url = window.URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.setAttribute('download', `lista_atletas_inscritos_${id}.csv`);
+            link.setAttribute('download', `lista_atletas_${id}_${new Date().toISOString().slice(0, 10)}.csv`);
             document.body.appendChild(link);
             link.click();
             link.remove();
             window.URL.revokeObjectURL(url);
 
             toast.success('Lista de atletas exportada com sucesso!', { id: toastId });
+            setShowExportModal(false);
         } catch (error: any) {
             console.error('Erro ao exportar:', error);
             toast.error('Erro ao exportar lista de atletas', { id: toastId });
+        } finally {
+            setExporting(false);
+        }
+    };
+
+    const openPaymentModal = (athlete: Athlete) => {
+        setSelectedAthleteForPayment(athlete);
+        setPaymentModalStatus(athlete.status_payment || 'paid');
+        setPaymentModalMethod(athlete.payment_method || 'pix');
+        setPaymentModalSendEmail(true);
+    };
+
+    const handleSavePayment = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedAthleteForPayment) return;
+
+        setSavingPayment(true);
+        const toastId = toast.loading('Atualizando pagamento...');
+        try {
+            await api.patch(`/admin/results/${selectedAthleteForPayment.id}/payment`, {
+                status_payment: paymentModalStatus,
+                payment_method: paymentModalMethod,
+                send_email: paymentModalSendEmail
+            });
+
+            // Atualiza na listagem local
+            setAthletes(prev => prev.map(a => 
+                a.id === selectedAthleteForPayment.id 
+                    ? { ...a, status_payment: paymentModalStatus, payment_method: paymentModalMethod } 
+                    : a
+            ));
+
+            toast.success('Status de pagamento atualizado com sucesso!', { id: toastId });
+            setSelectedAthleteForPayment(null);
+        } catch (error: any) {
+            console.error('Erro ao atualizar pagamento:', error);
+            toast.error(error.response?.data?.error || 'Erro ao atualizar pagamento', { id: toastId });
+        } finally {
+            setSavingPayment(false);
         }
     };
 
@@ -225,11 +350,15 @@ export function IndividualAthleteManager() {
                             Importar CSV
                         </button>
                         <button
-                            onClick={handleExportCSV}
+                            onClick={() => {
+                                setExportCategory(selectedCategory);
+                                setShowExportModal(true);
+                            }}
                             className="flex items-center gap-2 px-4 py-2 text-slate-600 hover:bg-slate-50 rounded-xl transition-all font-bold text-sm border-l border-slate-100"
+                            title="Personalizar e exportar lista de atletas"
                         >
-                            <Download size={18} />
-                            Exportar
+                            <SlidersHorizontal size={18} className="text-indigo-600" />
+                            Exportar Lista
                         </button>
                     </div>
                     <button
@@ -318,7 +447,11 @@ export function IndividualAthleteManager() {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="flex flex-col gap-1">
+                                            <div 
+                                                onClick={() => openPaymentModal(athlete)}
+                                                className="flex flex-col gap-1 cursor-pointer group hover:opacity-80 transition-opacity"
+                                                title="Clique para alterar pagamento"
+                                            >
                                                 <span className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${athlete.status_payment === 'paid'
                                                     ? 'bg-emerald-50 text-emerald-600'
                                                     : athlete.status_payment === 'cancelled'
@@ -333,13 +466,20 @@ export function IndividualAthleteManager() {
                                                         }`} />
                                                     {athlete.status_payment === 'paid' ? 'Pago' : athlete.status_payment === 'cancelled' ? 'Cancelado' : 'Pendente'}
                                                 </span>
-                                                <span className="text-[9px] text-slate-400 uppercase font-bold px-2 italic">
-                                                    {athlete.payment_method || 'N/A'}
+                                                <span className="text-[9px] text-slate-400 uppercase font-bold px-2 italic group-hover:text-indigo-600 transition-colors">
+                                                    {athlete.payment_method || 'N/A'} (alterar)
                                                 </span>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex justify-end gap-1">
+                                                <button 
+                                                    onClick={() => openPaymentModal(athlete)}
+                                                    title="Alterar Pagamento (Backup Webhook)"
+                                                    className="p-2.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
+                                                >
+                                                    <CreditCard size={20} />
+                                                </button>
                                                 <a
                                                     href={`${import.meta.env.VITE_API_URL || '/api'}/art/championship/${id}/individual/${athlete.id}/atleta_confirmado?category_name=${athlete.category?.name || ''}`}
                                                     target="_blank"
@@ -593,6 +733,410 @@ export function IndividualAthleteManager() {
                             >
                                 Iniciar Importação
                             </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal: Exportação Personalizada de Atletas */}
+            {showExportModal && (
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+                        {/* Header */}
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                                    <Download size={20} />
+                                </div>
+                                <div>
+                                    <h2 className="text-lg font-black text-slate-900 leading-tight">Exportar Lista de Atletas</h2>
+                                    <p className="text-xs text-slate-500 font-medium">Personalize as colunas, filtros e ordenação da planilha.</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowExportModal(false)}
+                                className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Body - Scrollable */}
+                        <div className="p-6 overflow-y-auto space-y-6 flex-1">
+                            {/* Filtros e Ordenação */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1">
+                                        Filtrar Categoria
+                                    </label>
+                                    <select
+                                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500"
+                                        value={exportCategory}
+                                        onChange={e => setExportCategory(e.target.value)}
+                                    >
+                                        <option value="all">Todas as Categorias</option>
+                                        {categories.map(c => (
+                                            <option key={c.id} value={c.id}>{c.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1">
+                                        Status Pagamento
+                                    </label>
+                                    <select
+                                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500"
+                                        value={exportPaymentStatus}
+                                        onChange={e => setExportPaymentStatus(e.target.value)}
+                                    >
+                                        <option value="all">Todos os Status</option>
+                                        <option value="paid">Apenas Pagos (Confirmados)</option>
+                                        <option value="pending">Apenas Pendentes</option>
+                                        <option value="cancelled">Apenas Cancelados</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1">
+                                        Ordem da Lista
+                                    </label>
+                                    <select
+                                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500"
+                                        value={exportOrderBy}
+                                        onChange={e => setExportOrderBy(e.target.value)}
+                                    >
+                                        <option value="category">Categoria &gt; Subcat. &gt; Nome (A-Z)</option>
+                                        <option value="name">Ordem Alfabética (A-Z)</option>
+                                        <option value="bib">Número de Peito (BIB)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* Ações Rápidas de Seleção de Colunas */}
+                            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                                <span className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                                    <SlidersHorizontal size={14} className="text-indigo-600" />
+                                    Colunas Selecionadas ({selectedColumns.length} de {allColumnIds.length})
+                                </span>
+                                <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-bold">
+                                    <button
+                                        type="button"
+                                        onClick={selectAllColumns}
+                                        className="px-2.5 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg transition-colors"
+                                    >
+                                        Todas
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={selectEventColumnsOnly}
+                                        className="px-2.5 py-1 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg transition-colors"
+                                    >
+                                        Apenas Prova/Kit
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={selectPersonalColumnsOnly}
+                                        className="px-2.5 py-1 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg transition-colors"
+                                    >
+                                        Apenas Pessoais
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={deselectAllColumns}
+                                        className="px-2.5 py-1 text-slate-400 hover:text-slate-600 transition-colors"
+                                    >
+                                        Desmarcar
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Seção 1: Dados do Evento / Prova */}
+                            <div className="space-y-3">
+                                <h3 className="text-xs font-black text-indigo-600 uppercase tracking-wider flex items-center gap-1.5">
+                                    <Shirt size={14} />
+                                    Dados do Atleta na Prova (Evento, Kit e Camiseta)
+                                </h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    {EVENT_COLUMNS.map(col => {
+                                        const isSelected = selectedColumns.includes(col.id);
+                                        return (
+                                            <div
+                                                key={col.id}
+                                                onClick={() => toggleColumn(col.id)}
+                                                className={`flex items-center justify-between p-2.5 rounded-xl border cursor-pointer transition-all ${
+                                                    isSelected
+                                                        ? 'bg-indigo-50/70 border-indigo-200 text-indigo-950 font-bold'
+                                                        : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-2.5">
+                                                    <div className={`w-4 h-4 rounded flex items-center justify-center text-xs ${
+                                                        isSelected ? 'bg-indigo-600 text-white' : 'border border-slate-300'
+                                                    }`}>
+                                                        {isSelected && <Check size={12} strokeWidth={3} />}
+                                                    </div>
+                                                    <span className="text-xs">{col.label}</span>
+                                                </div>
+                                                <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${
+                                                    isSelected ? 'bg-indigo-200/60 text-indigo-800' : 'bg-slate-100 text-slate-400'
+                                                }`}>
+                                                    {col.badge}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Seção 2: Dados Pessoais do Atleta */}
+                            <div className="space-y-3">
+                                <h3 className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                                    <UserCheck size={14} />
+                                    Dados Pessoais do Atleta
+                                </h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    {PERSONAL_COLUMNS.map(col => {
+                                        const isSelected = selectedColumns.includes(col.id);
+                                        return (
+                                            <div
+                                                key={col.id}
+                                                onClick={() => toggleColumn(col.id)}
+                                                className={`flex items-center justify-between p-2.5 rounded-xl border cursor-pointer transition-all ${
+                                                    isSelected
+                                                        ? 'bg-indigo-50/70 border-indigo-200 text-indigo-950 font-bold'
+                                                        : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-2.5">
+                                                    <div className={`w-4 h-4 rounded flex items-center justify-center text-xs ${
+                                                        isSelected ? 'bg-indigo-600 text-white' : 'border border-slate-300'
+                                                    }`}>
+                                                        {isSelected && <Check size={12} strokeWidth={3} />}
+                                                    </div>
+                                                    <span className="text-xs">{col.label}</span>
+                                                </div>
+                                                <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${
+                                                    isSelected ? 'bg-indigo-200/60 text-indigo-800' : 'bg-slate-100 text-slate-400'
+                                                }`}>
+                                                    {col.badge}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-4 md:p-6 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
+                            <span className="text-xs text-slate-500 font-medium">
+                                Planilha compatível com Microsoft Excel (UTF-8 com ponto e vírgula).
+                            </span>
+                            <div className="flex items-center gap-3 w-full sm:w-auto">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowExportModal(false)}
+                                    className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors w-full sm:w-auto"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleConfirmExport}
+                                    disabled={exporting || selectedColumns.length === 0}
+                                    className="flex items-center justify-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black shadow-lg shadow-indigo-100 transition-all disabled:opacity-50 w-full sm:w-auto"
+                                >
+                                    {exporting ? (
+                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                        <Download size={16} />
+                                    )}
+                                    Baixar Planilha CSV
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal: Alterar Pagamento (Backup Webhook) */}
+            {selectedAthleteForPayment && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 flex items-center justify-center p-2 md:p-4 overflow-y-auto">
+                    <div className="bg-white rounded-[24px] md:rounded-[32px] w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden my-auto max-h-[95vh] flex flex-col">
+                        {/* Header */}
+                        <div className="p-5 md:p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
+                            <div className="flex items-center gap-3">
+                                <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl border border-emerald-100">
+                                    <CreditCard size={22} />
+                                </div>
+                                <div>
+                                    <h2 className="text-lg md:text-xl font-black text-slate-900 leading-tight">
+                                        Alterar Pagamento
+                                    </h2>
+                                    <p className="text-slate-500 font-medium text-xs">
+                                        Backup de webhook e alteração manual de pagamento
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setSelectedAthleteForPayment(null)}
+                                className="p-2 hover:bg-white hover:shadow-md rounded-full transition-all text-slate-400 hover:text-slate-700"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Body */}
+                        <form onSubmit={handleSavePayment} className="p-5 md:p-6 space-y-5 overflow-y-auto">
+                            {/* Card Resumo do Atleta */}
+                            <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl space-y-2">
+                                <div className="flex items-start justify-between gap-2">
+                                    <div>
+                                        <span className="text-[10px] font-black uppercase text-indigo-600 tracking-wider">
+                                            Atleta Selecionado
+                                        </span>
+                                        <h3 className="font-black text-slate-900 text-sm md:text-base leading-snug">
+                                            {selectedAthleteForPayment.name}
+                                        </h3>
+                                    </div>
+                                    <span className="px-2.5 py-1 bg-white border border-slate-200 text-slate-700 font-black text-xs rounded-xl shadow-sm">
+                                        BIB: {selectedAthleteForPayment.bib_number || '--'}
+                                    </span>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 pt-1 border-t border-slate-200/60">
+                                    <span>
+                                        <strong>Categoria:</strong> {selectedAthleteForPayment.category?.name || 'Geral'}
+                                    </span>
+                                    {selectedAthleteForPayment.team_name && (
+                                        <>
+                                            <span>•</span>
+                                            <span><strong>Equipe:</strong> {selectedAthleteForPayment.team_name}</span>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Seletor de Status */}
+                            <div className="space-y-2">
+                                <label className="block text-xs font-black uppercase tracking-wider text-slate-700">
+                                    Status do Pagamento
+                                </label>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {[
+                                        { id: 'paid', label: 'Pago', color: 'emerald', desc: 'Confirmado' },
+                                        { id: 'pending', label: 'Pendente', color: 'amber', desc: 'Aguardando' },
+                                        { id: 'cancelled', label: 'Cancelado', color: 'rose', desc: 'Cancelado' }
+                                    ].map(item => {
+                                        const isSelected = paymentModalStatus === item.id;
+                                        return (
+                                            <button
+                                                key={item.id}
+                                                type="button"
+                                                onClick={() => setPaymentModalStatus(item.id as any)}
+                                                className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-1 ${
+                                                    isSelected
+                                                        ? item.id === 'paid'
+                                                            ? 'bg-emerald-50 border-emerald-300 text-emerald-800 ring-2 ring-emerald-400/30 font-black'
+                                                            : item.id === 'cancelled'
+                                                                ? 'bg-rose-50 border-rose-300 text-rose-800 ring-2 ring-rose-400/30 font-black'
+                                                                : 'bg-amber-50 border-amber-300 text-amber-800 ring-2 ring-amber-400/30 font-black'
+                                                        : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 font-bold'
+                                                }`}
+                                            >
+                                                <span className="text-xs">{item.label}</span>
+                                                <span className="text-[9px] uppercase font-semibold opacity-75">{item.desc}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Forma de Pagamento */}
+                            <div className="space-y-2">
+                                <label className="block text-xs font-black uppercase tracking-wider text-slate-700">
+                                    Forma / Método de Pagamento
+                                </label>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                    {[
+                                        { id: 'pix', label: 'PIX', icon: '⚡' },
+                                        { id: 'credit_card', label: 'Cartão de Crédito', icon: '💳' },
+                                        { id: 'boleto', label: 'Boleto Bancário', icon: '📄' },
+                                        { id: 'money', label: 'Dinheiro', icon: '💵' },
+                                        { id: 'courtesy', label: 'Cortesia / Grátis', icon: '🎁' },
+                                        { id: 'asaas', label: 'Gateway Asaas', icon: '🌐' }
+                                    ].map(m => {
+                                        const isSelected = paymentModalMethod === m.id;
+                                        return (
+                                            <button
+                                                key={m.id}
+                                                type="button"
+                                                onClick={() => setPaymentModalMethod(m.id)}
+                                                className={`p-2.5 rounded-xl border text-left transition-all flex items-center justify-between text-xs ${
+                                                    isSelected
+                                                        ? 'bg-indigo-50 border-indigo-300 text-indigo-950 font-black ring-2 ring-indigo-400/30'
+                                                        : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 font-bold'
+                                                }`}
+                                            >
+                                                <span className="flex items-center gap-1.5 truncate">
+                                                    <span>{m.icon}</span>
+                                                    <span className="truncate">{m.label}</span>
+                                                </span>
+                                                {isSelected && <Check size={14} className="text-indigo-600 shrink-0" strokeWidth={3} />}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Notificação por E-mail */}
+                            <div 
+                                onClick={() => setPaymentModalSendEmail(!paymentModalSendEmail)}
+                                className="flex items-start gap-3 p-3.5 bg-slate-50 border border-slate-200 rounded-2xl cursor-pointer hover:bg-slate-100/60 transition-colors"
+                            >
+                                <div className={`mt-0.5 w-4 h-4 rounded flex items-center justify-center shrink-0 text-xs transition-colors ${
+                                    paymentModalSendEmail ? 'bg-indigo-600 text-white' : 'border border-slate-300 bg-white'
+                                }`}>
+                                    {paymentModalSendEmail && <Check size={12} strokeWidth={3} />}
+                                </div>
+                                <div className="space-y-0.5">
+                                    <p className="text-xs font-black text-slate-800">
+                                        Enviar e-mail automático ao atleta
+                                    </p>
+                                    <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
+                                        {paymentModalStatus === 'paid' 
+                                            ? 'Envia o e-mail de Inscrição Confirmada com o comprovante em PDF anexo.' 
+                                            : paymentModalStatus === 'pending'
+                                                ? 'Reenvia os dados de pagamento (chave PIX / boleto).'
+                                                : 'Apenas atualiza o registro no sistema.'}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Footer Actions */}
+                            <div className="pt-2 flex items-center justify-end gap-3 border-t border-slate-100">
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedAthleteForPayment(null)}
+                                    disabled={savingPayment}
+                                    className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={savingPayment}
+                                    className="flex items-center justify-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-lg shadow-emerald-100 transition-all disabled:opacity-50"
+                                >
+                                    {savingPayment ? (
+                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                        <CheckCircle2 size={16} />
+                                    )}
+                                    Salvar Alterações
+                                </button>
+                            </div>
                         </form>
                     </div>
                 </div>
