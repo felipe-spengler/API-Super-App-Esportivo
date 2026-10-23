@@ -118,6 +118,7 @@ export function IndividualAthleteManager() {
                 document: '',
                 birth_date: '',
                 gender: '',
+                team_name: '',
                 category_id: '',
                 remove_bg: true,
                 status_payment: 'pending',
@@ -274,7 +275,7 @@ export function IndividualAthleteManager() {
                                                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                                                         <p className="text-xs text-slate-400 font-medium">#{athlete.id}</p>
                                                         {athlete.team_name && (
-                                                            <span className="text-[10px] font-bold text-indigo-600 uppercase bg-indigo-50 border border-indigo-100/50 px-1.5 py-0.2 rounded">
+                                                            <span className="text-[10px] font-bold text-indigo-600 uppercase bg-indigo-50 border border-indigo-100/50 px-1.5 py-0.5 rounded">
                                                                 {athlete.team_name}
                                                             </span>
                                                         )}
