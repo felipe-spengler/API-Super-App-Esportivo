@@ -58,6 +58,9 @@ class RaceInscriptionController extends Controller
             'is_pcd' => 'nullable|boolean',
             'pcd_document' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:4096',
             'gifts' => 'nullable|array',
+            'team_name' => 'nullable|string|max:255',
+            'team' => 'nullable|string|max:255',
+            'equipe' => 'nullable|string|max:255',
             'shop_items' => 'nullable|array',
             'shop_items.*.product_id' => 'required|exists:products,id',
             'shop_items.*.quantity' => 'required|integer|min:1',
@@ -354,6 +357,7 @@ class RaceInscriptionController extends Controller
                 'race_id' => $race->id,
                 'user_id' => $user->id,
                 'name' => $user->name,
+                'team_name' => $request->input('team_name', $request->input('team', $request->input('equipe', null))),
                 'bib_number' => (string) $newBib,
                 'category_id' => $category->id,
                 'status_payment' => $status,
@@ -465,6 +469,9 @@ class RaceInscriptionController extends Controller
             'athletes.*.gender' => 'required|string|in:M,F,O',
             'athletes.*.category_id' => 'required|exists:categories,id',
             'athletes.*.is_pcd' => 'nullable|boolean',
+            'athletes.*.team_name' => 'nullable|string|max:255',
+            'athletes.*.team' => 'nullable|string|max:255',
+            'athletes.*.equipe' => 'nullable|string|max:255',
             'athletes.*.gifts' => 'nullable|array',
             'athletes.*.shop_items' => 'nullable|array',
             'coupon_code' => 'nullable|string',
@@ -718,6 +725,7 @@ class RaceInscriptionController extends Controller
                     'gifts' => $athleteData['gifts'] ?? null,
                     'shop_items' => $athleteData['shop_items'] ?? null,
                     'coupon_id' => $couponId,
+                    'team_name' => $athleteData['team_name'] ?? $athleteData['team'] ?? $athleteData['equipe'] ?? null,
                     'payment_group_leader' => ($index === 0)
                 ];
 
@@ -735,6 +743,7 @@ class RaceInscriptionController extends Controller
                     'race_id' => $race->id,
                     'user_id' => $r['user']->id,
                     'name' => $r['user']->name,
+                    'team_name' => $r['team_name'] ?? null,
                     'bib_number' => (string) $newBib,
                     'category_id' => $r['category']->id,
                     'status_payment' => $status,

@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 interface Athlete {
     id: number;
     name: string;
+    team_name?: string;
     bib_number: string;
     category_id: number;
     category?: { name: string };
@@ -33,6 +34,7 @@ export function IndividualAthleteManager() {
         document: '',
         birth_date: '',
         gender: '',
+        team_name: '',
         category_id: '',
         remove_bg: true,
         status_payment: 'pending',
@@ -169,6 +171,7 @@ export function IndividualAthleteManager() {
 
     const filteredAthletes = athletes.filter(a => {
         const matchesSearch = (a.name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (a.team_name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
             (a.category?.name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
             (a.bib_number?.includes(searchTerm));
         const matchesCategory = selectedCategory === 'all' || a.category_id?.toString() === selectedCategory;
@@ -268,7 +271,14 @@ export function IndividualAthleteManager() {
                                                 </div>
                                                 <div>
                                                     <p className="font-black text-slate-900 uppercase text-sm leading-tight">{athlete.name}</p>
-                                                    <p className="text-xs text-slate-400 font-medium">#{athlete.id}</p>
+                                                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                                        <p className="text-xs text-slate-400 font-medium">#{athlete.id}</p>
+                                                        {athlete.team_name && (
+                                                            <span className="text-[10px] font-bold text-indigo-600 uppercase bg-indigo-50 border border-indigo-100/50 px-1.5 py-0.2 rounded">
+                                                                {athlete.team_name}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </td>
@@ -459,6 +469,18 @@ export function IndividualAthleteManager() {
                                                 <option key={cat.id} value={cat.id}>{cat.name}</option>
                                             ))}
                                         </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
+                                            Equipe <span className="text-slate-400 font-normal lowercase">(opcional)</span>
+                                        </label>
+                                        <input
+                                            type="text"
+                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 transition-all uppercase"
+                                            value={formData.team_name}
+                                            onChange={e => setFormData({ ...formData, team_name: e.target.value })}
+                                            placeholder="Ex: Equipe Velozes"
+                                        />
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>

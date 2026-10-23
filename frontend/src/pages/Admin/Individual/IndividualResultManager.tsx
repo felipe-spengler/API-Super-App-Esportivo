@@ -7,6 +7,7 @@ interface Result {
     id: number;
     bib_number: string;
     name: string;
+    team_name?: string;
     net_time: string;
     gross_time: string;
     position_general: number;
@@ -56,6 +57,7 @@ export function IndividualResultManager() {
 
     const filteredResults = results.filter(r =>
         (r.name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (r.team_name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (r.bib_number?.includes(searchTerm)) ||
         (r.category?.name?.toLowerCase().includes(searchTerm.toLowerCase()))
     );
@@ -156,7 +158,14 @@ export function IndividualResultManager() {
                                         </td>
                                         <td className="px-6 py-4">
                                             <p className="font-bold text-slate-900">{res.name}</p>
-                                            <p className="text-[10px] text-indigo-600 font-black">{res.category?.name}</p>
+                                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                                <p className="text-[10px] text-indigo-600 font-black">{res.category?.name}</p>
+                                                {res.team_name && (
+                                                    <span className="text-[10px] font-bold text-slate-500 uppercase bg-slate-100 px-1.5 py-0.2 rounded">
+                                                        {res.team_name}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-2 font-mono font-black text-slate-700 text-lg">

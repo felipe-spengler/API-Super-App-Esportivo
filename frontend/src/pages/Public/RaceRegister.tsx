@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
     User, Phone, FileText, Camera, Calendar, Mail, CreditCard,
     ArrowLeft, ArrowRight, Loader2, CheckCircle2,
-    Check, Smartphone, AlertCircle, RefreshCw, Search, Activity, ShieldQuestion, Download, Share2
+    Check, Smartphone, AlertCircle, RefreshCw, Search, Activity, ShieldQuestion, Download, Share2, Users
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
@@ -29,6 +29,7 @@ export function RaceRegister() {
             document: '',
             birth_date: '',
             gender: '',
+            team_name: '',
             category_id: '',
             is_pcd: false,
             gifts: [],
@@ -49,6 +50,7 @@ export function RaceRegister() {
         document: '',
         birth_date: '',
         gender: '',
+        team_name: '',
         category_id: '',
         remove_bg: false,
         is_pcd: false,
@@ -83,6 +85,7 @@ export function RaceRegister() {
                 document: formData.document,
                 birth_date: formData.birth_date,
                 gender: formData.gender,
+                team_name: formData.team_name,
                 category_id: formData.category_id,
                 is_pcd: formData.is_pcd,
                 gifts: Object.entries(giftSelections).map(([productId, variant]) => ({
@@ -111,6 +114,7 @@ export function RaceRegister() {
             document: ath.document || '',
             birth_date: ath.birth_date || '',
             gender: ath.gender || '',
+            team_name: ath.team_name || '',
             category_id: ath.category_id || '',
             is_pcd: ath.is_pcd || false
         }));
@@ -476,6 +480,7 @@ export function RaceRegister() {
                             document: existing.user.cpf || prev.document,
                             birth_date: existing.user.birth_date ? new Date(existing.user.birth_date).toISOString().split('T')[0] : prev.birth_date,
                             gender: existing.user.gender || prev.gender,
+                            team_name: existing.team_name || prev.team_name,
                             category_id: existing.category_id || prev.category_id
                         }));
                     }
@@ -571,6 +576,7 @@ export function RaceRegister() {
                     document: ath.document,
                     birth_date: ath.birth_date,
                     gender: ath.gender,
+                    team_name: ath.team_name || '',
                     category_id: finalCategoryId,
                     is_pcd: ath.is_pcd,
                     gifts: ath.gifts,
@@ -843,6 +849,20 @@ export function RaceRegister() {
                                             className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-sm"
                                             value={formData.birth_date}
                                             onChange={e => setFormData({ ...formData, birth_date: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block ml-1">
+                                        Equipe <span className="text-slate-400 font-normal lowercase">(opcional)</span>
+                                    </label>
+                                    <div className="relative">
+                                        <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                        <input
+                                            className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold uppercase text-sm"
+                                            value={formData.team_name}
+                                            onChange={e => setFormData({ ...formData, team_name: e.target.value })}
+                                            placeholder="Nome da equipe (opcional)"
                                         />
                                     </div>
                                 </div>
@@ -1190,6 +1210,7 @@ export function RaceRegister() {
                                             document: '',
                                             birth_date: '',
                                             gender: '',
+                                            team_name: '',
                                             category_id: '',
                                             is_pcd: false,
                                             gifts: [],
@@ -1223,6 +1244,11 @@ export function RaceRegister() {
                                                 <div>
                                                     <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md mb-1 inline-block">Atleta #{idx + 1}</span>
                                                     <h3 className="font-black text-slate-800 uppercase text-sm italic">{ath.name || 'Nome não preenchido'}</h3>
+                                                    {ath.team_name && (
+                                                        <p className="text-[10px] text-indigo-600 font-black uppercase mt-0.5">
+                                                            Equipe: {ath.team_name}
+                                                        </p>
+                                                    )}
                                                     <p className="text-[10px] text-slate-500 font-bold uppercase mt-1">
                                                         {(championship?.categories?.find((c: any) => String(c.id) === String(ath.parentCategoryId)))?.name || 'Sem categoria'}
                                                         {getAthleteSubcategory(ath) && ` - Subcategoria: ${getAthleteSubcategory(ath)?.name}`}

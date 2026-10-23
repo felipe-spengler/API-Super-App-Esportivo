@@ -15,9 +15,11 @@ return new class extends Migration {
         });
 
         // Set existing records to the team's main captain to keep consistency
-        DB::statement('UPDATE championship_team 
-                       JOIN teams ON teams.id = championship_team.team_id 
-                       SET championship_team.captain_id = teams.captain_id');
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement('UPDATE championship_team 
+                           JOIN teams ON teams.id = championship_team.team_id 
+                           SET championship_team.captain_id = teams.captain_id');
+        }
 
         Schema::table('championship_team', function (Blueprint $table) {
             $table->foreign('captain_id')->references('id')->on('users')->onDelete('set null');

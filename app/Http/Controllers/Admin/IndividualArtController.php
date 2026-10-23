@@ -160,11 +160,15 @@ class IndividualArtController extends Controller
         if ($category === 'confirmed') $cardCategory = 'atleta_confirmado';
         if ($category === 'result') $cardCategory = 'colocacao';
 
+        $teamName = $result ? ($result->team_name ?? '') : '';
+
         return $this->createCard($athlete, $championship, $sport, $cardCategory, null, null, null, $championship->club, [
             '{COLOCACAO}' => $rank,
             '{CATEGORIA}' => mb_strtoupper($catName),
             '{ATLETA}' => mb_strtoupper($displayName),
-            '{JOGADOR}' => mb_strtoupper($displayName)
+            '{JOGADOR}' => mb_strtoupper($displayName),
+            '{EQUIPE}' => mb_strtoupper($teamName),
+            '{TIME}' => mb_strtoupper($teamName)
         ]);
     }
 

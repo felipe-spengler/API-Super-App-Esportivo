@@ -43,7 +43,7 @@ class RaceResultController extends Controller
     public function update(Request $request, $id)
     {
         $result = RaceResult::findOrFail($id);
-        $result->update($request->only(['net_time', 'gross_time', 'position_general', 'position_category', 'bib_number']));
+        $result->update($request->only(['net_time', 'gross_time', 'position_general', 'position_category', 'bib_number', 'team_name']));
         return response()->json($result);
     }
 
@@ -59,6 +59,9 @@ class RaceResultController extends Controller
             'birth_date' => 'required|date',
             'gender' => 'required|string|in:M,F,O',
             'category_id' => 'required|exists:categories,id',
+            'team_name' => 'nullable|string|max:255',
+            'team' => 'nullable|string|max:255',
+            'equipe' => 'nullable|string|max:255',
             'status_payment' => 'required|string|in:pending,paid,cancelled',
         ]);
 
@@ -123,6 +126,7 @@ class RaceResultController extends Controller
                 'race_id' => $race->id,
                 'user_id' => $user->id,
                 'name' => $user->name,
+                'team_name' => $request->input('team_name', $request->input('team', $request->input('equipe', null))),
                 'bib_number' => (string) ($lastBib ? $lastBib + 1 : 1),
                 'category_id' => $request->category_id,
                 'status_payment' => $request->status_payment,
@@ -164,10 +168,11 @@ class RaceResultController extends Controller
             $header = array_map(fn($h) => strtoupper(trim($h)), array_shift($data));
 
             $cols = [
-                'bib' => array_search('PEITO', $header) ?: array_search('NUMERO', $header),
+                'bib' => array_search('PEITO', $header) !== false ? array_search('PEITO', $header) : array_search('NUMERO', $header),
                 'name' => array_search('NOME', $header),
-                'doc' => array_search('CPF', $header) ?: array_search('DOCUMENTO', $header),
+                'doc' => array_search('CPF', $header) !== false ? array_search('CPF', $header) : array_search('DOCUMENTO', $header),
                 'cat' => array_search('CATEGORIA', $header),
+                'team' => array_search('EQUIPE', $header) !== false ? array_search('EQUIPE', $header) : (array_search('TIME', $header) !== false ? array_search('TIME', $header) : array_search('ASSESSORIA', $header)),
             ];
 
             foreach ($data as $row) {
@@ -188,7 +193,13 @@ class RaceResultController extends Controller
                     $bib = (string) ($lastBib ? $lastBib + 1 : 1);
                 }
 
-                RaceResult::updateOrCreate(['race_id' => $race->id, 'bib_number' => $bib], ['name' => $name, 'category_id' => $cat->id]);
+                $teamName = ($cols['team'] !== false && isset($row[$cols['team']])) ? trim($row[$cols['team']]) : null;
+                $updateData = ['name' => $name, 'category_id' => $cat->id];
+                if ($teamName) {
+                    $updateData['team_name'] = $teamName;
+                }
+
+                RaceResult::updateOrCreate(['race_id' => $race->id, 'bib_number' => $bib], $updateData);
             }
             DB::commit();
             return response()->json(['message' => 'Importação concluída!']);
@@ -221,9 +232,9 @@ class RaceResultController extends Controller
         $headers = ['Content-Type' => 'text/csv', 'Content-Disposition' => 'attachment; filename="inscritos.csv"'];
         return response()->stream(function () use ($results) {
             $file = fopen('php://output', 'w');
-            fputcsv($file, ['BIB', 'NOME', 'CATEGORIA', 'DOCUMENTO', 'GENERO', 'STATUS', 'METODO']);
+            fputcsv($file, ['BIB', 'NOME', 'EQUIPE', 'CATEGORIA', 'DOCUMENTO', 'GENERO', 'STATUS', 'METODO']);
             foreach ($results as $row) {
-                fputcsv($file, [$row->bib_number, $row->name, $row->category->name ?? 'Geral', $row->user->cpf ?? '', $row->user->gender ?? 'MISTO', $row->status_payment, $row->payment_method]);
+                fputcsv($file, [$row->bib_number, $row->name, $row->team_name ?? '', $row->category->name ?? 'Geral', $row->user->cpf ?? '', $row->user->gender ?? 'MISTO', $row->status_payment, $row->payment_method]);
             }
             fclose($file);
         }, 200, $headers);

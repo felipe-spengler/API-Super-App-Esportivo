@@ -166,6 +166,12 @@
                     <td class="label">Data Nasc.:</td>
                     <td class="value">{{ $user->birth_date ? $user->birth_date->format('d/m/Y') : '---' }}</td>
                 </tr>
+                @if(!empty($result->team_name))
+                <tr>
+                    <td class="label">Equipe:</td>
+                    <td class="value">{{ $result->team_name }}</td>
+                </tr>
+                @endif
             </table>
         </div>
 

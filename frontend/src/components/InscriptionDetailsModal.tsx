@@ -131,6 +131,11 @@ export function InscriptionDetailsModal({ inscription, isOpen, onClose, onUpdate
                                         {category.parent?.name ? `${category.parent.name} — ` : ''}
                                         {category.name || 'Individual'}
                                     </p>
+                                    {inscription.team_name && (
+                                        <p className="text-xs text-indigo-600 font-bold mt-0.5">
+                                            Equipe: {inscription.team_name}
+                                        </p>
+                                    )}
                                     <div className="mt-2 flex flex-col gap-2">
                                         <span className={`self-start px-2 py-0.5 rounded text-[10px] font-bold uppercase ${isConfirmed ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
                                             {isConfirmed ? 'Inscrição Confirmada' : 'Pendente de Pagamento'}

@@ -12,6 +12,7 @@ class RaceResult extends Model
         'category_id',
         'bib_number',
         'name',
+        'team_name',
         'net_time',
         'gross_time',
         'lap',
@@ -42,6 +43,26 @@ class RaceResult extends Model
         'kit_delivered_at' => 'datetime',
         'payment_group_leader' => 'boolean',
     ];
+
+    public function getEquipeAttribute()
+    {
+        return $this->team_name;
+    }
+
+    public function setEquipeAttribute($value)
+    {
+        $this->attributes['team_name'] = $value;
+    }
+
+    public function getTeamAttribute()
+    {
+        return $this->team_name;
+    }
+
+    public function setTeamAttribute($value)
+    {
+        $this->attributes['team_name'] = $value;
+    }
 
     public function race()
     {

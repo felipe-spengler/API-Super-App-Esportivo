@@ -7,6 +7,7 @@ interface RaceResult {
     id: number;
     bib_number: string;
     name: string;
+    team_name?: string;
     category_name: string; // Vem do backend com join ou algo assim
     net_time: string;
     position_general: number;
@@ -87,6 +88,7 @@ export function RaceResults() {
 
     const filtered = results.filter(r =>
         (r.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (r.team_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
         (r.bib_number?.toString() || '').includes(searchTerm)
     );
 
@@ -179,7 +181,14 @@ export function RaceResults() {
                                     <tr key={r.id} className="hover:bg-gray-50/80 transition-colors">
                                         <td className="p-4 font-medium text-gray-500">#{index + 1}</td>
                                         <td className="p-4 font-bold text-gray-900">{r.bib_number || '-'}</td>
-                                        <td className="p-4 font-medium text-gray-900">{r.name}</td>
+                                        <td className="p-4 font-medium text-gray-900">
+                                            <div>{r.name}</div>
+                                            {r.team_name && (
+                                                <div className="text-xs text-indigo-600 font-normal">
+                                                    {r.team_name}
+                                                </div>
+                                            )}
+                                        </td>
                                         <td className="p-4 text-gray-600">
                                             <span className="px-2 py-1 bg-indigo-50 text-indigo-700 rounded text-xs font-bold">
                                                 {r.category?.name || 'Geral'}

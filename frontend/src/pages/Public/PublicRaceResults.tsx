@@ -9,6 +9,7 @@ interface RaceResult {
     user_id: number;
     bib_number: string;
     name: string;
+    team_name?: string;
     category?: {
         id: number;
         name: string;
@@ -164,6 +165,7 @@ export function PublicRaceResults() {
     // Filtering Individual Results
     const filteredIndividual = results.filter(r => {
         const matchesSearch = (r.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+            (r.team_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
             (r.bib_number?.toString() || '').includes(searchTerm);
 
         const catName = r.category?.parent?.name ? `${r.category.parent.name} - ${r.category.name}` : r.category?.name;
@@ -551,10 +553,15 @@ export function PublicRaceResults() {
                                                     </h3>
                                                     <span className="bg-slate-900 text-white text-[9px] font-black px-2 py-0.5 rounded italic">#{String(r.bib_number).padStart(3, '0')}</span>
                                                 </div>
-                                                <div className="flex items-center gap-2 mt-1">
+                                                <div className="flex items-center gap-2 mt-1 flex-wrap">
                                                     <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest line-clamp-1">
                                                         {r.category?.parent?.name ? `${r.category.parent.name} - ${r.category.name}` : r.category?.name}
                                                     </p>
+                                                    {r.team_name && (
+                                                        <span className="text-[10px] font-bold text-indigo-600 uppercase bg-indigo-50 border border-indigo-100/50 px-2 py-0.5 rounded-md">
+                                                            {r.team_name}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
