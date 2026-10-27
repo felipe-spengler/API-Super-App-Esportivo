@@ -1,4 +1,7 @@
-FROM php:8.4-cli
+FROM php:8.4.27-cli
+
+# Mitigação de vulnerabilidade PHP2Shell / Upload progress
+RUN echo "session.upload_progress.enabled=0" > /usr/local/etc/php/conf.d/security.ini
 
 # 1. Instalar dependências do sistema
 # ADICIONADO: libzip-dev para a extensão zip e deps do Python
