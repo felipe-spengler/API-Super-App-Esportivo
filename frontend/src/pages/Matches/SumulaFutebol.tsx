@@ -559,6 +559,13 @@ export function SumulaFutebol() {
                     system_period: currentPeriod
                 }
             });
+
+            if (response?.data?.double_submit) {
+                setShowEventModal(false);
+                setSelectedPlayer(null);
+                return;
+            }
+
             const newEvent = {
                 id: response?.data?.id || Date.now(), type: eventType,
                 team: player.isOpponent ? (selectedTeam === 'home' ? 'away' : 'home') : selectedTeam,

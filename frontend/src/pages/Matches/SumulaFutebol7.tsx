@@ -653,6 +653,14 @@ export function SumulaFutebol7() {
                     system_period: currentPeriod
                 }
             });
+
+            if (response?.data?.double_submit) {
+                setShowEventModal(false);
+                setSelectedPlayer(null);
+                setIsSelectingOwnGoal(false);
+                return;
+            }
+
             const newEvent = {
                 id: response?.data?.id || Date.now(), type: eventType,
                 team: player ? (player.isOpponent ? (selectedTeam === 'home' ? 'away' : 'home') : selectedTeam) : selectedTeam,

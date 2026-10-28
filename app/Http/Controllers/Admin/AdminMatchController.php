@@ -537,9 +537,9 @@ class AdminMatchController extends Controller
             return response()->json($eventArray, 201);
         }
 
-        // Prevenção de Double Submit Atômico (Debounce)
-        // O tempo do jogo (minute) foi removido da chave para evitar que requisições com 
-        // tempos ligeiramente diferentes burlem a trava durante um spam de cliques.
+        // Prevenção de Double Submit Atômico (Debounce de 1 segundo via Cache)
+        // Reduzido para 1 segundo para evitar duplo-clique acidental de mouse/toque sem travar
+        // novos gols ou eventos legítimos do mesmo atleta digitados em sequência pelo mesário.
         $lockKey = sprintf(
             'debounce_event_%s_%s_%s_%s',
             $match->id,
@@ -548,8 +548,7 @@ class AdminMatchController extends Controller
             $validated['player_id'] ?? ($validated['metadata']['staff_name'] ?? 'none')
         );
 
-        // Aumentamos o debounce de gols para 5 segundos, e 2 segundos para o restante.
-        $debounceSeconds = ($validated['event_type'] === 'goal') ? 5 : 2;
+        $debounceSeconds = 1;
 
         if (!cache()->add($lockKey, true, $debounceSeconds)) {
             return response()->json([
