@@ -50,6 +50,7 @@ export function SumulaHandebol() {
 
     // Refs for stable sync
     const timerRef = useRef({ time, isRunning, currentPeriod, matchData });
+    const lastLocalUpdateAt = useRef<number>(0);
     useEffect(() => {
         timerRef.current = { time, isRunning, currentPeriod, matchData };
     }, [time, isRunning, currentPeriod, matchData]);
@@ -64,14 +65,23 @@ export function SumulaHandebol() {
                     setMatchData({ ...data.match, scoreHome: parseInt(data.match.home_score || 0), scoreAway: parseInt(data.match.away_score || 0) });
                     if (data.match.match_details?.sync_timer && !serverTimerLoaded) {
                         const st = data.match.match_details.sync_timer;
-                        setTime(st.time || 0);
                         if (st.currentPeriod) setCurrentPeriod(st.currentPeriod);
+                        if (st.isRunning) {
+                            const nowMs = Date.now();
+                            const lastUpdate = st.updated_at || nowMs;
+                            const driftSeconds = Math.max(0, Math.floor((nowMs - lastUpdate) / 1000));
+                            setTime((st.time || 0) + driftSeconds);
+                            setIsRunning(true);
+                        } else {
+                            setTime(st.time || 0);
+                            setIsRunning(false);
+                        }
                         setServerTimerLoaded(true);
                     }
                     if (data.rosters) setRosters(data.rosters);
                 } else {
                     const serverTimer = data.match.match_details?.sync_timer;
-                    if (serverTimer && serverTimer.currentPeriod && serverTimer.currentPeriod !== currentPeriod) {
+                    if (serverTimer && serverTimer.currentPeriod && serverTimer.currentPeriod !== timerRef.current.currentPeriod && Date.now() - lastLocalUpdateAt.current > 5000) {
                         setCurrentPeriod(serverTimer.currentPeriod);
                         if (serverTimer.time !== undefined) setTime(serverTimer.time || 0);
                         if (serverTimer.isRunning !== undefined) setIsRunning(serverTimer.isRunning);
@@ -94,6 +104,7 @@ export function SumulaHandebol() {
         return () => clearInterval(syncInterval);
     }, [id]);
 
+    // Timer Interval
     useEffect(() => {
         let interval: any = null;
         if (isRunning && !currentPeriod.includes('Intervalo') && !currentPeriod.includes('Fim')) {
@@ -101,13 +112,29 @@ export function SumulaHandebol() {
                 setTime(t => t + 1);
                 setActiveSuspensions(prev => prev.map(s => ({ ...s, secondsRemaining: s.secondsRemaining - 1 })).filter(s => s.secondsRemaining > 0));
             }, 1000);
-            if (matchData && (matchData.status === 'scheduled' || matchData.status === 'Agendado')) {
-                addToQueue('event', { event_type: 'match_start', team_id: matchData.home_team_id, minute: formatTime(time), period: currentPeriod, metadata: { label: 'Início da Partida' } });
-                setMatchData((prev: any) => ({ ...prev, status: 'live' }));
-            }
         }
-        return () => interval && clearInterval(interval);
-    }, [isRunning, currentPeriod, matchData, time]);
+        return () => { if (interval) clearInterval(interval); };
+    }, [isRunning, currentPeriod]);
+
+    // Sincronização periódica do cronômetro com o servidor a cada 4 segundos
+    useEffect(() => {
+        if (!id) return;
+        const pingInterval = setInterval(async () => {
+            const { time: t, isRunning: ir, currentPeriod: cp, matchData: md } = timerRef.current;
+            if (!md) return;
+            try {
+                await api.patch(`/admin/matches/${id}`, {
+                    match_details: {
+                        ...md.match_details,
+                        sync_timer: { time: t, isRunning: ir, currentPeriod: cp }
+                    }
+                });
+            } catch (e: any) {
+                // silêncio em falha passageira
+            }
+        }, 4000);
+        return () => clearInterval(pingInterval);
+    }, [id]);
 
     useEffect(() => {
         let timeoutInterval: any = null;
@@ -125,39 +152,366 @@ export function SumulaHandebol() {
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
-    const handleNextPeriod = () => {
-        const periods = ['1º Tempo', 'Intervalo', '2º Tempo', 'Fim de Tempo Normal', '1º Tempo Prorrogação', 'Intervalo Prorrogação', '2º Tempo Prorrogação', 'Fim da Prorrogação', 'Tiros de 7 Metros', 'Fim'];
-        const currentIndex = periods.indexOf(currentPeriod);
-        if (currentIndex < periods.length - 1) {
-            const nextPeriod = periods[currentIndex + 1];
-            if (!window.confirm(`Mudar para: ${nextPeriod}?`)) return;
+    const handleToggleTimer = () => {
+        lastLocalUpdateAt.current = Date.now();
+        const nextRunning = !isRunning;
+        setIsRunning(nextRunning);
+        timerRef.current = { ...timerRef.current, isRunning: nextRunning };
+        addToQueue('patch_match', {
+            match_details: {
+                ...matchData?.match_details,
+                sync_timer: {
+                    time,
+                    isRunning: nextRunning,
+                    currentPeriod
+                }
+            }
+        });
+    };
 
-            setIsRunning(false);
+    const handlePeriodAction = () => {
+        lastLocalUpdateAt.current = Date.now();
+        const isScheduled = matchData?.status === 'scheduled' || matchData?.status === 'Agendado';
 
-            if (!nextPeriod.includes('Intervalo') && !nextPeriod.includes('Fim')) {
-                setTime(0);
+        // 1. Partida Agendada ou 1º Tempo ainda não iniciado
+        if (isScheduled || (currentPeriod === '1º Tempo' && time === 0 && !isRunning)) {
+            if (!window.confirm('Iniciar a Partida?')) return;
+            setIsRunning(true);
+            setTime(0);
+            setCurrentPeriod('1º Tempo');
+            timerRef.current = { ...timerRef.current, time: 0, isRunning: true, currentPeriod: '1º Tempo' };
+            setMatchData((prev: any) => ({ ...prev, status: 'live' }));
+            addToQueue('event', {
+                event_type: 'match_start',
+                team_id: matchData.home_team_id,
+                minute: '00:00',
+                period: '1º Tempo',
+                metadata: { label: 'Início da Partida' }
+            });
+            addToQueue('patch_match', {
+                status: 'live',
+                match_details: {
+                    ...matchData?.match_details,
+                    sync_timer: { time: 0, isRunning: true, currentPeriod: '1º Tempo' }
+                }
+            });
+            return;
+        }
+
+        // 2. 1º Tempo
+        if (currentPeriod === '1º Tempo') {
+            if (isRunning) {
+                if (!window.confirm('Encerrar o 1º Tempo?')) return;
+                setIsRunning(false);
+                const nextPeriod = 'Intervalo';
+                setCurrentPeriod(nextPeriod);
+                timerRef.current = { ...timerRef.current, isRunning: false, currentPeriod: nextPeriod };
+                addToQueue('event', {
+                    event_type: 'period_end',
+                    team_id: matchData.home_team_id,
+                    minute: formatTime(time),
+                    period: '1º Tempo',
+                    metadata: { label: 'Fim do 1º Tempo. Intervalo!' }
+                });
+                addToQueue('patch_match', {
+                    match_details: {
+                        ...matchData?.match_details,
+                        sync_timer: { time: 0, isRunning: false, currentPeriod: nextPeriod }
+                    }
+                });
+            } else {
+                setIsRunning(true);
+                timerRef.current = { ...timerRef.current, isRunning: true };
+                addToQueue('patch_match', {
+                    match_details: {
+                        ...matchData?.match_details,
+                        sync_timer: { time, isRunning: true, currentPeriod: '1º Tempo' }
+                    }
+                });
+            }
+            return;
+        }
+
+        // 3. Intervalo -> Iniciar 2º Tempo
+        if (currentPeriod === 'Intervalo') {
+            if (!window.confirm('Iniciar o 2º Tempo?')) return;
+            const nextPeriod = '2º Tempo';
+            setIsRunning(true);
+            setTime(0);
+            setCurrentPeriod(nextPeriod);
+            timerRef.current = { ...timerRef.current, time: 0, isRunning: true, currentPeriod: nextPeriod };
+            addToQueue('event', {
+                event_type: 'period_start',
+                team_id: matchData.home_team_id,
+                minute: '00:00',
+                period: nextPeriod,
+                metadata: { label: 'Começa o 2º Tempo! Vamos pro jogo!' }
+            });
+            addToQueue('patch_match', {
+                match_details: {
+                    ...matchData?.match_details,
+                    sync_timer: { time: 0, isRunning: true, currentPeriod: nextPeriod }
+                }
+            });
+            return;
+        }
+
+        // 4. 2º Tempo
+        if (currentPeriod === '2º Tempo') {
+            if (time === 0 && !isRunning) {
+                if (!window.confirm('Iniciar o 2º Tempo?')) return;
+                setIsRunning(true);
+                timerRef.current = { ...timerRef.current, time: 0, isRunning: true, currentPeriod: '2º Tempo' };
+                addToQueue('event', {
+                    event_type: 'period_start',
+                    team_id: matchData.home_team_id,
+                    minute: '00:00',
+                    period: '2º Tempo',
+                    metadata: { label: 'Começa o 2º Tempo! Vamos pro jogo!' }
+                });
+                addToQueue('patch_match', {
+                    match_details: {
+                        ...matchData?.match_details,
+                        sync_timer: { time: 0, isRunning: true, currentPeriod: '2º Tempo' }
+                    }
+                });
+                return;
             }
 
+            if (isRunning) {
+                if (!window.confirm('Encerrar o Tempo Normal?')) return;
+                setIsRunning(false);
+                const nextPeriod = 'Fim de Tempo Normal';
+                setCurrentPeriod(nextPeriod);
+                timerRef.current = { ...timerRef.current, isRunning: false, currentPeriod: nextPeriod };
+                addToQueue('event', {
+                    event_type: 'period_end',
+                    team_id: matchData.home_team_id,
+                    minute: formatTime(time),
+                    period: '2º Tempo',
+                    metadata: { label: 'Fim do Tempo Normal' }
+                });
+                addToQueue('patch_match', {
+                    match_details: {
+                        ...matchData?.match_details,
+                        sync_timer: { time, isRunning: false, currentPeriod: nextPeriod }
+                    }
+                });
+
+                const choice = window.confirm("Tempo Normal encerrado!\n\n'OK' → Prorrogação ou Tiros de 7m\n'Cancelar' → Finalizar partida agora");
+                if (choice) {
+                    if (window.confirm('Deseja iniciar a PRORROGAÇÃO?')) {
+                        const otPeriod = '1º Tempo Prorrogação';
+                        setCurrentPeriod(otPeriod);
+                        setTime(0);
+                        setIsRunning(true);
+                        timerRef.current = { ...timerRef.current, time: 0, isRunning: true, currentPeriod: otPeriod };
+                        addToQueue('event', {
+                            event_type: 'period_start',
+                            team_id: matchData.home_team_id,
+                            minute: '00:00',
+                            period: otPeriod,
+                            metadata: { label: 'Início da Prorrogação' }
+                        });
+                        addToQueue('patch_match', {
+                            match_details: {
+                                ...matchData?.match_details,
+                                sync_timer: { time: 0, isRunning: true, currentPeriod: otPeriod }
+                            }
+                        });
+                    } else if (window.confirm('Deseja ir DIRETO para os TIROS DE 7 METROS?')) {
+                        const pPeriod = 'Tiros de 7 Metros';
+                        setCurrentPeriod(pPeriod);
+                        setTime(0);
+                        setIsRunning(false);
+                        timerRef.current = { ...timerRef.current, time: 0, isRunning: false, currentPeriod: pPeriod };
+                        addToQueue('event', {
+                            event_type: 'period_start',
+                            team_id: matchData.home_team_id,
+                            minute: '00:00',
+                            period: pPeriod,
+                            metadata: { label: 'Início dos Tiros de 7 Metros' }
+                        });
+                        addToQueue('patch_match', {
+                            match_details: {
+                                ...matchData?.match_details,
+                                sync_timer: { time: 0, isRunning: false, currentPeriod: pPeriod }
+                            }
+                        });
+                    }
+                } else {
+                    handleFinish();
+                }
+            } else {
+                setIsRunning(true);
+                timerRef.current = { ...timerRef.current, isRunning: true };
+                addToQueue('patch_match', {
+                    match_details: {
+                        ...matchData?.match_details,
+                        sync_timer: { time, isRunning: true, currentPeriod: '2º Tempo' }
+                    }
+                });
+            }
+            return;
+        }
+
+        // 5. Fim de Tempo Normal
+        if (currentPeriod === 'Fim de Tempo Normal') {
+            if (window.confirm('Deseja iniciar a PRORROGAÇÃO?')) {
+                const otPeriod = '1º Tempo Prorrogação';
+                setCurrentPeriod(otPeriod);
+                setTime(0);
+                setIsRunning(true);
+                timerRef.current = { ...timerRef.current, time: 0, isRunning: true, currentPeriod: otPeriod };
+                addToQueue('event', {
+                    event_type: 'period_start',
+                    team_id: matchData.home_team_id,
+                    minute: '00:00',
+                    period: otPeriod,
+                    metadata: { label: 'Início da Prorrogação' }
+                });
+                addToQueue('patch_match', {
+                    match_details: {
+                        ...matchData?.match_details,
+                        sync_timer: { time: 0, isRunning: true, currentPeriod: otPeriod }
+                    }
+                });
+            } else if (window.confirm('Deseja ir DIRETO para os TIROS DE 7 METROS?')) {
+                const pPeriod = 'Tiros de 7 Metros';
+                setCurrentPeriod(pPeriod);
+                setTime(0);
+                setIsRunning(false);
+                timerRef.current = { ...timerRef.current, time: 0, isRunning: false, currentPeriod: pPeriod };
+                addToQueue('event', {
+                    event_type: 'period_start',
+                    team_id: matchData.home_team_id,
+                    minute: '00:00',
+                    period: pPeriod,
+                    metadata: { label: 'Início dos Tiros de 7 Metros' }
+                });
+                addToQueue('patch_match', {
+                    match_details: {
+                        ...matchData?.match_details,
+                        sync_timer: { time: 0, isRunning: false, currentPeriod: pPeriod }
+                    }
+                });
+            } else {
+                handleFinish();
+            }
+            return;
+        }
+
+        // 6. Prorrogação 1º Tempo
+        if (currentPeriod === '1º Tempo Prorrogação') {
+            if (isRunning) {
+                if (!window.confirm('Encerrar 1º Tempo da Prorrogação?')) return;
+                setIsRunning(false);
+                const nextPeriod = 'Intervalo Prorrogação';
+                setCurrentPeriod(nextPeriod);
+                timerRef.current = { ...timerRef.current, isRunning: false, currentPeriod: nextPeriod };
+                addToQueue('patch_match', {
+                    match_details: { ...matchData?.match_details, sync_timer: { time: 0, isRunning: false, currentPeriod: nextPeriod } }
+                });
+            } else {
+                setIsRunning(true);
+                timerRef.current = { ...timerRef.current, isRunning: true };
+            }
+            return;
+        }
+
+        // 7. Intervalo Prorrogação
+        if (currentPeriod === 'Intervalo Prorrogação') {
+            if (!window.confirm('Iniciar 2º Tempo da Prorrogação?')) return;
+            const nextPeriod = '2º Tempo Prorrogação';
             setCurrentPeriod(nextPeriod);
-
-            addToQueue('event', {
-                event_type: 'period_change',
-                team_id: matchData.home_team_id,
-                minute: formatTime(time),
-                period: nextPeriod,
-                metadata: { label: `Mudança de Período: ${nextPeriod}`, timestamp: new Date().toISOString() }
-            });
-
+            setTime(0);
+            setIsRunning(true);
+            timerRef.current = { ...timerRef.current, time: 0, isRunning: true, currentPeriod: nextPeriod };
             addToQueue('patch_match', {
-                match_details: { ...matchData.match_details, sync_timer: { time: 0, isRunning: false, currentPeriod: nextPeriod } }
+                match_details: { ...matchData?.match_details, sync_timer: { time: 0, isRunning: true, currentPeriod: nextPeriod } }
             });
+            return;
+        }
+
+        // 8. Prorrogação 2º Tempo
+        if (currentPeriod === '2º Tempo Prorrogação') {
+            if (isRunning) {
+                if (!window.confirm('Encerrar Prorrogação?')) return;
+                setIsRunning(false);
+                const nextPeriod = 'Fim da Prorrogação';
+                setCurrentPeriod(nextPeriod);
+                timerRef.current = { ...timerRef.current, isRunning: false, currentPeriod: nextPeriod };
+                addToQueue('patch_match', {
+                    match_details: { ...matchData?.match_details, sync_timer: { time, isRunning: false, currentPeriod: nextPeriod } }
+                });
+                if (window.confirm('Deseja ir para os TIROS DE 7 METROS?')) {
+                    const pPeriod = 'Tiros de 7 Metros';
+                    setCurrentPeriod(pPeriod);
+                    setTime(0);
+                    setIsRunning(false);
+                    timerRef.current = { ...timerRef.current, time: 0, isRunning: false, currentPeriod: pPeriod };
+                } else {
+                    handleFinish();
+                }
+            } else {
+                setIsRunning(true);
+                timerRef.current = { ...timerRef.current, isRunning: true };
+            }
+            return;
+        }
+
+        // 9. Tiros de 7 Metros ou Fim
+        if (currentPeriod === 'Tiros de 7 Metros' || currentPeriod.includes('Fim')) {
+            handleFinish();
+            return;
         }
     };
 
-    const handleEndCurrentTime = () => {
-        if (!window.confirm(`Encerrar o ${currentPeriod}?`)) return;
-        handleNextPeriod();
+    const getPeriodActionInfo = () => {
+        const isScheduled = matchData?.status === 'scheduled' || matchData?.status === 'Agendado';
+
+        if (isScheduled || (currentPeriod === '1º Tempo' && time === 0 && !isRunning)) {
+            return { label: 'Iniciar Partida', color: 'emerald' };
+        }
+        if (currentPeriod === '1º Tempo') {
+            return isRunning
+                ? { label: 'Encerrar 1º Tempo', color: 'orange' }
+                : { label: 'Retomar 1º Tempo', color: 'emerald' };
+        }
+        if (currentPeriod === 'Intervalo') {
+            return { label: 'Iniciar 2º Tempo', color: 'emerald' };
+        }
+        if (currentPeriod === '2º Tempo') {
+            if (time === 0 && !isRunning) {
+                return { label: 'Iniciar 2º Tempo', color: 'emerald' };
+            }
+            return isRunning
+                ? { label: 'Encerrar Tempo Normal', color: 'orange' }
+                : { label: 'Retomar 2º Tempo', color: 'emerald' };
+        }
+        if (currentPeriod === 'Fim de Tempo Normal') {
+            return { label: 'Prorrogação / 7m', color: 'indigo' };
+        }
+        if (currentPeriod === '1º Tempo Prorrogação') {
+            return isRunning
+                ? { label: 'Fim 1º T Prorr.', color: 'orange' }
+                : { label: 'Iniciar 1º T Prorr.', color: 'emerald' };
+        }
+        if (currentPeriod === 'Intervalo Prorrogação') {
+            return { label: 'Iniciar 2º T Prorr.', color: 'emerald' };
+        }
+        if (currentPeriod === '2º Tempo Prorrogação') {
+            return isRunning
+                ? { label: 'Fim Prorrogação', color: 'orange' }
+                : { label: 'Iniciar 2º T Prorr.', color: 'emerald' };
+        }
+        if (currentPeriod === 'Tiros de 7 Metros') {
+            return { label: 'Finalizar Partida', color: 'red' };
+        }
+        return { label: 'Partida Encerrada', color: 'red' };
     };
+
+    const periodActionInfo = getPeriodActionInfo();
 
     const handleEvent = (team: 'home' | 'away', type: any) => {
         setSelectedTeam(team);
@@ -346,7 +700,7 @@ export function SumulaHandebol() {
                         </div>
                         <div className="text-3xl font-mono font-black tabular-nums tracking-tighter text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]">{formatTime(time)}</div>
                     </div>
-                    <button onClick={() => setIsRunning(!isRunning)} className={`p-4 rounded-3xl transition-all duration-500 transform active:scale-90 shadow-2xl ${isRunning ? 'bg-orange-600/20 text-orange-400 border border-orange-500/30' : 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'}`}>
+                    <button onClick={handleToggleTimer} className={`p-4 rounded-3xl transition-all duration-500 transform active:scale-90 shadow-2xl ${isRunning ? 'bg-orange-600/20 text-orange-400 border border-orange-500/30' : 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'}`}>
                         <Icon icon={isRunning ? "heroicons-solid:pause" : "heroicons-solid:play"} className="w-8 h-8" />
                     </button>
                 </div>
@@ -421,15 +775,27 @@ export function SumulaHandebol() {
 
                 {/* Footer Actions */}
                 <div className="flex gap-3">
-                    {isRunning && isPlayPeriod ? (
-                        <button onClick={handleEndCurrentTime} className="flex-1 py-4 bg-orange-600/10 hover:bg-orange-600/20 text-orange-400 border border-orange-500/30 rounded-3xl font-black uppercase text-xs tracking-[0.2em] transition-all flex items-center justify-center gap-2">
-                            Encerrar Tempo <Icon icon="heroicons-solid:stop" className="w-4 h-4" />
-                        </button>
-                    ) : (
-                        <button onClick={handleNextPeriod} className="flex-1 py-4 bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 rounded-3xl font-black uppercase text-xs tracking-[0.2em] transition-all flex items-center justify-center gap-2">
-                            {currentPeriod.includes('Fim') ? 'Partida Encerrada' : 'Próximo Período'} <Icon icon="heroicons-solid:chevron-right" className="w-4 h-4" />
-                        </button>
-                    )}
+                    <button
+                        onClick={handlePeriodAction}
+                        className={`flex-1 py-4 rounded-3xl font-black uppercase text-xs tracking-[0.2em] transition-all flex items-center justify-center gap-2 shadow-lg ${
+                            periodActionInfo.color === 'emerald'
+                                ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/40 hover:bg-emerald-600/30'
+                                : periodActionInfo.color === 'orange'
+                                ? 'bg-orange-600/20 text-orange-400 border border-orange-500/40 hover:bg-orange-600/30'
+                                : periodActionInfo.color === 'red'
+                                ? 'bg-red-600/20 text-red-400 border border-red-500/40 hover:bg-red-600/30'
+                                : 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/40 hover:bg-indigo-600/30'
+                        }`}
+                    >
+                        {periodActionInfo.label}
+                        <Icon icon={
+                            periodActionInfo.color === 'emerald'
+                                ? "heroicons-solid:play"
+                                : periodActionInfo.color === 'orange'
+                                ? "heroicons-solid:stop"
+                                : "heroicons-solid:chevron-right"
+                        } className="w-4 h-4" />
+                    </button>
 
                     <button onClick={() => { setEventType('mvp'); setShowMvpRoleModal(true); }} className="px-6 py-4 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 border border-yellow-500/30 rounded-3xl font-black uppercase text-xs transition-all flex items-center gap-2">
                         <Icon icon="solar:cup-star-bold" className="w-6 h-6" />
