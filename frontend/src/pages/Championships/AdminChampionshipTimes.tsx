@@ -24,7 +24,7 @@ export function AdminChampionshipTimes() {
         if (!participants) return [];
         return participants.map((p, idx) => ({
             ...p,
-            competitor_id: p.user_id ? `user_${p.user_id}` : `team_${p.team_id}_${idx}`
+            competitor_id: p.id ? `res_${p.id}` : (p.user_id ? `user_${p.user_id}_cat_${p.category_id || idx}` : `team_${p.team_id}_${idx}`)
         }));
     })();
     

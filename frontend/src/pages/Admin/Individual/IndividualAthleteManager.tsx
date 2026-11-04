@@ -172,14 +172,28 @@ export function IndividualAthleteManager() {
         }
     }
 
+    const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
+
     const handleAddAthlete = async (e: React.FormEvent) => {
         e.preventDefault();
         setSaving(true);
         try {
             const data = new FormData();
             Object.entries(formData).forEach(([key, value]) => {
-                data.append(key, value.toString());
+                if (key !== 'category_id') {
+                    data.append(key, value.toString());
+                }
             });
+
+            if (selectedCategoryIds.length > 0) {
+                selectedCategoryIds.forEach(cid => {
+                    data.append('category_ids[]', cid.toString());
+                });
+                data.append('category_id', selectedCategoryIds[0].toString());
+            } else if (formData.category_id) {
+                data.append('category_id', formData.category_id);
+            }
+
             if (photoFile) {
                 const compressed = await compressImage(photoFile, 2 * 1024 * 1024); // 2MB for athlete photos
                 data.append('photo', compressed);
@@ -190,6 +204,7 @@ export function IndividualAthleteManager() {
             });
 
             setShowModal(false);
+            setSelectedCategoryIds([]);
             setFormData({
                 name: '',
                 phone: '',
@@ -472,9 +487,15 @@ export function IndividualAthleteManager() {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <span className="px-2.5 py-1 bg-indigo-50 text-indigo-700 text-[10px] font-black rounded-lg uppercase border border-indigo-100/50">
-                                                {athlete.category?.name || 'Geral'}
-                                            </span>
+                                            {athlete.category?.name ? (
+                                                <span className="px-2.5 py-1 bg-indigo-50 text-indigo-700 text-[10px] font-black rounded-lg uppercase border border-indigo-100/50">
+                                                    {athlete.category.name}
+                                                </span>
+                                            ) : (
+                                                <span className="px-2.5 py-1 bg-amber-50 text-amber-700 text-[10px] font-black rounded-lg uppercase border border-amber-200">
+                                                    Sem Categoria
+                                                </span>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4">
                                             <div 
@@ -664,18 +685,47 @@ export function IndividualAthleteManager() {
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Subcategoria / Corrida</label>
-                                        <select
-                                            required
-                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 transition-all"
-                                            value={formData.category_id}
-                                            onChange={e => setFormData({ ...formData, category_id: e.target.value })}
-                                        >
-                                            <option value="">Selecione...</option>
-                                            {categories.map(cat => (
-                                                <option key={cat.id} value={cat.id}>{cat.name}</option>
-                                            ))}
-                                        </select>
+                                        <div className="flex items-center justify-between mb-1.5 ml-1">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                                Categorias / Provas
+                                            </label>
+                                            <span className="text-[10px] font-bold text-slate-400 lowercase">
+                                                {selectedCategoryIds.length > 0 
+                                                    ? `${selectedCategoryIds.length} selecionada(s)`
+                                                    : '(opcional - pode definir depois)'}
+                                            </span>
+                                        </div>
+                                        <div className="max-h-40 overflow-y-auto border border-slate-200 rounded-2xl p-2 bg-slate-50 space-y-1">
+                                            {categories.length === 0 ? (
+                                                <p className="p-3 text-xs text-slate-400 text-center font-bold">Nenhuma categoria cadastrada</p>
+                                            ) : (
+                                                categories.map(cat => {
+                                                    const isChecked = selectedCategoryIds.includes(cat.id);
+                                                    return (
+                                                        <label
+                                                            key={cat.id}
+                                                            className={`flex items-center gap-2.5 p-2 rounded-xl text-xs font-bold cursor-pointer transition-colors ${
+                                                                isChecked ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'hover:bg-white text-slate-700'
+                                                            }`}
+                                                        >
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={isChecked}
+                                                                onChange={e => {
+                                                                    if (e.target.checked) {
+                                                                        setSelectedCategoryIds(prev => [...prev, cat.id]);
+                                                                    } else {
+                                                                        setSelectedCategoryIds(prev => prev.filter(x => x !== cat.id));
+                                                                    }
+                                                                }}
+                                                                className="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4"
+                                                            />
+                                                            <span>{cat.name}</span>
+                                                        </label>
+                                                    );
+                                                })
+                                            )}
+                                        </div>
                                     </div>
                                     <div>
                                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">

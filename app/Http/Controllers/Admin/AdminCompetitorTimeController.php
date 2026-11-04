@@ -73,7 +73,11 @@ class AdminCompetitorTimeController extends Controller
         if ($championship && $championship->registration_type !== 'team' && $request->user_id) {
             $race = Race::where('championship_id', $championshipId)->first();
             if ($race) {
-                $raceResult = RaceResult::where('race_id', $race->id)->where('user_id', $request->user_id)->first();
+                $raceResultQuery = RaceResult::where('race_id', $race->id)->where('user_id', $request->user_id);
+                if ($request->category_id) {
+                    $raceResultQuery->where('category_id', $request->category_id);
+                }
+                $raceResult = $raceResultQuery->first();
                 if ($raceResult) {
                     $raceResult->update([
                         'net_time' => $this->msToTime($request->time_ms),

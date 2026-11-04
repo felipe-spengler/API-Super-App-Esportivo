@@ -201,9 +201,12 @@ class RaceInscriptionController extends Controller
                 ->first();
 
             if ($user) {
-                $exists = RaceResult::where('race_id', $race->id)->where('user_id', $user->id)->exists();
+                $exists = RaceResult::where('race_id', $race->id)
+                    ->where('user_id', $user->id)
+                    ->where('category_id', $category->id)
+                    ->exists();
                 if ($exists) {
-                    return response()->json(['error' => 'Você já está inscrito neste evento.'], 422);
+                    return response()->json(['error' => "Você já está inscrito nesta categoria ({$category->name}) neste evento."], 422);
                 }
                 $user->update(array_filter([
                     'birth_date' => $user->birth_date ?: $request->birth_date,
@@ -349,8 +352,12 @@ class RaceInscriptionController extends Controller
                 $finalPrice = 0;
 
             // 5. Salvar Resultado
-            $lastBib = RaceResult::where('race_id', $race->id)->max(DB::raw('CAST(bib_number AS SIGNED)'));
-            $newBib = $lastBib ? $lastBib + 1 : 1;
+            $existingResult = RaceResult::where('race_id', $race->id)->where('user_id', $user->id)->first();
+            $newBib = $existingResult?->bib_number;
+            if (!$newBib) {
+                $lastBib = RaceResult::where('race_id', $race->id)->max(DB::raw('CAST(bib_number AS SIGNED)'));
+                $newBib = $lastBib ? $lastBib + 1 : 1;
+            }
             $status = ($finalPrice > 0) ? 'pending' : 'paid';
 
             $result = RaceResult::create([
@@ -467,7 +474,9 @@ class RaceInscriptionController extends Controller
             'athletes.*.document' => ['required', 'string', 'max:255', new \App\Rules\Cpf],
             'athletes.*.birth_date' => 'required|date',
             'athletes.*.gender' => 'required|string|in:M,F,O',
-            'athletes.*.category_id' => 'required|exists:categories,id',
+            'athletes.*.category_id' => 'nullable|exists:categories,id',
+            'athletes.*.category_ids' => 'nullable|array',
+            'athletes.*.category_ids.*' => 'exists:categories,id',
             'athletes.*.is_pcd' => 'nullable|boolean',
             'athletes.*.team_name' => 'nullable|string|max:255',
             'athletes.*.team' => 'nullable|string|max:255',
@@ -494,7 +503,23 @@ class RaceInscriptionController extends Controller
         }
 
         $championship = $race->championship;
-        $athletes = $request->athletes;
+
+        // Suporte a atleta com múltiplas categorias (category_ids)
+        $rawAthletes = $request->athletes;
+        $normalizedAthletes = [];
+        foreach ($rawAthletes as $ath) {
+            if (!empty($ath['category_ids']) && is_array($ath['category_ids'])) {
+                foreach ($ath['category_ids'] as $cId) {
+                    $cloned = $ath;
+                    $cloned['category_id'] = $cId;
+                    unset($cloned['category_ids']);
+                    $normalizedAthletes[] = $cloned;
+                }
+            } else {
+                $normalizedAthletes[] = $ath;
+            }
+        }
+        $athletes = $normalizedAthletes;
         $count = count($athletes);
 
         // Calcular Desconto Coletivo Progressivo
@@ -516,91 +541,112 @@ class RaceInscriptionController extends Controller
             DB::beginTransaction();
 
             $index = 0;
+            $batchEnrolledKeys = [];
+
             foreach ($athletes as $athleteData) {
-                $selectedCategory = Category::with(['parent', 'children'])->findOrFail($athleteData['category_id']);
-                $mainCategory = $selectedCategory->parent_id ? $selectedCategory->parent : $selectedCategory;
-                $category = $selectedCategory;
-                $subCategory = null;
+                $category = null;
+                $mainCategory = null;
 
-                $eventYear = $championship->start_date ? \Carbon\Carbon::parse($championship->start_date)->year : date('Y');
-                $referenceDate = \Carbon\Carbon::createFromDate($eventYear, 12, 31);
-                $athleteAge = (int) $referenceDate->diffInYears(\Carbon\Carbon::parse($athleteData['birth_date']), true);
+                if (!empty($athleteData['category_id'])) {
+                    $selectedCategory = Category::with(['parent', 'children'])->findOrFail($athleteData['category_id']);
+                    $mainCategory = $selectedCategory->parent_id ? $selectedCategory->parent : $selectedCategory;
+                    $category = $selectedCategory;
+                    $subCategory = null;
 
-                if ($mainCategory->children->count() > 0) {
-                    if (!empty($athleteData['is_pcd'])) {
-                        $subCategory = $mainCategory->children
-                            ->filter(function ($child) use ($athleteData) {
-                                $nameMatch = str_contains(strtolower($child->name), 'pcd');
-                                $childGender = strtolower($child->gender ?? '');
-                                if ($childGender && $childGender !== 'mixed' && $childGender !== 'misto') {
-                                    $userGender = strtolower($athleteData['gender']);
-                                    if ($userGender === 'm') $userGender = 'male';
-                                    if ($userGender === 'f') $userGender = 'female';
-                                    $normalizedChildGender = $childGender;
-                                    if ($normalizedChildGender === 'm') $normalizedChildGender = 'male';
-                                    if ($normalizedChildGender === 'f') $normalizedChildGender = 'female';
-                                    if ($userGender !== $normalizedChildGender) return false;
-                                }
-                                return $nameMatch;
-                            })
-                            ->first();
+                    $eventYear = $championship->start_date ? \Carbon\Carbon::parse($championship->start_date)->year : date('Y');
+                    $referenceDate = \Carbon\Carbon::createFromDate($eventYear, 12, 31);
+                    $athleteAge = (int) $referenceDate->diffInYears(\Carbon\Carbon::parse($athleteData['birth_date']), true);
+
+                    if ($mainCategory->children->count() > 0) {
+                        if (!empty($athleteData['is_pcd'])) {
+                            $subCategory = $mainCategory->children
+                                ->filter(function ($child) use ($athleteData) {
+                                    $nameMatch = str_contains(strtolower($child->name), 'pcd');
+                                    $childGender = strtolower($child->gender ?? '');
+                                    if ($childGender && $childGender !== 'mixed' && $childGender !== 'misto') {
+                                        $userGender = strtolower($athleteData['gender']);
+                                        if ($userGender === 'm') $userGender = 'male';
+                                        if ($userGender === 'f') $userGender = 'female';
+                                        $normalizedChildGender = $childGender;
+                                        if ($normalizedChildGender === 'm') $normalizedChildGender = 'male';
+                                        if ($normalizedChildGender === 'f') $normalizedChildGender = 'female';
+                                        if ($userGender !== $normalizedChildGender) return false;
+                                    }
+                                    return $nameMatch;
+                                })
+                                ->first();
+                        }
+
+                        if (!isset($subCategory)) {
+                            $subCategory = $mainCategory->children
+                                ->filter(function ($child) use ($athleteAge, $athleteData) {
+                                    $min = $child->min_age ?? 0;
+                                    $max = $child->max_age ?? 999;
+                                    if ($athleteAge < $min || $athleteAge > $max) return false;
+
+                                    $childGender = strtolower($child->gender ?? '');
+                                    if ($childGender && $childGender !== 'mixed' && $childGender !== 'misto') {
+                                        $userGender = strtolower($athleteData['gender']);
+                                        if ($userGender === 'm') $userGender = 'male';
+                                        if ($userGender === 'f') $userGender = 'female';
+                                        $normalizedChildGender = $childGender;
+                                        if ($normalizedChildGender === 'm') $normalizedChildGender = 'male';
+                                        if ($normalizedChildGender === 'f') $normalizedChildGender = 'female';
+                                        if ($userGender !== $normalizedChildGender) return false;
+                                    }
+                                    return true;
+                                })
+                                ->first();
+                        }
+
+                        if ($subCategory) {
+                            $category = $subCategory;
+                        }
                     }
 
-                    if (!isset($subCategory)) {
-                        $subCategory = $mainCategory->children
-                            ->filter(function ($child) use ($athleteAge, $athleteData) {
-                                $min = $child->min_age ?? 0;
-                                $max = $child->max_age ?? 999;
-                                if ($athleteAge < $min || $athleteAge > $max) return false;
-
-                                $childGender = strtolower($child->gender ?? '');
-                                if ($childGender && $childGender !== 'mixed' && $childGender !== 'misto') {
-                                    $userGender = strtolower($athleteData['gender']);
-                                    if ($userGender === 'm') $userGender = 'male';
-                                    if ($userGender === 'f') $userGender = 'female';
-                                    $normalizedChildGender = $childGender;
-                                    if ($normalizedChildGender === 'm') $normalizedChildGender = 'male';
-                                    if ($normalizedChildGender === 'f') $normalizedChildGender = 'female';
-                                    if ($userGender !== $normalizedChildGender) return false;
-                                }
-                                return true;
-                            })
-                            ->first();
+                    $catGender = strtolower($category->gender ?? $mainCategory->gender ?? '');
+                    if ($catGender && $catGender !== 'mixed' && $catGender !== 'misto') {
+                        $userGender = strtolower($athleteData['gender']);
+                        if ($userGender === 'm') $userGender = 'male';
+                        if ($userGender === 'f') $userGender = 'female';
+                        $normalizedCatGender = $catGender;
+                        if ($normalizedCatGender === 'm') $normalizedCatGender = 'male';
+                        if ($normalizedCatGender === 'f') $normalizedCatGender = 'female';
+                        if ($userGender !== $normalizedCatGender) {
+                            return response()->json(['error' => "Gênero incompatível para o atleta {$athleteData['name']}."], 422);
+                        }
                     }
 
-                    if ($subCategory) {
-                        $category = $subCategory;
+                    if ($category->min_age && $athleteAge < $category->min_age) {
+                        return response()->json(['error' => "Idade não permitida para o atleta {$athleteData['name']}. Mínima: {$category->min_age}."], 422);
                     }
-                }
-
-                $catGender = strtolower($category->gender ?? $mainCategory->gender ?? '');
-                if ($catGender && $catGender !== 'mixed' && $catGender !== 'misto') {
-                    $userGender = strtolower($athleteData['gender']);
-                    if ($userGender === 'm') $userGender = 'male';
-                    if ($userGender === 'f') $userGender = 'female';
-                    $normalizedCatGender = $catGender;
-                    if ($normalizedCatGender === 'm') $normalizedCatGender = 'male';
-                    if ($normalizedCatGender === 'f') $normalizedCatGender = 'female';
-                    if ($userGender !== $normalizedCatGender) {
-                        return response()->json(['error' => "Gênero incompatível para o atleta {$athleteData['name']}."], 422);
+                    if ($category->max_age && $athleteAge > $category->max_age) {
+                        return response()->json(['error' => "Idade não permitida para o atleta {$athleteData['name']}. Máxima: {$category->max_age}."], 422);
                     }
-                }
-
-                if ($category->min_age && $athleteAge < $category->min_age) {
-                    return response()->json(['error' => "Idade não permitida para o atleta {$athleteData['name']}. Mínima: {$category->min_age}."], 422);
-                }
-                if ($category->max_age && $athleteAge > $category->max_age) {
-                    return response()->json(['error' => "Idade não permitida para o atleta {$athleteData['name']}. Máxima: {$category->max_age}."], 422);
                 }
 
                 $user = User::where('cpf', $athleteData['document'])
                     ->orWhere('email', $athleteData['email'])
                     ->first();
 
+                $targetCatId = $category ? $category->id : null;
+                $userKey = ($user ? $user->id : $athleteData['document']) . '_' . ($targetCatId ?? 'none');
+
+                if (in_array($userKey, $batchEnrolledKeys)) {
+                    $catTitle = $category ? $category->name : 'geral';
+                    return response()->json(['error' => "O atleta {$athleteData['name']} foi adicionado mais de uma vez na categoria {$catTitle}."], 422);
+                }
+                $batchEnrolledKeys[] = $userKey;
+
                 if ($user) {
-                    $exists = RaceResult::where('race_id', $race->id)->where('user_id', $user->id)->exists();
+                    $exists = RaceResult::where('race_id', $race->id)
+                        ->where('user_id', $user->id)
+                        ->where('category_id', $targetCatId)
+                        ->exists();
+
                     if ($exists) {
-                        return response()->json(['error' => "O atleta {$athleteData['name']} já está inscrito neste evento."], 422);
+                        $catTitle = $category ? $category->name : 'geral';
+                        return response()->json(['error' => "O atleta {$athleteData['name']} já está inscrito na categoria {$catTitle}."], 422);
                     }
                     $user->update(array_filter([
                         'birth_date' => $user->birth_date ?: $athleteData['birth_date'],
@@ -639,8 +685,8 @@ class RaceInscriptionController extends Controller
                     $pcdDocumentUrl = '/storage/' . $path;
                 }
 
-                $originalPrice = (float) $mainCategory->price;
-                if ($category->id !== $mainCategory->id) {
+                $originalPrice = $mainCategory ? (float) $mainCategory->price : 0;
+                if ($category && $mainCategory && $category->id !== $mainCategory->id) {
                     $originalPrice += (float) ($category->price ?? 0);
                 }
 
@@ -736,8 +782,17 @@ class RaceInscriptionController extends Controller
             $status = ($totalPrice > 0) ? 'pending' : 'paid';
 
             foreach ($resultsToCreate as $r) {
-                $lastBib = RaceResult::where('race_id', $race->id)->max(DB::raw('CAST(bib_number AS SIGNED)'));
-                $newBib = $lastBib ? $lastBib + 1 : 1;
+                $existingBib = RaceResult::where('race_id', $race->id)->where('user_id', $r['user']->id)->value('bib_number');
+                if (!$existingBib) {
+                    $inBatch = collect($createdResults)->firstWhere('user_id', $r['user']->id);
+                    $existingBib = $inBatch ? $inBatch->bib_number : null;
+                }
+                if ($existingBib) {
+                    $newBib = $existingBib;
+                } else {
+                    $lastBib = RaceResult::where('race_id', $race->id)->max(DB::raw('CAST(bib_number AS SIGNED)'));
+                    $newBib = $lastBib ? $lastBib + 1 : 1;
+                }
 
                 $result = RaceResult::create([
                     'race_id' => $race->id,
@@ -745,7 +800,7 @@ class RaceInscriptionController extends Controller
                     'name' => $r['user']->name,
                     'team_name' => $r['team_name'] ?? null,
                     'bib_number' => (string) $newBib,
-                    'category_id' => $r['category']->id,
+                    'category_id' => $r['category']?->id,
                     'status_payment' => $status,
                     'payment_method' => $status === 'paid' ? 'free' : null,
                     'is_pcd' => $r['is_pcd'],
@@ -757,7 +812,7 @@ class RaceInscriptionController extends Controller
                     'payment_group_leader' => $r['payment_group_leader']
                 ]);
 
-                if ($status === 'paid') {
+                if ($status === 'paid' && $r['category']) {
                     try {
                         $included = $r['category']->products();
                         foreach ($included as $item) {
@@ -783,9 +838,9 @@ class RaceInscriptionController extends Controller
                 $createdResults[] = $result;
             }
 
+            $leaderResult = $createdResults[0] ?? null;
             $paymentInfo = null;
             if ($status === 'pending') {
-                $leaderResult = $createdResults[0];
                 $leaderUser = $resultsToCreate[0]['user'];
 
                 $asaas = new AsaasService($championship->club);

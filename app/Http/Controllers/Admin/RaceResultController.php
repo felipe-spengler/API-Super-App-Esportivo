@@ -29,7 +29,7 @@ class RaceResultController extends Controller
             return response()->json(['message' => 'Corrida não encontrada'], 404);
 
         $results = RaceResult::where('race_id', $race->id)
-            ->with(['category', 'user'])
+            ->with(['category.parent', 'user'])
             ->orderBy('lap', 'desc')
             ->orderBy('net_time', 'asc')
             ->orderBy('position_general', 'asc')
@@ -59,7 +59,9 @@ class RaceResultController extends Controller
             'document' => 'required|string|max:255',
             'birth_date' => 'required|date',
             'gender' => 'required|string|in:M,F,O',
-            'category_id' => 'required|exists:categories,id',
+            'category_id' => 'nullable|exists:categories,id',
+            'category_ids' => 'nullable|array',
+            'category_ids.*' => 'exists:categories,id',
             'team_name' => 'nullable|string|max:255',
             'team' => 'nullable|string|max:255',
             'equipe' => 'nullable|string|max:255',
@@ -72,10 +74,42 @@ class RaceResultController extends Controller
 
         try {
             DB::beginTransaction();
-            $user = User::where('cpf', $request->document)->orWhere('rg', $request->document)->orWhere('document_number', $request->document)->first();
+            $user = User::where('cpf', $request->document)
+                ->orWhere('rg', $request->document)
+                ->orWhere('document_number', $request->document)
+                ->first();
 
-            if ($user && RaceResult::where('race_id', $race->id)->where('user_id', $user->id)->exists()) {
-                return response()->json(['error' => 'Atleta já cadastrado.'], 422);
+            // Determinar quais categorias cadastrar
+            $categoryIds = [];
+            if ($request->has('category_ids') && is_array($request->category_ids)) {
+                $categoryIds = array_values(array_filter($request->category_ids));
+            } elseif ($request->filled('category_id')) {
+                $categoryIds = [$request->category_id];
+            } else {
+                $categoryIds = [null]; // Sem categoria definida (atribuir depois)
+            }
+
+            $nullRecord = null;
+            $newCategoryIds = $categoryIds;
+
+            if ($user) {
+                $alreadyEnrolledCats = RaceResult::where('race_id', $race->id)
+                    ->where('user_id', $user->id)
+                    ->pluck('category_id')
+                    ->toArray();
+
+                $newCategoryIds = array_filter($categoryIds, function ($cId) use ($alreadyEnrolledCats) {
+                    return !in_array($cId, $alreadyEnrolledCats);
+                });
+
+                if (empty($newCategoryIds) && !empty($categoryIds)) {
+                    return response()->json(['error' => 'Atleta já cadastrado na(s) categoria(s) selecionada(s).'], 422);
+                }
+
+                $nullRecord = RaceResult::where('race_id', $race->id)
+                    ->where('user_id', $user->id)
+                    ->whereNull('category_id')
+                    ->first();
             }
 
             if (!$user) {
@@ -96,7 +130,7 @@ class RaceResultController extends Controller
                 $file = $request->file('photo');
                 $filename = Str::slug($user->name) . '-' . time() . '.' . $file->getClientOriginalExtension();
                 $path = $file->storeAs('players', $filename, 'public');
-                
+
                 $user->photo_path = $path;
                 $user->photos = [$path];
                 $user->save();
@@ -110,7 +144,7 @@ class RaceResultController extends Controller
                         $escapedArtisan = escapeshellarg($artisan);
                         $escapedUserId = escapeshellarg((int)$user->id);
                         $cmd = "{$escapedPhp} {$escapedArtisan} player:process-photos {$escapedUserId}";
-                        
+
                         if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
                             pclose(popen("start /B " . $cmd, "r"));
                         } else {
@@ -122,20 +156,46 @@ class RaceResultController extends Controller
                 }
             }
 
-            $lastBib = RaceResult::where('race_id', $race->id)->max(DB::raw('CAST(bib_number AS SIGNED)'));
-            $result = RaceResult::create([
-                'race_id' => $race->id,
-                'user_id' => $user->id,
-                'name' => $user->name,
-                'team_name' => $request->input('team_name', $request->input('team', $request->input('equipe', null))),
-                'bib_number' => (string) ($lastBib ? $lastBib + 1 : 1),
-                'category_id' => $request->category_id,
-                'status_payment' => $request->status_payment,
-                'payment_method' => $request->payment_method
-            ]);
+            // Reutiliza o número de peito do atleta se ele já estiver cadastrado em outra categoria da mesma prova
+            $existingResult = RaceResult::where('race_id', $race->id)->where('user_id', $user->id)->first();
+            $bibNumber = $existingResult?->bib_number;
+            if (!$bibNumber) {
+                $lastBib = RaceResult::where('race_id', $race->id)->max(DB::raw('CAST(bib_number AS SIGNED)'));
+                $bibNumber = (string) ($lastBib ? $lastBib + 1 : 1);
+            }
+
+            $createdResults = [];
+            $teamName = $request->input('team_name', $request->input('team', $request->input('equipe', $existingResult?->team_name)));
+
+            foreach ($newCategoryIds as $catId) {
+                if ($nullRecord && $catId !== null) {
+                    $nullRecord->update([
+                        'category_id' => $catId,
+                        'team_name' => $teamName,
+                        'status_payment' => $request->status_payment,
+                        'payment_method' => $request->payment_method
+                    ]);
+                    $createdResults[] = $nullRecord;
+                    $nullRecord = null;
+                } else {
+                    $created = RaceResult::create([
+                        'race_id' => $race->id,
+                        'user_id' => $user->id,
+                        'name' => $user->name,
+                        'team_name' => $teamName,
+                        'bib_number' => $bibNumber,
+                        'category_id' => $catId,
+                        'status_payment' => $request->status_payment,
+                        'payment_method' => $request->payment_method
+                    ]);
+                    $createdResults[] = $created;
+                }
+            }
 
             DB::commit();
-            return response()->json($result->load(['user', 'category']), 201);
+
+            $firstResult = $createdResults[0] ?? $existingResult;
+            return response()->json($firstResult ? $firstResult->load(['user', 'category.parent']) : [], 201);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['error' => $e->getMessage()], 500);

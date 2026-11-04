@@ -408,7 +408,7 @@ export function StopwatchModal({
                                 <option value="">Selecione quem vai competir...</option>
                                 {availableParticipants.map(p => (
                                     <option key={p.competitor_id} value={p.competitor_id}>
-                                        {p.name} {p.bib_number ? `(Peito: ${p.bib_number})` : ''}
+                                        {p.name} {p.bib_number ? `(Peito: ${p.bib_number})` : ''}{p.category?.name ? ` • ${p.category.name}` : ''}
                                     </option>
                                 ))}
                             </select>

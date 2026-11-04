@@ -38,6 +38,7 @@ export function RaceRegister() {
             photoPreview: null,
             pcdFile: null,
             parentCategoryId: null,
+            parentCategoryIds: [] as string[],
             giftSelections: {}
         }
     ]);
@@ -70,9 +71,25 @@ export function RaceRegister() {
     const [pcdFile, setPcdFile] = useState<File | null>(null);
 
     const [parentCategoryId, setParentCategoryId] = useState<string | null>(null);
+    const [parentCategoryIds, setParentCategoryIds] = useState<string[]>([]);
 
     const [shopProducts, setShopProducts] = useState<any[]>([]);
     const [shopItems, setShopItems] = useState<any[]>([]);
+
+    const toggleParentCategory = (catIdStr: string) => {
+        let next: string[];
+        if (parentCategoryIds.includes(catIdStr)) {
+            next = parentCategoryIds.filter(id => id !== catIdStr);
+        } else {
+            next = [...parentCategoryIds, catIdStr];
+        }
+        setParentCategoryIds(next);
+        setParentCategoryId(next[0] || null);
+        setFormData(prev => ({
+            ...prev,
+            category_id: next[0] || ''
+        }));
+    };
 
     const saveStatesToCurrentAthlete = () => {
         setAthletes(prev => {
@@ -86,7 +103,7 @@ export function RaceRegister() {
                 birth_date: formData.birth_date,
                 gender: formData.gender,
                 team_name: formData.team_name,
-                category_id: formData.category_id,
+                category_id: parentCategoryIds[0] || formData.category_id,
                 is_pcd: formData.is_pcd,
                 gifts: Object.entries(giftSelections).map(([productId, variant]) => ({
                     product_id: productId,
@@ -96,7 +113,8 @@ export function RaceRegister() {
                 photoFile: photoFile,
                 photoPreview: photoPreview,
                 pcdFile: pcdFile,
-                parentCategoryId: parentCategoryId,
+                parentCategoryId: parentCategoryIds[0] || parentCategoryId,
+                parentCategoryIds: parentCategoryIds,
                 giftSelections: giftSelections
             };
             return copy;
@@ -121,7 +139,11 @@ export function RaceRegister() {
         setPhotoFile(ath.photoFile || null);
         setPhotoPreview(ath.photoPreview || null);
         setPcdFile(ath.pcdFile || null);
-        setParentCategoryId(ath.parentCategoryId || null);
+        const pIds = (ath.parentCategoryIds && ath.parentCategoryIds.length > 0)
+            ? ath.parentCategoryIds
+            : (ath.parentCategoryId ? [ath.parentCategoryId] : (ath.category_id ? [ath.category_id] : []));
+        setParentCategoryIds(pIds);
+        setParentCategoryId(pIds[0] || null);
         setGiftSelections(ath.giftSelections || {});
         setShopItems(ath.shop_items || []);
     };
@@ -278,15 +300,16 @@ export function RaceRegister() {
         return bulkDiscountPct;
     };
 
-    const getAthleteSubcategory = (athlete: any) => {
-        if (!athlete.parentCategoryId || !athlete.birth_date || !athlete.gender) {
+    const getAthleteSubcategoryForParent = (athlete: any, parentId?: string | null) => {
+        const targetParentId = parentId || athlete.parentCategoryId || (athlete.parentCategoryIds && athlete.parentCategoryIds[0]);
+        if (!targetParentId || !athlete.birth_date || !athlete.gender) {
             return null;
         }
 
-        const mainCat = championship?.categories?.find((c: any) => String(c.id) === String(athlete.parentCategoryId));
+        const mainCat = championship?.categories?.find((c: any) => String(c.id) === String(targetParentId));
         if (!mainCat) return null;
 
-        const children = championship.categories.filter((c: any) => String(c.parent_id) === String(mainCat.id));
+        const children = championship?.categories?.filter((c: any) => String(c.parent_id) === String(mainCat.id)) || [];
         if (children.length === 0) return null;
 
         const eventDate = championship?.start_date ? new Date(championship.start_date) : new Date();
@@ -316,13 +339,46 @@ export function RaceRegister() {
         }) || null;
     };
 
+    const getAthleteSubcategory = (athlete: any) => {
+        return getAthleteSubcategoryForParent(athlete);
+    };
+
+    const getAthleteResolvedCategories = (athlete: any): { id: string; name: string; price: number }[] => {
+        const parentIds: string[] = (athlete.parentCategoryIds && athlete.parentCategoryIds.length > 0)
+            ? athlete.parentCategoryIds
+            : (athlete.parentCategoryId ? [athlete.parentCategoryId] : (athlete.category_id ? [athlete.category_id] : []));
+
+        if (parentIds.length === 0) return [];
+
+        return parentIds.map(pId => {
+            const parentCat = championship?.categories?.find((c: any) => String(c.id) === String(pId));
+            const subCat = getAthleteSubcategoryForParent(athlete, pId);
+            if (subCat) {
+                return {
+                    id: String(subCat.id),
+                    name: `${parentCat?.name || 'Prova'} - ${subCat.name}`,
+                    price: Number(subCat.price || parentCat?.price || 0)
+                };
+            }
+            return {
+                id: String(parentCat?.id || pId),
+                name: parentCat?.name || 'Prova',
+                price: Number(parentCat?.price || 0)
+            };
+        });
+    };
+
     const calculateSingleAthletePrice = (athlete: any, bulkPct = 0) => {
+        const resolvedCats = getAthleteResolvedCategories(athlete);
         const mainCat = championship?.categories?.find((c: any) => String(c.id) === String(athlete.parentCategoryId));
         const selectedCat = championship?.categories?.find((c: any) => String(c.id) === String(athlete.category_id));
         const autoSub = getAthleteSubcategory(athlete);
 
-        const basePrice = Number(mainCat?.price || selectedCat?.price || 0);
-        const subPrice = (autoSub && String(autoSub.id) !== String(athlete.parentCategoryId)) ? Number(autoSub.price || 0) : 0;
+        const basePrice = resolvedCats.length > 0
+            ? resolvedCats.reduce((acc, cat) => acc + Number(cat.price || 0), 0)
+            : Number(mainCat?.price || selectedCat?.price || 0);
+
+        const subPrice = (autoSub && String(autoSub.id) !== String(athlete.parentCategoryId) && resolvedCats.length <= 1) ? Number(autoSub.price || 0) : 0;
 
         let surcharge = 0;
         if (athlete.giftSelections) {
@@ -525,7 +581,7 @@ export function RaceRegister() {
             document: formData.document,
             birth_date: formData.birth_date,
             gender: formData.gender,
-            category_id: formData.category_id,
+            category_id: parentCategoryIds[0] || formData.category_id,
             is_pcd: formData.is_pcd,
             gifts: Object.entries(giftSelections).map(([productId, variant]) => ({
                 product_id: productId,
@@ -535,7 +591,8 @@ export function RaceRegister() {
             photoFile: photoFile,
             photoPreview: photoPreview,
             pcdFile: pcdFile,
-            parentCategoryId: parentCategoryId,
+            parentCategoryId: parentCategoryIds[0] || parentCategoryId,
+            parentCategoryIds: parentCategoryIds,
             giftSelections: giftSelections
         };
 
@@ -544,7 +601,8 @@ export function RaceRegister() {
 
         for (let i = 0; i < allAthletes.length; i++) {
             const ath = allAthletes[i];
-            if (!ath.category_id || !ath.name || !ath.email || !ath.document || !ath.phone || !ath.birth_date || !ath.gender) {
+            const hasCat = (ath.parentCategoryIds && ath.parentCategoryIds.length > 0) || ath.parentCategoryId || ath.category_id;
+            if (!hasCat || !ath.name || !ath.email || !ath.document || !ath.phone || !ath.birth_date || !ath.gender) {
                 alert(`Por favor, preencha todos os campos obrigatórios para o Atleta ${i + 1} (${ath.name || 'Sem nome'}).`);
                 return;
             }
@@ -559,8 +617,9 @@ export function RaceRegister() {
             const data = new FormData();
 
             const athletesPayload = allAthletes.map((ath, idx) => {
-                const autoSub = getAthleteSubcategory(ath);
-                const finalCategoryId = autoSub ? autoSub.id.toString() : ath.category_id;
+                const resolvedCats = getAthleteResolvedCategories(ath);
+                const categoryIds = resolvedCats.map(c => c.id);
+                const primaryCategoryId = categoryIds[0] || ath.category_id;
 
                 if (ath.photoFile) {
                     data.append(`athletes.${idx}.photo`, ath.photoFile);
@@ -577,7 +636,8 @@ export function RaceRegister() {
                     birth_date: ath.birth_date,
                     gender: ath.gender,
                     team_name: ath.team_name || '',
-                    category_id: finalCategoryId,
+                    category_id: primaryCategoryId,
+                    category_ids: categoryIds.length > 0 ? categoryIds : [primaryCategoryId],
                     is_pcd: ath.is_pcd,
                     gifts: ath.gifts,
                     shop_items: ath.shop_items
@@ -658,51 +718,67 @@ export function RaceRegister() {
                 {step === 1 && (
                     <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-6">
                         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-                            <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight mb-6">Selecione sua Distância</h2>
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                                <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">
+                                    Selecione suas Provas / Categorias
+                                </h2>
+                                {parentCategoryIds.length > 0 && (
+                                    <span className="px-3 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full text-xs font-black uppercase w-max">
+                                        {parentCategoryIds.length} {parentCategoryIds.length === 1 ? 'categoria selecionada' : 'categorias selecionadas'}
+                                    </span>
+                                )}
+                            </div>
+                            <p className="text-slate-500 text-xs font-medium mb-6">
+                                💡 Você pode selecionar <strong>uma ou mais categorias</strong> para competir neste campeonato (ex: 50m Livre e 50m Borboleta).
+                            </p>
 
                             <div className="space-y-6">
-                                <div className="grid gap-4">
-                                    {mainCategories.map((cat: any) => (
-                                        <button
-                                            key={cat.id}
-                                            onClick={() => {
-                                                setParentCategoryId(cat.id.toString());
-                                                setFormData({ ...formData, category_id: cat.id.toString() });
-                                            }}
-                                            className={`p-6 rounded-2xl border-2 text-left transition-all relative overflow-hidden ${parentCategoryId === cat.id.toString()
-                                                ? 'border-indigo-600 bg-indigo-50/50 shadow-md transform scale-[1.01]'
-                                                : 'border-slate-100 bg-white hover:border-slate-200'
+                                <div className="grid gap-3">
+                                    {mainCategories.map((cat: any) => {
+                                        const isSelected = parentCategoryIds.includes(cat.id.toString());
+                                        return (
+                                            <button
+                                                key={cat.id}
+                                                type="button"
+                                                onClick={() => toggleParentCategory(cat.id.toString())}
+                                                className={`p-5 rounded-2xl border-2 text-left transition-all relative overflow-hidden flex items-center justify-between ${isSelected
+                                                    ? 'border-indigo-600 bg-indigo-50/50 shadow-md ring-2 ring-indigo-500/20'
+                                                    : 'border-slate-100 bg-white hover:border-slate-200'
                                                 }`}
-                                        >
-                                            <div className="flex justify-between items-start">
-                                                <div>
-                                                    <h3 className="font-black text-slate-900 uppercase text-lg italic">{cat.name}</h3>
-                                                    <p className="text-slate-500 text-xs font-medium uppercase mt-1">{cat.description || 'Categoria Principal'}</p>
-                                                </div>
-                                                <div className="text-right">
-                                                    <span className="block font-black text-indigo-600 text-xl italic leading-none">
-                                                        {Number(cat.price) > 0 ? `R$ ${cat.price}` : 'Escolher'}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            {parentCategoryId === cat.id.toString() && (
-                                                <div className="absolute top-2 right-2">
-                                                    <div className="bg-indigo-600 text-white p-1 rounded-full">
-                                                        <Check size={12} />
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-colors shrink-0 ${
+                                                        isSelected ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300 bg-white'
+                                                    }`}>
+                                                        {isSelected && <Check size={14} strokeWidth={3} />}
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="font-black text-slate-900 uppercase text-lg italic">{cat.name}</h3>
+                                                        <p className="text-slate-500 text-xs font-medium uppercase mt-0.5">{cat.description || 'Categoria Principal'}</p>
                                                     </div>
                                                 </div>
-                                            )}
-                                        </button>
-                                    ))}
+                                                <div className="text-right shrink-0">
+                                                    <span className="block font-black text-indigo-600 text-xl italic leading-none">
+                                                        {Number(cat.price) > 0 ? `R$ ${Number(cat.price).toFixed(2).replace('.', ',')}` : 'Grátis'}
+                                                    </span>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
                             <button
-                                disabled={!parentCategoryId}
+                                disabled={parentCategoryIds.length === 0}
                                 onClick={() => setStep(2)}
                                 className="w-full mt-6 py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-800 disabled:opacity-50 shadow-xl flex items-center justify-center gap-3 transition-all"
                             >
-                                Próximo Passo
-                                <ArrowRight />
+                                <span>Próximo Passo</span>
+                                {parentCategoryIds.length > 0 && (
+                                    <span className="text-xs bg-indigo-600 px-2.5 py-0.5 rounded-full text-white font-bold">
+                                        {parentCategoryIds.length} {parentCategoryIds.length === 1 ? 'categoria' : 'categorias'}
+                                    </span>
+                                )}
+                                <ArrowRight size={18} />
                             </button>
 
                             {/* Tracking Section */}
@@ -1219,6 +1295,7 @@ export function RaceRegister() {
                                             photoPreview: null,
                                             pcdFile: null,
                                             parentCategoryId: null,
+                                            parentCategoryIds: [] as string[],
                                             giftSelections: {}
                                         };
                                         const newList = [...athletes, newAthlete];
@@ -1238,6 +1315,7 @@ export function RaceRegister() {
                                 {athletes.map((ath, idx) => {
                                     const { total, shopTotal } = calculateSingleAthletePrice(ath, getBulkDiscountPercentage());
                                     const isCurrent = idx === currentAthleteIndex;
+                                    const resolvedCats = getAthleteResolvedCategories(ath);
                                     return (
                                         <div key={idx} className={`p-4 rounded-2xl border-2 transition-all ${isCurrent ? 'border-indigo-600 bg-indigo-50/20' : 'border-slate-100 bg-slate-50/50'}`}>
                                             <div className="flex justify-between items-start">
@@ -1249,10 +1327,20 @@ export function RaceRegister() {
                                                             Equipe: {ath.team_name}
                                                         </p>
                                                     )}
-                                                    <p className="text-[10px] text-slate-500 font-bold uppercase mt-1">
-                                                        {(championship?.categories?.find((c: any) => String(c.id) === String(ath.parentCategoryId)))?.name || 'Sem categoria'}
-                                                        {getAthleteSubcategory(ath) && ` - Subcategoria: ${getAthleteSubcategory(ath)?.name}`}
-                                                    </p>
+                                                    {resolvedCats.length > 0 ? (
+                                                        <div className="flex flex-wrap gap-1 mt-1">
+                                                            {resolvedCats.map(rc => (
+                                                                <span key={rc.id} className="text-[10px] font-bold uppercase bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded border border-indigo-200">
+                                                                    {rc.name} {rc.price > 0 && `(R$ ${rc.price.toFixed(2)})`}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-[10px] text-slate-500 font-bold uppercase mt-1">
+                                                            {(championship?.categories?.find((c: any) => String(c.id) === String(ath.parentCategoryId)))?.name || 'Sem categoria'}
+                                                            {getAthleteSubcategory(ath) && ` - Subcategoria: ${getAthleteSubcategory(ath)?.name}`}
+                                                        </p>
+                                                    )}
                                                     {shopTotal > 0 && (
                                                         <p className="text-[10px] text-indigo-600 font-bold uppercase mt-0.5">
                                                             + R$ {shopTotal.toFixed(2)} em produtos adicionais

@@ -881,17 +881,16 @@ class EventController extends Controller
             if ($race) {
                 $results = \App\Models\RaceResult::with(['user', 'category'])->where('race_id', $race->id)->get();
                 foreach ($results as $result) {
-                    if ($result->user) {
-                        $participants[] = [
-                            'user_id' => $result->user->id,
-                            'name' => $result->name ?: $result->user->name,
-                            'bib_number' => $result->bib_number,
-                            'team_id' => null,
-                            'team' => null,
-                            'category_id' => $result->category_id,
-                            'category' => $result->category ? ['name' => $result->category->name] : null,
-                        ];
-                    }
+                    $participants[] = [
+                        'id' => $result->id,
+                        'user_id' => $result->user_id,
+                        'name' => $result->name ?: ($result->user?->name ?? 'Atleta #' . $result->bib_number),
+                        'bib_number' => $result->bib_number,
+                        'team_id' => null,
+                        'team' => $result->team_name ? ['name' => $result->team_name] : null,
+                        'category_id' => $result->category_id,
+                        'category' => $result->category ? ['name' => $result->category->name] : null,
+                    ];
                 }
             }
         }
@@ -910,10 +909,27 @@ class EventController extends Controller
             return response()->json([]);
         }
 
-        $query = \App\Models\RaceResult::where('race_id', $race->id)->with(['category', 'user']);
+        $query = \App\Models\RaceResult::where('race_id', $race->id)->with(['category.parent', 'user']);
 
-        if ($request->has('category')) {
-            $query->where('category_id', $request->category);
+        if ($request->filled('category') && $request->category !== 'all') {
+            $catId = $request->category;
+            $subCatIds = \App\Models\Category::where('parent_id', $catId)->pluck('id')->toArray();
+            if (!empty($subCatIds)) {
+                $query->whereIn('category_id', array_merge([$catId], $subCatIds));
+            } else {
+                $query->where('category_id', $catId);
+            }
+        }
+
+        if ($request->filled('subcategory') && $request->subcategory !== 'all') {
+            $query->where('category_id', $request->subcategory);
+        }
+
+        if ($request->filled('gender') && $request->gender !== 'all') {
+            $gender = $request->gender;
+            $query->whereHas('user', function ($q) use ($gender) {
+                $q->where('gender', $gender);
+            });
         }
 
         if ($request->has('search')) {

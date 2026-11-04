@@ -29,15 +29,22 @@ class CategoryController extends Controller
             ->withCount('teams')
             ->get();
 
-        // Append art background URL if exists in art_settings
+        $race = \App\Models\Race::where('championship_id', $championshipId)->first();
+        $raceId = $race?->id;
+
+        // Append art background URL and count of registered athletes
         $artSettings = $championship->art_settings ?? [];
-        $categories->each(function ($category) use ($artSettings) {
+        $categories->each(function ($category) use ($artSettings, $raceId) {
             $path = $artSettings['category_backgrounds'][$category->id] ?? null;
             if ($path) {
                 $category->art_background_url = rtrim(config('app.url'), '/') . '/api/storage/' . $path;
             } else {
                 $category->art_background_url = null;
             }
+
+            $category->athletes_count = $raceId
+                ? \App\Models\RaceResult::where('race_id', $raceId)->where('category_id', $category->id)->count()
+                : 0;
         });
 
         return response()->json($categories);
@@ -275,6 +282,241 @@ class CategoryController extends Controller
 
         return response()->json([
             'message' => 'Equipe removida da categoria com sucesso!'
+        ]);
+    }
+
+    /**
+     * Listar atletas vinculados a esta categoria e atletas disponíveis do campeonato
+     */
+    public function getAthletes(Request $request, $championshipId, $categoryId)
+    {
+        $championship = Championship::findOrFail($championshipId);
+        $category = Category::where('championship_id', $championshipId)->findOrFail($categoryId);
+
+        $race = \App\Models\Race::where('championship_id', $championshipId)->first();
+        if (!$race) {
+            return response()->json([
+                'category' => $category,
+                'category_athletes' => [],
+                'available_athletes' => []
+            ]);
+        }
+
+        // Atletas atualmente nesta categoria
+        $categoryAthletes = \App\Models\RaceResult::where('race_id', $race->id)
+            ->where('category_id', $categoryId)
+            ->with(['user', 'category'])
+            ->orderBy('name', 'asc')
+            ->get();
+
+        // Todos os atletas inscritos no campeonato/corrida
+        $allAthletes = \App\Models\RaceResult::where('race_id', $race->id)
+            ->with(['user', 'category'])
+            ->orderBy('name', 'asc')
+            ->get();
+
+        $enrolledUserIds = $categoryAthletes->pluck('user_id')->filter()->unique()->toArray();
+        $enrolledResultIds = $categoryAthletes->pluck('id')->toArray();
+
+        // Atletas disponíveis: que estão no campeonato mas NÃO nesta categoria
+        $availableAthletes = $allAthletes->filter(function ($item) use ($enrolledUserIds, $enrolledResultIds) {
+            if ($item->user_id) {
+                return !in_array($item->user_id, $enrolledUserIds);
+            }
+            return !in_array($item->id, $enrolledResultIds);
+        })->unique(function ($item) {
+            return $item->user_id ?: 'result_' . $item->id;
+        })->values();
+
+        return response()->json([
+            'category' => $category,
+            'category_athletes' => $categoryAthletes,
+            'available_athletes' => $availableAthletes
+        ]);
+    }
+
+    /**
+     * Adicionar um atleta a esta categoria
+     */
+    public function addAthlete(Request $request, $championshipId, $categoryId)
+    {
+        $championship = Championship::findOrFail($championshipId);
+        $category = Category::where('championship_id', $championshipId)->findOrFail($categoryId);
+
+        $user = $request->user();
+        if ($user && $user->club_id !== null && $championship->club_id !== $user->club_id) {
+            return response()->json(['message' => 'Você não tem permissão para editar este campeonato.'], 403);
+        }
+
+        $request->validate([
+            'athlete_id' => 'nullable|integer',
+            'user_id' => 'nullable|integer',
+        ]);
+
+        $race = \App\Models\Race::where('championship_id', $championshipId)->first();
+        if (!$race) {
+            $race = \App\Models\Race::create([
+                'championship_id' => $championshipId,
+                'start_datetime' => $championship->start_date ?? now(),
+                'location_name' => 'A definir',
+                'kits_info' => 'Informações do kit em breve'
+            ]);
+        }
+
+        if ($request->filled('athlete_id')) {
+            $sourceResult = \App\Models\RaceResult::where('race_id', $race->id)->findOrFail($request->athlete_id);
+
+            // Verifica se o atleta já está cadastrado nesta categoria
+            $alreadyEnrolled = \App\Models\RaceResult::where('race_id', $race->id)
+                ->where('category_id', $categoryId)
+                ->where(function ($q) use ($sourceResult) {
+                    if ($sourceResult->user_id) {
+                        $q->where('user_id', $sourceResult->user_id);
+                    } else {
+                        $q->where('name', $sourceResult->name);
+                    }
+                })->exists();
+
+            if ($alreadyEnrolled) {
+                return response()->json(['message' => 'Atleta já está inscrito nesta categoria.'], 400);
+            }
+
+            // Se o atleta estava sem categoria definida (category_id null), atualiza o registro existente
+            if ($sourceResult->category_id === null) {
+                $sourceResult->update(['category_id' => $categoryId]);
+                $finalResult = $sourceResult;
+            } else {
+                // Atleta já possui outra categoria: cria uma nova inscrição nesta categoria mantendo dados essenciais
+                $finalResult = \App\Models\RaceResult::create([
+                    'race_id' => $race->id,
+                    'user_id' => $sourceResult->user_id,
+                    'name' => $sourceResult->name,
+                    'bib_number' => $sourceResult->bib_number,
+                    'team_name' => $sourceResult->team_name,
+                    'category_id' => $categoryId,
+                    'status_payment' => $sourceResult->status_payment ?? 'paid',
+                    'payment_method' => $sourceResult->payment_method ?? 'manual',
+                    'payment_group_id' => $sourceResult->payment_group_id,
+                    'asaas_payment_id' => $sourceResult->asaas_payment_id,
+                ]);
+            }
+
+            AuditLogger::log('category.athlete_add', "Vinculou o atleta '{$sourceResult->name}' (BIB: {$sourceResult->bib_number}) à categoria '{$category->name}'", [
+                'category_id' => $categoryId,
+                'athlete_id' => $finalResult->id,
+                'race_id' => $race->id
+            ]);
+
+            return response()->json([
+                'message' => 'Atleta adicionado à categoria com sucesso!',
+                'result' => $finalResult->load(['user', 'category'])
+            ]);
+        }
+
+        if ($request->filled('user_id')) {
+            $athleteUser = \App\Models\User::findOrFail($request->user_id);
+
+            // Verifica se tem inscrição sem categoria
+            $nullResult = \App\Models\RaceResult::where('race_id', $race->id)
+                ->where('user_id', $athleteUser->id)
+                ->whereNull('category_id')
+                ->first();
+
+            if ($nullResult) {
+                $nullResult->update(['category_id' => $categoryId]);
+                $finalResult = $nullResult;
+            } else {
+                $existing = \App\Models\RaceResult::where('race_id', $race->id)
+                    ->where('user_id', $athleteUser->id)
+                    ->first();
+
+                $bib = $existing?->bib_number;
+                if (!$bib) {
+                    $lastBib = \App\Models\RaceResult::where('race_id', $race->id)->max(\Illuminate\Support\Facades\DB::raw('CAST(bib_number AS SIGNED)'));
+                    $bib = (string) ($lastBib ? $lastBib + 1 : 1);
+                }
+
+                $finalResult = \App\Models\RaceResult::create([
+                    'race_id' => $race->id,
+                    'user_id' => $athleteUser->id,
+                    'name' => $athleteUser->name,
+                    'bib_number' => $bib,
+                    'team_name' => $existing?->team_name,
+                    'category_id' => $categoryId,
+                    'status_payment' => $existing?->status_payment ?? 'paid',
+                    'payment_method' => $existing?->payment_method ?? 'manual',
+                ]);
+            }
+
+            AuditLogger::log('category.athlete_add', "Vinculou o atleta '{$athleteUser->name}' à categoria '{$category->name}'", [
+                'category_id' => $categoryId,
+                'user_id' => $athleteUser->id,
+                'race_id' => $race->id
+            ]);
+
+            return response()->json([
+                'message' => 'Atleta adicionado à categoria com sucesso!',
+                'result' => $finalResult->load(['user', 'category'])
+            ]);
+        }
+
+        return response()->json(['message' => 'Nenhum atleta informado.'], 422);
+    }
+
+    /**
+     * Remover um atleta desta categoria
+     */
+    public function removeAthlete(Request $request, $championshipId, $categoryId, $athleteId)
+    {
+        $championship = Championship::findOrFail($championshipId);
+        $category = Category::where('championship_id', $championshipId)->findOrFail($categoryId);
+
+        $user = $request->user();
+        if ($user && $user->club_id !== null && $championship->club_id !== $user->club_id) {
+            return response()->json(['message' => 'Você não tem permissão para editar este campeonato.'], 403);
+        }
+
+        $race = \App\Models\Race::where('championship_id', $championshipId)->first();
+        if (!$race) {
+            return response()->json(['message' => 'Corrida não encontrada.'], 404);
+        }
+
+        $result = \App\Models\RaceResult::where('race_id', $race->id)
+            ->where('category_id', $categoryId)
+            ->where(function ($q) use ($athleteId) {
+                $q->where('id', $athleteId)->orWhere('user_id', $athleteId);
+            })->first();
+
+        if (!$result) {
+            return response()->json(['message' => 'Atleta não encontrado nesta categoria.'], 404);
+        }
+
+        $userId = $result->user_id;
+        $otherResultsCount = $userId
+            ? \App\Models\RaceResult::where('race_id', $race->id)->where('user_id', $userId)->where('id', '!=', $result->id)->count()
+            : 0;
+
+        $athleteName = $result->name;
+
+        if ($otherResultsCount > 0) {
+            // Atleta está em outras categorias do campeonato, exclui apenas esta participação
+            $result->delete();
+            $msg = "Atleta removido da categoria com sucesso.";
+        } else {
+            // Era a única categoria do atleta: mantemos ele registrado no campeonato com category_id null
+            // para que possa ser alocado em outras categorias depois pelo admin
+            $result->update(['category_id' => null]);
+            $msg = "Atleta desvinculado da categoria e mantido como participante geral do evento.";
+        }
+
+        AuditLogger::log('category.athlete_remove', "Removeu o atleta '{$athleteName}' da categoria '{$category->name}'", [
+            'category_id' => $categoryId,
+            'athlete_id' => $athleteId,
+            'race_id' => $race->id
+        ]);
+
+        return response()->json([
+            'message' => $msg
         ]);
     }
 }
