@@ -129,6 +129,27 @@ Route::get('/public/matches/{id}', [EventController::class, 'matchDetails']); //
 Route::get('/public/matches/{id}/full-details', [MatchOperationController::class, 'show']); // NEW Public Full Details for Print
 Route::post('/public/matches/{id}/votes/mvp', [VoteController::class, 'publicVoteMvp']);
 
+// Rotas Exclusivas e Leves para o Placar Eletrônico (ESP32)
+Route::prefix('scoreboard')->group(function () {
+    Route::get('/sports', [EventController::class, 'scoreboardSports']);
+    Route::get('/championships', [EventController::class, 'scoreboardChampionships']);
+    Route::get('/clubs/{clubId}/championships', [EventController::class, 'scoreboardChampionships']);
+    Route::get('/championships/{id}/matches', [EventController::class, 'scoreboardMatches']);
+    Route::get('/matches/{id}', [EventController::class, 'scoreboardMatchState']);
+});
+
+// Alias em português (/api/placar/...) para o Placar Eletrônico
+Route::prefix('placar')->group(function () {
+    Route::get('/modalidades', [EventController::class, 'scoreboardSports']);
+    Route::get('/sports', [EventController::class, 'scoreboardSports']);
+    Route::get('/campeonatos', [EventController::class, 'scoreboardChampionships']);
+    Route::get('/championships', [EventController::class, 'scoreboardChampionships']);
+    Route::get('/clubs/{clubId}/championships', [EventController::class, 'scoreboardChampionships']);
+    Route::get('/championships/{id}/matches', [EventController::class, 'scoreboardMatches']);
+    Route::get('/partidas/{id}', [EventController::class, 'scoreboardMatchState']);
+    Route::get('/matches/{id}', [EventController::class, 'scoreboardMatchState']);
+});
+
 // Public Art Generation Routes (Matching /api/art structure)
 Route::get('/art/match/{matchId}/scheduled', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'downloadScheduledArt']);
 Route::get('/art/match/{matchId}/mvp', [\App\Http\Controllers\Admin\ArtGeneratorController::class, 'downloadMvpArt']);

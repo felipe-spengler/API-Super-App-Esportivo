@@ -56,7 +56,14 @@ class AdminMatchController extends Controller
             $query->where('status', $request->status);
         }
 
-        $matches = $query->orderBy('start_time', 'desc')->get();
+        $query->orderBy('start_time', 'desc');
+
+        if ($request->has('page')) {
+            $perPage = (int) $request->input('per_page', 10);
+            return response()->json($query->paginate($perPage));
+        }
+
+        $matches = $query->get();
 
         return response()->json($matches);
     }

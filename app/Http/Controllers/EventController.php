@@ -24,7 +24,14 @@ class EventController extends Controller
             $query->where('sport_id', $request->sport_id);
         }
 
-        return response()->json($query->with(['sport', 'club.city', 'races'])->orderBy('start_date', 'desc')->get());
+        $query->with(['sport', 'club.city', 'races'])->orderBy('start_date', 'desc');
+
+        if ($request->has('page')) {
+            $perPage = (int) $request->input('per_page', 10);
+            return response()->json($query->paginate($perPage));
+        }
+
+        return response()->json($query->get());
     }
 
     public function publicList(Request $request)
@@ -93,6 +100,11 @@ class EventController extends Controller
 
         if ($request->has('category_id') && $request->category_id != 'null') {
             $query->where('category_id', $request->category_id);
+        }
+
+        if ($request->has('page')) {
+            $perPage = (int) $request->input('per_page', 10);
+            return response()->json($query->paginate($perPage));
         }
 
         return response()->json($query->get());
@@ -1122,8 +1134,12 @@ class EventController extends Controller
         return response()->json($events);
     }
     // 11. Detalhes da Partida (Público - para Modal Ao Vivo/Súmula)
-    public function matchDetails($id)
+    public function matchDetails(Request $request, $id)
     {
+        if ($request->boolean('scoreboard') || str_contains($request->userAgent() ?? '', 'ESP32 Scoreboard')) {
+            return $this->scoreboardMatchState($id);
+        }
+
         $match = GameMatch::with(['championship.sport', 'events.player', 'mvp', 'pernaDePau'])->findOrFail($id);
 
         $champId = $match->championship_id;
@@ -1445,5 +1461,227 @@ class EventController extends Controller
         </html>";
 
         return response($html);
+    }
+
+    // ==========================================
+    // ROTAS EXCLUSIVAS E LEVES PARA O PLACAR (ESP32)
+    // ==========================================
+
+    // 14. Modalidades enxutas para o Placar
+    public function scoreboardSports()
+    {
+        $sports = \App\Models\Sport::select('id', 'name', 'slug')->orderBy('name')->get();
+        return response()->json($sports);
+    }
+
+    // 15. Campeonatos enxutos para o Placar (suporta ?page=1&per_page=10)
+    public function scoreboardChampionships(Request $request, $clubId = 1)
+    {
+        if (!is_numeric($clubId)) {
+            $club = \App\Models\Club::where('slug', $clubId)->first();
+            $clubId = $club ? $club->id : 1;
+        }
+
+        $sportId = $request->input('sport_id', $request->input('modalidade'));
+
+        $query = Championship::where('club_id', $clubId)
+            ->select('id', 'name', 'sport_id', 'status', 'start_date')
+            ->orderBy('start_date', 'desc');
+
+        if ($sportId) {
+            $query->where('sport_id', $sportId);
+        }
+
+        if ($request->has('page')) {
+            $perPage = (int) $request->input('per_page', 10);
+            return response()->json($query->paginate($perPage));
+        }
+
+        return response()->json($query->get());
+    }
+
+    // 16. Partidas enxutas para o Placar (suporta ?page=1&per_page=10 e ?round=...)
+    public function scoreboardMatches(Request $request, $championshipId)
+    {
+        $query = GameMatch::without(['sets', 'events'])
+            ->where('championship_id', $championshipId)
+            ->select([
+                'id',
+                'championship_id',
+                'category_id',
+                'home_team_id',
+                'away_team_id',
+                'home_score',
+                'away_score',
+                'start_time',
+                'location',
+                'status',
+                'round_name',
+                'round_number',
+                'group_name',
+                'match_details',
+            ])
+            ->with([
+                'homeTeam:id,name,logo_path',
+                'awayTeam:id,name,logo_path',
+            ])
+            ->orderBy('start_time');
+
+        if ($request->has('category_id') && $request->category_id != 'null') {
+            $query->where('category_id', $request->category_id);
+        }
+
+        $roundFilter = $request->input('round', $request->input('rodada'));
+        if ($roundFilter && $roundFilter !== 'Todas as Rodadas') {
+            $query->where(function ($q) use ($roundFilter) {
+                $q->where('round_name', $roundFilter)
+                    ->orWhere('group_name', $roundFilter);
+                if (preg_match('/(\d+)/', $roundFilter, $m)) {
+                    $q->orWhere('round_number', (int) $m[1]);
+                }
+            });
+        }
+
+        $formatMatch = function ($m) {
+            $homeName = $m->homeTeam->name ?? 'Mandante';
+            $awayName = $m->awayTeam->name ?? 'Visitante';
+            $rawDetails = is_array($m->match_details) ? $m->match_details : [];
+            $syncTimer = $rawDetails['sync_timer'] ?? null;
+            $timerVal = $rawDetails['current_timer_value'] ?? (is_array($syncTimer) ? ($syncTimer['time'] ?? 0) : 0);
+            $timerRunning = $rawDetails['timer_running'] ?? (is_array($syncTimer) ? ($syncTimer['isRunning'] ?? ($syncTimer['running'] ?? false)) : false);
+
+            return [
+                'id' => $m->id,
+                'championship_id' => $m->championship_id,
+                'category_id' => $m->category_id,
+                'nome' => "{$homeName} x {$awayName}",
+                'home_team_id' => $m->home_team_id,
+                'away_team_id' => $m->away_team_id,
+                'home_team_name' => $homeName,
+                'away_team_name' => $awayName,
+                'home_team' => [
+                    'id' => $m->home_team_id,
+                    'name' => $homeName,
+                    'logo_url' => $m->homeTeam->logo_url ?? null,
+                ],
+                'away_team' => [
+                    'id' => $m->away_team_id,
+                    'name' => $awayName,
+                    'logo_url' => $m->awayTeam->logo_url ?? null,
+                ],
+                'home_score' => (int) ($m->home_score ?? 0),
+                'away_score' => (int) ($m->away_score ?? 0),
+                'status' => $m->status,
+                'location' => $m->location,
+                'round_name' => $m->round_name,
+                'round_number' => $m->round_number,
+                'group_name' => $m->group_name,
+                'start_time' => $m->start_time ? $m->start_time->toISOString() : null,
+                'match_details' => [
+                    'current_timer_value' => (int) $timerVal,
+                    'timer_running' => (bool) $timerRunning,
+                    'sync_timer' => $syncTimer,
+                ],
+            ];
+        };
+
+        if ($request->has('page')) {
+            $perPage = (int) $request->input('per_page', 10);
+            $paginator = $query->paginate($perPage);
+            $paginator->getCollection()->transform($formatMatch);
+            return response()->json($paginator);
+        }
+
+        return response()->json($query->get()->map($formatMatch));
+    }
+
+    // 17. Estado da Partida ultra-leve em Tempo Real para o Placar ESP32 (< 500 bytes)
+    public function scoreboardMatchState($id)
+    {
+        $match = GameMatch::without(['sets', 'events'])
+            ->select([
+                'id',
+                'championship_id',
+                'category_id',
+                'home_team_id',
+                'away_team_id',
+                'home_score',
+                'away_score',
+                'status',
+                'round_name',
+                'round_number',
+                'match_details',
+            ])
+            ->with([
+                'homeTeam:id,name',
+                'awayTeam:id,name',
+            ])
+            ->findOrFail($id);
+
+        $foulTypes = ['foul', 'tiro_livre', 'tiro_7m', 'falta'];
+        $foulEvents = \App\Models\MatchEvent::where('game_match_id', $match->id)
+            ->whereIn('event_type', $foulTypes)
+            ->select('event_type as type', 'event_type', 'team_id', 'period')
+            ->get();
+
+        $foulsHome = $foulEvents->where('team_id', $match->home_team_id)->count();
+        $foulsAway = $foulEvents->where('team_id', $match->away_team_id)->count();
+
+        $rawDetails = is_array($match->match_details) ? $match->match_details : [];
+        $syncTimer = $rawDetails['sync_timer'] ?? null;
+        $timerVal = $rawDetails['current_timer_value'] ?? (is_array($syncTimer) ? ($syncTimer['time'] ?? 0) : 0);
+        $timerRunning = $rawDetails['timer_running'] ?? (is_array($syncTimer) ? ($syncTimer['isRunning'] ?? ($syncTimer['running'] ?? false)) : false);
+
+        $homeName = $match->homeTeam->name ?? 'TIME A';
+        $awayName = $match->awayTeam->name ?? 'TIME B';
+
+        $matchData = [
+            'id' => $match->id,
+            'championship_id' => $match->championship_id,
+            'category_id' => $match->category_id,
+            'home_team_id' => $match->home_team_id,
+            'away_team_id' => $match->away_team_id,
+            'home_team_name' => $homeName,
+            'away_team_name' => $awayName,
+            'home_team' => ['id' => $match->home_team_id, 'name' => $homeName],
+            'away_team' => ['id' => $match->away_team_id, 'name' => $awayName],
+            'home_score' => (int) ($match->home_score ?? 0),
+            'away_score' => (int) ($match->away_score ?? 0),
+            'status' => $match->status,
+            'round_name' => $match->round_name,
+            'round_number' => $match->round_number ?? 1,
+            'fouls_home' => $foulsHome,
+            'fouls_away' => $foulsAway,
+            'match_details' => [
+                'current_timer_value' => (int) $timerVal,
+                'timer_running' => (bool) $timerRunning,
+                'sync_timer' => $syncTimer,
+            ],
+            'events' => $foulEvents,
+        ];
+
+        return response()->json([
+            'id' => $match->id,
+            'home_team_id' => $match->home_team_id,
+            'away_team_id' => $match->away_team_id,
+            'home_team' => $matchData['home_team'],
+            'away_team' => $matchData['away_team'],
+            'home_score' => $matchData['home_score'],
+            'away_score' => $matchData['away_score'],
+            'status' => $match->status,
+            'round_name' => $match->round_name,
+            'round_number' => $matchData['round_number'],
+            'match_details' => $matchData['match_details'],
+            'events' => $foulEvents,
+            'match' => $matchData,
+            'fouls' => [
+                'home' => $foulsHome,
+                'away' => $foulsAway,
+            ],
+            'details' => [
+                'sync_timer' => $syncTimer,
+                'events' => $foulEvents,
+            ],
+        ]);
     }
 }
