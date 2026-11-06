@@ -984,9 +984,9 @@ function ShootoutModal({ playerName, onSelect, onCancel }: { playerName: string,
                 <p className="text-gray-400 text-sm mb-6">Jogador: <b className="text-indigo-400">{playerName}</b></p>
                 <div className="grid grid-cols-2 gap-3">
                     <button onClick={() => onSelect('score')} className="col-span-2 py-4 bg-emerald-600 hover:bg-emerald-500 rounded-xl font-black text-white text-lg border-b-4 border-emerald-900 active:scale-95 transition-all">⚽ GOL</button>
-                    <button onClick={() => onSelect('saved')} className="py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-bold text-white border-b-4 border-indigo-900 active:scale-95 transition-all">🧤 Defendeu</button>
-                    <button onClick={() => onSelect('post')} className="py-3 bg-yellow-600 hover:bg-yellow-500 rounded-xl font-bold border-b-4 border-yellow-900 active:scale-95 transition-all">🏁 Na Trave</button>
-                    <button onClick={() => onSelect('out')} className="col-span-2 py-3 bg-red-600 hover:bg-red-500 rounded-xl font-bold border-b-4 border-red-900 active:scale-95 transition-all">❌ Pra Fora</button>
+                    <button onClick={() => onSelect('saved')} className="py-3 bg-red-600 hover:bg-red-500 rounded-xl font-bold text-white border-b-4 border-red-900 active:scale-95 transition-all">🧤 Defendeu</button>
+                    <button onClick={() => onSelect('post')} className="py-3 bg-red-600 hover:bg-red-500 rounded-xl font-bold text-white border-b-4 border-red-900 active:scale-95 transition-all">🏁 Na Trave</button>
+                    <button onClick={() => onSelect('out')} className="col-span-2 py-3 bg-red-600 hover:bg-red-500 rounded-xl font-bold text-white border-b-4 border-red-900 active:scale-95 transition-all">❌ Pra Fora</button>
                 </div>
                 <button onClick={onCancel} className="mt-5 text-gray-500 hover:text-gray-300 text-sm font-bold underline">Cancelar</button>
             </div>

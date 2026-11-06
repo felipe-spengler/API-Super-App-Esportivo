@@ -45,32 +45,136 @@ function IrregularityModal({ isOpen, onClose, onSubmit }: { isOpen: boolean, onC
     );
 }
 
-function ConfigModal({ isOpen, onClose, durationMinutes, setDurationMinutes }: { isOpen: boolean, onClose: () => void, durationMinutes: number, setDurationMinutes: (d: number) => void }) {
+function ConfigModal({
+    isOpen,
+    onClose,
+    durationMinutes,
+    currentElapsedSeconds,
+    onSaveConfig,
+}: {
+    isOpen: boolean;
+    onClose: () => void;
+    durationMinutes: number;
+    currentElapsedSeconds: number;
+    onSaveConfig: (newDurationMinutes: number, newRemainingSeconds?: number) => void;
+}) {
+    const [tempDuration, setTempDuration] = useState<string>(String(durationMinutes));
+    const currentRemaining = Math.max(0, durationMinutes * 60 - currentElapsedSeconds);
+    const [remMins, setRemMins] = useState<string>(String(Math.floor(currentRemaining / 60)));
+    const [remSecs, setRemSecs] = useState<string>(String(currentRemaining % 60).padStart(2, '0'));
+    const [customClockEdited, setCustomClockEdited] = useState(false);
+
+    useEffect(() => {
+        if (isOpen) {
+            setTempDuration(String(durationMinutes));
+            const rem = Math.max(0, durationMinutes * 60 - currentElapsedSeconds);
+            setRemMins(String(Math.floor(rem / 60)));
+            setRemSecs(String(rem % 60).padStart(2, '0'));
+            setCustomClockEdited(false);
+        }
+    }, [isOpen, durationMinutes, currentElapsedSeconds]);
+
     if (!isOpen) return null;
+
+    const handleDurationChange = (val: number) => {
+        const safeVal = Math.max(1, val);
+        setTempDuration(String(safeVal));
+        if (!customClockEdited && currentElapsedSeconds === 0) {
+            setRemMins(String(safeVal));
+            setRemSecs('00');
+        }
+    };
+
+    const handleSave = () => {
+        const parsedDuration = Math.max(1, Number(tempDuration) || 20);
+        if (customClockEdited) {
+            const totalRem = Math.max(0, (Math.max(0, parseInt(remMins || '0', 10)) * 60) + Math.min(59, Math.max(0, parseInt(remSecs || '0', 10))));
+            onSaveConfig(parsedDuration, totalRem);
+        } else {
+            onSaveConfig(parsedDuration);
+        }
+        onClose();
+    };
+
     return (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-gray-900 border border-gray-700 rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl relative">
                 <div className="p-5 pb-4 border-b border-gray-800 bg-gray-800/30 flex justify-between items-center">
                     <h3 className="text-lg font-black text-white flex items-center gap-2">
-                        ⚙️ Configurar Duração
+                        ⚙️ Configurar Cronômetro
                     </h3>
                     <button onClick={onClose} className="p-1.5 hover:bg-white/10 rounded-full transition-colors text-gray-400 hover:text-white">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
                 <div className="p-5 space-y-4">
-                    <label className="block text-sm font-bold text-gray-300">Duração de cada tempo (minutos)</label>
-                    <input 
-                        type="number" 
-                        value={durationMinutes} 
-                        onChange={e => setDurationMinutes(Number(e.target.value))}
-                        className="w-full bg-black/50 border border-emerald-900/50 rounded-2xl p-4 text-white text-xl font-bold font-mono outline-none focus:border-emerald-500/50 transition-colors"
-                    />
-                    <button 
-                        onClick={onClose}
+                    <div>
+                        <label className="block text-xs font-bold text-gray-300 uppercase tracking-wider mb-2">
+                            Duração de cada tempo (minutos)
+                        </label>
+                        <div className="grid grid-cols-5 gap-1.5 mb-2.5">
+                            {[8, 10, 12, 15, 20].map(preset => (
+                                <button
+                                    key={preset}
+                                    type="button"
+                                    onClick={() => handleDurationChange(preset)}
+                                    className={`py-2 rounded-xl text-xs font-black border transition-all ${
+                                        Number(tempDuration) === preset
+                                            ? 'bg-emerald-600 border-emerald-400 text-white shadow-md'
+                                            : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
+                                    }`}
+                                >
+                                    {preset}m
+                                </button>
+                            ))}
+                        </div>
+                        <input
+                            type="number"
+                            min={1}
+                            max={120}
+                            value={tempDuration}
+                            onChange={e => handleDurationChange(Number(e.target.value))}
+                            className="w-full bg-black/50 border border-emerald-900/50 rounded-2xl p-3.5 text-white text-xl font-bold font-mono outline-none focus:border-emerald-500/50 transition-colors"
+                            placeholder="Ex: 15"
+                        />
+                    </div>
+
+                    <div className="pt-2 border-t border-gray-800">
+                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                            Ajustar Tempo Restante Atual (Min : Seg)
+                        </label>
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="number"
+                                min={0}
+                                max={120}
+                                value={remMins}
+                                onChange={e => {
+                                    setRemMins(e.target.value);
+                                    setCustomClockEdited(true);
+                                }}
+                                className="w-full bg-black/50 border border-gray-700 rounded-2xl p-3 text-center text-yellow-400 text-lg font-bold font-mono outline-none focus:border-yellow-500/50"
+                            />
+                            <span className="text-xl font-black text-gray-500">:</span>
+                            <input
+                                type="number"
+                                min={0}
+                                max={59}
+                                value={remSecs}
+                                onChange={e => {
+                                    setRemSecs(e.target.value);
+                                    setCustomClockEdited(true);
+                                }}
+                                className="w-full bg-black/50 border border-gray-700 rounded-2xl p-3 text-center text-yellow-400 text-lg font-bold font-mono outline-none focus:border-yellow-500/50"
+                            />
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={handleSave}
                         className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 rounded-2xl font-bold text-white shadow-lg"
                     >
-                        Salvar
+                        Salvar e Sincronizar Placar
                     </button>
                 </div>
             </div>
@@ -394,12 +498,12 @@ export function SumulaFutsal() {
         }
     }, [isOnline, id, addToQueue]);
 
-    const timerRef = useRef({ time, isRunning, currentPeriod, matchData });
+    const timerRef = useRef({ time, isRunning, currentPeriod, matchData, durationMinutes });
     const lastLocalUpdateAt = useRef<number>(0);
     
     useEffect(() => {
-        timerRef.current = { time, isRunning, currentPeriod, matchData };
-    }, [time, isRunning, currentPeriod, matchData]);
+        timerRef.current = { time, isRunning, currentPeriod, matchData, durationMinutes };
+    }, [time, isRunning, currentPeriod, matchData, durationMinutes]);
 
     const formatTime = useCallback((seconds: number) => {
         const remaining = Math.max(0, (durationMinutes * 60) - seconds);
@@ -418,6 +522,9 @@ export function SumulaFutsal() {
                     setMatchData({ ...data.match, scoreHome: parseInt(data.match.home_score || 0), scoreAway: parseInt(data.match.away_score || 0) });
                     if (data.match.match_details?.sync_timer && !serverTimerLoaded) {
                         const st = data.match.match_details.sync_timer;
+                        if (st.durationMinutes && Number(st.durationMinutes) > 0) {
+                            setDurationMinutes(Number(st.durationMinutes));
+                        }
                         setTime(st.time || 0);
                         if (st.currentPeriod) setCurrentPeriod(st.currentPeriod);
                         setServerTimerLoaded(true);
@@ -425,6 +532,9 @@ export function SumulaFutsal() {
                     if (data.rosters) setRosters(data.rosters);
                 } else {
                     const serverTimer = data.match.match_details?.sync_timer;
+                    if (serverTimer?.durationMinutes && Number(serverTimer.durationMinutes) > 0 && Number(serverTimer.durationMinutes) !== timerRef.current.durationMinutes && Date.now() - lastLocalUpdateAt.current > 5000) {
+                        setDurationMinutes(Number(serverTimer.durationMinutes));
+                    }
                     if (serverTimer?.currentPeriod && serverTimer.currentPeriod !== timerRef.current.currentPeriod && Date.now() - lastLocalUpdateAt.current > 5000) {
                         setCurrentPeriod(serverTimer.currentPeriod);
                         if (serverTimer.time !== undefined) setTime(serverTimer.time);
@@ -473,6 +583,9 @@ export function SumulaFutsal() {
         if (saved) {
             try {
                 const parsed = JSON.parse(saved);
+                if (parsed.durationMinutes && Number(parsed.durationMinutes) > 0) {
+                    setDurationMinutes(Number(parsed.durationMinutes));
+                }
                 setTime(parsed.time || 0);
                 setIsRunning(parsed.isRunning || false);
                 setCurrentPeriod(parsed.currentPeriod || '1º Tempo');
@@ -487,8 +600,8 @@ export function SumulaFutsal() {
 
     useEffect(() => {
         if (!id || loading) return;
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ time, isRunning, currentPeriod }));
-    }, [time, isRunning, currentPeriod, id, loading]);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ time, isRunning, currentPeriod, durationMinutes }));
+    }, [time, isRunning, currentPeriod, durationMinutes, id, loading]);
 
     useEffect(() => {
         let interval: any = null;
@@ -525,11 +638,26 @@ export function SumulaFutsal() {
     useEffect(() => {
         if (!id) return;
         const pingInterval = setInterval(async () => {
-            const { time: t, isRunning: ir, currentPeriod: cp, matchData: md } = timerRef.current;
+            const { time: t, isRunning: ir, currentPeriod: cp, matchData: md, durationMinutes: dm } = timerRef.current;
             if (!md) return;
+            const remaining = Math.max(0, ((dm || 20) * 60) - t);
             try {
                 setSyncStatus('syncing');
-                await api.patch(`/admin/matches/${id}`, { match_details: { ...md.match_details, sync_timer: { time: t, isRunning: ir, currentPeriod: cp } } });
+                await api.patch(`/admin/matches/${id}`, {
+                    match_details: {
+                        ...md.match_details,
+                        current_timer_value: remaining,
+                        timer_running: ir,
+                        sync_timer: {
+                            time: t,
+                            remaining,
+                            durationMinutes: dm || 20,
+                            isCountdown: true,
+                            isRunning: ir,
+                            currentPeriod: cp,
+                        },
+                    },
+                });
                 setSyncStatus('synced');
             } catch (e: any) {
                 setSyncStatus('error');
@@ -666,7 +794,22 @@ export function SumulaFutsal() {
         }
         if (newPeriod) {
             setCurrentPeriod(newPeriod);
-            apiPost('patch_match', { match_details: { ...matchData?.match_details, sync_timer: { time: timerRef.current.time, isRunning: timerRef.current.isRunning, currentPeriod: newPeriod } } }).catch(() => { });
+            const rem = Math.max(0, ((durationMinutes || 20) * 60) - timerRef.current.time);
+            apiPost('patch_match', {
+                match_details: {
+                    ...matchData?.match_details,
+                    current_timer_value: rem,
+                    timer_running: timerRef.current.isRunning,
+                    sync_timer: {
+                        time: timerRef.current.time,
+                        remaining: rem,
+                        durationMinutes: durationMinutes || 20,
+                        isCountdown: true,
+                        isRunning: timerRef.current.isRunning,
+                        currentPeriod: newPeriod,
+                    },
+                },
+            }).catch(() => { });
         }
     };
 
@@ -971,12 +1114,18 @@ export function SumulaFutsal() {
                 setMatchData((prev: any) => ({ ...prev, status: newStatus }));
                 timerRef.current = { ...timerRef.current, currentPeriod: newPeriod, isRunning: newIsRunning };
 
+                const rem = Math.max(0, ((timerRef.current.durationMinutes || 20) * 60) - timerRef.current.time);
                 await apiPost('patch_match', { 
                     status: newStatus,
                     match_details: { 
                         ...matchData?.match_details, 
+                        current_timer_value: rem,
+                        timer_running: newIsRunning,
                         sync_timer: { 
                             time: timerRef.current.time, 
+                            remaining: rem,
+                            durationMinutes: timerRef.current.durationMinutes || 20,
+                            isCountdown: true,
                             isRunning: newIsRunning, 
                             currentPeriod: newPeriod 
                         } 
@@ -1022,8 +1171,43 @@ export function SumulaFutsal() {
         for (const ev of targets) { try { await api.delete(`/admin/matches/${id}/events/${ev.id}`); } catch (e) { console.error(e); } }
     };
 
+    const handleSaveTimerConfig = (newDuration: number, newRemainingSeconds?: number) => {
+        const safeDuration = Math.max(1, newDuration || 20);
+        const totalDurationSecs = safeDuration * 60;
+        const newElapsed = newRemainingSeconds !== undefined
+            ? Math.max(0, totalDurationSecs - Math.min(totalDurationSecs, newRemainingSeconds))
+            : Math.min(totalDurationSecs, time);
+        const rem = Math.max(0, totalDurationSecs - newElapsed);
+
+        lastLocalUpdateAt.current = Date.now();
+        setDurationMinutes(safeDuration);
+        setTime(newElapsed);
+        timerRef.current = {
+            ...timerRef.current,
+            durationMinutes: safeDuration,
+            time: newElapsed,
+        };
+
+        apiPost('patch_match', {
+            match_details: {
+                ...matchData?.match_details,
+                current_timer_value: rem,
+                timer_running: isRunning,
+                sync_timer: {
+                    time: newElapsed,
+                    remaining: rem,
+                    durationMinutes: safeDuration,
+                    isCountdown: true,
+                    isRunning,
+                    currentPeriod,
+                },
+            },
+        }).catch(() => {});
+    };
+
     const handleToggleTimer = () => {
-        if (!isRunning) {
+        const nextRunning = !isRunning;
+        if (nextRunning) {
             deleteSystemEvents(['period_end'], true); deleteSystemEvents(['match_end']);
             registerSystemEvent('timer_control', `Cronômetro retomado em ${formatTime(time)} — ${currentPeriod}`);
             setIsRunning(true);
@@ -1031,6 +1215,22 @@ export function SumulaFutsal() {
             registerSystemEvent('timer_control', `Cronômetro pausado em ${formatTime(time)} — ${currentPeriod}`);
             setIsRunning(false);
         }
+        const rem = Math.max(0, ((durationMinutes || 20) * 60) - time);
+        apiPost('patch_match', {
+            match_details: {
+                ...matchData?.match_details,
+                current_timer_value: rem,
+                timer_running: nextRunning,
+                sync_timer: {
+                    time,
+                    remaining: rem,
+                    durationMinutes: durationMinutes || 20,
+                    isCountdown: true,
+                    isRunning: nextRunning,
+                    currentPeriod,
+                },
+            },
+        }).catch(() => { });
     };
 
     const handleFinish = async () => {
@@ -1090,7 +1290,7 @@ export function SumulaFutsal() {
                 homeFouls={fouls.home}
                 awayFouls={fouls.away}
                 timeouts={timeouts}
-                onToggleTimer={() => setIsRunning(!isRunning)}
+                onToggleTimer={handleToggleTimer}
                 onFoulsClick={(team) => {
                     setFoulsModalTeam(team);
                     setFoulsModalOpen(true);
@@ -1293,7 +1493,8 @@ export function SumulaFutsal() {
                 isOpen={showConfigModal} 
                 onClose={() => setShowConfigModal(false)} 
                 durationMinutes={durationMinutes} 
-                setDurationMinutes={setDurationMinutes} 
+                currentElapsedSeconds={time}
+                onSaveConfig={handleSaveTimerConfig} 
             />
         </div>
     );
@@ -1309,9 +1510,9 @@ function ShootoutModal({ playerName, onSelect, onCancel }: { playerName: string,
                 <p className="text-gray-400 text-sm mb-6">Jogador: <b className="text-emerald-400">{playerName}</b></p>
                 <div className="grid grid-cols-2 gap-3">
                     <button onClick={() => onSelect('score')} className="col-span-2 py-4 bg-emerald-600 hover:bg-emerald-500 rounded-xl font-black text-white text-lg border-b-4 border-emerald-900 active:scale-95 transition-all">⚽ GOL</button>
-                    <button onClick={() => onSelect('saved')} className="py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-bold text-white border-b-4 border-indigo-900 active:scale-95 transition-all">🧤 Defendeu</button>
-                    <button onClick={() => onSelect('post')} className="py-3 bg-yellow-600 hover:bg-yellow-500 rounded-xl font-bold border-b-4 border-yellow-900 active:scale-95 transition-all">🏁 Na Trave</button>
-                    <button onClick={() => onSelect('out')} className="col-span-2 py-3 bg-red-600 hover:bg-red-500 rounded-xl font-bold border-b-4 border-red-900 active:scale-95 transition-all">❌ Pra Fora</button>
+                    <button onClick={() => onSelect('saved')} className="py-3 bg-red-600 hover:bg-red-500 rounded-xl font-bold text-white border-b-4 border-red-900 active:scale-95 transition-all">🧤 Defendeu</button>
+                    <button onClick={() => onSelect('post')} className="py-3 bg-red-600 hover:bg-red-500 rounded-xl font-bold text-white border-b-4 border-red-900 active:scale-95 transition-all">🏁 Na Trave</button>
+                    <button onClick={() => onSelect('out')} className="col-span-2 py-3 bg-red-600 hover:bg-red-500 rounded-xl font-bold text-white border-b-4 border-red-900 active:scale-95 transition-all">❌ Pra Fora</button>
                 </div>
                 <button onClick={onCancel} className="mt-5 text-gray-500 hover:text-gray-300 text-sm font-bold underline">Cancelar</button>
             </div>

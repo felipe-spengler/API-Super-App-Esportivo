@@ -115,15 +115,18 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
 
         if (timerData) {
             const st = timerData;
-            let adjustedTime = st.time ?? 0;
+            const sport = match?.championship?.sport?.slug || details?.sport?.slug || 'futebol';
+            const isRegressive = Boolean(st.isCountdown) || ['basquete', 'futsal', 'jiu-jitsu'].includes(sport);
+            let adjustedTime = isRegressive && st.remaining !== undefined ? st.remaining : (st.time ?? 0);
 
             // Se o jogo está encerrado, o timer nunca deve rodar
-            const serverIsRunning = isMatchFinished ? false : (st.isRunning ?? false);
+            const serverIsRunning = isMatchFinished ? false : (st.serverIsRunning ?? st.isRunning ?? false);
 
             if (serverIsRunning && st.updated_at) {
                 const now = new Date().getTime();
                 const diffMs = Math.max(0, now - st.updated_at);
-                adjustedTime += Math.floor(diffMs / 1000);
+                const diffSecs = Math.floor(diffMs / 1000);
+                adjustedTime = isRegressive ? Math.max(0, adjustedTime - diffSecs) : adjustedTime + diffSecs;
             }
 
             const currentLocal = localTimeRef.current;
@@ -152,8 +155,9 @@ export function MatchDetailsModal({ matchId, isOpen, onClose }: MatchDetailsModa
         const isMatchFinished = match?.status === 'finished';
 
         if (isTimerRunning && localTime !== null && !isMatchFinished) {
-            const sport = match?.championship?.sport?.slug || 'futebol';
-            const isRegressive = sport === 'basquete';
+            const timerData = match?.match_details?.sync_timer || details?.sync_timer;
+            const sport = match?.championship?.sport?.slug || details?.sport?.slug || 'futebol';
+            const isRegressive = Boolean(timerData?.isCountdown) || ['basquete', 'futsal', 'jiu-jitsu'].includes(sport);
 
             interval = setInterval(() => {
                 setLocalTime(prev => {

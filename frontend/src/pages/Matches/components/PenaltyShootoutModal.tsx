@@ -210,8 +210,8 @@ export function PenaltyShootoutModal({
             return {
                 label: 'DEFENDEU',
                 icon: '🧤',
-                bg: 'bg-indigo-600',
-                border: 'border-indigo-400',
+                bg: 'bg-rose-600',
+                border: 'border-rose-400',
                 text: 'text-white'
             };
         }
@@ -219,8 +219,8 @@ export function PenaltyShootoutModal({
             return {
                 label: 'TRAVE',
                 icon: '🏁',
-                bg: 'bg-amber-500',
-                border: 'border-amber-300',
+                bg: 'bg-rose-600',
+                border: 'border-rose-400',
                 text: 'text-white'
             };
         }
@@ -597,7 +597,7 @@ export function PenaltyShootoutModal({
                                 <button
                                     disabled={isSubmitting}
                                     onClick={() => handleConfirmOutcome('saved')}
-                                    className="py-3 px-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 rounded-xl font-black text-white text-xs sm:text-sm border-b-4 border-indigo-900 shadow-md shadow-indigo-950/40 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center gap-1.5"
+                                    className="py-3 px-3 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 rounded-xl font-black text-white text-xs sm:text-sm border-b-4 border-rose-900 shadow-md shadow-rose-950/40 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center gap-1.5"
                                 >
                                     <span className="text-xl">🧤</span>
                                     <span>DEFENDEU</span>
@@ -607,7 +607,7 @@ export function PenaltyShootoutModal({
                                 <button
                                     disabled={isSubmitting}
                                     onClick={() => handleConfirmOutcome('post')}
-                                    className="py-3 px-3 bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 rounded-xl font-black text-white text-xs sm:text-sm border-b-4 border-amber-900 shadow-md shadow-amber-950/40 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center gap-1.5"
+                                    className="py-3 px-3 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 rounded-xl font-black text-white text-xs sm:text-sm border-b-4 border-rose-900 shadow-md shadow-rose-950/40 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center gap-1.5"
                                 >
                                     <span className="text-xl">🏁</span>
                                     <span>NA TRAVE</span>

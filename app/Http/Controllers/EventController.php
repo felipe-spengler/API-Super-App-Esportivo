@@ -94,6 +94,10 @@ class EventController extends Controller
     // 3. Tabela de Jogos (Partidas)
     public function matches(Request $request, $championshipId)
     {
+        if ($request->boolean('scoreboard') || str_contains($request->userAgent() ?? '', 'ESP32 Scoreboard')) {
+            return $this->scoreboardMatches($request, $championshipId);
+        }
+
         $query = GameMatch::where('championship_id', $championshipId)
             ->with(['homeTeam', 'awayTeam', 'mvp'])
             ->orderBy('start_time');
@@ -1500,9 +1504,118 @@ class EventController extends Controller
         return response()->json($query->get());
     }
 
+    // Helper interno para calcular tempo (crescente/decrescente), período e faltas do período atual para o Placar
+    private function buildScoreboardMatchPayload($m, $foulEvents, string $sportSlug = 'futsal'): array
+    {
+        $rawDetails = is_array($m->match_details) ? $m->match_details : [];
+        $syncTimer = is_array($rawDetails['sync_timer'] ?? null) ? $rawDetails['sync_timer'] : [];
+        $currentPeriod = $syncTimer['currentPeriod'] ?? null;
+
+        // Mapeia o período textual da súmula para número (1, 2, 3, 4) usado pelo Placar ESP32
+        $periodNumber = (int) ($m->round_number ?? 1);
+        if (is_string($currentPeriod) && $currentPeriod !== '') {
+            if (str_contains($currentPeriod, '2º') || $currentPeriod === '2') {
+                $periodNumber = 2;
+            } elseif (str_contains($currentPeriod, '3º') || stripos($currentPeriod, 'Prorroga') !== false || stripos($currentPeriod, 'Extra') !== false) {
+                $periodNumber = 3;
+            } elseif (str_contains($currentPeriod, '4º') || stripos($currentPeriod, 'Pênalti') !== false || stripos($currentPeriod, 'Penalti') !== false || stripos($currentPeriod, 'Shootout') !== false) {
+                $periodNumber = 4;
+            } else {
+                $periodNumber = 1;
+            }
+        } elseif (is_numeric($currentPeriod)) {
+            $periodNumber = (int) $currentPeriod;
+        }
+
+        // Filtra faltas somente do período ativo (zera automaticamente ao trocar de tempo / intervalo)
+        $nonPlayingPeriods = ['Intervalo', 'Fim de Tempo Normal', 'Pênaltis', 'Penaltis', 'Shootout', 'Fim de Jogo', 'Encerrado'];
+        if ($currentPeriod && in_array($currentPeriod, $nonPlayingPeriods, true)) {
+            $filteredFouls = collect([]);
+        } elseif (!empty($currentPeriod) && is_string($currentPeriod)) {
+            $filteredFouls = $foulEvents->filter(function ($ev) use ($currentPeriod) {
+                return $ev->period === $currentPeriod
+                    || ($currentPeriod === '1º Tempo' && empty($ev->period));
+            })->values();
+        } else {
+            $filteredFouls = $foulEvents->values();
+        }
+
+        $foulsHome = $filteredFouls->where('team_id', $m->home_team_id)->count();
+        $foulsAway = $filteredFouls->where('team_id', $m->away_team_id)->count();
+
+        // Verifica se a modalidade usa cronômetro decrescente (Futsal, Basquete, Jiu-Jitsu ou flag isCountdown da súmula)
+        $isCountdown = !empty($syncTimer['isCountdown']) || in_array($sportSlug, ['futsal', 'basquete', 'jiu-jitsu'], true);
+        $serverRunning = ($m->status === 'finished')
+            ? false
+            : (bool) ($rawDetails['timer_running'] ?? ($syncTimer['isRunning'] ?? ($syncTimer['running'] ?? false)));
+
+        if ($isCountdown) {
+            if ($currentPeriod && in_array($currentPeriod, $nonPlayingPeriods, true)) {
+                $timerVal = 0;
+                $timerRunning = false;
+            } else {
+                $durationSecs = ((int) ($syncTimer['durationMinutes'] ?? 20)) * 60;
+                $rawTime = (int) ($syncTimer['time'] ?? 0);
+
+                if (isset($syncTimer['remaining'])) {
+                    $baseRemaining = (int) $syncTimer['remaining'];
+                } elseif (isset($rawDetails['current_timer_value']) && !empty($syncTimer['isCountdown'])) {
+                    $baseRemaining = (int) $rawDetails['current_timer_value'];
+                } else {
+                    $baseRemaining = ($rawTime <= $durationSecs) ? max(0, $durationSecs - $rawTime) : $rawTime;
+                }
+
+                if ($serverRunning && !empty($syncTimer['updated_at'])) {
+                    $nowMs = (int) round(microtime(true) * 1000);
+                    $driftSecs = max(0, (int) floor(($nowMs - (int) $syncTimer['updated_at']) / 1000));
+                    $baseRemaining = max(0, $baseRemaining - $driftSecs);
+                }
+
+                $timerVal = $baseRemaining;
+                // No ESP32 físico já instalado, o loop local faz totalSeconds++ quando timer_running=true.
+                // Enviando timer_running=false com current_timer_value já calculado em tempo real no backend,
+                // o placar exibe o tempo decrescente exato sem subir os segundos entre um polling e outro.
+                $timerRunning = false;
+            }
+        } else {
+            $baseTime = (int) ($rawDetails['current_timer_value'] ?? ($syncTimer['time'] ?? 0));
+            if ($serverRunning && !empty($syncTimer['updated_at'])) {
+                $nowMs = (int) round(microtime(true) * 1000);
+                $driftSecs = max(0, (int) floor(($nowMs - (int) $syncTimer['updated_at']) / 1000));
+                $baseTime += $driftSecs;
+            }
+            $timerVal = $baseTime;
+            $timerRunning = $serverRunning;
+        }
+
+        $scoreboardSyncTimer = array_merge($syncTimer, [
+            'time' => (int) $timerVal,
+            'remaining' => (int) $timerVal,
+            'isCountdown' => (bool) $isCountdown,
+            'isRunning' => (bool) $timerRunning,
+            'running' => (bool) $timerRunning,
+            'serverIsRunning' => (bool) $serverRunning,
+            'currentPeriod' => $currentPeriod ?? $periodNumber,
+            'periodNumber' => $periodNumber,
+        ]);
+
+        return [
+            'period_number' => $periodNumber,
+            'fouls_home' => $foulsHome,
+            'fouls_away' => $foulsAway,
+            'foul_events' => $filteredFouls,
+            'timer_val' => (int) $timerVal,
+            'timer_running' => (bool) $timerRunning,
+            'sync_timer' => $scoreboardSyncTimer,
+        ];
+    }
+
     // 16. Partidas enxutas para o Placar (suporta ?page=1&per_page=10 e ?round=...)
     public function scoreboardMatches(Request $request, $championshipId)
     {
+        $champ = Championship::with('sport:id,slug')->select('id', 'sport_id')->find($championshipId);
+        $sportSlug = $champ?->sport?->slug ?? 'futsal';
+
         $query = GameMatch::without(['sets', 'events'])
             ->where('championship_id', $championshipId)
             ->select([
@@ -1542,57 +1655,71 @@ class EventController extends Controller
             });
         }
 
-        $formatMatch = function ($m) {
-            $homeName = $m->homeTeam->name ?? 'Mandante';
-            $awayName = $m->awayTeam->name ?? 'Visitante';
-            $rawDetails = is_array($m->match_details) ? $m->match_details : [];
-            $syncTimer = $rawDetails['sync_timer'] ?? null;
-            $timerVal = $rawDetails['current_timer_value'] ?? (is_array($syncTimer) ? ($syncTimer['time'] ?? 0) : 0);
-            $timerRunning = $rawDetails['timer_running'] ?? (is_array($syncTimer) ? ($syncTimer['isRunning'] ?? ($syncTimer['running'] ?? false)) : false);
+        $foulTypes = ['foul', 'tiro_livre', 'tiro_7m', 'falta'];
 
-            return [
-                'id' => $m->id,
-                'championship_id' => $m->championship_id,
-                'category_id' => $m->category_id,
-                'nome' => "{$homeName} x {$awayName}",
-                'home_team_id' => $m->home_team_id,
-                'away_team_id' => $m->away_team_id,
-                'home_team_name' => $homeName,
-                'away_team_name' => $awayName,
-                'home_team' => [
-                    'id' => $m->home_team_id,
-                    'name' => $homeName,
-                    'logo_url' => $m->homeTeam->logo_url ?? null,
-                ],
-                'away_team' => [
-                    'id' => $m->away_team_id,
-                    'name' => $awayName,
-                    'logo_url' => $m->awayTeam->logo_url ?? null,
-                ],
-                'home_score' => (int) ($m->home_score ?? 0),
-                'away_score' => (int) ($m->away_score ?? 0),
-                'status' => $m->status,
-                'location' => $m->location,
-                'round_name' => $m->round_name,
-                'round_number' => $m->round_number,
-                'group_name' => $m->group_name,
-                'start_time' => $m->start_time ? $m->start_time->toISOString() : null,
-                'match_details' => [
-                    'current_timer_value' => (int) $timerVal,
-                    'timer_running' => (bool) $timerRunning,
-                    'sync_timer' => $syncTimer,
-                ],
-            ];
+        $formatCollection = function ($collection) use ($foulTypes, $sportSlug) {
+            $matchIds = $collection->pluck('id')->all();
+            $foulsByMatch = empty($matchIds)
+                ? collect([])
+                : \App\Models\MatchEvent::whereIn('game_match_id', $matchIds)
+                    ->whereIn('event_type', $foulTypes)
+                    ->select('game_match_id', 'event_type as type', 'event_type', 'team_id', 'period')
+                    ->get()
+                    ->groupBy('game_match_id');
+
+            return $collection->map(function ($m) use ($foulsByMatch, $sportSlug) {
+                $homeName = $m->homeTeam->name ?? 'Mandante';
+                $awayName = $m->awayTeam->name ?? 'Visitante';
+                $matchFouls = $foulsByMatch->get($m->id, collect([]));
+                $computed = $this->buildScoreboardMatchPayload($m, $matchFouls, $sportSlug);
+
+                return [
+                    'id' => $m->id,
+                    'championship_id' => $m->championship_id,
+                    'category_id' => $m->category_id,
+                    'nome' => "{$homeName} x {$awayName}",
+                    'home_team_id' => $m->home_team_id,
+                    'away_team_id' => $m->away_team_id,
+                    'home_team_name' => $homeName,
+                    'away_team_name' => $awayName,
+                    'home_team' => [
+                        'id' => $m->home_team_id,
+                        'name' => $homeName,
+                        'logo_url' => $m->homeTeam->logo_url ?? null,
+                    ],
+                    'away_team' => [
+                        'id' => $m->away_team_id,
+                        'name' => $awayName,
+                        'logo_url' => $m->awayTeam->logo_url ?? null,
+                    ],
+                    'home_score' => (int) ($m->home_score ?? 0),
+                    'away_score' => (int) ($m->away_score ?? 0),
+                    'status' => $m->status,
+                    'location' => $m->location,
+                    'round_name' => $m->round_name ?: ($m->round_number ? "Rodada {$m->round_number}" : null),
+                    'round_number' => $computed['period_number'],
+                    'group_name' => $m->group_name,
+                    'start_time' => $m->start_time ? $m->start_time->toISOString() : null,
+                    'fouls_home' => $computed['fouls_home'],
+                    'fouls_away' => $computed['fouls_away'],
+                    'events' => $computed['foul_events'],
+                    'match_details' => [
+                        'current_timer_value' => $computed['timer_val'],
+                        'timer_running' => $computed['timer_running'],
+                        'sync_timer' => $computed['sync_timer'],
+                    ],
+                ];
+            });
         };
 
         if ($request->has('page')) {
             $perPage = (int) $request->input('per_page', 10);
             $paginator = $query->paginate($perPage);
-            $paginator->getCollection()->transform($formatMatch);
+            $paginator->setCollection($formatCollection($paginator->getCollection()));
             return response()->json($paginator);
         }
 
-        return response()->json($query->get()->map($formatMatch));
+        return response()->json($formatCollection($query->get()));
     }
 
     // 17. Estado da Partida ultra-leve em Tempo Real para o Placar ESP32 (< 500 bytes)
@@ -1615,22 +1742,25 @@ class EventController extends Controller
             ->with([
                 'homeTeam:id,name',
                 'awayTeam:id,name',
+                'championship:id,sport_id',
+                'championship.sport:id,slug',
             ])
             ->findOrFail($id);
 
+        $sportSlug = $match->championship?->sport?->slug ?? 'futsal';
         $foulTypes = ['foul', 'tiro_livre', 'tiro_7m', 'falta'];
         $foulEvents = \App\Models\MatchEvent::where('game_match_id', $match->id)
             ->whereIn('event_type', $foulTypes)
             ->select('event_type as type', 'event_type', 'team_id', 'period')
             ->get();
 
-        $foulsHome = $foulEvents->where('team_id', $match->home_team_id)->count();
-        $foulsAway = $foulEvents->where('team_id', $match->away_team_id)->count();
-
-        $rawDetails = is_array($match->match_details) ? $match->match_details : [];
-        $syncTimer = $rawDetails['sync_timer'] ?? null;
-        $timerVal = $rawDetails['current_timer_value'] ?? (is_array($syncTimer) ? ($syncTimer['time'] ?? 0) : 0);
-        $timerRunning = $rawDetails['timer_running'] ?? (is_array($syncTimer) ? ($syncTimer['isRunning'] ?? ($syncTimer['running'] ?? false)) : false);
+        $computed = $this->buildScoreboardMatchPayload($match, $foulEvents, $sportSlug);
+        $foulsHome = $computed['fouls_home'];
+        $foulsAway = $computed['fouls_away'];
+        $filteredFouls = $computed['foul_events'];
+        $timerVal = $computed['timer_val'];
+        $timerRunning = $computed['timer_running'];
+        $syncTimer = $computed['sync_timer'];
 
         $homeName = $match->homeTeam->name ?? 'TIME A';
         $awayName = $match->awayTeam->name ?? 'TIME B';
@@ -1649,7 +1779,7 @@ class EventController extends Controller
             'away_score' => (int) ($match->away_score ?? 0),
             'status' => $match->status,
             'round_name' => $match->round_name,
-            'round_number' => $match->round_number ?? 1,
+            'round_number' => $computed['period_number'],
             'fouls_home' => $foulsHome,
             'fouls_away' => $foulsAway,
             'match_details' => [
@@ -1657,7 +1787,7 @@ class EventController extends Controller
                 'timer_running' => (bool) $timerRunning,
                 'sync_timer' => $syncTimer,
             ],
-            'events' => $foulEvents,
+            'events' => $filteredFouls,
         ];
 
         return response()->json([
@@ -1672,7 +1802,7 @@ class EventController extends Controller
             'round_name' => $match->round_name,
             'round_number' => $matchData['round_number'],
             'match_details' => $matchData['match_details'],
-            'events' => $foulEvents,
+            'events' => $filteredFouls,
             'match' => $matchData,
             'fouls' => [
                 'home' => $foulsHome,
@@ -1680,7 +1810,7 @@ class EventController extends Controller
             ],
             'details' => [
                 'sync_timer' => $syncTimer,
-                'events' => $foulEvents,
+                'events' => $filteredFouls,
             ],
         ]);
     }
