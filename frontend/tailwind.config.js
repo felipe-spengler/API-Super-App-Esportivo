@@ -6,6 +6,25 @@ export default {
     ],
     theme: {
         extend: {
+            fontFamily: {
+                sans: [
+                    '"Plus Jakarta Sans"',
+                    '-apple-system',
+                    'BlinkMacSystemFont',
+                    '"SF Pro Display"',
+                    '"SF Pro Text"',
+                    '"Inter"',
+                    'system-ui',
+                    'sans-serif',
+                ],
+                display: [
+                    '"Plus Jakarta Sans"',
+                    '-apple-system',
+                    'BlinkMacSystemFont',
+                    '"SF Pro Display"',
+                    'sans-serif',
+                ],
+            },
             colors: {
                 primary: {
                     50: '#eef2ff',

@@ -1,108 +1,118 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { Trophy, Home, User, Lock, ChevronDown } from 'lucide-react';
-import { Icon } from '@iconify/react';
+import { Home, Compass, Calendar, User, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export function PublicLayout() {
     const location = useLocation();
     const { user } = useAuth();
 
-    // Helper to check active link
-    const isActive = (path: string) => location.pathname === path;
+    const isActive = (path: string) => {
+        if (path === '/') {
+            return location.pathname === '/' || location.pathname.startsWith('/club-home');
+        }
+        return location.pathname === path || location.pathname.startsWith(`${path}/`);
+    };
 
     const getImageUrl = (path: string | null | undefined) => {
         if (!path) return '';
         const apiUrl = import.meta.env.VITE_API_URL || '';
         const cleanApiUrl = apiUrl.replace(/\/$/, '');
         const apiBase = cleanApiUrl.replace(/\/api$/, '');
-        let result = '';
 
         if (path.includes('/storage/')) {
             const storagePath = path.substring(path.indexOf('/storage/'));
-            result = `${apiBase}/api${storagePath}`;
-        } else if (path.startsWith('http')) {
-            result = path;
-        } else if (path.startsWith('/')) {
-            result = path;
-        } else {
-            result = `${cleanApiUrl}/storage/${path}`;
+            return `${apiBase}/api${storagePath}`;
         }
-
-        console.log('[getImageUrl] Path:', path, '-> Result:', result);
-        return result;
+        if (path.startsWith('http')) return path;
+        if (path.startsWith('/')) return path;
+        return `${cleanApiUrl}/storage/${path}`;
     };
 
+    const navItems = [
+        { to: '/', label: 'Início', icon: Home, active: isActive('/') },
+        { to: '/explore', label: 'Explorar', icon: Compass, active: isActive('/explore') },
+        { to: '/agenda', label: 'Agenda', icon: Calendar, active: isActive('/agenda') },
+        { to: '/profile', label: 'Perfil', icon: User, active: isActive('/profile') },
+        ...(user?.is_admin
+            ? [{ to: '/admin/dashboard', label: 'Admin', icon: ShieldCheck, active: location.pathname.startsWith('/admin') }]
+            : []),
+    ];
+
     return (
-        <div className="min-h-screen bg-slate-50 font-sans pb-20 md:pb-0">
+        <div className="min-h-screen bg-[#F8FAFC] font-sans text-slate-900 pb-20 md:pb-0">
             {/* Desktop Navbar (Hidden on Mobile) */}
-            <nav className="hidden md:block bg-white/90 backdrop-blur-xl border-b border-slate-100 sticky top-0 z-50 transition-all duration-500 shadow-sm shadow-slate-200/50">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center h-22">
+            <nav className="hidden md:block bg-white/85 backdrop-blur-xl border-b border-slate-200/70 sticky top-0 z-50 transition-all duration-300">
+                <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex justify-between items-center h-20">
                         {/* Logo Area */}
-                        <div className="flex-shrink-0 flex items-center gap-3 group cursor-pointer">
-                            <Link to="/" className="flex items-center gap-4">
-                                <div className="p-1 group-hover:scale-110 transition-all duration-500">
-                                    <img src="/logo.png" alt="Esportes7 Logo" className="w-12 h-12 object-contain" />
+                        <div className="flex-shrink-0 flex items-center gap-3">
+                            <Link to="/" className="flex items-center gap-3.5 group">
+                                <div className="w-11 h-11 rounded-2xl overflow-hidden shadow-sm border border-slate-200/60 group-hover:scale-105 transition-transform duration-300 bg-slate-900 flex items-center justify-center">
+                                    <img src="/logo.png" alt="Esportes7 Logo" className="w-full h-full object-contain" />
                                 </div>
                                 <div className="flex flex-col">
-                                    <span translate="no" className="font-black text-2xl text-slate-900 tracking-tighter leading-none group-hover:text-indigo-600 transition-colors">
+                                    <span translate="no" className="font-bold text-xl text-slate-900 tracking-tight leading-none group-hover:text-indigo-600 transition-colors">
                                         Esportes7
                                     </span>
-                                    <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] mt-1">Platform</span>
+                                    <span className="text-[11px] font-medium text-slate-400 tracking-normal mt-1">
+                                        Gestão & Eventos Esportivos
+                                    </span>
                                 </div>
                             </Link>
                         </div>
 
-                        {/* Desktop Menu Links - Centered */}
-                        <div className="hidden md:flex items-center gap-4">
-                            <Link to="/" className={`flex items-center gap-2.5 px-5 py-2.5 text-sm font-black transition-all duration-300 rounded-2xl group ${isActive('/') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-500 hover:bg-slate-50 hover:text-indigo-600'}`}>
-                                <Icon icon="fluent-emoji:house" className={`w-5 h-5 transition-transform group-hover:scale-110`} />
-                                <span translate="no" className="uppercase tracking-wide">Início</span>
-                            </Link>
-
-                            <Link to="/explore" className={`flex items-center gap-2.5 px-5 py-2.5 text-sm font-black transition-all duration-300 rounded-2xl group ${isActive('/explore') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-500 hover:bg-slate-50 hover:text-indigo-600'}`}>
-                                <Icon icon="fluent-emoji:compass" className={`w-5 h-5 transition-transform group-hover:scale-110`} />
-                                <span translate="no" className="uppercase tracking-wide">Explorar</span>
-                            </Link>
-
-                            <Link to="/profile" className={`flex items-center gap-2.5 px-5 py-2.5 text-sm font-black transition-all duration-300 rounded-2xl group ${isActive('/profile') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-500 hover:bg-slate-50 hover:text-indigo-600'}`}>
-                                <Icon icon="fluent-emoji:person" className={`w-5 h-5 transition-transform group-hover:scale-110`} />
-                                <span translate="no" className="uppercase tracking-wide">Perfil</span>
-                            </Link>
-
-                            {user?.is_admin && (
-                                <Link to="/admin/dashboard" className={`flex items-center gap-2.5 px-5 py-2.5 text-sm font-black transition-all duration-300 rounded-2xl group ${location.pathname.startsWith('/admin') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-500 hover:bg-slate-50 hover:text-indigo-600'}`}>
-                                    <Icon icon="fluent-emoji:locked-with-key" className={`w-5 h-5 transition-transform group-hover:scale-110`} />
-                                    <span translate="no" className="uppercase tracking-wide">Admin</span>
-                                </Link>
-                            )}
+                        {/* Desktop Menu Links */}
+                        <div className="hidden md:flex items-center gap-1.5 bg-slate-100/80 p-1.5 rounded-2xl border border-slate-200/60">
+                            {navItems.map((item) => {
+                                const IconComponent = item.icon;
+                                return (
+                                    <Link
+                                        key={item.to}
+                                        to={item.to}
+                                        className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold transition-all duration-200 rounded-xl ${
+                                            item.active
+                                                ? 'bg-white text-indigo-600 shadow-sm border border-slate-200/60'
+                                                : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                                        }`}
+                                    >
+                                        <IconComponent className="w-4 h-4" strokeWidth={item.active ? 2.4 : 2} />
+                                        <span translate="no">{item.label}</span>
+                                    </Link>
+                                );
+                            })}
                         </div>
 
                         {/* Action Button */}
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3">
                             {!user ? (
-                                <Link to="/login" className="px-8 py-3 text-sm font-black text-white bg-slate-900 hover:bg-indigo-600 rounded-full transition-all shadow-xl shadow-slate-200 hover:shadow-indigo-200 hover:scale-105 active:scale-95 uppercase tracking-widest">
+                                <Link
+                                    to="/login"
+                                    className="px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-all shadow-sm shadow-indigo-200 active:scale-95"
+                                >
                                     Entrar
                                 </Link>
                             ) : (
-                                <Link to="/profile" className="flex items-center gap-3 pl-2 pr-5 py-2 bg-slate-50 border border-slate-100 rounded-[1.2rem] hover:bg-white hover:border-indigo-200 hover:shadow-xl hover:shadow-indigo-50/50 transition-all group active:scale-95">
-                                    <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center border border-slate-100 shadow-sm overflow-hidden group-hover:scale-110 transition-transform">
+                                <Link
+                                    to="/profile"
+                                    className="flex items-center gap-3 pl-2 pr-4 py-1.5 bg-white border border-slate-200/80 rounded-2xl hover:border-indigo-200 hover:shadow-md transition-all group active:scale-95"
+                                >
+                                    <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center border border-slate-200/60 overflow-hidden">
                                         {(user as any).photo_url || (user as any).photo_path ? (
                                             <img
                                                 src={getImageUrl((user as any).photo_url || (user as any).photo_path)}
                                                 alt="Avatar"
                                                 className="w-full h-full object-cover"
                                                 onError={(e) => {
-                                                    (e.target as any).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || '')}&background=6366f1&color=fff&bold=true`;
+                                                    (e.target as any).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || '')}&background=4f46e5&color=fff&bold=true`;
                                                 }}
                                             />
                                         ) : (
-                                            <User className="w-5 h-5 text-slate-400" />
+                                            <User className="w-4 h-4 text-slate-500" />
                                         )}
                                     </div>
                                     <div className="flex flex-col items-start leading-none">
-                                        <span className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Bem-vindo</span>
-                                        <span className="text-sm font-extrabold text-slate-900 group-hover:text-indigo-600 transition-colors max-w-[120px] truncate">
+                                        <span className="text-[11px] font-medium text-slate-400 mb-0.5">Olá,</span>
+                                        <span className="text-sm font-semibold text-slate-800 group-hover:text-indigo-600 transition-colors max-w-[120px] truncate">
                                             {user.name?.split(' ')[0]}
                                         </span>
                                     </div>
@@ -113,57 +123,51 @@ export function PublicLayout() {
                 </div>
             </nav>
 
-            {/* Page Content — Extra bottom padding so content never hides under bottom nav on iOS */}
+            {/* Page Content */}
             <main className="pb-safe">
                 <Outlet />
             </main>
 
-            {/*
-              * Mobile Bottom Navigation
-              * KEY iOS/Safari fixes applied here:
-              * 1. isolate — creates an isolated stacking context, preventing z-index conflicts with page content
-              * 2. transform: translateZ(0) — forces GPU compositing, fixes Safari fixed-position bleed-through
-              * 3. -webkit-backdrop-filter — required prefix for Safari backdrop blur
-              * 4. paddingBottom: env(safe-area-inset-bottom) — respects the iPhone notch/home bar area
-              * 5. All text uses translate='no' to prevent Safari's auto-translate from replacing menu labels
-              */}
+            {/* Mobile Bottom Navigation (iOS Human Interface Guidelines compliant Tab Bar) */}
             <div
-                className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 border-t border-slate-100 z-40 shadow-[0_-8px_30px_rgb(0,0,0,0.04)]"
+                className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 border-t border-slate-200/80 z-40 shadow-[0_-4px_24px_rgba(15,23,42,0.04)]"
                 style={{
                     paddingBottom: 'env(safe-area-inset-bottom, 0px)',
                     WebkitTransform: 'translateZ(0)',
                     transform: 'translateZ(0)',
                     isolation: 'isolate',
-                    WebkitBackdropFilter: 'blur(12px)',
-                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(16px)',
+                    backdropFilter: 'blur(16px)',
                 }}
             >
-                <div className="flex justify-around items-center h-16">
-                    <Link to="/" className={`relative flex flex-col items-center justify-center h-full min-w-[70px] transition-all duration-300 ${isActive('/') || isActive('/club-home') ? 'scale-110 active-nav' : 'grayscale opacity-70 hover:opacity-100'}`}>
-                        <Icon icon="fluent-emoji:house" className="w-6 h-6" />
-                        <span translate="no" className={`text-[9px] font-black uppercase tracking-widest mt-1.5 transition-all ${isActive('/') ? 'text-indigo-600' : 'text-slate-500'}`}>Início</span>
-                        {(isActive('/') || isActive('/club-home')) && <div className="absolute top-0 w-8 h-1 bg-indigo-600 rounded-b-full shadow-[0_2px_10px_rgba(79,70,229,0.4)]" />}
-                    </Link>
-
-                    <Link to="/explore" className={`relative flex flex-col items-center justify-center h-full min-w-[70px] transition-all duration-300 ${isActive('/explore') ? 'scale-110 active-nav' : 'grayscale opacity-70 hover:opacity-100'}`}>
-                        <Icon icon="fluent-emoji:compass" className="w-6 h-6" />
-                        <span translate="no" className={`text-[9px] font-black uppercase tracking-widest mt-1.5 transition-all ${isActive('/explore') ? 'text-indigo-600' : 'text-slate-500'}`}>Explorar</span>
-                        {isActive('/explore') && <div className="absolute top-0 w-8 h-1 bg-indigo-600 rounded-b-full shadow-[0_2px_10px_rgba(79,70,229,0.4)]" />}
-                    </Link>
-
-                    <Link to="/profile" className={`relative flex flex-col items-center justify-center h-full min-w-[70px] transition-all duration-300 ${isActive('/profile') ? 'scale-110 active-nav' : 'grayscale opacity-70 hover:opacity-100'}`}>
-                        <Icon icon="fluent-emoji:person" className="w-6 h-6" />
-                        <span translate="no" className={`text-[9px] font-black uppercase tracking-widest mt-1.5 transition-all ${isActive('/profile') ? 'text-indigo-600' : 'text-slate-500'}`}>Perfil</span>
-                        {isActive('/profile') && <div className="absolute top-0 w-8 h-1 bg-indigo-600 rounded-b-full shadow-[0_2px_10px_rgba(79,70,229,0.4)]" />}
-                    </Link>
-
-                    {user?.is_admin && (
-                        <Link to="/admin/dashboard" className={`relative flex flex-col items-center justify-center h-full min-w-[70px] transition-all duration-300 ${location.pathname.startsWith('/admin') ? 'scale-110 active-nav' : 'grayscale opacity-70 hover:opacity-100'}`}>
-                            <Icon icon="fluent-emoji:locked-with-key" className="w-6 h-6" />
-                            <span translate="no" className={`text-[9px] font-black uppercase tracking-widest mt-1.5 transition-all ${location.pathname.startsWith('/admin') ? 'text-indigo-600' : 'text-slate-500'}`}>Admin</span>
-                            {location.pathname.startsWith('/admin') && <div className="absolute top-0 w-8 h-1 bg-indigo-600 rounded-b-full shadow-[0_2px_10px_rgba(79,70,229,0.4)]" />}
-                        </Link>
-                    )}
+                <div className="flex justify-around items-center h-16 px-2">
+                    {navItems.map((item) => {
+                        const IconComponent = item.icon;
+                        return (
+                            <Link
+                                key={item.to}
+                                to={item.to}
+                                className={`relative flex flex-col items-center justify-center h-full min-w-[64px] px-2 transition-colors duration-200 ${
+                                    item.active ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'
+                                }`}
+                            >
+                                {item.active && (
+                                    <div className="absolute top-0 w-7 h-0.5 bg-indigo-600 rounded-b-full" />
+                                )}
+                                <div className={`p-1 rounded-xl transition-transform duration-200 ${item.active ? 'scale-105' : ''}`}>
+                                    <IconComponent className="w-[22px] h-[22px]" strokeWidth={item.active ? 2.4 : 1.9} />
+                                </div>
+                                <span
+                                    translate="no"
+                                    className={`text-[11px] leading-none mt-1 tracking-tight ${
+                                        item.active ? 'font-semibold text-indigo-600' : 'font-medium text-slate-500'
+                                    }`}
+                                >
+                                    {item.label}
+                                </span>
+                            </Link>
+                        );
+                    })}
                 </div>
             </div>
         </div>

@@ -77,27 +77,36 @@ export function Profile() {
 
     if (!user) {
         return (
-            <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-                <div className="bg-white p-8 rounded-2xl shadow-sm text-center max-w-sm w-full border border-gray-100">
-                    <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-white shadow-sm">
+            <div className="min-h-[calc(100vh-5rem)] bg-slate-50 flex flex-col items-center justify-center p-4">
+                <div className="bg-white p-8 rounded-3xl shadow-sm text-center max-w-sm w-full border border-slate-200/70">
+                    <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-indigo-100">
                         <User className="w-8 h-8" />
                     </div>
-                    <h2 className="text-2xl font-bold text-gray-900 mb-2">Faça Login</h2>
-                    <p className="text-gray-500 mb-8 leading-relaxed">
-                        Para acessar seu perfil, gerenciar seus times e ver suas inscrições, você precisa estar conectado.
+                    <h2 className="text-2xl font-bold text-slate-900 mb-2 tracking-tight">Acesse sua Conta</h2>
+                    <p className="text-sm text-slate-500 mb-7 leading-relaxed">
+                        Faça login para gerenciar seu perfil de atleta, acompanhar seus times e visualizar suas inscrições.
                     </p>
                     <div className="space-y-3">
                         <button
                             onClick={() => navigate('/login')}
-                            className="w-full bg-indigo-600 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-200 hover:shadow-xl hover:bg-indigo-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                            className="w-full bg-indigo-600 text-white font-semibold text-sm py-3.5 rounded-2xl shadow-md shadow-indigo-500/15 hover:bg-indigo-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                         >
                             Entrar na Conta
                         </button>
                         <button
                             onClick={() => navigate('/register')}
-                            className="w-full bg-white text-indigo-600 font-bold py-3.5 rounded-xl border-2 border-indigo-100 hover:bg-indigo-50 hover:border-indigo-200 active:scale-[0.98] transition-all"
+                            className="w-full bg-white text-indigo-600 font-semibold text-sm py-3.5 rounded-2xl border border-indigo-200 hover:bg-indigo-50 active:scale-[0.98] transition-all"
                         >
                             Criar Nova Conta
+                        </button>
+                    </div>
+                    <div className="mt-6 pt-5 border-t border-slate-100 flex items-center justify-center gap-4 text-xs text-slate-400 font-medium">
+                        <button onClick={() => navigate('/privacy-policy')} className="hover:text-slate-600 transition-colors">
+                            Política de Privacidade
+                        </button>
+                        <span>•</span>
+                        <button onClick={() => navigate('/deletar-conta')} className="hover:text-slate-600 transition-colors">
+                            Excluir Conta
                         </button>
                     </div>
                 </div>
@@ -199,40 +208,52 @@ export function Profile() {
                 </div>
 
                 {/* Settings & Logout */}
-                <div className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+                <div className="bg-white rounded-3xl shadow-sm border border-slate-200/70 overflow-hidden">
                     <button
                         onClick={() => setShowEdit(true)}
-                        className="w-full p-6 flex items-center justify-between hover:bg-slate-50 transition-all group border-b border-slate-50"
+                        className="w-full p-5 flex items-center justify-between hover:bg-slate-50 transition-all group border-b border-slate-100"
                     >
-                        <div className="flex items-center gap-4">
-                            <div className="p-3 bg-slate-50 text-slate-400 rounded-xl group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
+                        <div className="flex items-center gap-3.5">
+                            <div className="p-2.5 bg-slate-100 text-slate-600 rounded-xl group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
                                 <User className="w-5 h-5" />
                             </div>
-                            <span className="text-slate-800 font-extrabold uppercase tracking-widest text-sm">Dados e Fotos</span>
+                            <span className="text-slate-800 font-semibold text-sm">Meus Dados e Fotos</span>
                         </div>
-                        <ArrowLeft className="w-5 h-5 text-slate-200 group-hover:text-indigo-400 rotate-180 transition-all" />
+                        <ArrowLeft className="w-4 h-4 text-slate-300 group-hover:text-indigo-500 rotate-180 transition-all" />
+                    </button>
+                    <button
+                        onClick={() => navigate('/privacy-policy')}
+                        className="w-full p-5 flex items-center justify-between hover:bg-slate-50 transition-all group border-b border-slate-100"
+                    >
+                        <div className="flex items-center gap-3.5">
+                            <div className="p-2.5 bg-slate-100 text-slate-600 rounded-xl group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
+                                <Shield className="w-5 h-5" />
+                            </div>
+                            <span className="text-slate-800 font-semibold text-sm">Política de Privacidade</span>
+                        </div>
+                        <ArrowLeft className="w-4 h-4 text-slate-300 group-hover:text-indigo-500 rotate-180 transition-all" />
                     </button>
                     <button
                         onClick={() => navigate('/deletar-conta')}
-                        className="w-full p-6 flex items-center justify-between hover:bg-slate-50 transition-all group border-b border-slate-50"
+                        className="w-full p-5 flex items-center justify-between hover:bg-slate-50 transition-all group border-b border-slate-100"
                     >
-                        <div className="flex items-center gap-4">
-                            <div className="p-3 bg-slate-50 text-slate-400 rounded-xl group-hover:bg-red-50 group-hover:text-red-600 transition-colors">
+                        <div className="flex items-center gap-3.5">
+                            <div className="p-2.5 bg-slate-100 text-slate-500 rounded-xl group-hover:bg-red-50 group-hover:text-red-600 transition-colors">
                                 <Trash2 className="w-5 h-5" />
                             </div>
-                            <span className="text-slate-800 font-extrabold uppercase tracking-widest text-sm group-hover:text-red-600">Excluir Minha Conta</span>
+                            <span className="text-slate-700 font-semibold text-sm group-hover:text-red-600">Excluir Minha Conta</span>
                         </div>
-                        <ArrowLeft className="w-5 h-5 text-slate-200 group-hover:text-red-400 rotate-180 transition-all" />
+                        <ArrowLeft className="w-4 h-4 text-slate-300 group-hover:text-red-400 rotate-180 transition-all" />
                     </button>
                     <button
                         onClick={() => { signOut(); navigate('/'); }}
-                        className="w-full p-6 flex items-center justify-between hover:bg-red-50 transition-all group"
+                        className="w-full p-5 flex items-center justify-between hover:bg-red-50/60 transition-all group"
                     >
-                        <div className="flex items-center gap-4">
-                            <div className="p-3 bg-red-50 text-red-600 rounded-xl">
+                        <div className="flex items-center gap-3.5">
+                            <div className="p-2.5 bg-red-50 text-red-600 rounded-xl">
                                 <LogOut className="w-5 h-5" />
                             </div>
-                            <span className="text-red-600 font-extrabold uppercase tracking-widest text-sm">Sair da Conta</span>
+                            <span className="text-red-600 font-semibold text-sm">Sair da Conta</span>
                         </div>
                     </button>
                 </div>

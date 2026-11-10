@@ -9,12 +9,16 @@
     /* Needed for env(safe-area-inset-*) to work correctly */
     height: 100%;
     -webkit-text-size-adjust: 100%;
-    font-family: 'Inter', sans-serif;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent;
   }
 
   body {
-    @apply bg-gray-50 text-gray-900;
+    @apply bg-slate-50 text-slate-900 antialiased;
     min-height: 100%;
+    letter-spacing: -0.011em;
     /* Prevent iOS Safari from auto-adjusting font sizes */
     -webkit-text-size-adjust: 100%;
   }
