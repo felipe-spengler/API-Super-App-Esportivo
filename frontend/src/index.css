@@ -22,6 +22,15 @@
     /* Prevent iOS Safari from auto-adjusting font sizes */
     -webkit-text-size-adjust: 100%;
   }
+
+  /* Suaviza pesos extremos (font-black / 900) em todas as telas para manter padrão elegante iOS/Apple */
+  .font-black {
+    font-weight: 700 !important;
+  }
+
+  .font-extrabold {
+    font-weight: 700 !important;
+  }
 }
 
 @layer utilities {

@@ -119,13 +119,8 @@ export function PublicHome() {
 
                     {/* Brand Header */}
                     <div className="text-center relative z-10 mb-6">
-                        <div className="inline-flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 mb-4 rounded-[1.35rem] shadow-md shadow-slate-900/10 overflow-hidden bg-slate-950 border border-slate-800/20">
+                        <div className="inline-flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 mb-5 rounded-[1.35rem] shadow-md shadow-slate-900/10 overflow-hidden bg-slate-950 border border-slate-800/20">
                             <img src="/logo.png" alt="Esportes7" className="w-full h-full object-contain" />
-                        </div>
-
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100/80 text-indigo-600 text-xs font-semibold mb-3">
-                            <Sparkles className="w-3.5 h-3.5" />
-                            <span>Plataforma Esportiva Oficial</span>
                         </div>
 
                         <h1 className="text-2xl sm:text-[28px] font-bold text-slate-900 tracking-tight leading-snug">
