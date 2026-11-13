@@ -341,6 +341,7 @@ class AdminTeamController extends Controller
             return response()->json(['message' => 'Nenhum jogador na origem selecionada para copiar.'], 400);
         }
 
+        $team = Team::findOrFail($id);
         $count = 0;
         foreach ($sourcePlayers as $player) {
             // Check if already in championship
@@ -363,6 +364,19 @@ class AdminTeamController extends Controller
                     'updated_at' => now(),
                 ]);
                 $count++;
+
+                $athlete = \App\Models\User::find($player->user_id);
+                if ($athlete) {
+                    \App\Services\TeamInscriptionService::notifyAthleteTeamInscription(
+                        $athlete,
+                        $team,
+                        (int) $championshipId,
+                        [
+                            'position' => $player->position,
+                            'number' => $player->number,
+                        ]
+                    );
+                }
             }
         }
 

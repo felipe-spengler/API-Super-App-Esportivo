@@ -281,6 +281,17 @@ class TeamController extends Controller
             ]
         );
 
+        // Enviar e-mail de confirmação diretamente para o atleta inscrito
+        \App\Services\TeamInscriptionService::notifyAthleteTeamInscription(
+            $userData,
+            $team,
+            $champId ? (int) $champId : null,
+            [
+                'position' => $request->position,
+                'number' => $request->number,
+            ]
+        );
+
         return response()->json(['message' => 'Jogador adicionado com sucesso aos campeonatos vinculados!', 'player_id' => $userData->id], 201);
     }
 

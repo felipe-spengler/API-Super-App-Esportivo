@@ -150,6 +150,7 @@ class AdminPlayerController extends Controller
             unset($validated['password']); // Don't update if empty
         }
 
+        $oldEmail = $player->email;
         $player->update($validated);
 
         AuditLogger::log('user.update', "Editou dados do usuário/atleta '{$player->name}' (ID: {$player->id})", [
@@ -178,9 +179,25 @@ class AdminPlayerController extends Controller
                     'position' => $position,
                     'number' => $number
                 ]);
-            } else {
-                // Se não achou na pivô mas mandaram o team_id, talvez devêssemos criar?
-                // Por segurança, apenas editamos se existir.
+            }
+
+            // Se o atleta tinha e-mail temporário/vazio e agora recebeu um e-mail real, envia a confirmação da inscrição
+            if (
+                !\App\Services\TeamInscriptionService::isValidAthleteEmail($oldEmail) &&
+                \App\Services\TeamInscriptionService::isValidAthleteEmail($player->email)
+            ) {
+                $team = \App\Models\Team::find($teamId);
+                if ($team) {
+                    \App\Services\TeamInscriptionService::notifyAthleteTeamInscription(
+                        $player,
+                        $team,
+                        $championshipId ? (int) $championshipId : null,
+                        [
+                            'position' => $position,
+                            'number' => $number,
+                        ]
+                    );
+                }
             }
         }
 

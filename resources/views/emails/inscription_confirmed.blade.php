@@ -90,11 +90,11 @@
             <p>Você também pode acessar sua área do atleta a qualquer momento para baixar o comprovante novamente ou ver sua carteirinha digital.</p>
             
             <div class="btn-container">
-                <a href="https://esportivo.techinteligente.site/profile/inscriptions" class="btn" style="color: white;">Ver Minhas Inscrições</a>
+                <a href="https://esportes7.com.br/profile/inscriptions" class="btn" style="color: white;">Ver Minhas Inscrições</a>
             </div>
         </div>
         <div class="footer">
-            <p>&copy; {{ date('Y') }} Esportivo. Todos os direitos reservados.</p>
+            <p>&copy; {{ date('Y') }} {{ config('mail.from.name', 'Esportes7') }}. Todos os direitos reservados.</p>
         </div>
     </div>
 </body>

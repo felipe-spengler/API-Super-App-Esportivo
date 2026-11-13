@@ -22,6 +22,9 @@ return [
     // Origens explícitas para suportar: web (produção), dev local, app mobile (Capacitor iOS/Android)
     'allowed_origins' => [
         'https://esportes7.com.br',                // novo domínio produção
+        'https://www.esportes7.com.br',            // www domínio produção
+        'https://tecinteligente.cloud',            // novo domínio tecinteligente
+        'https://esportivo.tecinteligente.cloud',  // subdomínio tecinteligente
         'https://acorrerondon.com.br',              // portal acorre rondon
         'https://esportivo.techinteligente.site',  // legado
         'http://localhost:5173',                    // dev local Vite

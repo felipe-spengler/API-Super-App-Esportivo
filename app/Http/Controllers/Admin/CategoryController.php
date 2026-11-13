@@ -407,9 +407,19 @@ class CategoryController extends Controller
                 'race_id' => $race->id
             ]);
 
+            $finalResult->load(['user', 'category.parent', 'race.championship']);
+            if ($finalResult->user && \App\Services\TeamInscriptionService::isValidAthleteEmail($finalResult->user->email)) {
+                try {
+                    \Illuminate\Support\Facades\Mail::to(trim($finalResult->user->email))
+                        ->send(new \App\Mail\InscriptionConfirmedMail($finalResult));
+                } catch (\Throwable $mailEx) {
+                    \Illuminate\Support\Facades\Log::error("Erro ao enviar confirmação de categoria ao atleta: " . $mailEx->getMessage());
+                }
+            }
+
             return response()->json([
                 'message' => 'Atleta adicionado à categoria com sucesso!',
-                'result' => $finalResult->load(['user', 'category'])
+                'result' => $finalResult
             ]);
         }
 
@@ -454,9 +464,19 @@ class CategoryController extends Controller
                 'race_id' => $race->id
             ]);
 
+            $finalResult->load(['user', 'category.parent', 'race.championship']);
+            if (\App\Services\TeamInscriptionService::isValidAthleteEmail($athleteUser->email)) {
+                try {
+                    \Illuminate\Support\Facades\Mail::to(trim($athleteUser->email))
+                        ->send(new \App\Mail\InscriptionConfirmedMail($finalResult));
+                } catch (\Throwable $mailEx) {
+                    \Illuminate\Support\Facades\Log::error("Erro ao enviar confirmação de categoria ao atleta: " . $mailEx->getMessage());
+                }
+            }
+
             return response()->json([
                 'message' => 'Atleta adicionado à categoria com sucesso!',
-                'result' => $finalResult->load(['user', 'category'])
+                'result' => $finalResult
             ]);
         }
 
