@@ -112,6 +112,13 @@ class MatchOperationController extends Controller
             'ataque' => ['label' => 'Ponto de Ataque', 'icon' => '💥'],
             'bloqueio' => ['label' => 'Ponto de Bloqueio', 'icon' => '🤚'],
             'saque' => ['label' => 'Ponto de Saque (Ace)', 'icon' => '🏐'],
+            'side_switch' => ['label' => 'Troca de Lado de Quadra', 'icon' => '🔄'],
+            'service_order_fault' => ['label' => 'Falta de Ordem de Saque', 'icon' => '⚠️'],
+            'double_fault' => ['label' => 'Falta Dupla (Rally Repetido)', 'icon' => '🤝'],
+            'delay_warning' => ['label' => 'Advertência por Retardamento', 'icon' => '🟨'],
+            'delay_penalty' => ['label' => 'Penalidade por Retardamento', 'icon' => '🟥'],
+            'medical_timeout' => ['label' => 'Atendimento Médico (5 min)', 'icon' => '🚑'],
+            'team_incomplete' => ['label' => 'Equipe Incompleta', 'icon' => '🛑'],
         ];
 
         if ($match->events->count() > 0) {
@@ -119,7 +126,8 @@ class MatchOperationController extends Controller
                 ->sortByDesc('id') // O mais recente primeiro
                 ->filter(fn($e) => !in_array($e->event_type, $auditTypes))
                 ->map(function ($e) use ($eventLabels, $match, $rosterNumbers) {
-                    $isVolley = ($match->championship->sport->slug ?? '') === 'volei';
+                    $sportSlug = $match->championship->sport->slug ?? '';
+                    $isVolley = str_contains($sportSlug, 'volei');
                     $info = $eventLabels[$e->event_type] ?? ['label' => ucfirst(str_replace('_', ' ', $e->event_type)), 'icon' => '📋'];
 
                     // Ajuste de ícone dinâmico baseado no esporte
@@ -187,12 +195,12 @@ class MatchOperationController extends Controller
         }
         if (!isset($details['sets']) || empty($details['sets'])) {
             $sportSlug = $match->championship->sport->slug ?? '';
-            $isVolley = $sportSlug === 'volei';
+            $isVolley = str_contains($sportSlug, 'volei') || in_array($sportSlug, ['futevolei', 'beach-tennis', 'tenis', 'tenis-mesa', 'tenis-de-mesa']);
             
-            // For all sports, if we have setTimes, we can populate a 'sets' structure for the frontend
-            if ($isVolley || count($setTimes) > 0) {
-                // Se for vôlei, usamos os MatchSet reais se existirem
-                if ($isVolley && $match->sets->count() > 0) {
+            // For all sports, if we have setTimes or MatchSet rows, we can populate a 'sets' structure for the frontend
+            if ($isVolley || $match->sets->count() > 0 || count($setTimes) > 0) {
+                // Se existirem registros em MatchSet, usamos os MatchSet reais
+                if ($match->sets->count() > 0) {
                     $details['sets'] = $match->sets
                         ->sortBy('set_number')
                         ->map(function ($s) use ($setTimes) {
@@ -466,35 +474,68 @@ class MatchOperationController extends Controller
         $match = GameMatch::findOrFail($id);
         $details = $match->match_details ?? [];
 
+        // Formato enviado pelas súmulas de Vôlei de Praia / Futevôlei / Beach Tennis / Tênis de Mesa:
+        // { set_number, home_score, away_score }
+        if ($request->has('set_number')) {
+            $setNumber = (int) $request->input('set_number');
+            $homeScore = (int) $request->input('home_score', 0);
+            $awayScore = (int) $request->input('away_score', 0);
+
+            MatchSet::updateOrCreate(
+                [
+                    'game_match_id' => $match->id,
+                    'set_number' => (string) $setNumber,
+                ],
+                [
+                    'home_score' => $homeScore,
+                    'away_score' => $awayScore,
+                    'status' => 'finished',
+                    'end_time' => now(),
+                ]
+            );
+
+            $allSets = MatchSet::where('game_match_id', $match->id)
+                ->orderBy('set_number')
+                ->get();
+
+            $details['sets'] = $allSets->map(fn($s) => [
+                'id' => $s->id,
+                'set_number' => (int) $s->set_number,
+                'home_score' => (int) $s->home_score,
+                'away_score' => (int) $s->away_score,
+                'status' => $s->status,
+            ])->values()->toArray();
+
+            $homeSetsWon = $allSets->filter(fn($s) => $s->home_score > $s->away_score)->count();
+            $awaySetsWon = $allSets->filter(fn($s) => $s->away_score > $s->home_score)->count();
+
+            $match->home_score = $homeSetsWon;
+            $match->away_score = $awaySetsWon;
+            if ($match->status === 'scheduled') {
+                $match->status = 'live';
+            }
+        }
+
         $action = $request->input('action'); // start_set, end_set
 
         if ($action === 'end_set') {
             // Salva o set atual no histórico
             $currentScore = $details['current_set_score'] ?? ['home' => 0, 'away' => 0];
             $details['sets'][] = [
-                'label' => $request->input('label', count($details['sets']) + 1 . 'º Set'),
+                'label' => $request->input('label', count($details['sets'] ?? []) + 1 . 'º Set'),
                 'home' => $currentScore['home'],
                 'away' => $currentScore['away']
             ];
             // Reseta placar do set
             $details['current_set_score'] = ['home' => 0, 'away' => 0];
 
-            // Incrementa placar "Geral" de sets na tabela principal?
-            // No Vôlei, home_score geralmente é Sets Vencidos.
-            // Minha lógica no addEvent estava somando pontos corridos. Vamos ajustar.
-            // Se for Vôlei, home_score guarda SETS. Se for Basquete, PONTOS.
-            // Complexidade do Polimorfismo. Vamos assumir que home_score = Placar Principal que define vencedor.
-            // No Vôlei, ao fechar set, incrementamos o home_score.
-
-            if ($match->championship->sport && $match->championship->sport->slug === 'volei') {
+            $sportSlug = $match->championship->sport->slug ?? '';
+            if (str_contains($sportSlug, 'volei')) {
                 if ($currentScore['home'] > $currentScore['away']) {
                     $match->home_score++;
                 } else {
                     $match->away_score++;
                 }
-                // Resetamos os pontos "corridos" de addEvent? Não, addEvent no volei soma 'points' internos.
-                // Precisamos separar: placar_principal (sets) vs placar_set (pontos).
-                // O frontend deve saber exibir.
             }
         }
 

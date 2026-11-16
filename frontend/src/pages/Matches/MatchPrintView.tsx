@@ -39,7 +39,7 @@ export function MatchPrintView() {
     const sportSlug = match?.championship?.sport?.slug || '';
 
     const renderTemplate = () => {
-        if (sportSlug === 'volei') {
+        if (sportSlug.includes('volei') || sportSlug === 'futevolei') {
             return <PrintVolley match={match} rosters={rosters} events={events} />;
         }
         if (sportSlug.includes('tenis')) {

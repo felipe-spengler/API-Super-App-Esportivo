@@ -284,7 +284,10 @@ export function Matches() {
                 'fut7': '/sumula-futebol7',
                 'futevolei': '/sumula-futevolei',
                 'volei-praia': '/sumula-volei-praia',
+                'volei-de-praia': '/sumula-volei-praia',
+                'volei_de_praia': '/sumula-volei-praia',
                 'tenis-mesa': '/sumula-tenis-mesa',
+                'tenis-de-mesa': '/sumula-tenis-mesa',
                 'jiu-jitsu': '/sumula-jiu-jitsu'
             };
 

@@ -204,7 +204,7 @@ class AuthController extends Controller
 
         // Envia o e-mail
         try {
-            $resetLink = "https://esportivo.techinteligente.site/reset-password?email=" . urlencode($user->email) . "&token=" . $token;
+            $resetLink = "https://esportes7.com.br/reset-password?email=" . urlencode($user->email) . "&token=" . $token;
 
             Mail::to($user->email)->send(new \App\Mail\PasswordResetMail($user, $token, $resetLink));
         } catch (\Exception $e) {

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Trash2, AlertTriangle, CheckCircle, Mail, User } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import axios from 'axios';
+import api from '../../services/api';
 import toast from 'react-hot-toast';
 
 export function DeletarConta() {
@@ -19,19 +19,14 @@ export function DeletarConta() {
 
         setLoading(true);
         try {
-            const token = localStorage.getItem('auth_token');
-            const apiUrl = import.meta.env.VITE_API_URL;
+            await api.delete('/me');
 
-            await axios.delete(`${apiUrl}/me`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-
-            toast.success('Sua conta foi anonimizada com sucesso.');
+            toast.success('Sua conta foi excluída com sucesso.');
             setStep(3);
             setTimeout(() => {
                 signOut();
                 navigate('/');
-            }, 5000);
+            }, 3000);
         } catch (error: any) {
             toast.error(error.response?.data?.message || 'Erro ao excluir conta.');
         } finally {
@@ -43,8 +38,7 @@ export function DeletarConta() {
         e.preventDefault();
         setLoading(true);
         try {
-            const apiUrl = import.meta.env.VITE_API_URL;
-            await axios.post(`${apiUrl}/public/request-deletion`, {
+            await api.post('/public/request-deletion', {
                 identifier,
                 reason
             });
@@ -75,7 +69,7 @@ export function DeletarConta() {
                         <div className="text-center space-y-2">
                             <h2 className="text-2xl font-black text-slate-900 uppercase">Solicitar Exclusão</h2>
                             <p className="text-slate-500 text-sm leading-relaxed">
-                                De acordo com as políticas da Google Play, você tem o direito de solicitar a exclusão de sua conta e dos dados pessoais associados a ela.
+                                De acordo com a LGPD e as diretrizes de privacidade da plataforma, você tem o direito de excluir sua conta e todos os dados pessoais associados a ela a qualquer momento.
                             </p>
                         </div>
 
