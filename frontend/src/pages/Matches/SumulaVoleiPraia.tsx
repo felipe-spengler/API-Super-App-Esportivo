@@ -17,12 +17,15 @@ import {
     Volleyball,
     AlertTriangle,
     CheckCircle2,
+    History,
+    Trash2,
     X
 } from 'lucide-react';
 import api from '../../services/api';
 import { useOfflineResilience } from '../../hooks/useOfflineResilience';
 
 type TeamSide = 'home' | 'away';
+type BeachPointType = 'ataque' | 'bloqueio' | 'saque' | 'erro';
 
 interface DuoPlayer {
     id: number | string;
@@ -44,6 +47,26 @@ interface SetRecord {
     away_score: number;
 }
 
+interface TimelineEvent {
+    id: number | string;
+    event_type: string;
+    type?: string;
+    team_id?: number | null;
+    player_id?: number | null;
+    player_name?: string | null;
+    player_number?: number | string | null;
+    period?: string;
+    game_time?: string;
+    value?: number;
+    metadata?: {
+        label?: string;
+        volley_type?: string;
+        player_name?: string;
+        reason?: string;
+        score?: string;
+    } | null;
+}
+
 interface MatchStateData {
     id: number;
     status?: string;
@@ -53,11 +76,12 @@ interface MatchStateData {
     away_score?: number;
     scoreHome: number;
     scoreAway: number;
-    home_team?: { id?: number; name?: string };
-    away_team?: { id?: number; name?: string };
+    home_team?: { id?: number; name?: string; code?: string };
+    away_team?: { id?: number; name?: string; code?: string };
     details?: {
         arbitration?: { referee?: string };
         sets?: SetRecord[];
+        events?: TimelineEvent[];
     };
     match_details?: Record<string, unknown> & {
         sync_state?: {
@@ -67,6 +91,7 @@ interface MatchStateData {
             currentServerIndex?: { home: number; away: number };
             delaySanctions?: { home: number; away: number };
             captains?: { home: number; away: number };
+            invertedCourt?: boolean;
             duoPlayers?: { home: DuoPlayer[]; away: DuoPlayer[] };
         };
     };
@@ -87,7 +112,16 @@ export function SumulaVoleiPraia() {
     const [score, setScore] = useState({ home: 0, away: 0 });
     const [matchFinished, setMatchFinished] = useState(false);
 
-    // Official Beach Volleyball Rule States
+    // Timeline Events (Linha do Tempo sincronizada com o backend)
+    const [events, setEvents] = useState<TimelineEvent[]>([]);
+
+    // Fluxo de Ponto igual ao Vôlei: Passo 1 (Tipo: Ataque/Normal, Bloqueio, Saque/Ace, Erro) -> Passo 2 (Jogador)
+    const [pointFlow, setPointFlow] = useState<{
+        step: 'type' | 'player';
+        team: TeamSide;
+        pointType?: BeachPointType;
+    } | null>(null);
+
     // 1. Formação: 2 atletas por equipe (sem reservas) + Capitão indicado na súmula
     const [duoPlayers, setDuoPlayers] = useState<{ home: DuoPlayer[]; away: DuoPlayer[] }>({
         home: [
@@ -101,16 +135,15 @@ export function SumulaVoleiPraia() {
     });
     const [captains, setCaptains] = useState<{ home: number; away: number }>({ home: 0, away: 0 });
 
-    // 2. Ordem de Saque:
-    // Quando a equipe sacadora vence o rally -> mesmo jogador continua sacando.
-    // Quando a equipe receptora vence o rally -> ganha o saque e o jogador que NÃO sacou da última vez passa a sacar.
+    // 2. Ordem de Saque
     const [servingTeam, setServingTeam] = useState<TeamSide>('home');
     const [currentServerIndex, setCurrentServerIndex] = useState<{ home: number; away: number }>({
         home: 0,
         away: 0
     });
 
-    // 3. Troca de Lado: A cada 7 pontos (1º e 2º sets) e a cada 5 pontos (3º set / Tie-break)
+    // 3. Troca de Lado (No 1º e 2º sets NÃO troca durante o set; no 3º set troca a cada 5 pontos)
+    // Quando invertedCourt === true, TUDO na tela (placar, botões de ponto, ações e duplas) inverte de lado!
     const [invertedCourt, setInvertedCourt] = useState(false);
     const [sideSwitchAlert, setSideSwitchAlert] = useState<string | null>(null);
 
@@ -118,7 +151,7 @@ export function SumulaVoleiPraia() {
     const [timeoutsUsed, setTimeoutsUsed] = useState<{ home: number; away: number }>({ home: 0, away: 0 });
     const [activeTimeout, setActiveTimeout] = useState<{ team: TeamSide; secondsLeft: number } | null>(null);
 
-    // 5. Atendimento Médico por Lesão (5 minutos = 300s; se não puder continuar -> Equipe Incompleta)
+    // 5. Atendimento Médico por Lesão (5 minutos = 300s)
     const [activeMedicalTimeout, setActiveMedicalTimeout] = useState<{
         team: TeamSide;
         playerIndex: number;
@@ -127,9 +160,6 @@ export function SumulaVoleiPraia() {
 
     // 6. Sanções por Retardamento (Vigoram por TODA A PARTIDA)
     const [delaySanctions, setDelaySanctions] = useState<{ home: number; away: number }>({ home: 0, away: 0 });
-
-    // Histórico de Eventos da Súmula no Set/Partida
-    const [matchLog, setMatchLog] = useState<Array<{ time: string; set: number; text: string; type: string }>>([]);
 
     const POINTS_TO_WIN = 21; // 1º e 2º sets até 21 pontos
     const TIE_BREAK_POINTS = 15; // 3º set (Tie-break) até 15 pontos
@@ -170,14 +200,17 @@ export function SumulaVoleiPraia() {
         [matchData]
     );
 
-    const appendLog = useCallback(
-        (text: string, type = 'info') => {
-            const now = new Date();
-            const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            setMatchLog(prev => [{ time: timeStr, set: currentSet, text, type }, ...prev.slice(0, 49)]);
-        },
-        [currentSet]
-    );
+    const fetchEvents = useCallback(async () => {
+        if (!id) return;
+        try {
+            const res = await api.get(`/admin/matches/${id}/events`);
+            if (Array.isArray(res.data)) {
+                setEvents(res.data);
+            }
+        } catch (e) {
+            console.error('Erro ao buscar eventos da linha do tempo', e);
+        }
+    }, [id]);
 
     const fetchMatchDetails = useCallback(
         async (silent = false) => {
@@ -191,6 +224,15 @@ export function SumulaVoleiPraia() {
                         scoreHome: parseInt(String(data.match.home_score || 0), 10),
                         scoreAway: parseInt(String(data.match.away_score || 0), 10)
                     });
+
+                    if (data.details?.events && Array.isArray(data.details.events)) {
+                        setEvents(
+                            data.details.events.map((ev: TimelineEvent) => ({
+                                ...ev,
+                                event_type: ev.event_type || ev.type || 'point'
+                            }))
+                        );
+                    }
 
                     if (!silent) {
                         if (data.rosters) {
@@ -253,6 +295,7 @@ export function SumulaVoleiPraia() {
                             if (ss.currentServerIndex) setCurrentServerIndex(ss.currentServerIndex);
                             if (ss.delaySanctions) setDelaySanctions(ss.delaySanctions);
                             if (ss.captains) setCaptains(ss.captains);
+                            if (typeof ss.invertedCourt === 'boolean') setInvertedCourt(ss.invertedCourt);
                             if (ss.duoPlayers) setDuoPlayers(ss.duoPlayers);
                         }
                     }
@@ -270,10 +313,13 @@ export function SumulaVoleiPraia() {
     useEffect(() => {
         if (id) {
             fetchMatchDetails();
+            fetchEvents();
 
             const syncInterval = setInterval(() => {
-                if (getPendingCount() === 0) fetchMatchDetails(true);
-            }, 3000);
+                if (getPendingCount() === 0) {
+                    fetchMatchDetails(true);
+                }
+            }, 4000);
 
             const saved = localStorage.getItem(STORAGE_KEY);
             if (saved) {
@@ -288,14 +334,15 @@ export function SumulaVoleiPraia() {
                     if (parsed.captains) setCaptains(parsed.captains);
                     if (parsed.delaySanctions) setDelaySanctions(parsed.delaySanctions);
                     if (parsed.timeoutsUsed) setTimeoutsUsed(parsed.timeoutsUsed);
-                    if (parsed.matchLog) setMatchLog(parsed.matchLog);
+                    if (typeof parsed.invertedCourt === 'boolean') setInvertedCourt(parsed.invertedCourt);
+                    if (parsed.duoPlayers) setDuoPlayers(parsed.duoPlayers);
                 } catch (e) {
                     console.error('Failed to recover state', e);
                 }
             }
             return () => clearInterval(syncInterval);
         }
-    }, [id, STORAGE_KEY, fetchMatchDetails, getPendingCount]);
+    }, [id, STORAGE_KEY, fetchMatchDetails, fetchEvents, getPendingCount]);
 
     useEffect(() => {
         if (!id || loading) return;
@@ -309,16 +356,31 @@ export function SumulaVoleiPraia() {
             captains,
             delaySanctions,
             timeoutsUsed,
-            matchLog
+            invertedCourt,
+            duoPlayers
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
-    }, [id, STORAGE_KEY, loading, sets, currentSet, score, matchFinished, servingTeam, currentServerIndex, captains, delaySanctions, timeoutsUsed, matchLog]);
+    }, [
+        id,
+        STORAGE_KEY,
+        loading,
+        sets,
+        currentSet,
+        score,
+        matchFinished,
+        servingTeam,
+        currentServerIndex,
+        captains,
+        delaySanctions,
+        timeoutsUsed,
+        invertedCourt,
+        duoPlayers
+    ]);
 
     // Cronômetro de Pedido de Tempo (30 segundos)
     useEffect(() => {
         if (!activeTimeout) return;
         if (activeTimeout.secondsLeft <= 0) {
-            appendLog(`Fim do Tempo de Descanso (30s) - ${getTeamName(activeTimeout.team)}`, 'timeout');
             setActiveTimeout(null);
             return;
         }
@@ -326,7 +388,7 @@ export function SumulaVoleiPraia() {
             setActiveTimeout(prev => (prev ? { ...prev, secondsLeft: prev.secondsLeft - 1 } : null));
         }, 1000);
         return () => clearTimeout(timer);
-    }, [activeTimeout, appendLog, getTeamName]);
+    }, [activeTimeout]);
 
     // Cronômetro de Atendimento Médico por Lesão (5 minutos = 300s)
     useEffect(() => {
@@ -357,6 +419,8 @@ export function SumulaVoleiPraia() {
                             currentServerIndex,
                             captains,
                             delaySanctions,
+                            invertedCourt,
+                            duoPlayers,
                             updated_at: Date.now()
                         }
                     }
@@ -367,27 +431,88 @@ export function SumulaVoleiPraia() {
         }, 3000);
 
         return () => clearInterval(pingInterval);
-    }, [id, isOnline, getPendingCount, loading, matchData, matchFinished, score, currentSet, servingTeam, currentServerIndex, captains, delaySanctions]);
+    }, [
+        id,
+        isOnline,
+        getPendingCount,
+        loading,
+        matchData,
+        matchFinished,
+        score,
+        currentSet,
+        servingTeam,
+        currentServerIndex,
+        captains,
+        delaySanctions,
+        invertedCourt,
+        duoPlayers
+    ]);
 
     const getOpponent = (team: TeamSide): TeamSide => (team === 'home' ? 'away' : 'home');
 
-    const registerSystemEvent = async (type: string, label: string) => {
-        if (!matchData) return;
-        try {
-            addToQueue('event', {
-                event_type: type,
-                team_id: matchData.home_team_id || matchData.away_team_id,
-                minute: 0,
-                period: `Set ${currentSet}`,
-                metadata: { label }
-            });
+    const recordEventToServer = async (payload: {
+        event_type: string;
+        team_id?: number | null;
+        player_id?: number | null;
+        period?: string;
+        value?: number;
+        metadata?: Record<string, unknown>;
+    }) => {
+        const optimisticId = `temp_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        const optimisticEvent: TimelineEvent = {
+            id: optimisticId,
+            event_type: payload.event_type,
+            team_id: payload.team_id,
+            player_id: payload.player_id,
+            period: payload.period || `${currentSet}º Set`,
+            value: payload.value ?? 1,
+            metadata: payload.metadata as TimelineEvent['metadata']
+        };
 
-            if (type === 'match_start') {
-                setMatchData(prev => (prev ? { ...prev, status: 'live' } : prev));
+        setEvents(prev => [optimisticEvent, ...prev]);
+
+        if (isOnline && getPendingCount() === 0) {
+            try {
+                const res = await api.post(`/admin/matches/${id}/events`, payload);
+                if (res.data && res.data.id) {
+                    setEvents(prev =>
+                        prev.map(ev =>
+                            ev.id === optimisticId
+                                ? {
+                                      ...optimisticEvent,
+                                      id: res.data.id
+                                  }
+                                : ev
+                        )
+                    );
+                }
+                return;
+            } catch (e) {
+                console.error('Fallback to offline queue for event', e);
             }
-        } catch (e) {
-            console.error('Erro ao registrar evento de sistema', e);
         }
+
+        addToQueue('event', payload);
+    };
+
+    const registerSystemEvent = async (type: string, label: string, teamSide?: TeamSide) => {
+        if (!matchData) return;
+        const resolvedTeamId = teamSide
+            ? teamSide === 'home'
+                ? matchData.home_team_id
+                : matchData.away_team_id
+            : matchData.home_team_id || matchData.away_team_id;
+
+        if (type === 'match_start') {
+            setMatchData(prev => (prev ? { ...prev, status: 'live' } : prev));
+        }
+
+        await recordEventToServer({
+            event_type: type,
+            team_id: resolvedTeamId,
+            period: `${currentSet}º Set`,
+            metadata: { label }
+        });
     };
 
     const finishSet = async (finalScore: { home: number; away: number }) => {
@@ -427,34 +552,36 @@ export function SumulaVoleiPraia() {
         if (homeSetsWon === setsNeededToWin || awaySetsWon === setsNeededToWin) {
             setMatchFinished(true);
             const winnerName = homeSetsWon > awaySetsWon ? getTeamName('home') : getTeamName('away');
-            appendLog(`🏆 FIM DE PARTIDA! Vitória de ${winnerName} por ${homeSetsWon} sets a ${awaySetsWon}!`, 'finish');
             alert(`🏆 Partida encerrada! ${winnerName} venceu!`);
-            registerSystemEvent('match_end', `Fim de Jogo! Vitória de ${winnerName}`);
+            await registerSystemEvent('match_end', `Fim de Jogo! Vitória de ${winnerName}`);
         } else {
             const nextSet = currentSet + 1;
             setCurrentSet(nextSet);
             setScore({ home: 0, away: 0 });
             setTimeoutsUsed({ home: 0, away: 0 });
             setSideSwitchAlert(null);
-            appendLog(
-                `Início do ${nextSet}º Set${nextSet === 3 ? ' (Tie-break até 15 pontos, troca de lado a cada 5 pontos)' : ''}`,
-                'set_start'
-            );
-            registerSystemEvent('period_start', `Início do ${nextSet}º Set`);
+            await registerSystemEvent('period_start', `Início do ${nextSet}º Set`);
         }
     };
 
     /**
-     * Registra um ponto ganho em um rally completo seguindo a regra oficial de saque e troca de lado:
+     * Registra um ponto ganho em um rally completo:
      * - Se a equipe sacadora vence o rally: marca 1 ponto e o MESMO jogador continua a sacar.
      * - Se a equipe receptora vence o rally: marca 1 ponto, passa a sacar, e o jogador que NÃO sacou da última vez irá sacar.
-     * - Troca de lado: a cada 7 pontos somados (1º e 2º sets) ou a cada 5 pontos somados (3º set).
+     * - Troca de lado automática: APENAS no 3º set (Tie-break) a cada 5 pontos somados! (No 1º e 2º set não troca de lado durante o set).
      */
-    const awardRallyPoint = async (winnerTeam: TeamSide, reasonLabel?: string) => {
+    const awardRallyPoint = async (
+        winnerTeam: TeamSide,
+        options?: {
+            pointType?: BeachPointType;
+            scorerPlayer?: DuoPlayer | null;
+            reasonLabel?: string;
+        }
+    ) => {
         if (matchFinished || !matchData) return;
 
         if (matchData.status === 'scheduled' || matchData.status === 'Agendado') {
-            registerSystemEvent('match_start', 'Saque autorizado! Partida de Vôlei de Praia iniciada.');
+            await registerSystemEvent('match_start', 'Saque autorizado! Partida de Vôlei de Praia iniciada.');
         }
 
         let nextServerIdx = currentServerIndex[winnerTeam];
@@ -467,7 +594,6 @@ export function SumulaVoleiPraia() {
             }));
         }
 
-        const serverPlayer = duoPlayers[winnerTeam][nextServerIdx];
         const newScore = {
             ...score,
             [winnerTeam]: score[winnerTeam] + 1
@@ -475,78 +601,167 @@ export function SumulaVoleiPraia() {
         setScore(newScore);
 
         const totalPoints = newScore.home + newScore.away;
-        const switchInterval = currentSet === 3 ? 5 : 7;
-
-        const pointDescription = reasonLabel
-            ? `${reasonLabel} -> Ponto para ${getTeamName(winnerTeam)} (${newScore.home}x${newScore.away}). Próximo saque: #${serverPlayer?.number || nextServerIdx + 1} ${serverPlayer?.name}`
-            : `Ponto de ${getTeamName(winnerTeam)} (${newScore.home}x${newScore.away}) — Saca: #${serverPlayer?.number || nextServerIdx + 1} ${serverPlayer?.name}`;
-
-        appendLog(pointDescription, 'point');
-
         const pointsNeeded = currentSet === 3 ? TIE_BREAK_POINTS : POINTS_TO_WIN;
         const loserTeam = getOpponent(winnerTeam);
         const isSetWon = newScore[winnerTeam] >= pointsNeeded && newScore[winnerTeam] >= newScore[loserTeam] + MIN_MARGIN;
 
-        if (!isSetWon && totalPoints > 0 && totalPoints % switchInterval === 0) {
+        // Troca de Lado Automática: SOMENTE no 3º Set (Tie-break) a cada 5 pontos somados!
+        if (!isSetWon && currentSet === 3 && totalPoints > 0 && totalPoints % 5 === 0) {
             setInvertedCourt(prev => !prev);
-            const msg = `🔄 TROCA DE LADO! Soma de ${totalPoints} pontos atingida (múltiplo de ${switchInterval} no ${currentSet}º Set).`;
+            const msg = `🔄 TROCA DE LADO! Soma de ${totalPoints} pontos no Tie-break (múltiplo de 5). Lados da súmula invertidos!`;
             setSideSwitchAlert(msg);
-            appendLog(msg, 'switch');
-            registerSystemEvent('side_switch', msg);
+            await registerSystemEvent('side_switch', msg);
         } else {
             setSideSwitchAlert(null);
         }
 
-        try {
-            addToQueue('event', {
-                event_type: 'point',
-                team_id: winnerTeam === 'home' ? matchData.home_team_id : matchData.away_team_id,
-                player_id: typeof serverPlayer?.id === 'number' ? serverPlayer.id : null,
-                period: `Set ${currentSet}`,
-                value: 1,
-                metadata: {
-                    reason: reasonLabel || 'rally_point',
-                    serving_player: serverPlayer?.name,
-                    score: `${newScore.home}-${newScore.away}`
-                }
-            });
-        } catch (e) {
-            console.error(e);
-        }
+        const pType = options?.pointType || 'ataque';
+        const scorer = options?.scorerPlayer || null;
+
+        const typeLabels: Record<BeachPointType, string> = {
+            ataque: 'Ponto de Ataque / Normal',
+            bloqueio: 'Ponto de Bloqueio',
+            saque: 'Ponto de Saque (Ace)',
+            erro: 'Ponto (Erro do Adversário)'
+        };
+
+        const eventTypeForDb = pType === 'saque' ? 'ace' : pType === 'bloqueio' ? 'block' : 'point';
+        const displayLabel =
+            options?.reasonLabel ||
+            (scorer
+                ? `${typeLabels[pType]}: ${scorer.name} (#${scorer.number || ''})`
+                : `${typeLabels[pType]} (${getTeamName(winnerTeam)})`);
+
+        await recordEventToServer({
+            event_type: eventTypeForDb,
+            team_id: winnerTeam === 'home' ? matchData.home_team_id : matchData.away_team_id,
+            player_id: typeof scorer?.id === 'number' ? scorer.id : null,
+            period: `${currentSet}º Set`,
+            value: 1,
+            metadata: {
+                volley_type: pType,
+                label: displayLabel,
+                player_name: scorer?.name || undefined,
+                reason: options?.reasonLabel || pType,
+                score: `${newScore.home}-${newScore.away}`
+            }
+        });
 
         if (isSetWon) {
             await finishSet(newScore);
         }
     };
 
+    // Passo 1: Clicou em "+ PONTO" -> abre modal de Tipo de Ponto
+    const handleOpenPointModal = (team: TeamSide) => {
+        if (matchFinished) return;
+        setPointFlow({ step: 'type', team });
+    };
+
+    // Passo 2: Selecionou o Tipo de Ponto
+    const handleSelectPointType = async (pointType: BeachPointType) => {
+        if (!pointFlow) return;
+        const { team } = pointFlow;
+
+        // Se for SAQUE (Ace): já sabemos quem está sacando naquele time, inclui o jogador automático sem precisar selecionar!
+        if (pointType === 'saque') {
+            const serverIdx = currentServerIndex[team];
+            const currentServer = duoPlayers[team][serverIdx];
+            setPointFlow(null);
+            await awardRallyPoint(team, {
+                pointType: 'saque',
+                scorerPlayer: currentServer
+            });
+            return;
+        }
+
+        // Se for ERRO DO ADVERSÁRIO: confirma direto sem selecionar jogador
+        if (pointType === 'erro') {
+            setPointFlow(null);
+            await awardRallyPoint(team, {
+                pointType: 'erro',
+                scorerPlayer: null
+            });
+            return;
+        }
+
+        // Se for ATAQUE/NORMAL ou BLOQUEIO: avança para escolher qual dos 2 atletas da dupla fez o ponto
+        setPointFlow({
+            step: 'player',
+            team,
+            pointType
+        });
+    };
+
+    // Passo 3: Selecionou qual dos 2 atletas fez o ponto (Ataque ou Bloqueio)
+    const handleConfirmPointPlayer = async (player: DuoPlayer) => {
+        if (!pointFlow || !pointFlow.pointType) return;
+        const { team, pointType } = pointFlow;
+        setPointFlow(null);
+        await awardRallyPoint(team, {
+            pointType,
+            scorerPlayer: player
+        });
+    };
+
+    // Excluir um lançamento da Linha do Tempo (e reverter 1 ponto se for evento de ponto no set atual)
+    const handleDeleteEvent = async (ev: TimelineEvent) => {
+        if (!matchData) return;
+        if (!window.confirm('Deseja excluir este lançamento da linha do tempo? (Se for um ponto deste set, o placar será ajustado automaticamente)')) {
+            return;
+        }
+
+        const isPointEvent = ['point', 'ace', 'block', 'goal'].includes(ev.event_type);
+        const evSetMatch = ev.period ? ev.period.match(/(\d+)/) : null;
+        const evSetNum = evSetMatch ? parseInt(evSetMatch[1], 10) : currentSet;
+
+        try {
+            if (typeof ev.id === 'number' || !String(ev.id).startsWith('temp_')) {
+                await api.delete(`/admin/matches/${id}/events/${ev.id}`);
+            }
+            setEvents(prev => prev.filter(item => item.id !== ev.id));
+
+            if (isPointEvent && evSetNum === currentSet) {
+                const isHomeTeam = ev.team_id === matchData.home_team_id;
+                const side: TeamSide = isHomeTeam ? 'home' : 'away';
+                setScore(prev => ({
+                    ...prev,
+                    [side]: Math.max(0, prev[side] - 1)
+                }));
+            }
+        } catch (e) {
+            console.error('Erro ao excluir evento', e);
+            alert('Não foi possível excluir o evento no servidor.');
+        }
+    };
+
     const removePoint = (team: TeamSide) => {
         if (score[team] > 0) {
             setScore(prev => ({ ...prev, [team]: prev[team] - 1 }));
-            appendLog(`Correção de placar: -1 ponto em ${getTeamName(team)}`, 'correction');
         }
     };
 
     const handleServiceOrderFault = async (faultingTeam: TeamSide) => {
         const opponent = getOpponent(faultingTeam);
-        const msg = `Falta de Ordem de Saque cometida por ${getTeamName(faultingTeam)}`;
-        registerSystemEvent('service_order_fault', msg);
-        await awardRallyPoint(opponent, `⚠️ ${msg}`);
+        const msg = `⚠️ Falta de Ordem de Saque (${getTeamName(faultingTeam)})`;
+        await awardRallyPoint(opponent, {
+            pointType: 'erro',
+            reasonLabel: `${msg} — Ponto para ${getTeamName(opponent)}`
+        });
     };
 
-    const handleDoubleFault = () => {
+    const handleDoubleFault = async () => {
         const server = duoPlayers[servingTeam][currentServerIndex[servingTeam]];
-        const msg = `🤝 FALTA DUPLA registrada! O rally é repetido. Mantém o saque com #${server?.number || 1} ${server?.name} (${getTeamName(servingTeam)}).`;
-        appendLog(msg, 'double_fault');
-        registerSystemEvent('double_fault', msg);
+        const msg = `🤝 FALTA DUPLA! Rally repetido (Saca: #${server?.number || 1} ${server?.name})`;
+        await registerSystemEvent('double_fault', msg, servingTeam);
     };
 
-    const handleRequestTimeout = (team: TeamSide) => {
+    const handleRequestTimeout = async (team: TeamSide) => {
         if (activeTimeout) return;
         setTimeoutsUsed(prev => ({ ...prev, [team]: prev[team] + 1 }));
         setActiveTimeout({ team, secondsLeft: 30 });
-        const msg = `⏱️ Tempo de Descanso (30s) solicitado por ${getTeamName(team)} (${score.home}x${score.away} no ${currentSet}º Set)`;
-        appendLog(msg, 'timeout');
-        registerSystemEvent('timeout', msg);
+        const msg = `⏱️ Pedido de Tempo (30s) — ${getTeamName(team)} (${score.home}x${score.away})`;
+        await registerSystemEvent('timeout', msg, team);
     };
 
     const handleDelaySanction = async (sanctionedTeam: TeamSide) => {
@@ -555,14 +770,15 @@ export function SumulaVoleiPraia() {
         setDelaySanctions(prev => ({ ...prev, [sanctionedTeam]: nextCount }));
 
         if (nextCount === 1) {
-            const msg = `🟨 ADVERTÊNCIA POR RETARDAMENTO aplicada à equipe ${getTeamName(sanctionedTeam)} (1º retardamento na partida - vigora até o fim do jogo).`;
-            appendLog(msg, 'delay_warning');
-            registerSystemEvent('delay_warning', msg);
+            const msg = `🟨 ADVERTÊNCIA POR RETARDAMENTO — ${getTeamName(sanctionedTeam)}`;
+            await registerSystemEvent('delay_warning', msg, sanctionedTeam);
         } else {
             const opponent = getOpponent(sanctionedTeam);
-            const msg = `🟥 PENALIDADE POR RETARDAMENTO (${nextCount}º retardamento na partida) contra ${getTeamName(sanctionedTeam)}`;
-            registerSystemEvent('delay_penalty', msg);
-            await awardRallyPoint(opponent, `${msg} — Ponto e saque para ${getTeamName(opponent)}`);
+            const msg = `🟥 PENALIDADE POR RETARDAMENTO (#${nextCount}) contra ${getTeamName(sanctionedTeam)}`;
+            await awardRallyPoint(opponent, {
+                pointType: 'erro',
+                reasonLabel: `${msg} — Ponto e saque para ${getTeamName(opponent)}`
+            });
         }
     };
 
@@ -580,9 +796,8 @@ export function SumulaVoleiPraia() {
             return;
         }
 
-        const msg = `🚑 EQUIPE INCOMPLETA: ${incompleteName} não pôde continuar após atendimento médico. Vitória declarada para ${winnerName}!`;
-        appendLog(msg, 'incomplete');
-        registerSystemEvent('team_incomplete', msg);
+        const msg = `🛑 EQUIPE INCOMPLETA: ${incompleteName} não pôde continuar após atendimento médico. Vitória de ${winnerName}!`;
+        await registerSystemEvent('team_incomplete', msg, incompleteTeam);
 
         const finalHomeSets = winnerTeam === 'home' ? 2 : matchData.scoreHome;
         const finalAwaySets = winnerTeam === 'away' ? 2 : matchData.scoreAway;
@@ -631,9 +846,8 @@ export function SumulaVoleiPraia() {
     };
 
     const currentPointsNeeded = currentSet === 3 ? TIE_BREAK_POINTS : POINTS_TO_WIN;
-    const currentSwitchInterval = currentSet === 3 ? 5 : 7;
     const totalPointsInSet = score.home + score.away;
-    const pointsUntilNextSwitch = currentSwitchInterval - (totalPointsInSet % currentSwitchInterval);
+    const pointsUntilTieBreakSwitch = 5 - (totalPointsInSet % 5);
 
     if (loading || !matchData) {
         return (
@@ -645,9 +859,14 @@ export function SumulaVoleiPraia() {
 
     const activeServingPlayer = duoPlayers[servingTeam][currentServerIndex[servingTeam]];
 
+    // Quando invertedCourt === true, a ordem visual de TUDO (Placar, Botões de Ponto/Ações e Duplas) inverte!
+    const orderedSides: TeamSide[] = invertedCourt ? ['away', 'home'] : ['home', 'away'];
+    const leftSide = orderedSides[0];
+    const rightSide = orderedSides[1];
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-amber-600 via-orange-600 to-amber-800 text-white font-sans pb-24">
-            {/* Header & Placar Principal */}
+            {/* Header & Placar Principal (Segue a ordem visual dos lados da quadra!) */}
             <div className="bg-gradient-to-r from-amber-600 to-orange-700 pb-4 pt-4 sticky top-0 z-20 border-b border-orange-800/80 shadow-2xl">
                 {!isOnline && (
                     <div className="absolute top-0 left-0 w-full bg-red-600 text-white text-[10px] font-bold py-1 px-4 z-[9999] flex items-center justify-between shadow-lg">
@@ -680,7 +899,7 @@ export function SumulaVoleiPraia() {
                             </span>
                         </div>
                         <span className="text-[10px] text-amber-100 font-semibold">
-                            Melhor de 3 Sets • {currentSet === 3 ? 'Tie-break (15 pts / troca a cada 5)' : `${currentSet}º Set (21 pts / troca a cada 7)`}
+                            Melhor de 3 Sets • {currentSet === 3 ? 'Tie-break (15 pts / troca a cada 5 pts)' : `${currentSet}º Set (21 pts / sem troca de lado)`}
                         </span>
                     </div>
                     <button
@@ -693,12 +912,12 @@ export function SumulaVoleiPraia() {
                     </button>
                 </div>
 
-                {/* Sets & Placar do Set Atual */}
+                {/* Sets & Placar do Set Atual — Espelha leftSide e rightSide */}
                 <div className="px-4 max-w-4xl mx-auto">
-                    <div className="bg-black/35 backdrop-blur-md rounded-2xl p-4 border border-white/25 shadow-xl">
-                        <div className="flex items-center justify-between text-[11px] font-bold text-amber-200 mb-2 uppercase tracking-wider">
-                            <span>
-                                Lado Esq.: {invertedCourt ? getTeamName('away') : getTeamName('home')}
+                    <div className="bg-black/35 backdrop-blur-md rounded-2xl p-3.5 sm:p-4 border border-white/25 shadow-xl">
+                        <div className="flex items-center justify-between text-[10px] sm:text-[11px] font-bold text-amber-200 mb-2 uppercase tracking-wider">
+                            <span className="flex items-center gap-1">
+                                ⬅️ Lado Esq.: <strong className="text-white">{getTeamName(leftSide)}</strong>
                             </span>
                             <span className="flex items-center gap-1.5 bg-white/15 px-3 py-0.5 rounded-full text-white">
                                 SET {currentSet}
@@ -708,66 +927,80 @@ export function SumulaVoleiPraia() {
                                     </span>
                                 )}
                             </span>
-                            <span>
-                                Lado Dir.: {invertedCourt ? getTeamName('home') : getTeamName('away')}
+                            <span className="flex items-center gap-1">
+                                Lado Dir.: <strong className="text-white">{getTeamName(rightSide)}</strong> ➡️
                             </span>
                         </div>
 
                         <div className="grid grid-cols-3 items-center gap-2 text-center">
-                            {/* Dupla Casa */}
+                            {/* Equipe no Lado Esquerdo Atual */}
                             <div>
                                 <div className="flex items-center justify-center gap-1.5 mb-1">
-                                    {servingTeam === 'home' && (
-                                        <span className="bg-yellow-400 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 shadow">
-                                            <Volleyball size={11} /> SAQUE
+                                    {servingTeam === leftSide && (
+                                        <span className="bg-yellow-400 text-slate-950 text-[9px] sm:text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 shadow">
+                                            <Volleyball size={10} /> SAQUE
                                         </span>
                                     )}
-                                    <h2 className="font-black text-sm sm:text-base text-white truncate">
-                                        {getTeamName('home')}
+                                    <h2
+                                        className={`font-black text-xs sm:text-base truncate ${
+                                            leftSide === 'home' ? 'text-blue-200' : 'text-emerald-200'
+                                        }`}
+                                    >
+                                        {getTeamName(leftSide)}
                                     </h2>
                                 </div>
-                                <div className="text-5xl sm:text-6xl font-black text-white leading-none">
-                                    {score.home}
+                                <div className="text-5xl sm:text-6xl font-black text-white leading-none tabular-nums">
+                                    {score[leftSide]}
                                 </div>
-                                <div className="mt-1 inline-flex items-center gap-1.5 bg-white/10 px-2.5 py-0.5 rounded-full text-[11px] font-bold text-yellow-200">
-                                    Sets vencidos: <strong className="text-white text-sm">{matchData.scoreHome}</strong>
+                                <div className="mt-1 inline-flex items-center gap-1.5 bg-white/10 px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold text-yellow-200">
+                                    Sets: <strong className="text-white text-sm">{leftSide === 'home' ? matchData.scoreHome : matchData.scoreAway}</strong>
                                 </div>
                             </div>
 
-                            {/* Info Central (Troca de Lado e Sacador Atual) */}
+                            {/* Info Central (Sacador Atual e Troca no Tie-break) */}
                             <div className="flex flex-col items-center justify-center space-y-1.5">
-                                <div className="text-xs font-extrabold uppercase text-white/80">
+                                <div className="text-[11px] font-extrabold uppercase text-white/85">
                                     Alvo: {currentPointsNeeded} pts (dif. {MIN_MARGIN})
                                 </div>
                                 <div className="bg-amber-500/30 border border-amber-300/40 rounded-xl px-2.5 py-1.5 text-[11px] text-center">
-                                    <div className="text-amber-100 font-bold uppercase text-[9px]">Sacador na Súmula</div>
-                                    <div className="font-black text-white text-xs truncate max-w-[140px]">
+                                    <div className="text-amber-100 font-bold uppercase text-[9px]">Sacando Agora</div>
+                                    <div className="font-black text-white text-xs truncate max-w-[135px]">
                                         #{activeServingPlayer?.number || currentServerIndex[servingTeam] + 1}{' '}
                                         {activeServingPlayer?.name}
                                     </div>
                                 </div>
-                                <div className="text-[10px] text-yellow-100 font-semibold">
-                                    Próxima troca de lado em <strong>{pointsUntilNextSwitch}</strong> pt(s)
-                                </div>
+                                {currentSet === 3 ? (
+                                    <div className="text-[10px] text-yellow-100 font-semibold">
+                                        Troca de lado em <strong>{pointsUntilTieBreakSwitch}</strong> pt(s)
+                                    </div>
+                                ) : (
+                                    <div className="text-[10px] text-white/70 font-medium">
+                                        Sem troca de lado no {currentSet}º Set
+                                    </div>
+                                )}
                             </div>
 
-                            {/* Dupla Visitante */}
+                            {/* Equipe no Lado Direito Atual */}
                             <div>
                                 <div className="flex items-center justify-center gap-1.5 mb-1">
-                                    <h2 className="font-black text-sm sm:text-base text-white truncate">
-                                        {getTeamName('away')}
+                                    <h2
+                                        className={`font-black text-xs sm:text-base truncate ${
+                                            rightSide === 'home' ? 'text-blue-200' : 'text-emerald-200'
+                                        }`}
+                                    >
+                                        {getTeamName(rightSide)}
                                     </h2>
-                                    {servingTeam === 'away' && (
-                                        <span className="bg-yellow-400 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 shadow">
-                                            <Volleyball size={11} /> SAQUE
+                                    {servingTeam === rightSide && (
+                                        <span className="bg-yellow-400 text-slate-950 text-[9px] sm:text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 shadow">
+                                            <Volleyball size={10} /> SAQUE
                                         </span>
                                     )}
                                 </div>
-                                <div className="text-5xl sm:text-6xl font-black text-white leading-none">
-                                    {score.away}
+                                <div className="text-5xl sm:text-6xl font-black text-white leading-none tabular-nums">
+                                    {score[rightSide]}
                                 </div>
-                                <div className="mt-1 inline-flex items-center gap-1.5 bg-white/10 px-2.5 py-0.5 rounded-full text-[11px] font-bold text-yellow-200">
-                                    Sets vencidos: <strong className="text-white text-sm">{matchData.scoreAway}</strong>
+                                <div className="mt-1 inline-flex items-center gap-1.5 bg-white/10 px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold text-yellow-200">
+                                    Sets: <strong className="text-white text-sm">{rightSide === 'home' ? matchData.scoreHome : matchData.scoreAway}</strong>
                                 </div>
                             </div>
                         </div>
@@ -776,7 +1009,7 @@ export function SumulaVoleiPraia() {
             </div>
 
             <div className="max-w-4xl mx-auto px-4 mt-4 space-y-5">
-                {/* Alerta Automático de Troca de Lado (A cada 7 pts no 1º/2º set, 5 pts no 3º set) */}
+                {/* Alerta Automático de Troca de Lado (Apenas no 3º set a cada 5 pts) */}
                 {sideSwitchAlert && (
                     <div className="bg-yellow-400 text-slate-950 p-4 rounded-2xl shadow-2xl border-2 border-white flex items-center justify-between animate-bounce">
                         <div className="flex items-center gap-3 font-black text-sm">
@@ -787,7 +1020,7 @@ export function SumulaVoleiPraia() {
                             onClick={() => setSideSwitchAlert(null)}
                             className="bg-slate-950 text-white text-xs font-bold px-3 py-1.5 rounded-xl"
                         >
-                            OK, Trocado
+                            OK, Confirmado
                         </button>
                     </div>
                 )}
@@ -846,10 +1079,6 @@ export function SumulaVoleiPraia() {
                         <div className="flex flex-wrap gap-3 pt-1">
                             <button
                                 onClick={() => {
-                                    appendLog(
-                                        `Atleta ${duoPlayers[activeMedicalTimeout.team][activeMedicalTimeout.playerIndex]?.name} recuperado e retornou à quadra.`,
-                                        'medical'
-                                    );
                                     setActiveMedicalTimeout(null);
                                 }}
                                 className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl font-bold text-xs flex items-center justify-center gap-2"
@@ -866,10 +1095,10 @@ export function SumulaVoleiPraia() {
                     </div>
                 )}
 
-                {/* Botões Principais de Ponto (Rally Completo) — Mobile-First Lado a Lado */}
+                {/* Botões Principais de Ponto e Ações — Seguem `orderedSides` (Trocam de lado na tela junto com o placar!) */}
                 {!matchFinished && (
                     <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
-                        {(['home', 'away'] as TeamSide[]).map(team => {
+                        {orderedSides.map((team, sidePosIdx) => {
                             const isHome = team === 'home';
                             const isServing = servingTeam === team;
                             const nextIdxIfWins = isServing
@@ -886,7 +1115,9 @@ export function SumulaVoleiPraia() {
                                 >
                                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                                         <span className="font-black text-xs sm:text-base text-white truncate">
+                                            {sidePosIdx === 0 ? '⬅️ ' : ''}
                                             {getTeamName(team)}
+                                            {sidePosIdx === 1 ? ' ➡️' : ''}
                                         </span>
                                         <span
                                             className={`text-[9px] sm:text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase w-fit ${
@@ -900,7 +1131,7 @@ export function SumulaVoleiPraia() {
                                     </div>
 
                                     <button
-                                        onClick={() => awardRallyPoint(team)}
+                                        onClick={() => handleOpenPointModal(team)}
                                         className={`w-full py-7 sm:py-10 px-2 rounded-2xl font-black text-xl sm:text-3xl border-b-8 active:scale-95 transition-all shadow-2xl flex flex-col items-center justify-center gap-1 ${
                                             isHome
                                                 ? 'bg-gradient-to-br from-blue-600 to-blue-800 border-blue-950 hover:from-blue-500 hover:to-blue-700'
@@ -983,7 +1214,6 @@ export function SumulaVoleiPraia() {
                             onClick={() => {
                                 const nextTeam = servingTeam === 'home' ? 'away' : 'home';
                                 setServingTeam(nextTeam);
-                                appendLog(`Posse de saque alterada manualmente para ${getTeamName(nextTeam)}`, 'info');
                             }}
                             className="py-3 px-4 bg-white/15 hover:bg-white/25 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2"
                         >
@@ -993,18 +1223,17 @@ export function SumulaVoleiPraia() {
                         <button
                             onClick={() => {
                                 setInvertedCourt(prev => !prev);
-                                appendLog('Lados da quadra trocados manualmente pelo árbitro.', 'switch');
                             }}
-                            className="py-3 px-4 bg-white/15 hover:bg-white/25 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2"
+                            className="py-3 px-4 bg-yellow-400/20 hover:bg-yellow-400/30 border border-yellow-300/40 text-yellow-100 font-bold text-xs rounded-xl flex items-center justify-center gap-2"
                         >
-                            <Repeat size={15} /> Trocar Lado da Quadra
+                            <Repeat size={15} /> Trocar Lados na Tela (Esq ⇄ Dir)
                         </button>
                     </div>
                 )}
 
-                {/* Formação das Duplas (2 Atletas por Equipe, Sem Reserva, Capitão e Ordem de Saque) */}
+                {/* Formação das Duplas — Também segue `orderedSides` (Esquerda <-> Direita) */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {(['home', 'away'] as TeamSide[]).map(team => {
+                    {orderedSides.map((team, sidePosIdx) => {
                         const players = duoPlayers[team];
                         const availableRoster = rosters[team] || [];
 
@@ -1016,10 +1245,11 @@ export function SumulaVoleiPraia() {
                                 <div className="flex items-center justify-between border-b border-white/15 pb-2">
                                     <div>
                                         <h3 className="font-black text-sm uppercase text-yellow-200">
-                                            Dupla: {getTeamName(team)}
+                                            {sidePosIdx === 0 ? '⬅️ ' : ''}Dupla: {getTeamName(team)}
+                                            {sidePosIdx === 1 ? ' ➡️' : ''}
                                         </h3>
                                         <p className="text-[10px] text-white/75">
-                                            2 atletas em quadra (sem substituições) • Clique em (C) para definir Capitão
+                                            2 atletas em quadra • Toque em <Crown size={10} className="inline" /> (C) para Capitão
                                         </p>
                                     </div>
                                     <span className="text-[10px] font-bold bg-white/15 px-2.5 py-1 rounded-lg">
@@ -1037,114 +1267,109 @@ export function SumulaVoleiPraia() {
                                         return (
                                             <div
                                                 key={idx}
-                                                className={`p-3 rounded-xl border flex flex-col gap-2 transition-all ${
+                                                className={`p-2.5 sm:p-3 rounded-xl border flex items-center justify-between gap-2 transition-all ${
                                                     isServingRightNow
                                                         ? 'bg-yellow-400/20 border-yellow-300'
                                                         : 'bg-white/10 border-white/15'
                                                 }`}
                                             >
-                                                <div className="flex items-center justify-between gap-2">
-                                                    <div className="flex items-center gap-2 min-w-0">
-                                                        <span className="w-7 h-7 rounded-lg bg-black/40 text-yellow-300 font-black text-xs flex items-center justify-center shrink-0">
-                                                            {idx === 0 ? 'I' : 'II'}
-                                                        </span>
-                                                        {availableRoster.length > 0 ? (
-                                                            <select
-                                                                value={player?.id}
-                                                                onChange={e => {
-                                                                    const selected = availableRoster.find(
-                                                                        (r: RosterPlayer) => String(r.id) === e.target.value
-                                                                    );
-                                                                    if (selected) {
-                                                                        setDuoPlayers(prev => {
-                                                                            const copy = [...prev[team]];
-                                                                            copy[idx] = {
-                                                                                id: selected.id,
-                                                                                name: selected.name || selected.nickname || `Atleta ${idx + 1}`,
-                                                                                number: selected.number || idx + 1
-                                                                            };
-                                                                            return { ...prev, [team]: copy };
-                                                                        });
-                                                                    }
-                                                                }}
-                                                                className="bg-black/40 text-white text-xs font-bold rounded-lg px-2 py-1.5 border border-white/20 truncate max-w-[170px]"
-                                                            >
-                                                                {availableRoster.map((r: RosterPlayer) => (
-                                                                    <option key={r.id} value={r.id} className="text-slate-900">
-                                                                        #{r.number || '-'} {r.name || r.nickname}
-                                                                    </option>
-                                                                ))}
-                                                            </select>
-                                                        ) : (
-                                                            <input
-                                                                type="text"
-                                                                value={player?.name || ''}
-                                                                onChange={e => {
-                                                                    const val = e.target.value;
+                                                <div className="flex items-center gap-2 min-w-0 flex-1">
+                                                    <span className="w-6 h-6 rounded-lg bg-black/40 text-yellow-300 font-black text-xs flex items-center justify-center shrink-0">
+                                                        {idx === 0 ? 'I' : 'II'}
+                                                    </span>
+                                                    {availableRoster.length > 0 ? (
+                                                        <select
+                                                            value={player?.id}
+                                                            onChange={e => {
+                                                                const selected = availableRoster.find(
+                                                                    (r: RosterPlayer) => String(r.id) === e.target.value
+                                                                );
+                                                                if (selected) {
                                                                     setDuoPlayers(prev => {
                                                                         const copy = [...prev[team]];
-                                                                        copy[idx] = { ...copy[idx], name: val };
+                                                                        copy[idx] = {
+                                                                            id: selected.id,
+                                                                            name: selected.name || selected.nickname || `Atleta ${idx + 1}`,
+                                                                            number: selected.number || idx + 1
+                                                                        };
                                                                         return { ...prev, [team]: copy };
                                                                     });
-                                                                }}
-                                                                className="bg-black/30 text-white text-xs font-bold rounded-lg px-2.5 py-1 border border-white/20 w-full max-w-[170px]"
-                                                            />
-                                                        )}
-                                                    </div>
-
-                                                    <div className="flex items-center gap-1.5 shrink-0">
-                                                        {/* Capitão na Súmula */}
-                                                        <button
-                                                            onClick={() => {
-                                                                setCaptains(prev => ({ ...prev, [team]: idx }));
-                                                                appendLog(
-                                                                    `${player?.name} definido como Capitão (C) da equipe ${getTeamName(team)} na súmula.`,
-                                                                    'info'
-                                                                );
+                                                                }
                                                             }}
-                                                            className={`px-2 py-1 rounded-lg text-[10px] font-black flex items-center gap-1 ${
-                                                                isCaptain
-                                                                    ? 'bg-yellow-400 text-slate-950 shadow'
-                                                                    : 'bg-black/30 text-white/60 hover:text-white'
-                                                            }`}
-                                                            title="Indicar Capitão da Equipe na Súmula"
+                                                            className="bg-black/40 text-white text-xs font-bold rounded-lg px-2 py-1.5 border border-white/20 truncate flex-1 min-w-0"
                                                         >
-                                                            <Crown size={11} /> {isCaptain ? 'CAPITÃO (C)' : 'C'}
-                                                        </button>
-
-                                                        {/* Selecionar Sacador Atual da Dupla */}
-                                                        <button
-                                                            onClick={() => {
-                                                                setCurrentServerIndex(prev => ({ ...prev, [team]: idx }));
-                                                            }}
-                                                            className={`px-2 py-1 rounded-lg text-[10px] font-bold ${
-                                                                isCurrentTeamServer
-                                                                    ? 'bg-emerald-500 text-slate-950 font-black'
-                                                                    : 'bg-black/30 text-white/60 hover:text-white'
-                                                            }`}
-                                                            title="Definir como sacador atual desta dupla"
-                                                        >
-                                                            {isCurrentTeamServer ? 'Sacador Atual' : 'Definir Sacador'}
-                                                        </button>
-
-                                                        {/* Atendimento Médico 5 min (Lesão) */}
-                                                        <button
-                                                            onClick={() => {
-                                                                setActiveMedicalTimeout({
-                                                                    team,
-                                                                    playerIndex: idx,
-                                                                    secondsLeft: 300
+                                                            {availableRoster.map((r: RosterPlayer) => (
+                                                                <option key={r.id} value={r.id} className="text-slate-900">
+                                                                    #{r.number || '-'} {r.name || r.nickname}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    ) : (
+                                                        <input
+                                                            type="text"
+                                                            value={player?.name || ''}
+                                                            onChange={e => {
+                                                                const val = e.target.value;
+                                                                setDuoPlayers(prev => {
+                                                                    const copy = [...prev[team]];
+                                                                    copy[idx] = { ...copy[idx], name: val };
+                                                                    return { ...prev, [team]: copy };
                                                                 });
-                                                                const msg = `🚑 Atendimento médico de 5 minutos iniciado para ${player?.name} (${getTeamName(team)}).`;
-                                                                appendLog(msg, 'medical');
-                                                                registerSystemEvent('medical_timeout', msg);
                                                             }}
-                                                            className="p-1.5 bg-red-600/70 hover:bg-red-600 rounded-lg text-white"
-                                                            title="Iniciar Atendimento Médico de 5 minutos (Lesão)"
-                                                        >
-                                                            <HeartPulse size={13} />
-                                                        </button>
-                                                    </div>
+                                                            className="bg-black/30 text-white text-xs font-bold rounded-lg px-2.5 py-1 border border-white/20 flex-1 min-w-0"
+                                                        />
+                                                    )}
+                                                </div>
+
+                                                <div className="flex items-center gap-1 shrink-0">
+                                                    {/* Tag Compacta de Capitão: Apenas ícone + (C) para não cortar o nome */}
+                                                    <button
+                                                        onClick={() => {
+                                                            setCaptains(prev => ({ ...prev, [team]: idx }));
+                                                        }}
+                                                        className={`px-2 py-1 rounded-lg text-[10px] font-black flex items-center gap-0.5 transition-all ${
+                                                            isCaptain
+                                                                ? 'bg-yellow-400 text-slate-950 shadow'
+                                                                : 'bg-black/30 text-white/60 hover:text-white'
+                                                        }`}
+                                                        title="Capitão da Dupla (C)"
+                                                    >
+                                                        <Crown size={11} />
+                                                        <span>(C)</span>
+                                                    </button>
+
+                                                    {/* Selecionar Sacador Atual da Dupla */}
+                                                    <button
+                                                        onClick={() => {
+                                                            setCurrentServerIndex(prev => ({ ...prev, [team]: idx }));
+                                                        }}
+                                                        className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 ${
+                                                            isCurrentTeamServer
+                                                                ? 'bg-emerald-500 text-slate-950 font-black'
+                                                                : 'bg-black/30 text-white/60 hover:text-white'
+                                                        }`}
+                                                        title="Sacador atual desta dupla"
+                                                    >
+                                                        <Volleyball size={11} />
+                                                        <span>{isCurrentTeamServer ? 'Saca' : 'Sacar'}</span>
+                                                    </button>
+
+                                                    {/* Atendimento Médico 5 min (Lesão) */}
+                                                    <button
+                                                        onClick={async () => {
+                                                            setActiveMedicalTimeout({
+                                                                team,
+                                                                playerIndex: idx,
+                                                                secondsLeft: 300
+                                                            });
+                                                            const msg = `🚑 Atendimento médico (5 min) — ${player?.name} (${getTeamName(team)})`;
+                                                            await registerSystemEvent('medical_timeout', msg, team);
+                                                        }}
+                                                        className="p-1.5 bg-red-600/70 hover:bg-red-600 rounded-lg text-white"
+                                                        title="Atendimento Médico de 5 minutos (Lesão)"
+                                                    >
+                                                        <HeartPulse size={13} />
+                                                    </button>
                                                 </div>
                                             </div>
                                         );
@@ -1153,6 +1378,106 @@ export function SumulaVoleiPraia() {
                             </div>
                         );
                     })}
+                </div>
+
+                {/* LINHA DO TEMPO (Últimos Lançamentos com botão de Excluir para desfazer/voltar) */}
+                <div className="bg-black/35 backdrop-blur-md rounded-2xl p-4 border border-white/25">
+                    <h3 className="text-xs font-black text-yellow-200 uppercase tracking-widest flex items-center gap-2 mb-3">
+                        <History size={15} /> Linha do Tempo (Últimos Lançamentos)
+                    </h3>
+                    <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                        {events.length === 0 ? (
+                            <div className="text-center py-6 bg-black/20 rounded-xl border border-dashed border-white/20 text-white/60 text-xs font-bold uppercase">
+                                Nenhum lançamento registrado ainda
+                            </div>
+                        ) : (
+                            events.map(ev => {
+                                const isHome = ev.team_id === matchData.home_team_id;
+                                const isAway = ev.team_id === matchData.away_team_id;
+                                const teamLabel = isHome
+                                    ? getTeamName('home')
+                                    : isAway
+                                    ? getTeamName('away')
+                                    : 'Partida';
+                                const isPoint = ['point', 'ace', 'block', 'goal'].includes(ev.event_type);
+
+                                const getEventIcon = (type: string, vType?: string) => {
+                                    if (vType === 'bloqueio' || type === 'block') return '🤚';
+                                    if (vType === 'saque' || type === 'ace') return '🎯';
+                                    if (vType === 'erro') return '❌';
+                                    if (type === 'timeout') return '⏱️';
+                                    if (type === 'delay_warning') return '🟨';
+                                    if (type === 'delay_penalty') return '🟥';
+                                    if (type === 'side_switch') return '🔄';
+                                    if (type === 'double_fault') return '🤝';
+                                    if (type === 'medical_timeout') return '🚑';
+                                    if (type === 'team_incomplete') return '🛑';
+                                    return '🏐';
+                                };
+
+                                const getFriendlyEventText = (item: TimelineEvent) => {
+                                    if (item.metadata?.label) return item.metadata.label;
+                                    const pName = item.player_name || item.metadata?.player_name || '';
+                                    const pNum = item.player_number ? ` (#${item.player_number})` : '';
+                                    if (item.event_type === 'ace') return `Ponto de Saque (Ace)${pName ? `: ${pName}${pNum}` : ''}`;
+                                    if (item.event_type === 'block') return `Ponto de Bloqueio${pName ? `: ${pName}${pNum}` : ''}`;
+                                    if (item.event_type === 'point') return `Ponto${pName ? `: ${pName}${pNum}` : ''}`;
+                                    if (item.event_type === 'timeout') return 'Pedido de Tempo (30s)';
+                                    return item.event_type;
+                                };
+
+                                return (
+                                    <div
+                                        key={ev.id}
+                                        className="bg-black/35 border border-white/15 rounded-xl p-2.5 flex items-center justify-between gap-3 hover:bg-black/45 transition-all"
+                                    >
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-lg shrink-0">
+                                                {getEventIcon(ev.event_type, ev.metadata?.volley_type)}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <span
+                                                        className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
+                                                            isHome
+                                                                ? 'bg-blue-500/30 text-blue-200 border border-blue-400/30'
+                                                                : isAway
+                                                                ? 'bg-emerald-500/30 text-emerald-200 border border-emerald-400/30'
+                                                                : 'bg-white/15 text-white/80'
+                                                        }`}
+                                                    >
+                                                        {teamLabel}
+                                                    </span>
+                                                    <span className="text-[10px] text-amber-200/80 font-mono">
+                                                        {ev.period || `${currentSet}º Set`}
+                                                    </span>
+                                                    {ev.metadata?.score && (
+                                                        <span className="text-[10px] font-black bg-black/40 text-yellow-300 px-1.5 py-0.5 rounded">
+                                                            {ev.metadata.score}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="text-xs font-bold text-white mt-0.5 flex items-center gap-1.5 truncate">
+                                                    {isPoint && (
+                                                        <span className="text-emerald-400 font-black shrink-0">+1</span>
+                                                    )}
+                                                    <span className="truncate">{getFriendlyEventText(ev)}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            onClick={() => handleDeleteEvent(ev)}
+                                            className="p-2.5 text-white/60 hover:text-red-400 hover:bg-red-500/20 rounded-xl transition-colors shrink-0"
+                                            title="Excluir lançamento e voltar placar"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
                 </div>
 
                 {/* Histórico de Sets */}
@@ -1207,56 +1532,105 @@ export function SumulaVoleiPraia() {
                         </div>
                     )}
                 </div>
-
-                {/* Registro Cronológico da Súmula */}
-                {matchLog.length > 0 && (
-                    <div className="bg-black/30 backdrop-blur-md rounded-2xl p-4 border border-white/25">
-                        <h4 className="font-black text-xs text-yellow-200 mb-2 uppercase">
-                            📋 Registro de Eventos da Súmula
-                        </h4>
-                        <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
-                            {matchLog.map((item, i) => (
-                                <div
-                                    key={i}
-                                    className="text-xs bg-black/25 px-3 py-1.5 rounded-lg border border-white/10 flex items-center justify-between gap-2"
-                                >
-                                    <span className="text-white/95 font-medium">{item.text}</span>
-                                    <span className="text-[10px] text-amber-200/80 font-mono shrink-0">
-                                        {item.set}ºS • {item.time}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* Resumo Oficial das Regras Aplicadas na Súmula */}
-                <div className="bg-black/35 backdrop-blur-md rounded-2xl p-4 border border-white/25">
-                    <h4 className="font-black text-xs text-yellow-200 mb-2 uppercase">
-                        🏖️ Regras Oficiais do Vôlei de Praia (Ativas na Súmula)
-                    </h4>
-                    <ul className="text-[11px] text-white/90 space-y-1 leading-relaxed">
-                        <li>
-                            • <strong>Formação e Substituições:</strong> 2 atletas por equipe em quadra, sem jogador reserva e sem substituições. Um atleta é indicado como Capitão (C) na súmula. Em caso de lesão sem retorno após 5 minutos de atendimento, a equipe é declarada incompleta.
-                        </li>
-                        <li>
-                            • <strong>Pontuação e Sets:</strong> Melhor de 3 sets (Rally Point). 1º e 2º sets até 21 pontos (mín. 2 de vantagem); 3º set (Tie-break) até 15 pontos (mín. 2 de vantagem).
-                        </li>
-                        <li>
-                            • <strong>Troca de Lado:</strong> Automática a cada <strong>7 pontos</strong> somados nos 1º e 2º sets, e a cada <strong>5 pontos</strong> somados no 3º set (Tie-break).
-                        </li>
-                        <li>
-                            • <strong>Ordem de Saque:</strong> Se a equipe sacadora vence o rally, o mesmo atleta saca novamente. Se a equipe receptora vence o rally, ela ganha o saque e o atleta que não sacou da última vez passa a sacar.
-                        </li>
-                        <li>
-                            • <strong>Faltas:</strong> Falta Dupla repete o rally sem ponto. Falta de Ordem de Saque concede 1 ponto e o saque para a dupla adversária.
-                        </li>
-                        <li>
-                            • <strong>Tempos e Retardamento:</strong> Tempo de descanso dura <strong>30 segundos</strong>. Sanções por retardamento vigoram por toda a partida (1º = Advertência; 2º e seguintes = Penalidade com ponto e saque ao adversário).
-                        </li>
-                    </ul>
-                </div>
             </div>
+
+            {/* MODAL DE TIPO DE PONTO E SELEÇÃO DO JOGADOR (Igual ao Vôlei, com Saque Automático!) */}
+            {pointFlow && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
+                    <div className="bg-slate-900 border border-white/20 w-full max-w-md rounded-3xl p-6 shadow-2xl animate-in zoom-in-95 duration-150">
+                        {pointFlow.step === 'type' ? (
+                            <>
+                                <div className="text-center mb-5">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-amber-400">
+                                        Lançar Ponto Para
+                                    </span>
+                                    <h3 className="font-black text-xl text-white mt-0.5">
+                                        {getTeamName(pointFlow.team)}
+                                    </h3>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button
+                                        onClick={() => handleSelectPointType('ataque')}
+                                        className="p-5 bg-blue-600 hover:bg-blue-500 active:scale-95 transition-all rounded-2xl font-black text-sm uppercase flex flex-col items-center justify-center gap-1.5 shadow-lg border-b-4 border-blue-800"
+                                    >
+                                        <span className="text-2xl">🏐</span>
+                                        <span>Ataque / Normal</span>
+                                    </button>
+
+                                    <button
+                                        onClick={() => handleSelectPointType('bloqueio')}
+                                        className="p-5 bg-purple-600 hover:bg-purple-500 active:scale-95 transition-all rounded-2xl font-black text-sm uppercase flex flex-col items-center justify-center gap-1.5 shadow-lg border-b-4 border-purple-800"
+                                    >
+                                        <span className="text-2xl">🤚</span>
+                                        <span>Bloqueio</span>
+                                    </button>
+
+                                    <button
+                                        onClick={() => handleSelectPointType('saque')}
+                                        className="p-5 bg-amber-500 hover:bg-amber-400 text-slate-950 active:scale-95 transition-all rounded-2xl font-black text-sm uppercase flex flex-col items-center justify-center gap-1 shadow-lg border-b-4 border-amber-700"
+                                    >
+                                        <span className="text-2xl">🎯</span>
+                                        <span>Saque (Ace)</span>
+                                        <span className="text-[10px] font-extrabold text-slate-900 truncate max-w-full">
+                                            Auto: #{duoPlayers[pointFlow.team][currentServerIndex[pointFlow.team]]?.number || 1}{' '}
+                                            {duoPlayers[pointFlow.team][currentServerIndex[pointFlow.team]]?.name}
+                                        </span>
+                                    </button>
+
+                                    <button
+                                        onClick={() => handleSelectPointType('erro')}
+                                        className="p-5 bg-red-600 hover:bg-red-500 active:scale-95 transition-all rounded-2xl font-black text-sm uppercase flex flex-col items-center justify-center gap-1.5 shadow-lg border-b-4 border-red-800"
+                                    >
+                                        <span className="text-2xl">❌</span>
+                                        <span>Erro Adversário</span>
+                                    </button>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="text-center mb-5">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-amber-400">
+                                        {pointFlow.pointType === 'bloqueio' ? '🤚 Ponto de Bloqueio' : '🏐 Ponto de Ataque / Normal'}
+                                    </span>
+                                    <h3 className="font-black text-xl text-white mt-0.5">
+                                        Quem fez o ponto?
+                                    </h3>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3 mb-3">
+                                    {duoPlayers[pointFlow.team].map((player, idx) => (
+                                        <button
+                                            key={player.id}
+                                            onClick={() => handleConfirmPointPlayer(player)}
+                                            className="p-5 bg-indigo-600 hover:bg-indigo-500 active:scale-95 transition-all rounded-2xl border-b-4 border-indigo-800 flex flex-col items-center justify-center gap-1.5 shadow-lg"
+                                        >
+                                            <span className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center font-black text-lg text-yellow-300">
+                                                #{player.number || idx + 1}
+                                            </span>
+                                            <span className="font-black text-sm text-white text-center line-clamp-2">
+                                                {player.name}
+                                            </span>
+                                            {captains[pointFlow.team] === idx && (
+                                                <span className="text-[10px] font-black text-yellow-300 flex items-center gap-0.5">
+                                                    <Crown size={10} /> (C)
+                                                </span>
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
+                            </>
+                        )}
+
+                        <button
+                            onClick={() => setPointFlow(null)}
+                            className="mt-4 w-full py-3.5 bg-white/10 hover:bg-white/15 text-white/80 rounded-2xl font-bold text-xs uppercase tracking-widest"
+                        >
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
