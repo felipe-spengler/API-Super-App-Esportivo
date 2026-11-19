@@ -92,16 +92,29 @@ export function RaceDetails() {
             <div className="max-w-4xl mx-auto px-4 -mt-10 relative z-20">
                 {/* Actions Grid with Richer Cards */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
-                    <button
-                        onClick={() => navigate(`/races/${id}/register`)}
-                        className="group relative overflow-hidden bg-emerald-600 hover:bg-emerald-500 text-white p-5 rounded-3xl shadow-2xl transition-all active:scale-[0.98] border-b-4 border-emerald-800"
-                    >
-                        <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:scale-125 transition-transform">
-                            <Users size={40} />
-                        </div>
-                        <Users className="w-7 h-7 mb-2 drop-shadow-lg" />
-                        <span className="font-black uppercase text-[10px] tracking-widest block">Inscrever-se</span>
-                    </button>
+                    {champ.is_registration_open !== false ? (
+                        <button
+                            onClick={() => navigate(`/races/${id}/register`)}
+                            className="group relative overflow-hidden bg-emerald-600 hover:bg-emerald-500 text-white p-5 rounded-3xl shadow-2xl transition-all active:scale-[0.98] border-b-4 border-emerald-800"
+                        >
+                            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:scale-125 transition-transform">
+                                <Users size={40} />
+                            </div>
+                            <Users className="w-7 h-7 mb-2 drop-shadow-lg" />
+                            <span className="font-black uppercase text-[10px] tracking-widest block">Inscrever-se</span>
+                        </button>
+                    ) : (
+                        <button
+                            onClick={() => navigate(`/races/${id}/register`)}
+                            className="group relative overflow-hidden bg-slate-700 hover:bg-slate-600 text-white p-5 rounded-3xl shadow-2xl transition-all active:scale-[0.98] border-b-4 border-slate-900"
+                        >
+                            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:scale-125 transition-transform">
+                                <Users size={40} />
+                            </div>
+                            <Users className="w-7 h-7 mb-2 drop-shadow-lg text-rose-400" />
+                            <span className="font-black uppercase text-[10px] tracking-widest block">Consultar Inscrição</span>
+                        </button>
+                    )}
 
                     <button
                         onClick={() => navigate(`/races/${id}/results`)}
@@ -176,11 +189,27 @@ export function RaceDetails() {
                         {/* Social Share / Placeholder */}
                         <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-[2rem] p-6 text-white shadow-2xl">
                             <h4 className="font-black text-xs uppercase tracking-widest mb-2 opacity-60">Status do Evento</h4>
-                            <div className="flex items-center gap-2 mb-4">
-                                <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse shadow-lg shadow-emerald-500/50" />
-                                <span className="font-black uppercase text-sm">Inscrições Abertas</span>
-                            </div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase leading-relaxed">Prepare-se para o desafio e garanta sua vaga agora mesmo.</p>
+                            {champ.is_registration_open !== false ? (
+                                <>
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse shadow-lg shadow-emerald-500/50" />
+                                        <span className="font-black uppercase text-sm">Inscrições Abertas</span>
+                                    </div>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase leading-relaxed">
+                                        Prepare-se para o desafio e garanta sua vaga agora mesmo.
+                                    </p>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <div className="w-3 h-3 bg-rose-500 rounded-full shadow-lg shadow-rose-500/50" />
+                                        <span className="font-black uppercase text-sm text-rose-300">Inscrições Encerradas</span>
+                                    </div>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase leading-relaxed">
+                                        {champ.registration_closed_reason || 'O prazo de inscrições para este evento já foi encerrado.'}
+                                    </p>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>

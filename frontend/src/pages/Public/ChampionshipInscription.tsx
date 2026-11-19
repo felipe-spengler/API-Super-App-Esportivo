@@ -185,41 +185,58 @@ export function ChampionshipInscription() {
                 {/* Step 1: Category Selection */}
                 {step === 1 && (
                     <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                        <h2 className="text-2xl font-bold text-gray-900 mb-2">Escolha a Categoria</h2>
-                        <p className="text-gray-500 mb-6">Selecione onde você deseja competir.</p>
-
-                        <div className="grid gap-4">
-                            {championship.categories?.map((cat: any) => (
+                        {championship?.is_registration_open === false ? (
+                            <div className="bg-rose-50 border-2 border-rose-200 rounded-2xl p-8 text-center space-y-3">
+                                <h2 className="text-2xl font-bold text-rose-900">Inscrições Encerradas</h2>
+                                <p className="text-rose-700 text-sm">
+                                    {championship?.registration_closed_reason || 'O prazo de inscrições para este campeonato já foi encerrado.'}
+                                </p>
                                 <button
-                                    key={cat.id}
-                                    onClick={() => setSelectedCategory(cat)}
-                                    className={`p-6 rounded-xl border-2 text-left transition-all flex items-center justify-between ${selectedCategory?.id === cat.id
-                                        ? 'border-indigo-600 bg-indigo-50 shadow-md transform scale-[1.02]'
-                                        : 'border-gray-100 bg-white hover:border-indigo-200'
-                                        }`}
+                                    onClick={() => navigate(-1)}
+                                    className="mt-4 bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold text-sm"
                                 >
-                                    <div>
-                                        <h3 className="font-bold text-lg text-gray-900">{cat.name}</h3>
-                                        <p className="text-sm text-gray-500">{cat.description || 'Sem descrição'}</p>
-                                    </div>
-                                    <div className="text-right">
-                                        <span className="block font-bold text-indigo-700 text-lg">
-                                            {cat.price ? `R$ ${cat.price}` : 'Grátis'}
-                                        </span>
-                                    </div>
+                                    Voltar ao Campeonato
                                 </button>
-                            ))}
-                        </div>
+                            </div>
+                        ) : (
+                            <>
+                                <h2 className="text-2xl font-bold text-gray-900 mb-2">Escolha a Categoria</h2>
+                                <p className="text-gray-500 mb-6">Selecione onde você deseja competir.</p>
 
-                        <div className="mt-8 flex justify-end">
-                            <button
-                                disabled={!selectedCategory}
-                                onClick={() => setStep(2)}
-                                className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all"
-                            >
-                                Continuar <ArrowRight className="w-5 h-5" />
-                            </button>
-                        </div>
+                                <div className="grid gap-4">
+                                    {championship.categories?.map((cat: any) => (
+                                        <button
+                                            key={cat.id}
+                                            onClick={() => setSelectedCategory(cat)}
+                                            className={`p-6 rounded-xl border-2 text-left transition-all flex items-center justify-between ${selectedCategory?.id === cat.id
+                                                ? 'border-indigo-600 bg-indigo-50 shadow-md transform scale-[1.02]'
+                                                : 'border-gray-100 bg-white hover:border-indigo-200'
+                                                }`}
+                                        >
+                                            <div>
+                                                <h3 className="font-bold text-lg text-gray-900">{cat.name}</h3>
+                                                <p className="text-sm text-gray-500">{cat.description || 'Sem descrição'}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="block font-bold text-indigo-700 text-lg">
+                                                    {cat.price ? `R$ ${cat.price}` : 'Grátis'}
+                                                </span>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <div className="mt-8 flex justify-end">
+                                    <button
+                                        disabled={!selectedCategory}
+                                        onClick={() => setStep(2)}
+                                        className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all"
+                                    >
+                                        Continuar <ArrowRight className="w-5 h-5" />
+                                    </button>
+                                </div>
+                            </>
+                        )}
                     </div>
                 )}
 

@@ -77,6 +77,82 @@ class Championship extends Model
         'bulk_discount_settings' => 'array',
     ];
 
+    protected $appends = [
+        'is_registration_open',
+        'registration_closed_reason',
+    ];
+
+    /**
+     * Verifica de forma centralizada se o campeonato/evento está com inscrições abertas no momento.
+     *
+     * @return array{allowed: bool, reason: string|null}
+     */
+    public function checkRegistrationAllowed(): array
+    {
+        $now = now();
+
+        // 1. Verificar status explícito de encerramento/andamento/rascunho
+        $closedStatuses = ['finished', 'ongoing', 'in_progress', 'live', 'cancelled', 'closed', 'registrations_closed', 'draft'];
+        if (in_array(strtolower((string) $this->status), $closedStatuses, true)) {
+            return [
+                'allowed' => false,
+                'reason' => 'As inscrições para este evento estão encerradas.',
+            ];
+        }
+
+        // 2. Verificar data de início das inscrições (se configurada)
+        if ($this->registration_start_date) {
+            $startLimit = $this->registration_start_date->copy();
+            if ($startLimit->format('H:i:s') === '00:00:00') {
+                $startLimit = $startLimit->startOfDay();
+            }
+            if ($now->lt($startLimit)) {
+                return [
+                    'allowed' => false,
+                    'reason' => 'As inscrições para este evento estarão disponíveis a partir de ' . $startLimit->format('d/m/Y') . '.',
+                ];
+            }
+        }
+
+        // 3. Verificar data limite de encerramento das inscrições (registration_end_date)
+        if ($this->registration_end_date) {
+            $endLimit = $this->registration_end_date->copy();
+            // Se foi salva apenas a data (00:00:00), considera válido até 23:59:59 daquele dia
+            if ($endLimit->format('H:i:s') === '00:00:00') {
+                $endLimit = $endLimit->endOfDay();
+            }
+            if ($now->gt($endLimit)) {
+                return [
+                    'allowed' => false,
+                    'reason' => 'O prazo de inscrições para este evento encerrou em ' . $this->registration_end_date->format('d/m/Y') . '.',
+                ];
+            }
+        }
+
+        // 4. Se a data final do evento já passou, bloqueia inscrições
+        if ($this->end_date && $now->gt($this->end_date->copy()->endOfDay())) {
+            return [
+                'allowed' => false,
+                'reason' => 'Este evento já foi finalizado.',
+            ];
+        }
+
+        return [
+            'allowed' => true,
+            'reason' => null,
+        ];
+    }
+
+    public function getIsRegistrationOpenAttribute(): bool
+    {
+        return $this->checkRegistrationAllowed()['allowed'];
+    }
+
+    public function getRegistrationClosedReasonAttribute(): ?string
+    {
+        return $this->checkRegistrationAllowed()['reason'];
+    }
+
     public function club()
     {
         return $this->belongsTo(Club::class);

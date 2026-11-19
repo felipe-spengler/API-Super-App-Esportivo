@@ -718,68 +718,84 @@ export function RaceRegister() {
                 {step === 1 && (
                     <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-6">
                         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                                <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">
-                                    Selecione suas Provas / Categorias
-                                </h2>
-                                {parentCategoryIds.length > 0 && (
-                                    <span className="px-3 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full text-xs font-black uppercase w-max">
-                                        {parentCategoryIds.length} {parentCategoryIds.length === 1 ? 'categoria selecionada' : 'categorias selecionadas'}
-                                    </span>
-                                )}
-                            </div>
-                            <p className="text-slate-500 text-xs font-medium mb-6">
-                                💡 Você pode selecionar <strong>uma ou mais categorias</strong> para competir neste campeonato (ex: 50m Livre e 50m Borboleta).
-                            </p>
-
-                            <div className="space-y-6">
-                                <div className="grid gap-3">
-                                    {mainCategories.map((cat: any) => {
-                                        const isSelected = parentCategoryIds.includes(cat.id.toString());
-                                        return (
-                                            <button
-                                                key={cat.id}
-                                                type="button"
-                                                onClick={() => toggleParentCategory(cat.id.toString())}
-                                                className={`p-5 rounded-2xl border-2 text-left transition-all relative overflow-hidden flex items-center justify-between ${isSelected
-                                                    ? 'border-indigo-600 bg-indigo-50/50 shadow-md ring-2 ring-indigo-500/20'
-                                                    : 'border-slate-100 bg-white hover:border-slate-200'
-                                                }`}
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-colors shrink-0 ${
-                                                        isSelected ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300 bg-white'
-                                                    }`}>
-                                                        {isSelected && <Check size={14} strokeWidth={3} />}
-                                                    </div>
-                                                    <div>
-                                                        <h3 className="font-black text-slate-900 uppercase text-lg italic">{cat.name}</h3>
-                                                        <p className="text-slate-500 text-xs font-medium uppercase mt-0.5">{cat.description || 'Categoria Principal'}</p>
-                                                    </div>
-                                                </div>
-                                                <div className="text-right shrink-0">
-                                                    <span className="block font-black text-indigo-600 text-xl italic leading-none">
-                                                        {Number(cat.price) > 0 ? `R$ ${Number(cat.price).toFixed(2).replace('.', ',')}` : 'Grátis'}
-                                                    </span>
-                                                </div>
-                                            </button>
-                                        );
-                                    })}
+                            {championship?.is_registration_open === false ? (
+                                <div className="p-6 bg-rose-50 border-2 border-rose-200 rounded-2xl text-center space-y-2 mb-2">
+                                    <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-2">
+                                        <AlertCircle className="w-6 h-6" />
+                                    </div>
+                                    <h2 className="text-xl font-black text-rose-900 uppercase tracking-tight">
+                                        Inscrições Encerradas
+                                    </h2>
+                                    <p className="text-xs font-semibold text-rose-700 max-w-md mx-auto">
+                                        {championship?.registration_closed_reason || 'O prazo para novas inscrições neste evento já foi encerrado.'}
+                                    </p>
                                 </div>
-                            </div>
-                            <button
-                                disabled={parentCategoryIds.length === 0}
-                                onClick={() => setStep(2)}
-                                className="w-full mt-6 py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-800 disabled:opacity-50 shadow-xl flex items-center justify-center gap-3 transition-all"
-                            >
-                                <span>Próximo Passo</span>
-                                {parentCategoryIds.length > 0 && (
-                                    <span className="text-xs bg-indigo-600 px-2.5 py-0.5 rounded-full text-white font-bold">
-                                        {parentCategoryIds.length} {parentCategoryIds.length === 1 ? 'categoria' : 'categorias'}
-                                    </span>
-                                )}
-                                <ArrowRight size={18} />
-                            </button>
+                            ) : (
+                                <>
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                                        <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">
+                                            Selecione suas Provas / Categorias
+                                        </h2>
+                                        {parentCategoryIds.length > 0 && (
+                                            <span className="px-3 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full text-xs font-black uppercase w-max">
+                                                {parentCategoryIds.length} {parentCategoryIds.length === 1 ? 'categoria selecionada' : 'categorias selecionadas'}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="text-slate-500 text-xs font-medium mb-6">
+                                        💡 Você pode selecionar <strong>uma ou mais categorias</strong> para competir neste campeonato (ex: 50m Livre e 50m Borboleta).
+                                    </p>
+
+                                    <div className="space-y-6">
+                                        <div className="grid gap-3">
+                                            {mainCategories.map((cat: any) => {
+                                                const isSelected = parentCategoryIds.includes(cat.id.toString());
+                                                return (
+                                                    <button
+                                                        key={cat.id}
+                                                        type="button"
+                                                        onClick={() => toggleParentCategory(cat.id.toString())}
+                                                        className={`p-5 rounded-2xl border-2 text-left transition-all relative overflow-hidden flex items-center justify-between ${isSelected
+                                                            ? 'border-indigo-600 bg-indigo-50/50 shadow-md ring-2 ring-indigo-500/20'
+                                                            : 'border-slate-100 bg-white hover:border-slate-200'
+                                                        }`}
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-colors shrink-0 ${
+                                                                isSelected ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300 bg-white'
+                                                            }`}>
+                                                                {isSelected && <Check size={14} strokeWidth={3} />}
+                                                            </div>
+                                                            <div>
+                                                                <h3 className="font-black text-slate-900 uppercase text-lg italic">{cat.name}</h3>
+                                                                <p className="text-slate-500 text-xs font-medium uppercase mt-0.5">{cat.description || 'Categoria Principal'}</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-right shrink-0">
+                                                            <span className="block font-black text-indigo-600 text-xl italic leading-none">
+                                                                {Number(cat.price) > 0 ? `R$ ${Number(cat.price).toFixed(2).replace('.', ',')}` : 'Grátis'}
+                                                            </span>
+                                                        </div>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                    <button
+                                        disabled={parentCategoryIds.length === 0}
+                                        onClick={() => setStep(2)}
+                                        className="w-full mt-6 py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-800 disabled:opacity-50 shadow-xl flex items-center justify-center gap-3 transition-all"
+                                    >
+                                        <span>Próximo Passo</span>
+                                        {parentCategoryIds.length > 0 && (
+                                            <span className="text-xs bg-indigo-600 px-2.5 py-0.5 rounded-full text-white font-bold">
+                                                {parentCategoryIds.length} {parentCategoryIds.length === 1 ? 'categoria' : 'categorias'}
+                                            </span>
+                                        )}
+                                        <ArrowRight size={18} />
+                                    </button>
+                                </>
+                            )}
 
                             {/* Tracking Section */}
                             <div className="mt-8 pt-8 border-t border-slate-100">

@@ -73,6 +73,8 @@ class EventController extends Controller
     // 2. Detalhes do Campeonato (com Categorias)
     public function championshipDetails($id)
     {
+        $this->syncStatuses();
+
         // Carrega o campeonato com TODAS as suas categorias (pai e filhas)
         $champ = Championship::with(['categories', 'sport'])
             ->withCount('teams')
@@ -1309,9 +1311,16 @@ class EventController extends Controller
     {
         try {
             $now = now();
-            // Apenas campeonatos que estão marcados para atualização automática e não são rascunhos 'draft'
-            $championships = Championship::where('is_status_auto', true)
-                ->where('status', '!=', 'draft')
+            // Além dos campeonatos com is_status_auto=true, qualquer campeonato com status 'registrations_open'
+            // cujo registration_end_date já venceu DEVE ter as inscrições encerradas automaticamente.
+            $championships = Championship::where('status', '!=', 'draft')
+                ->where(function ($q) {
+                    $q->where('is_status_auto', true)
+                      ->orWhere(function ($sq) {
+                          $sq->where('status', 'registrations_open')
+                             ->whereNotNull('registration_end_date');
+                      });
+                })
                 ->get();
 
             foreach ($championships as $champ) {

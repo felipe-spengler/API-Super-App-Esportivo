@@ -288,13 +288,19 @@ export function EventDetails() {
             {/* Content */}
             <div className="max-w-6xl mx-auto p-4">
                 {/* CTA de Inscrição */}
-                <button
-                    onClick={() => navigate(`/inscription/${id}`)}
-                    className="w-full md:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-8 rounded-xl mb-6 flex items-center justify-center gap-3 shadow-lg shadow-green-600/30 transition-all active:scale-95"
-                >
-                    <UserPlus className="w-5 h-5" />
-                    <span className="text-lg uppercase tracking-wide">Inscrever-se Agora</span>
-                </button>
+                {champ.is_registration_open !== false ? (
+                    <button
+                        onClick={() => navigate(`/inscription/${id}`)}
+                        className="w-full md:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-8 rounded-xl mb-6 flex items-center justify-center gap-3 shadow-lg shadow-green-600/30 transition-all active:scale-95"
+                    >
+                        <UserPlus className="w-5 h-5" />
+                        <span className="text-lg uppercase tracking-wide">Inscrever-se Agora</span>
+                    </button>
+                ) : (
+                    <div className="w-full md:w-auto bg-slate-200 text-slate-600 font-bold py-3.5 px-6 rounded-xl mb-6 inline-flex items-center justify-center gap-2 border border-slate-300 text-sm uppercase">
+                        <span>🔒 Inscrições Encerradas</span>
+                    </div>
+                )}
 
                 {/* Grid de Cards (igual ao mobile) */}
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">

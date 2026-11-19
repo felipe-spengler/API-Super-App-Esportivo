@@ -84,6 +84,15 @@ class RaceInscriptionController extends Controller
             }
         }
 
+        // Bloquear inscrição se o prazo (registration_end_date) ou status do evento já estiver encerrado
+        $regCheck = $race->championship->checkRegistrationAllowed();
+        if (!$regCheck['allowed']) {
+            return response()->json([
+                'error' => $regCheck['reason'],
+                'message' => $regCheck['reason'],
+            ], 403);
+        }
+
         // 1. Carregar Categoria Enviada e Identificar a Principal (Pai)
         // Mesmo que o frontend envie uma subcategoria, o preço base vem da pai.
         $selectedCategory = Category::with(['parent', 'children'])->findOrFail($request->category_id);
@@ -503,6 +512,15 @@ class RaceInscriptionController extends Controller
         }
 
         $championship = $race->championship;
+
+        // Bloquear inscrição coletiva se o prazo (registration_end_date) ou status do evento já estiver encerrado
+        $regCheck = $championship->checkRegistrationAllowed();
+        if (!$regCheck['allowed']) {
+            return response()->json([
+                'error' => $regCheck['reason'],
+                'message' => $regCheck['reason'],
+            ], 403);
+        }
 
         // Suporte a atleta com múltiplas categorias (category_ids)
         $rawAthletes = $request->athletes;

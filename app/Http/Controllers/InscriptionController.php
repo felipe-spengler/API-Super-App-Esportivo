@@ -32,6 +32,15 @@ class InscriptionController extends Controller
         $championship = Championship::with('club')->findOrFail($validated['championship_id']);
         $category = Category::findOrFail($validated['category_id']);
 
+        // Bloquear inscrição se o prazo (registration_end_date) ou status já estiver encerrado
+        $regCheck = $championship->checkRegistrationAllowed();
+        if (!$regCheck['allowed']) {
+            return response()->json([
+                'message' => $regCheck['reason'],
+                'error' => $regCheck['reason'],
+            ], 403);
+        }
+
         // Check eligibility (Captain - do not check age)
         $check = $category->isUserEligible($request->user(), false);
         if (!$check['eligible']) {
