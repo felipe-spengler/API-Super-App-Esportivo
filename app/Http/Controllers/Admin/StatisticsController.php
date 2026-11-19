@@ -30,29 +30,14 @@ class StatisticsController extends Controller
         // Exclude repescagem if not included
         if (!($championship->include_repescagem_goals ?? false)) {
             $query->whereHas('gameMatch', function ($subQuery) {
-                $subQuery->where(function($q) {
-                    $q->where('round_name', '!=', 'Repescagem')
-                      ->where('round_name', 'not like', '%Repescagem%')
-                      ->orWhereNull('round_name');
-                });
+                $subQuery->excludeRepescagem();
             });
         }
 
         // Exclude knockout if not included
         if (!($championship->include_knockout_goals ?? false)) {
             $query->whereHas('gameMatch', function ($subQuery) {
-                $subQuery->where(function($q) {
-                    $q->where('is_knockout', '!=', true)
-                      ->where('is_knockout', '!=', 1)
-                      ->where(function($sq) {
-                          $sq->whereNull('round_name')
-                             ->orWhere('round_name', 'not like', '%Final%')
-                             ->where('round_name', 'not like', '%Semi%')
-                             ->where('round_name', 'not like', '%Quartas%')
-                             ->where('round_name', 'not like', '%Oitavas%');
-                      })
-                      ->orWhereNull('is_knockout');
-                });
+                $subQuery->excludeKnockout();
             });
         }
 
@@ -133,29 +118,14 @@ class StatisticsController extends Controller
         // Exclude repescagem if not included
         if (!($championship->include_repescagem_assists ?? false)) {
             $query->whereHas('gameMatch', function ($subQuery) {
-                $subQuery->where(function($q) {
-                    $q->where('round_name', '!=', 'Repescagem')
-                      ->where('round_name', 'not like', '%Repescagem%')
-                      ->orWhereNull('round_name');
-                });
+                $subQuery->excludeRepescagem();
             });
         }
 
         // Exclude knockout if not included
         if (!($championship->include_knockout_assists ?? false)) {
             $query->whereHas('gameMatch', function ($subQuery) {
-                $subQuery->where(function($q) {
-                    $q->where('is_knockout', '!=', true)
-                      ->where('is_knockout', '!=', 1)
-                      ->where(function($sq) {
-                          $sq->whereNull('round_name')
-                             ->orWhere('round_name', 'not like', '%Final%')
-                             ->where('round_name', 'not like', '%Semi%')
-                             ->where('round_name', 'not like', '%Quartas%')
-                             ->where('round_name', 'not like', '%Oitavas%');
-                      })
-                      ->orWhereNull('is_knockout');
-                });
+                $subQuery->excludeKnockout();
             });
         }
 
@@ -184,29 +154,14 @@ class StatisticsController extends Controller
         // Exclude repescagem if not included
         if (!($championship->include_repescagem_cards ?? true)) {
             $query->whereHas('gameMatch', function ($subQuery) {
-                $subQuery->where(function($q) {
-                    $q->where('round_name', '!=', 'Repescagem')
-                      ->where('round_name', 'not like', '%Repescagem%')
-                      ->orWhereNull('round_name');
-                });
+                $subQuery->excludeRepescagem();
             });
         }
 
         // Exclude knockout if not included
         if (!($championship->include_knockout_cards ?? true)) {
             $query->whereHas('gameMatch', function ($subQuery) {
-                $subQuery->where(function($q) {
-                    $q->where('is_knockout', '!=', true)
-                      ->where('is_knockout', '!=', 1)
-                      ->where(function($sq) {
-                          $sq->whereNull('round_name')
-                             ->orWhere('round_name', 'not like', '%Final%')
-                             ->where('round_name', 'not like', '%Semi%')
-                             ->where('round_name', 'not like', '%Quartas%')
-                             ->where('round_name', 'not like', '%Oitavas%');
-                      })
-                      ->orWhereNull('is_knockout');
-                });
+                $subQuery->excludeKnockout();
             });
         }
 
@@ -238,27 +193,12 @@ class StatisticsController extends Controller
 
         // Exclude repescagem if not included in standings
         if (!($championship->include_repescagem_standings ?? false)) {
-            $query->where(function($q) {
-                $q->where('round_name', '!=', 'Repescagem')
-                  ->where('round_name', 'not like', '%Repescagem%')
-                  ->orWhereNull('round_name');
-            });
+            $query->excludeRepescagem();
         }
 
         // Exclude knockout if not included
         if (!($championship->include_knockout_standings ?? false)) {
-            $query->where(function($q) {
-                $q->where('is_knockout', '!=', true)
-                  ->where('is_knockout', '!=', 1)
-                  ->where(function($sq) {
-                      $sq->whereNull('round_name')
-                         ->orWhere('round_name', 'not like', '%Final%')
-                         ->where('round_name', 'not like', '%Semi%')
-                         ->where('round_name', 'not like', '%Quartas%')
-                         ->where('round_name', 'not like', '%Oitavas%');
-                  })
-                  ->orWhereNull('is_knockout');
-            });
+            $query->excludeKnockout();
         }
 
         $matches = $query->get();
@@ -438,25 +378,10 @@ class StatisticsController extends Controller
                 ->whereHas('gameMatch', function ($query) use ($championshipId, $championship) {
                     $query->where('championship_id', $championshipId);
                     if (!($championship->include_repescagem_goals ?? false)) {
-                        $query->where(function($q) {
-                            $q->where('round_name', '!=', 'Repescagem')
-                              ->where('round_name', 'not like', '%Repescagem%')
-                              ->orWhereNull('round_name');
-                        });
+                        $query->excludeRepescagem();
                     }
                     if (!($championship->include_knockout_goals ?? false)) {
-                        $query->where(function($q) {
-                            $q->where('is_knockout', '!=', true)
-                              ->where('is_knockout', '!=', 1)
-                              ->where(function($sq) {
-                                  $sq->whereNull('round_name')
-                                     ->orWhere('round_name', 'not like', '%Final%')
-                                     ->where('round_name', 'not like', '%Semi%')
-                                     ->where('round_name', 'not like', '%Quartas%')
-                                     ->where('round_name', 'not like', '%Oitavas%');
-                              })
-                              ->orWhereNull('is_knockout');
-                        });
+                        $query->excludeKnockout();
                     }
                 })
                 ->count(),
