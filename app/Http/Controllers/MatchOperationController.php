@@ -340,22 +340,13 @@ class MatchOperationController extends Controller
 
         if (isset($details['sync_timer']) && is_array($details['sync_timer'])) {
             $details['sync_timer']['count_countDown'] = (bool) $isCountdown;
-            $details['sync_timer']['is_countdown'] = (bool) $isCountdown;
-            $details['sync_timer']['isCountdown'] = (bool) $isCountdown;
-            $details['sync_timer']['timer_direction'] = $isCountdown ? 'down' : 'up';
         } else {
             $details['sync_timer'] = [
                 'count_countDown' => (bool) $isCountdown,
-                'is_countdown' => (bool) $isCountdown,
-                'isCountdown' => (bool) $isCountdown,
-                'timer_direction' => $isCountdown ? 'down' : 'up',
             ];
         }
 
         $details['count_countDown'] = (bool) $isCountdown;
-        $details['is_countdown'] = (bool) $isCountdown;
-        $details['isCountdown'] = (bool) $isCountdown;
-        $details['timer_direction'] = $isCountdown ? 'down' : 'up';
 
         return response()->json([
             'match' => $match,
@@ -365,9 +356,6 @@ class MatchOperationController extends Controller
             'server_time' => now()->timestamp * 1000,
             'sport' => $sportSlug,
             'count_countDown' => (bool) $isCountdown,
-            'is_countdown' => (bool) $isCountdown,
-            'isCountdown' => (bool) $isCountdown,
-            'timer_direction' => $isCountdown ? 'down' : 'up',
         ]);
     }
 
