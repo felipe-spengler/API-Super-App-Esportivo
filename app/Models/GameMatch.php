@@ -126,7 +126,110 @@ class GameMatch extends Model
 
     protected $with = ['sets', 'events'];
 
-    protected $appends = ['match_details_structure'];
+    protected $appends = ['match_details_structure', 'count_countDown', 'is_countdown'];
+
+    /**
+     * Determina se a partida utiliza contagem regressiva (decrescente).
+     *
+     * @param GameMatch|array|null $match
+     * @param string|null $sportSlug
+     * @return bool
+     */
+    public static function isMatchCountdown($match = null, ?string $sportSlug = null): bool
+    {
+        $details = [];
+        if ($match instanceof self) {
+            $details = is_array($match->match_details) ? $match->match_details : [];
+            if (!$sportSlug && $match->relationLoaded('championship') && $match->championship) {
+                $sportSlug = $match->championship->sport->slug ?? ($match->championship->sport->name ?? null);
+            }
+        } elseif (is_array($match)) {
+            $details = is_array($match['match_details'] ?? null) ? $match['match_details'] : $match;
+        }
+
+        $syncTimer = is_array($details['sync_timer'] ?? null) ? $details['sync_timer'] : [];
+
+        // 1. Checagem explícita na configuração do sync_timer ou match_details da súmula
+        if (isset($syncTimer['count_countDown'])) {
+            return filter_var($syncTimer['count_countDown'], FILTER_VALIDATE_BOOLEAN);
+        }
+        if (isset($syncTimer['count_countdown'])) {
+            return filter_var($syncTimer['count_countdown'], FILTER_VALIDATE_BOOLEAN);
+        }
+        if (isset($syncTimer['isCountdown'])) {
+            return filter_var($syncTimer['isCountdown'], FILTER_VALIDATE_BOOLEAN);
+        }
+        if (isset($syncTimer['is_countdown'])) {
+            return filter_var($syncTimer['is_countdown'], FILTER_VALIDATE_BOOLEAN);
+        }
+        if (isset($details['count_countDown'])) {
+            return filter_var($details['count_countDown'], FILTER_VALIDATE_BOOLEAN);
+        }
+        if (isset($details['count_countdown'])) {
+            return filter_var($details['count_countdown'], FILTER_VALIDATE_BOOLEAN);
+        }
+        if (isset($details['is_countdown'])) {
+            return filter_var($details['is_countdown'], FILTER_VALIDATE_BOOLEAN);
+        }
+        if (isset($details['isCountdown'])) {
+            return filter_var($details['isCountdown'], FILTER_VALIDATE_BOOLEAN);
+        }
+
+        // Se o campeonato tiver esporte e não estava carregado, carrega sob demanda
+        if (!$sportSlug && $match instanceof self && $match->championship_id) {
+            $champ = $match->championship ?: Championship::with('sport')->find($match->championship_id);
+            if ($champ && $champ->sport) {
+                $sportSlug = $champ->sport->slug ?? ($champ->sport->name ?? null);
+            }
+        }
+
+        // 2. Modalidades esportivas que oficialmente utilizam cronômetro decrescente (regressivo)
+        $slug = strtolower(trim((string) $sportSlug));
+        $countdownSports = [
+            'futsal',
+            'basquete',
+            'basquetebol',
+            'basketball',
+            'fiba',
+            'nba',
+            '3x3',
+            'jiu-jitsu',
+            'jiujitsu',
+            'bjj',
+            'judo',
+            'judô',
+            'mma',
+            'luta',
+            'lutas',
+            'boxe',
+            'boxing',
+            'handebol',
+            'handball',
+            'futebol-americano',
+            'flag-football',
+            'american-football',
+            'polo-aquatico',
+            'water-polo',
+        ];
+
+        foreach ($countdownSports as $cs) {
+            if ($slug === $cs || str_contains($slug, $cs)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function getCountCountDownAttribute(): bool
+    {
+        return self::isMatchCountdown($this);
+    }
+
+    public function getIsCountdownAttribute(): bool
+    {
+        return self::isMatchCountdown($this);
+    }
 
     public function getMatchDetailsStructureAttribute()
     {

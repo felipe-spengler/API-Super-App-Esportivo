@@ -1223,10 +1223,30 @@ class EventController extends Controller
             $details['events'] = $tableEvents;
         }
 
-        // Garante que o cronômetro sincronizado vá para o frontend
+        $sportSlug = $match->championship->sport->slug ?? 'football';
+        $isCountdown = \App\Models\GameMatch::isMatchCountdown($match, $sportSlug);
+
+        // Garante que o cronômetro sincronizado vá para o frontend com a flag count_countDown
         if ($match->match_details && isset($match->match_details['sync_timer'])) {
-            $details['sync_timer'] = $match->match_details['sync_timer'];
+            $syncTimerData = $match->match_details['sync_timer'];
+            $syncTimerData['count_countDown'] = (bool) $isCountdown;
+            $syncTimerData['is_countdown'] = (bool) $isCountdown;
+            $syncTimerData['isCountdown'] = (bool) $isCountdown;
+            $syncTimerData['timer_direction'] = $isCountdown ? 'down' : 'up';
+            $details['sync_timer'] = $syncTimerData;
+        } else {
+            $details['sync_timer'] = [
+                'count_countDown' => (bool) $isCountdown,
+                'is_countdown' => (bool) $isCountdown,
+                'isCountdown' => (bool) $isCountdown,
+                'timer_direction' => $isCountdown ? 'down' : 'up',
+            ];
         }
+
+        $details['count_countDown'] = (bool) $isCountdown;
+        $details['is_countdown'] = (bool) $isCountdown;
+        $details['isCountdown'] = (bool) $isCountdown;
+        $details['timer_direction'] = $isCountdown ? 'down' : 'up';
 
         if (!isset($details['sets']))
             $details['sets'] = [];
@@ -1274,7 +1294,11 @@ class EventController extends Controller
             'rosters' => $rosters,
             'mvp_votes_summary' => $mvpVotesSummary,
             'server_time' => now()->timestamp * 1000, // milisegundos
-            'sport' => $match->championship->sport->slug ?? 'football'
+            'sport' => $sportSlug,
+            'count_countDown' => (bool) $isCountdown,
+            'is_countdown' => (bool) $isCountdown,
+            'isCountdown' => (bool) $isCountdown,
+            'timer_direction' => $isCountdown ? 'down' : 'up',
         ]);
     }
 
@@ -1525,7 +1549,7 @@ class EventController extends Controller
         $foulsAway = $filteredFouls->where('team_id', $m->away_team_id)->count();
 
         // Verifica se a modalidade usa cronômetro decrescente (Futsal, Basquete, Jiu-Jitsu ou flag isCountdown da súmula)
-        $isCountdown = !empty($syncTimer['isCountdown']) || in_array($sportSlug, ['futsal', 'basquete', 'jiu-jitsu'], true);
+        $isCountdown = \App\Models\GameMatch::isMatchCountdown($m, $sportSlug);
         $serverRunning = ($m->status === 'finished')
             ? false
             : (bool) ($rawDetails['timer_running'] ?? ($syncTimer['isRunning'] ?? ($syncTimer['running'] ?? false)));
@@ -1573,6 +1597,9 @@ class EventController extends Controller
             'time' => (int) $timerVal,
             'remaining' => (int) $timerVal,
             'isCountdown' => (bool) $isCountdown,
+            'is_countdown' => (bool) $isCountdown,
+            'count_countDown' => (bool) $isCountdown,
+            'timer_direction' => $isCountdown ? 'down' : 'up',
             'isRunning' => (bool) $timerRunning,
             'running' => (bool) $timerRunning,
             'serverIsRunning' => (bool) $serverRunning,
@@ -1587,6 +1614,10 @@ class EventController extends Controller
             'foul_events' => $filteredFouls,
             'timer_val' => (int) $timerVal,
             'timer_running' => (bool) $timerRunning,
+            'isCountdown' => (bool) $isCountdown,
+            'is_countdown' => (bool) $isCountdown,
+            'count_countDown' => (bool) $isCountdown,
+            'timer_direction' => $isCountdown ? 'down' : 'up',
             'sync_timer' => $scoreboardSyncTimer,
         ];
     }
@@ -1684,9 +1715,17 @@ class EventController extends Controller
                     'fouls_home' => $computed['fouls_home'],
                     'fouls_away' => $computed['fouls_away'],
                     'events' => $computed['foul_events'],
+                    'count_countDown' => (bool) $computed['count_countDown'],
+                    'is_countdown' => (bool) $computed['count_countDown'],
+                    'isCountdown' => (bool) $computed['count_countDown'],
+                    'timer_direction' => $computed['timer_direction'],
                     'match_details' => [
                         'current_timer_value' => $computed['timer_val'],
                         'timer_running' => $computed['timer_running'],
+                        'count_countDown' => (bool) $computed['count_countDown'],
+                        'is_countdown' => (bool) $computed['count_countDown'],
+                        'isCountdown' => (bool) $computed['count_countDown'],
+                        'timer_direction' => $computed['timer_direction'],
                         'sync_timer' => $computed['sync_timer'],
                     ],
                 ];
@@ -1763,9 +1802,17 @@ class EventController extends Controller
             'round_number' => $computed['period_number'],
             'fouls_home' => $foulsHome,
             'fouls_away' => $foulsAway,
+            'count_countDown' => (bool) $computed['count_countDown'],
+            'is_countdown' => (bool) $computed['count_countDown'],
+            'isCountdown' => (bool) $computed['count_countDown'],
+            'timer_direction' => $computed['timer_direction'],
             'match_details' => [
                 'current_timer_value' => (int) $timerVal,
                 'timer_running' => (bool) $timerRunning,
+                'count_countDown' => (bool) $computed['count_countDown'],
+                'is_countdown' => (bool) $computed['count_countDown'],
+                'isCountdown' => (bool) $computed['count_countDown'],
+                'timer_direction' => $computed['timer_direction'],
                 'sync_timer' => $syncTimer,
             ],
             'events' => $filteredFouls,
@@ -1782,6 +1829,10 @@ class EventController extends Controller
             'status' => $match->status,
             'round_name' => $match->round_name,
             'round_number' => $matchData['round_number'],
+            'count_countDown' => (bool) $computed['count_countDown'],
+            'is_countdown' => (bool) $computed['count_countDown'],
+            'isCountdown' => (bool) $computed['count_countDown'],
+            'timer_direction' => $computed['timer_direction'],
             'match_details' => $matchData['match_details'],
             'events' => $filteredFouls,
             'match' => $matchData,
@@ -1790,6 +1841,10 @@ class EventController extends Controller
                 'away' => $foulsAway,
             ],
             'details' => [
+                'count_countDown' => (bool) $computed['count_countDown'],
+                'is_countdown' => (bool) $computed['count_countDown'],
+                'isCountdown' => (bool) $computed['count_countDown'],
+                'timer_direction' => $computed['timer_direction'],
                 'sync_timer' => $syncTimer,
                 'events' => $filteredFouls,
             ],
